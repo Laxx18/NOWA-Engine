@@ -1875,13 +1875,17 @@ namespace NOWA
             this->rdState = PhysicsRagDollComponentV2::INACTIVE;
             this->setAnimationEnabled(true);
 
-            if (this->rdOldState == PhysicsRagDollComponentV2::INACTIVE)
+            // Bug: this used to 'return', which skipped internalApplyState() at the very
+            // bottom of this function - and with it createInactiveRagdoll(). disconnect()
+            // sets rdOldState to INACTIVE, so on the SECOND connect() this condition was
+            // always true: the state transition never ran, the skeleton stayed in whatever
+            // endRagdolling() had left behind, and the character was stuck in its bind pose.
+            // Only the redundant event is skipped now.
+            if (this->rdOldState != PhysicsRagDollComponentV2::INACTIVE)
             {
-                return;
+                boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
+                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
             }
-
-            boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
         }
         else if (state == "Animation")
         {
@@ -1890,13 +1894,12 @@ namespace NOWA
             this->rdState = PhysicsRagDollComponentV2::ANIMATION;
             this->setAnimationEnabled(true);
 
-            if (this->rdOldState == PhysicsRagDollComponentV2::ANIMATION)
+            // Same as above: only the event is conditional, not the state transition.
+            if (this->rdOldState != PhysicsRagDollComponentV2::ANIMATION)
             {
-                return;
+                boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
+                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
             }
-
-            boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
         }
         else if (state == "Ragdolling")
         {

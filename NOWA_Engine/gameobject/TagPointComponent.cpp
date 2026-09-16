@@ -6,6 +6,7 @@
 #include "PhysicsActiveKinematicComponent.h"
 #include "PhysicsRagDollComponentV2.h"
 #include "main/AppStateManager.h"
+#include "modules/LuaScriptApi.h"
 #include "utilities/MathHelper.h"
 #include "utilities/XMLConverter.h"
 
@@ -672,7 +673,8 @@ namespace NOWA
         {
             // Already connected: re-parent the existing TagPoint to the new bone
             // (must happen on render thread since it touches the skeleton graph)
-            ENQUEUE_RENDER_COMMAND_MULTI("TagPointComponent::setTagPointNameV2", _2(item, tagPointName), {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, item, tagPointName]()
+            {
                 if (nullptr != this->attachedBone)
                 {
                     this->attachedBone->removeTagPoint(this->tagPointV2);
@@ -683,7 +685,8 @@ namespace NOWA
                 {
                     this->attachedBone->addTagPoint(this->tagPointV2);
                 }
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "TagPointComponent::setTagPointNameV2");
         }
         else
         {
@@ -753,6 +756,46 @@ namespace NOWA
         return this->offsetOrientation->getVector3();
     }
 
+    Ogre::Vector3 TagPointComponent::getBonePosition(const Ogre::String& name) const
+    {
+        if (nullptr == this->skeletonInstance || nullptr == this->gameObjectPtr || nullptr == this->gameObjectPtr->getSceneNode())
+        {
+            return Ogre::Vector3::ZERO;
+        }
+
+        Ogre::Bone* bone = this->skeletonInstance->getBone(Ogre::IdString(name));
+        if (nullptr == bone)
+        {
+            return Ogre::Vector3::ZERO;
+        }
+
+        Ogre::Vector3 localPosition;
+        Ogre::Quaternion localOrientation;
+        extractBoneLocalTransform(bone, localPosition, localOrientation);
+
+        Ogre::SceneNode* characterSceneNode = this->gameObjectPtr->getSceneNode();
+        return characterSceneNode->_getDerivedOrientationUpdated() * (localPosition * characterSceneNode->_getDerivedScale()) + characterSceneNode->_getDerivedPositionUpdated();
+    }
+
+    Ogre::Quaternion TagPointComponent::getBoneOrientation(const Ogre::String& name) const
+    {
+        if (nullptr == this->skeletonInstance || nullptr == this->gameObjectPtr || nullptr == this->gameObjectPtr->getSceneNode())
+        {
+            return Ogre::Quaternion::IDENTITY;
+        }
+
+        Ogre::Bone* bone = this->skeletonInstance->getBone(Ogre::IdString(name));
+        if (nullptr == bone)
+        {
+            return Ogre::Quaternion::IDENTITY;
+        }
+
+        Ogre::Vector3 localPosition;
+        Ogre::Quaternion localOrientation;
+        extractBoneLocalTransform(bone, localPosition, localOrientation);
+        return this->gameObjectPtr->getSceneNode()->_getDerivedOrientationUpdated() * localOrientation;
+    }
+
     Ogre::TagPoint* TagPointComponent::getTagPoint(void) const
     {
         return this->tagPointV2;
@@ -770,7 +813,8 @@ namespace NOWA
 
         if (nullptr == this->debugGeometryArrowNode && canGenerateDebug)
         {
-            ENQUEUE_RENDER_COMMAND("TagPointComponent::generateDebugData", {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
                 this->debugGeometryArrowNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
                 this->debugGeometryArrowNode->setName("tagPointComponentArrowNode");
                 this->debugGeometrySphereNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
@@ -805,7 +849,8 @@ namespace NOWA
                 this->debugGeometrySphereItem->setQueryFlags(0 << 0);
                 this->debugGeometrySphereItem->setCastShadows(false);
                 this->debugGeometrySphereNode->attachObject(this->debugGeometrySphereItem);
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "TagPointComponent::generateDebugData");
         }
     }
 
@@ -816,7 +861,8 @@ namespace NOWA
             GraphicsModule::getInstance()->removeTrackedNode(this->debugGeometryArrowNode);
             GraphicsModule::getInstance()->removeTrackedNode(this->debugGeometrySphereNode);
 
-            ENQUEUE_RENDER_COMMAND("TagPointComponent::destroyDebugData", {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
                 this->debugGeometryArrowNode->detachAllObjects();
                 this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryArrowNode);
                 this->debugGeometryArrowNode = nullptr;
@@ -828,7 +874,8 @@ namespace NOWA
                 this->debugGeometrySphereNode = nullptr;
                 this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometrySphereItem);
                 this->debugGeometrySphereItem = nullptr;
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "TagPointComponent::destroyDebugData");
         }
     }
 
@@ -895,6 +942,76 @@ namespace NOWA
             this->alreadyConnected = false;
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "TagPointComponent::resetTagPointV2");
+    }
+
+    // Lua registration part
+
+    TagPointComponent* getTagPointComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+    {
+        return makeStrongPtr<TagPointComponent>(gameObject->getComponentWithOccurrence<TagPointComponent>(occurrenceIndex)).get();
+    }
+
+    TagPointComponent* getTagPointComponent(GameObject* gameObject)
+    {
+        return makeStrongPtr<TagPointComponent>(gameObject->getComponent<TagPointComponent>()).get();
+    }
+
+    TagPointComponent* getTagPointComponentFromName(GameObject* gameObject, const Ogre::String& name)
+    {
+        return makeStrongPtr<TagPointComponent>(gameObject->getComponentFromName<TagPointComponent>(name)).get();
+    }
+
+    void setSourceIdForLua(TagPointComponent* instance, const Ogre::String& sourceId)
+    {
+        instance->setSourceId(Ogre::StringConverter::parseUnsignedLong(sourceId));
+    }
+
+    Ogre::String getSourceIdForLua(TagPointComponent* instance)
+    {
+        return Ogre::StringConverter::toString(instance->getSourceId());
+    }
+
+    void TagPointComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+    {
+        luabind::module(lua)
+        [
+            luabind::class_<TagPointComponent, GameObjectComponent>("TagPointComponent")
+            .def("setTagPointName", &TagPointComponent::setTagPointName)
+            .def("getTagPointName", &TagPointComponent::getTagPointName)
+            .def("setSourceId", &setSourceIdForLua)
+            .def("getSourceId", &getSourceIdForLua)
+            .def("setOffsetPosition", &TagPointComponent::setOffsetPosition)
+            .def("getOffsetPosition", &TagPointComponent::getOffsetPosition)
+            .def("setOffsetOrientation", &TagPointComponent::setOffsetOrientation)
+            .def("getOffsetOrientation", &TagPointComponent::getOffsetOrientation)
+            .def("getBonePosition", &TagPointComponent::getBonePosition)
+            .def("getBoneOrientation", &TagPointComponent::getBoneOrientation)
+        ];
+
+        LuaScriptApi::getInstance()->addClassToCollection("TagPointComponent", "class inherits GameObjectComponent", TagPointComponent::getStaticInfoText());
+        LuaScriptApi::getInstance()->addClassToCollection("TagPointComponent", "void setTagPointName(String tagName)", "Sets the tag point name the source game object should be attached to.");
+        LuaScriptApi::getInstance()->addClassToCollection("TagPointComponent", "String getTagPointName()", "Gets the current active tag point name.");
+        LuaScriptApi::getInstance()->addClassToCollection("TagPointComponent", "void setSourceId(String sourceId)", "Sets the source game object id.");
+        LuaScriptApi::getInstance()->addClassToCollection("TagPointComponent", "String getSourceId()", "Gets the source game object id.");
+        LuaScriptApi::getInstance()->addClassToCollection("TagPointComponent", "void setOffsetPosition(Vector3 offsetPosition)", "Sets the attachment offset position.");
+        LuaScriptApi::getInstance()->addClassToCollection("TagPointComponent", "Vector3 getOffsetPosition()", "Gets the attachment offset position.");
+        LuaScriptApi::getInstance()->addClassToCollection("TagPointComponent", "void setOffsetOrientation(Vector3 offsetOrientation)", "Sets the attachment offset orientation in degrees.");
+        LuaScriptApi::getInstance()->addClassToCollection("TagPointComponent", "Vector3 getOffsetOrientation()", "Gets the attachment offset orientation in degrees.");
+        LuaScriptApi::getInstance()->addClassToCollection("TagPointComponent", "Vector3 getBonePosition(String name)", "Gets a named bone position in world space.");
+        LuaScriptApi::getInstance()->addClassToCollection("TagPointComponent", "Quaternion getBoneOrientation(String name)", "Gets a named bone orientation in world space.");
+
+        gameObjectClass.def("getTagPointComponentFromName", &getTagPointComponentFromName);
+        gameObjectClass.def("getTagPointComponent", (TagPointComponent * (*)(GameObject*)) & getTagPointComponent);
+        // If its desired to create several of this components for one game object
+        gameObjectClass.def("getTagPointComponentFromIndex", (TagPointComponent * (*)(GameObject*, unsigned int)) & getTagPointComponent);
+
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "TagPointComponent getTagPointComponentFromIndex(unsigned int occurrenceIndex)",
+            "Gets the component by the given occurence index, since a game object may this component maybe several times.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "TagPointComponent getTagPointComponent()", "Gets the component. This can be used if the game object this component just once.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "TagPointComponent getTagPointComponentFromName(String name)", "Gets the component from name.");
+
+        gameObjectControllerClass.def("castTagPointComponent", &GameObjectController::cast<TagPointComponent>);
+        LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "TagPointComponent castTagPointComponent(TagPointComponent other)", "Casts an incoming type from function for lua auto completion.");
     }
 
 }; // namespace end

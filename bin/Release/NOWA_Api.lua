@@ -8706,22 +8706,6 @@ return {
 				returns = "(PhysicsExplosionComponent)",
 				valuetype = "PhysicsExplosionComponent"
 			},
-			getTagPointComponentFromIndex =
-			{
-				type = "function",
-				description = "Gets the tag point component by the given occurence index, since a game object may have besides other components several tag point components.",
-				args = "(number occurrenceIndex)",
-				returns = "(TagPointComponent)",
-				valuetype = "TagPointComponent"
-			},
-			getTagPointComponent =
-			{
-				type = "function",
-				description = "Gets the tag point component. This can be used if the game object just has one tag point component.",
-				args = "()",
-				returns = "(TagPointComponent)",
-				valuetype = "TagPointComponent"
-			},
 			getMoveMathFunctionComponent =
 			{
 				type = "function",
@@ -8745,14 +8729,6 @@ return {
 				args = "()",
 				returns = "(TagChildNodeComponent)",
 				valuetype = "TagChildNodeComponent"
-			},
-			getNodeTrackComponent =
-			{
-				type = "function",
-				description = "Gets the node track component.",
-				args = "()",
-				returns = "(NodeTrackComponent)",
-				valuetype = "NodeTrackComponent"
 			},
 			getLineComponent =
 			{
@@ -9095,6 +9071,14 @@ return {
 				type = "function",
 				description = "Gets the ai path follow component. Requirements: A physics active component.",
 				args = "(string name)",
+				returns = "(AiPathFollowComponent)",
+				valuetype = "AiPathFollowComponent"
+			},
+			getAiPathFollowComponentFromIndex =
+			{
+				type = "function",
+				description = "Gets the ai path follow component from the given occurence index. Requirements: A physics active component.",
+				args = "(number index)",
 				returns = "(AiPathFollowComponent)",
 				valuetype = "AiPathFollowComponent"
 			},
@@ -9666,14 +9650,6 @@ return {
 				returns = "(PhysicsExplosionComponent)",
 				valuetype = "PhysicsExplosionComponent"
 			},
-			getTagPointComponentFromName =
-			{
-				type = "function",
-				description = "Gets the tag point component.",
-				args = "(string name)",
-				returns = "(TagPointComponent)",
-				valuetype = "TagPointComponent"
-			},
 			getMoveMathFunctionComponentFromName =
 			{
 				type = "function",
@@ -9689,14 +9665,6 @@ return {
 				args = "(string namenumber occurrenceIndex)",
 				returns = "(TagChildNodeComponent)",
 				valuetype = "TagChildNodeComponent"
-			},
-			getNodeTrackComponentFromName =
-			{
-				type = "function",
-				description = "Gets the node track component.",
-				args = "(string name)",
-				returns = "(NodeTrackComponent)",
-				valuetype = "NodeTrackComponent"
 			},
 			getLineComponentFromName =
 			{
@@ -9898,7 +9866,7 @@ return {
 				returns = "(AiLuaGoalComponent)",
 				valuetype = "AiLuaGoalComponent"
 			},
-			getAnimationComponentV22 =
+			getAnimationComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
@@ -10762,6 +10730,30 @@ return {
 				returns = "(MyGuiSpriteComponent)",
 				valuetype = "MyGuiSpriteComponent"
 			},
+			getNodeTrackComponent2 =
+			{
+				type = "function",
+				description = "Gets the component by the given occurence index, since a game object may have this component several times.",
+				args = "(number occurrenceIndex)",
+				returns = "(NodeTrackComponent)",
+				valuetype = "NodeTrackComponent"
+			},
+			getNodeTrackComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object has this component just once.",
+				args = "()",
+				returns = "(NodeTrackComponent)",
+				valuetype = "NodeTrackComponent"
+			},
+			getNodeTrackComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(NodeTrackComponent)",
+				valuetype = "NodeTrackComponent"
+			},
 			getOceanEffectComponent =
 			{
 				type = "function",
@@ -11345,6 +11337,30 @@ return {
 				args = "(string name)",
 				returns = "(SplitScreenComponent)",
 				valuetype = "SplitScreenComponent"
+			},
+			getTagPointComponentFromIndex =
+			{
+				type = "function",
+				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
+				args = "(number occurrenceIndex)",
+				returns = "(TagPointComponent)",
+				valuetype = "TagPointComponent"
+			},
+			getTagPointComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(TagPointComponent)",
+				valuetype = "TagPointComponent"
+			},
+			getTagPointComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(TagPointComponent)",
+				valuetype = "TagPointComponent"
 			},
 			getTimeLineComponentFromIndex =
 			{
@@ -12570,14 +12586,6 @@ return {
 				returns = "(PhysicsExplosionComponent)",
 				valuetype = "PhysicsExplosionComponent"
 			},
-			castTagPointComponent =
-			{
-				type = "function",
-				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(TagPointComponent other)",
-				returns = "(TagPointComponent)",
-				valuetype = "TagPointComponent"
-			},
 			castMoveMathFunctionComponent =
 			{
 				type = "function",
@@ -12593,14 +12601,6 @@ return {
 				args = "(TagChildNodeComponent other)",
 				returns = "(TagChildNodeComponent)",
 				valuetype = "TagChildNodeComponent"
-			},
-			castNodeTrackComponent =
-			{
-				type = "function",
-				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(NodeTrackComponent other)",
-				returns = "(NodeTrackComponent)",
-				valuetype = "NodeTrackComponent"
 			},
 			castLineComponent =
 			{
@@ -13170,6 +13170,14 @@ return {
 				returns = "(MyGuiSpriteComponent)",
 				valuetype = "MyGuiSpriteComponent"
 			},
+			castNodeTrackComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(NodeTrackComponent other)",
+				returns = "(NodeTrackComponent)",
+				valuetype = "NodeTrackComponent"
+			},
 			castOceanEffectComponent =
 			{
 				type = "function",
@@ -13385,6 +13393,14 @@ return {
 				args = "(SplitScreenComponent other)",
 				returns = "(SplitScreenComponent)",
 				valuetype = "SplitScreenComponent"
+			},
+			castTagPointComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(TagPointComponent other)",
+				returns = "(TagPointComponent)",
+				valuetype = "TagPointComponent"
 			},
 			castTimeLineComponent =
 			{
@@ -20594,11 +20610,35 @@ return {
 				returns = "(Quaternion)",
 				valuetype = "Quaternion"
 			},
+			faceDirection =
+			{
+				type = "function",
+				description = "Gets the orientation in order to face the given world space direction, this orientation can be set directly. The direction is projected onto the horizontal plane, so a direction with a vertical component yaws the object instead of tipping it forwards or backwards. Assumes the mesh's front axis is local Z.",
+				args = "(SceneNode source, Vector3 direction)",
+				returns = "(Quaternion)",
+				valuetype = "Quaternion"
+			},
+			faceDirection =
+			{
+				type = "function",
+				description = "Gets the orientation in order to face the given world space direction, taking the front axis of the source game object into account. localDirectionVector is typically GameObject:getDefaultDirection(). Both the direction and the front axis are projected onto the horizontal plane, so the result is a pure yaw around world Y.",
+				args = "(SceneNode source, Vector3 direction, Vector3 localDirectionVector)",
+				returns = "(Quaternion)",
+				valuetype = "Quaternion"
+			},
+			faceDirection =
+			{
+				type = "function",
+				description = "Same as the SceneNode variant, but takes the current orientation directly instead of reading it from a scene node - useful when the orientation comes from somewhere other than a scene node, e.g. a physics body. For a curved surface such as a planet use faceTargetOnPlanet instead, which aligns to a given up vector.",
+				args = "(Quaternion sourceOrientation, Vector3 direction, Vector3 localDirectionVector)",
+				returns = "(Quaternion)",
+				valuetype = "Quaternion"
+			},
 			faceDirectionSlerp =
 			{
 				type = "function",
-				description = "Gets the orientation slerp steps in order to face towards a direction vector and also uses the default direction of the source.",
-				args = "(Quaternion sourceOrientation, Vector3 direction, Vector3 defaultDirection, number dt, number rotationSpeed)",
+				description = "Computes the quaternion using slerp for face a direction.",
+				args = "(Quaternion sourceOrientation, Vector3 direction, Vector3 localDirectionVector, number dt, number speed)",
 				returns = "(Quaternion)",
 				valuetype = "Quaternion"
 			},
@@ -23913,7 +23953,7 @@ return {
 			setNodeTrackId =
 			{
 				type = "method",
-				description = "Sets the node track id for the given index in the node track list with @nodeTrackCount elements. Note: The order is controlled by the index, from which node to which node this game object will be tracked.",
+				description = "Sets the node track id for the given index in the node track list with @nodeTrackCount elements. Note: The order is controlled by the index, from which node to which node this game object will be tracked. If 'Reverse' is set, index 0 refers to the waypoint that was configured LAST, since the list is reordered immediately when Reverse is set.",
 				args = "(number index, string id)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -23986,6 +24026,22 @@ return {
 			{
 				type = "function",
 				description = "Gets whether the path is played over and over again.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setReverse =
+			{
+				type = "method",
+				description = "Sets whether the waypoint order should be reversed: the waypoint that was configured LAST is reached FIRST, and the whole path is walked back to front. Takes effect IMMEDIATELY - the underlying waypoint id list is reordered right away, synchronously, not lazily when the animation is next built. Calling this again with the value it already has is a no-op, it will NOT flip the order back. Only the waypoint ids are reordered, the configured TimePosition of each index is left untouched, so the already authored pacing (how long each leg takes) is kept, just walked in the opposite direction. Typical usage from Lua: setReverse(true) followed by setActivated(true), which then (re-)builds the animation from the now reordered ids.",
+				args = "(boolean reverse)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getReverse =
+			{
+				type = "function",
+				description = "Gets whether the waypoint order is currently reversed.",
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
@@ -33145,6 +33201,22 @@ return {
 				returns = "(number)",
 				valuetype = "number"
 			},
+			setAlwaysPresent =
+			{
+				type = "method",
+				description = "Sets whether the bubble (text and body) is always drawn on top of scene geometry, ignoring depth testing, so it is never occluded.",
+				args = "(boolean alwaysPresent)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getAlwaysPresent =
+			{
+				type = "function",
+				description = "Gets whether the bubble is always drawn on top of scene geometry.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
 			setCaptionCount =
 			{
 				type = "method",
@@ -33618,7 +33690,7 @@ return {
 			setSourceId =
 			{
 				type = "method",
-				description = "Sets source id for the game object that should be attached to this tag point.",
+				description = "Sets the source game object id.",
 				args = "(string sourceId)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -33626,7 +33698,7 @@ return {
 			getSourceId =
 			{
 				type = "function",
-				description = "Gets the source id for the game object that is attached to this tag point.",
+				description = "Gets the source game object id.",
 				args = "()",
 				returns = "(string)",
 				valuetype = "string"
@@ -33634,7 +33706,7 @@ return {
 			setOffsetPosition =
 			{
 				type = "method",
-				description = "Sets an offset position at which the source game object should be attached.",
+				description = "Sets the attachment offset position.",
 				args = "(Vector3 offsetPosition)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -33642,7 +33714,7 @@ return {
 			getOffsetPosition =
 			{
 				type = "function",
-				description = "Gets the offset position at which the source game object is attached.",
+				description = "Gets the attachment offset position.",
 				args = "()",
 				returns = "(Vector3)",
 				valuetype = "Vector3"
@@ -33650,18 +33722,34 @@ return {
 			setOffsetOrientation =
 			{
 				type = "method",
-				description = "Sets an offset orientation at which the source game object should be attached.",
-				args = "(Vector3 offsetPosition)",
+				description = "Sets the attachment offset orientation in degrees.",
+				args = "(Vector3 offsetOrientation)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
 			getOffsetOrientation =
 			{
 				type = "function",
-				description = "Gets the offset orientation at which the source game object is attached.",
+				description = "Gets the attachment offset orientation in degrees.",
 				args = "()",
 				returns = "(Vector3)",
 				valuetype = "Vector3"
+			},
+			getBonePosition =
+			{
+				type = "function",
+				description = "Gets a named bone position in world space.",
+				args = "(string name)",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			getBoneOrientation =
+			{
+				type = "function",
+				description = "Gets a named bone orientation in world space.",
+				args = "(string name)",
+				returns = "(Quaternion)",
+				valuetype = "Quaternion"
 			}
 		}
 	},

@@ -78,11 +78,9 @@ namespace NOWA
         }
 
         /**
-         * @see  GameObjectComponent::createStaticApiForLua
+         * @see	GameObjectComponent::createStaticApiForLua
          */
-        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
-        {
-        }
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 
         /**
          * @see	GameObjectComponent::getStaticInfoText
@@ -200,6 +198,28 @@ namespace NOWA
         bool getRepeat(void) const;
 
         /**
+         * @brief Sets whether the waypoint order should be reversed - the waypoint that was
+         *        configured LAST is reached FIRST, and the path is walked back to front.
+         * @param[in] reverse The reverse flag to set
+         * @note	Takes effect IMMEDIATELY: the underlying waypoint id list is reordered
+         *			right here, synchronously, not lazily when the animation is next built.
+         *			Calling this again with the SAME value it already has is a no-op - it
+         *			will NOT flip the order back. Only the waypoint ids are reordered; the
+         *			configured TimePosition of each index is left untouched, so the already
+         *			authored pacing (how long each leg takes) is kept, just walked in the
+         *			opposite direction. The usual usage from Lua is setReverse(true) followed
+         *			by setActivated(true), which then (re-)builds the animation from the now
+         *			reordered ids.
+         */
+        void setReverse(bool reverse);
+
+        /**
+         * @brief Gets whether the waypoint order is currently reversed.
+         * @return reverse The reverse flag to get
+         */
+        bool getReverse(void) const;
+
+        /**
          * @brief Lua closure function which gets called when the LAST node of the path has
          *        been reached. With 'Repeat' enabled it fires on every completed lap.
          * @param[in] closureFunction The closure function to set. Calling this again
@@ -236,6 +256,10 @@ namespace NOWA
         {
             return "Repeat";
         }
+        static const Ogre::String AttrReverse(void)
+        {
+            return "Reverse";
+        }
 
     private:
         void buildAndActivateAnimation(void);
@@ -262,6 +286,7 @@ namespace NOWA
         Variant* interpolationMode;
         Variant* rotationMode;
         Variant* repeat;
+        Variant* reverse;
         luabind::object endOfPathClosureFunction;
         // Edge latch: "animation has finished" is a STATE that stays true for every
         // following frame, so without this the closure would fire once per frame for as

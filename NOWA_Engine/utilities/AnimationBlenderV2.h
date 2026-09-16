@@ -74,6 +74,7 @@ namespace NOWA
             ANIM_JUMP_END,
             ANIM_JUMP_WALK,
             ANIM_FALL,
+            ANIM_GETUP,
             ANIM_EAT_1,
             ANIM_EAT_2,
             ANIM_PICKUP_1,

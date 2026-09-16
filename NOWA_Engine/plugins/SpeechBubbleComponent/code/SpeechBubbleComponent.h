@@ -436,6 +436,20 @@ namespace NOWA
         Ogre::Real getCornerRadius(void) const;
 
         /**
+         * @brief Sets whether the bubble (text and body) is always drawn on top of scene
+         *        geometry, ignoring depth testing - so it is never occluded, e.g. by a wall
+         *        standing between the camera and the speaking character.
+         * @param[in] alwaysPresent Whether to always draw the bubble on top.
+         */
+        void setAlwaysPresent(bool alwaysPresent);
+
+        /**
+         * @brief Gets whether the bubble is always drawn on top of scene geometry.
+         * @return alwaysPresent
+         */
+        bool getAlwaysPresent(void) const;
+
+        /**
          * @brief Gets the internally owned movable text, e.g. to tweak it further.
          * @return movableText The movable text or nullptr if not yet created.
          */
@@ -514,6 +528,10 @@ namespace NOWA
         {
             return "Corner Radius";
         }
+        static const Ogre::String AttrAlwaysPresent(void)
+        {
+            return "Always Present";
+        }
 
     protected:
         virtual void drawSpeechBubble(Ogre::Real dt);
@@ -581,6 +599,13 @@ namespace NOWA
         Ogre::SceneNode* bubbleNode;
         MovableText* movableText;
         Ogre::ManualObject* manualObject;
+        // Name of the per-instance clone of "WhiteNoLightingBackground" backing
+        // manualObject. Must be a clone, not the shared base datablock: AlwaysPresent's
+        // depth-check toggle is per-component, and mutating the shared datablock's
+        // macroblock directly would apply to every SpeechBubbleComponent using it, not
+        // just this one (same class of bug already found and fixed once for
+        // ParticleSystemDef sharing in ParticleFxModule).
+        Ogre::String bubbleDatablockName;
         SimpleSoundComponent* simpleSoundComponent;
         GameObject* orientationTargetGameObject;
         unsigned int currentCaptionIndex;
@@ -620,6 +645,7 @@ namespace NOWA
         Variant* offsetOrientation;
         Variant* padding;
         Variant* cornerRadius;
+        Variant* alwaysPresent;
         // Declared LAST on purpose. Variants appear in the editor in construction
         // order, and members are constructed in declaration order regardless of how
         // the initialiser list is written. Keeping these at the end puts "Caption

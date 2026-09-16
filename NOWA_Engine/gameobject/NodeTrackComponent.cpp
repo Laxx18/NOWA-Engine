@@ -1,8 +1,10 @@
 #include "NOWAPrecompiled.h"
 #include "NodeTrackComponent.h"
 #include "CameraComponent.h"
+#include "GameObjectController.h"
 #include "NodeComponent.h"
 #include "main/AppStateManager.h"
+#include "modules/LuaScriptApi.h"
 #include "utilities/XMLConverter.h"
 
 namespace NOWA
@@ -27,6 +29,8 @@ namespace NOWA
         this->rotationMode = new Variant(NodeTrackComponent::AttrRotationMode(), rotationModes, this->attributes);
 
         this->repeat = new Variant(NodeTrackComponent::AttrRepeat(), true, this->attributes);
+
+        this->reverse = new Variant(NodeTrackComponent::AttrReverse(), false, this->attributes);
 
         this->nodeTrackCount = new Variant(NodeTrackComponent::AttrNodeTrackCount(), 0, this->attributes);
 
@@ -60,6 +64,17 @@ namespace NOWA
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Repeat")
         {
             this->repeat->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Reverse")
+        {
+            // FIX/FEATURE: direct setValue(), deliberately NOT setReverse() - the persisted
+            // NodeTrackId values were already written out in whatever order reflects any
+            // prior reversal (writeXML() saves the CURRENT positional values), so calling
+            // the real setReverse() here would flip an already-correctly-ordered list back
+            // to front. Same reasoning as loading "Activated" via setValue() instead of
+            // setActivated() above.
+            this->reverse->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
             propertyElement = propertyElement->next_sibling("property");
         }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "NodeTrackCount")
@@ -123,6 +138,13 @@ namespace NOWA
         clonedCompPtr->setInterpolationMode(this->interpolationMode->getListSelectedValue());
         clonedCompPtr->setRotationMode(this->rotationMode->getListSelectedValue());
         clonedCompPtr->setRepeat(this->repeat->getBool());
+
+        // FIX/FEATURE: direct member access, deliberately NOT setReverse() - the
+        // nodeTrackIds copied just above already reflect this component's CURRENT order
+        // (already reversed, if this->reverse is true). Calling the real setReverse()
+        // here would detect a change on the freshly constructed clone (default false) and
+        // flip that already-correct order a second time.
+        clonedCompPtr->reverse->setValue(this->reverse->getBool());
 
         clonedGameObjectPtr->addComponent(clonedCompPtr);
         clonedCompPtr->setOwner(clonedGameObjectPtr);
@@ -592,6 +614,10 @@ namespace NOWA
         {
             this->setRepeat(attribute->getBool());
         }
+        else if (NodeTrackComponent::AttrReverse() == attribute->getName())
+        {
+            this->setReverse(attribute->getBool());
+        }
         else
         {
             for (unsigned int i = 0; i < static_cast<unsigned int>(this->nodeTrackIds.size()); i++)
@@ -641,6 +667,12 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
         propertyXML->append_attribute(doc.allocate_attribute("name", "Repeat"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->repeat->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Reverse"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->reverse->getBool())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(node_element, "property");
@@ -909,6 +941,48 @@ namespace NOWA
         return this->repeat->getBool();
     }
 
+    void NodeTrackComponent::setReverse(bool reverse)
+    {
+        // Only actually reorder on a genuine toggle. Reversal happens immediately, in
+        // place, right here - not lazily when the animation is next built - so calling
+        // this twice with the same value must NOT flip the order back and forth. Guards
+        // against e.g. Lua re-applying the same value, or actualizeValue() firing more than
+        // once for the same edit.
+        if (reverse == this->reverse->getBool())
+        {
+            return;
+        }
+
+        this->reverse->setValue(reverse);
+
+        // Swap the VALUES between symmetric index pairs (0 <-> last, 1 <-> second-last,
+        // ...) rather than reversing the pointer array itself. Each Variant's own name
+        // ("Node Track Id 0", "Node Track Id 1", ...) is meant to stay fixed to its
+        // position - writeXML()/init() both address an entry by loop index, not by the
+        // Variant's internal name - so swapping pointers instead of values would leave
+        // every Variant's displayed name mismatched with the slot it now occupies.
+        //
+        // Only the waypoint ids are reordered, NOT the time positions: TimePosition[i]
+        // describes "arrival time from the start of the animation for whichever waypoint
+        // sits at index i", independent of that waypoint's identity. Leaving the time
+        // positions untouched means the configured pacing (how long each leg of the
+        // journey takes) stays exactly as authored, just walked in the opposite order -
+        // the waypoint that used to be last is now reached first, at whatever time
+        // position used to belong to index 0, and so on.
+        const size_t count = this->nodeTrackIds.size();
+        for (size_t i = 0; i < count / 2; i++)
+        {
+            const unsigned long temp = this->nodeTrackIds[i]->getULong();
+            this->nodeTrackIds[i]->setValue(this->nodeTrackIds[count - 1 - i]->getULong());
+            this->nodeTrackIds[count - 1 - i]->setValue(temp);
+        }
+    }
+
+    bool NodeTrackComponent::getReverse(void) const
+    {
+        return this->reverse->getBool();
+    }
+
     Ogre::v1::Animation* NodeTrackComponent::getAnimation(void) const
     {
         return this->animation;
@@ -917,6 +991,105 @@ namespace NOWA
     Ogre::v1::NodeAnimationTrack* NodeTrackComponent::getAnimationTrack(void) const
     {
         return this->animationTrack;
+    }
+
+    // -----------------------------------------------------------------------------------
+    // Lua registration part
+    // -----------------------------------------------------------------------------------
+
+    NodeTrackComponent* getNodeTrackComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+    {
+        return NOWA::makeStrongPtr(gameObject->getComponentWithOccurrence<NodeTrackComponent>(occurrenceIndex)).get();
+    }
+
+    NodeTrackComponent* getNodeTrackComponent(GameObject* gameObject)
+    {
+        return NOWA::makeStrongPtr(gameObject->getComponent<NodeTrackComponent>()).get();
+    }
+
+    NodeTrackComponent* getNodeTrackComponentFromName(GameObject* gameObject, const Ogre::String& name)
+    {
+        return NOWA::makeStrongPtr(gameObject->getComponentFromName<NodeTrackComponent>(name)).get();
+    }
+
+    // A node track id is a GameObject id - too large to round-trip safely through a Lua
+    // number - so, like TagPointComponent::setSourceId, it is exposed to Lua as a String
+    // and converted here, rather than binding NodeTrackComponent::setNodeTrackId/
+    // getNodeTrackId (unsigned long) directly.
+    void setNodeTrackIdForLua(NodeTrackComponent* instance, unsigned int index, const Ogre::String& trackId)
+    {
+        instance->setNodeTrackId(index, Ogre::StringConverter::parseUnsignedLong(trackId));
+    }
+
+    Ogre::String getNodeTrackIdForLua(NodeTrackComponent* instance, unsigned int index)
+    {
+        return Ogre::StringConverter::toString(instance->getNodeTrackId(index));
+    }
+
+    void NodeTrackComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+    {
+        luabind::module(lua)
+        [
+            luabind::class_<NodeTrackComponent, GameObjectComponent>("NodeTrackComponent")
+            .def("setActivated", &NodeTrackComponent::setActivated)
+            .def("isActivated", &NodeTrackComponent::isActivated)
+            .def("setNodeTrackCount", &NodeTrackComponent::setNodeTrackCount)
+            .def("getNodeTrackCount", &NodeTrackComponent::getNodeTrackCount)
+            .def("setNodeTrackId", &setNodeTrackIdForLua)
+            .def("getNodeTrackId", &getNodeTrackIdForLua)
+            .def("setTimePosition", &NodeTrackComponent::setTimePosition)
+            .def("getTimePosition", &NodeTrackComponent::getTimePosition)
+            .def("setInterpolationMode", &NodeTrackComponent::setInterpolationMode)
+            .def("getInterpolationMode", &NodeTrackComponent::getInterpolationMode)
+            .def("setRotationMode", &NodeTrackComponent::setRotationMode)
+            .def("getRotationMode", &NodeTrackComponent::getRotationMode)
+            .def("setRepeat", &NodeTrackComponent::setRepeat)
+            .def("getRepeat", &NodeTrackComponent::getRepeat)
+            .def("setReverse", &NodeTrackComponent::setReverse)
+            .def("getReverse", &NodeTrackComponent::getReverse)
+            .def("reactOnEndOfPathReached", &NodeTrackComponent::reactOnEndOfPathReached)
+        ];
+
+        LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "class inherits GameObjectComponent", NodeTrackComponent::getStaticInfoText());
+        LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "void setActivated(bool activated)", "Sets whether this node track is activated or not.");
+        LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "bool isActivated()", "Gets whether this node track is activated or not.");
+        LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "void setNodeTrackCount(unsigned int nodeTrackCount)", "Sets the node track count (how many nodes are used for the tracking).");
+        LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "number getNodeTrackCount()", "Gets the node track count.");
+        LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "void setNodeTrackId(unsigned int index, String id)",
+            "Sets the node track id for the given index in the node track list with @nodeTrackCount elements. Note: The order is controlled by the index, from which node to which node this game object will be tracked. If 'Reverse' is set, "
+            "index 0 refers to the waypoint that was configured LAST, since the list is reordered immediately when Reverse is set.");
+        LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "String getNodeTrackId(unsigned int index)", "Gets node track id from the given node track index from list.");
+        LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "void setTimePosition(unsigned int index, float timePosition)",
+            "Sets time position in milliseconds after which this game object should be tracked at the node from the given index.");
+        LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "float getTimePosition(unsigned int index)", "Gets time position in milliseconds for the node with the given index.");
+        LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "void setInterpolationMode(String interpolationMode)", "Sets the curve interpolation mode how the game object will be moved. Possible values are: 'Spline', 'Linear'");
+        LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "String getInterpolationMode()", "Gets the curve interpolation mode how the game object is moved. Possible values are: 'Spline', 'Linear'");
+        LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "void setRotationMode(String rotationMode)", "Sets the rotation mode how the game object will be rotated during movement. Possible values are: 'Linear', 'Spherical'");
+        LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "String getRotationMode(void)", "Gets the rotation mode how the game object is rotated during movement. Possible values are: 'Linear', 'Spherical'");
+        LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "void setRepeat(bool repeat)", "Sets whether the path is played over and over again. If disabled, the game object stops at the last node.");
+        LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "bool getRepeat()", "Gets whether the path is played over and over again.");
+        LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "void setReverse(bool reverse)",
+            "Sets whether the waypoint order should be reversed: the waypoint that was configured LAST is reached FIRST, and the whole path is walked back to front. Takes effect IMMEDIATELY - the underlying waypoint id list is reordered "
+            "right away, synchronously, not lazily when the animation is next built. Calling this again with the value it already has is a no-op, it will NOT flip the order back. Only the waypoint ids are reordered, the configured "
+            "TimePosition of each index is left untouched, so the already authored pacing (how long each leg takes) is kept, just walked in the opposite direction. Typical usage from Lua: setReverse(true) followed by setActivated(true), "
+            "which then (re-)builds the animation from the now reordered ids.");
+        LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "bool getReverse()", "Gets whether the waypoint order is currently reversed.");
+        LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "void reactOnEndOfPathReached(func closureFunction)",
+            "Sets the closure function which is called when the LAST node of the path has been reached. The closure receives the game object as parameter. With 'Repeat' enabled it fires on every completed lap. Calling this again replaces the "
+            "previous closure, so it is safe to call from a function that runs every frame.");
+
+        gameObjectClass.def("getNodeTrackComponentFromName", &getNodeTrackComponentFromName);
+        gameObjectClass.def("getNodeTrackComponent", (NodeTrackComponent * (*)(GameObject*)) &getNodeTrackComponent);
+        // If its desired to create several of this components for one game object
+        gameObjectClass.def("getNodeTrackComponent2", (NodeTrackComponent * (*)(GameObject*, unsigned int)) &getNodeTrackComponent);
+
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "NodeTrackComponent getNodeTrackComponent2(unsigned int occurrenceIndex)",
+            "Gets the component by the given occurence index, since a game object may have this component several times.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "NodeTrackComponent getNodeTrackComponent()", "Gets the component. This can be used if the game object has this component just once.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "NodeTrackComponent getNodeTrackComponentFromName(String name)", "Gets the component from name.");
+
+        gameObjectControllerClass.def("castNodeTrackComponent", &GameObjectController::cast<NodeTrackComponent>);
+        LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "NodeTrackComponent castNodeTrackComponent(NodeTrackComponent other)", "Casts an incoming type from function for lua auto completion.");
     }
 
 }; // namespace end

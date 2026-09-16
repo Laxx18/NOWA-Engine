@@ -6276,7 +6276,7 @@ particle_system SleepBubbles
     {
         randomness      0.35
         scope           0.6
-        keep_velocity   true
+        keep_velocity   false
     }
 }
 
@@ -6340,7 +6340,7 @@ particle_system SleepZzz
     {
         randomness      0.18
         scope           0.5
-        keep_velocity   true
+        keep_velocity   false
     }
 }
 

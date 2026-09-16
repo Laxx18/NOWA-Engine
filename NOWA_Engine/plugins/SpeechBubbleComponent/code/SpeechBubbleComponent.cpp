@@ -116,6 +116,7 @@ namespace NOWA
         maxTextWidth(new Variant(SpeechBubbleComponent::AttrMaxTextWidth(), 6.0f, this->attributes)),
         padding(new Variant(SpeechBubbleComponent::AttrPadding(), 0.35f, this->attributes)),
         cornerRadius(new Variant(SpeechBubbleComponent::AttrCornerRadius(), 0.35f, this->attributes)),
+        alwaysPresent(new Variant(SpeechBubbleComponent::AttrAlwaysPresent(), false, this->attributes)),
         captionCount(new Variant(SpeechBubbleComponent::AttrCaptionCount(), static_cast<unsigned int>(1), this->attributes))
     {
         this->captionCount->addUserData(GameObject::AttrActionNeedRefresh());
@@ -144,6 +145,8 @@ namespace NOWA
         this->offsetOrientation->setDescription("Additional rotation in degrees, applied on top of the billboard rotation of both text and bubble.");
         this->padding->setDescription("Margin between the text block and the bubble border, in local units.");
         this->cornerRadius->setDescription("Corner radius of the rounded bubble body, in local units. Clamped to half the bubble size.");
+        this->alwaysPresent->setDescription("If true, the bubble (text and body) is always drawn on top of scene geometry, ignoring depth testing, so it is never occluded, "
+                                            "e.g. by a wall standing between the camera and the speaking character.");
 
         this->textColor->addUserData(GameObject::AttrActionColorDialog());
         this->bubbleColor->addUserData(GameObject::AttrActionColorDialog());
@@ -332,6 +335,11 @@ namespace NOWA
             this->cornerRadius->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.35f));
             propertyElement = propertyElement->next_sibling("property");
         }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AlwaysPresent")
+        {
+            this->alwaysPresent->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+            propertyElement = propertyElement->next_sibling("property");
+        }
 
         this->setCaptionCount(std::max(this->captionCount->getUInt(), 1u));
 
@@ -372,6 +380,7 @@ namespace NOWA
         clonedCompPtr->setOffsetOrientation(this->offsetOrientation->getVector3());
         clonedCompPtr->setPadding(this->padding->getReal());
         clonedCompPtr->setCornerRadius(this->cornerRadius->getReal());
+        clonedCompPtr->setAlwaysPresent(this->alwaysPresent->getBool());
 
         clonedCompPtr->setActivated(this->activated->getBool());
 
@@ -574,6 +583,10 @@ namespace NOWA
         {
             this->setCornerRadius(attribute->getReal());
         }
+        else if (SpeechBubbleComponent::AttrAlwaysPresent() == attribute->getName())
+        {
+            this->setAlwaysPresent(attribute->getBool());
+        }
         else
         {
             // The indexed captions are created at runtime, so they can only be matched
@@ -729,6 +742,12 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
         propertyXML->append_attribute(doc.allocate_attribute("name", "CornerRadius"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->cornerRadius->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AlwaysPresent"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->alwaysPresent->getBool())));
         propertiesXML->append_node(propertyXML);
     }
 
@@ -888,12 +907,31 @@ namespace NOWA
                 Ogre::HlmsDatablock* bubbleBaseDatablock = Ogre::Root::getSingletonPtr()->getHlmsManager()->getDatablockNoDefault("WhiteNoLightingBackground");
                 if (nullptr != bubbleBaseDatablock)
                 {
-                    Ogre::HlmsMacroblock macroblock = *bubbleBaseDatablock->getMacroblock();
+                    // Clone per instance instead of mutating the shared base datablock
+                    // directly: AlwaysPresent's depth-check toggle below is per-component,
+                    // and writing it onto "WhiteNoLightingBackground" itself would apply to
+                    // every SpeechBubbleComponent using it, not just this one - the same
+                    // class of bug already found and fixed once for shared ParticleSystemDef
+                    // instances in ParticleFxModule.
+                    this->bubbleDatablockName = "SpeechBubbleBg_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(this->index);
+
+                    Ogre::HlmsDatablock* bubbleOwnDatablock = Ogre::Root::getSingletonPtr()->getHlmsManager()->getDatablockNoDefault(this->bubbleDatablockName);
+                    if (nullptr == bubbleOwnDatablock)
+                    {
+                        bubbleOwnDatablock = bubbleBaseDatablock->clone(this->bubbleDatablockName);
+                    }
+
+                    Ogre::HlmsMacroblock macroblock = *bubbleOwnDatablock->getMacroblock();
                     macroblock.mDepthBiasConstant = 1.0f;
                     macroblock.mDepthBiasSlopeScale = 1.0f;
                     // The bubble is a flat quad that must stay readable from behind.
                     macroblock.mCullMode = Ogre::CULL_NONE;
-                    bubbleBaseDatablock->setMacroblock(macroblock);
+                    // AlwaysPresent, same treatment as MovableText::_updateHlmsMacroblock():
+                    // draw without depth testing/writing so the bubble body is never occluded
+                    // by scene geometry, matching the text sitting on top of it.
+                    macroblock.mDepthCheck = !this->alwaysPresent->getBool();
+                    macroblock.mDepthWrite = this->alwaysPresent->getBool();
+                    bubbleOwnDatablock->setMacroblock(macroblock);
                 }
             }
 
@@ -919,6 +957,15 @@ namespace NOWA
                 sceneManager->destroyManualObject(this->manualObject);
                 this->manualObject = nullptr;
                 this->manualObjectBegun = false;
+            }
+            if (false == this->bubbleDatablockName.empty())
+            {
+                Ogre::HlmsDatablock* bubbleOwnDatablock = Ogre::Root::getSingletonPtr()->getHlmsManager()->getDatablockNoDefault(this->bubbleDatablockName);
+                if (nullptr != bubbleOwnDatablock)
+                {
+                    bubbleOwnDatablock->getCreator()->destroyDatablock(this->bubbleDatablockName);
+                }
+                this->bubbleDatablockName.clear();
             }
             if (nullptr != this->bubbleNode)
             {
@@ -954,9 +1001,12 @@ namespace NOWA
         const Ogre::Vector4 c = this->textColor->getVector4();
         this->movableText->setColor(Ogre::ColourValue(c.x, c.y, c.z, c.w));
 
-        // Always on top: the bubble body is drawn with a depth bias right behind the
-        // glyphs, and without this the text z-fights against its own background.
-        this->movableText->showOnTop(true);
+        // Mirrors GameObjectTitleComponent's AlwaysPresent: showOnTop(true) draws
+        // without depth testing so the text is never occluded by scene geometry. When
+        // true, the bubble body (manualObject, see createSpeechBubble()/setAlwaysPresent())
+        // must get the exact same treatment, or the text would float on top while its
+        // own background is still being occluded/z-fighting behind it.
+        this->movableText->showOnTop(this->alwaysPresent->getBool());
 
         if (nullptr != this->textNode)
         {
@@ -1306,7 +1356,7 @@ namespace NOWA
                 this->currentCharIndex = static_cast<unsigned int>(totalCharacters);
             }
 
-                // With the typewriter the duration is spent revealing the text, so the
+            // With the typewriter the duration is spent revealing the text, so the
             // finished caption gets an extra reading pause on top. Without it the
             // duration IS the on screen time.
             const Ogre::Real captionOnScreenTime = (true == this->runSpeech->getBool()) ? captionDuration + CAPTION_HOLD_AFTER_REVEAL_SECONDS : captionDuration;
@@ -1545,7 +1595,7 @@ namespace NOWA
 
         if (false == this->manualObjectBegun)
         {
-            this->manualObject->begin("WhiteNoLightingBackground", Ogre::OT_TRIANGLE_LIST);
+            this->manualObject->begin(this->bubbleDatablockName, Ogre::OT_TRIANGLE_LIST);
         }
         else
         {
@@ -1899,6 +1949,43 @@ namespace NOWA
         return this->cornerRadius->getReal();
     }
 
+    void SpeechBubbleComponent::setAlwaysPresent(bool alwaysPresent)
+    {
+        this->alwaysPresent->setValue(alwaysPresent);
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, alwaysPresent]
+        {
+            if (nullptr != this->movableText)
+            {
+                this->movableText->showOnTop(alwaysPresent);
+            }
+
+            // The bubble body must get the exact same treatment as the text (see
+            // applyTextSettings()) - both live on the shared per-instance datablock cloned
+            // in createSpeechBubble(), so update its macroblock here too.
+            if (false == this->bubbleDatablockName.empty())
+            {
+                Ogre::HlmsDatablock* bubbleOwnDatablock = Ogre::Root::getSingletonPtr()->getHlmsManager()->getDatablockNoDefault(this->bubbleDatablockName);
+                if (nullptr != bubbleOwnDatablock)
+                {
+                    Ogre::HlmsMacroblock macroblock;
+                    macroblock.mCullMode = Ogre::CULL_NONE;
+                    macroblock.mDepthCheck = !alwaysPresent;
+                    macroblock.mDepthBiasConstant = 1.0f;
+                    macroblock.mDepthBiasSlopeScale = 1.0f;
+                    macroblock.mDepthWrite = alwaysPresent;
+                    bubbleOwnDatablock->setMacroblock(macroblock);
+                }
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SpeechBubbleComponent::setAlwaysPresent");
+    }
+
+    bool SpeechBubbleComponent::getAlwaysPresent(void) const
+    {
+        return this->alwaysPresent->getBool();
+    }
+
     Ogre::String SpeechBubbleComponent::getCaptionAt(unsigned int index) const
     {
         if (index >= this->captions.size() || nullptr == this->captions[index])
@@ -2091,50 +2178,55 @@ namespace NOWA
 
     void SpeechBubbleComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
     {
-        module(lua)[class_<SpeechBubbleComponent, GameObjectComponent>("SpeechBubbleComponent")
-                .def("setActivated", &SpeechBubbleComponent::setActivated)
-                .def("isActivated", &SpeechBubbleComponent::isActivated)
-                .def("setRunSpeech", &SpeechBubbleComponent::setRunSpeech)
-                .def("getRunSpeech", &SpeechBubbleComponent::getRunSpeech)
-                .def("setCaption", (void (SpeechBubbleComponent::*)(const Ogre::String&))&SpeechBubbleComponent::setCaption)
-                .def("getCaption", (Ogre::String (SpeechBubbleComponent::*)(void) const) & SpeechBubbleComponent::getCaption)
-                .def("setCaptionCount", &SpeechBubbleComponent::setCaptionCount)
-                .def("getCaptionCount", &SpeechBubbleComponent::getCaptionCount)
-                .def("setCaptionAt", (void (SpeechBubbleComponent::*)(unsigned int, const Ogre::String&))&SpeechBubbleComponent::setCaption)
-                .def("getCaptionAt", (Ogre::String (SpeechBubbleComponent::*)(unsigned int) const) & SpeechBubbleComponent::getCaption)
-                .def("setSpeechDurationAt", (void (SpeechBubbleComponent::*)(unsigned int, Ogre::Real))&SpeechBubbleComponent::setSpeechDuration)
-                .def("getSpeechDurationAt", (Ogre::Real (SpeechBubbleComponent::*)(unsigned int) const) & SpeechBubbleComponent::getSpeechDuration)
-                .def("restartSequence", &SpeechBubbleComponent::restartSequence)
-                .def("getCurrentCaptionIndex", &SpeechBubbleComponent::getCurrentCaptionIndex)
-                .def("setSpeechDuration", (void (SpeechBubbleComponent::*)(Ogre::Real))&SpeechBubbleComponent::setSpeechDuration)
-                .def("getSpeechDuration", (Ogre::Real (SpeechBubbleComponent::*)(void) const) & SpeechBubbleComponent::getSpeechDuration)
-                .def("setRunSpeechSound", &SpeechBubbleComponent::setRunSpeechSound)
-                .def("getRunSpeechSound", &SpeechBubbleComponent::getRunSpeechSound)
-                .def("setKeepCaption", &SpeechBubbleComponent::setKeepCaption)
-                .def("getKeepCaption", &SpeechBubbleComponent::getKeepCaption)
-                .def("setXOffsetStart", &SpeechBubbleComponent::setXOffsetStart)
-                .def("getXOffsetStart", &SpeechBubbleComponent::getXOffsetStart)
-                .def("setFontName", &SpeechBubbleComponent::setFontName)
-                .def("getFontName", &SpeechBubbleComponent::getFontName)
-                .def("setCharHeight", &SpeechBubbleComponent::setCharHeight)
-                .def("getCharHeight", &SpeechBubbleComponent::getCharHeight)
-                .def("setTextColor", &SpeechBubbleComponent::setTextColor)
-                .def("getTextColor", &SpeechBubbleComponent::getTextColor)
-                .def("setBubbleColor", &SpeechBubbleComponent::setBubbleColor)
-                .def("getBubbleColor", &SpeechBubbleComponent::getBubbleColor)
-                .def("setOffsetPosition", &SpeechBubbleComponent::setOffsetPosition)
-                .def("getOffsetPosition", &SpeechBubbleComponent::getOffsetPosition)
-                .def("setMaxTextWidth", &SpeechBubbleComponent::setMaxTextWidth)
-                .def("getMaxTextWidth", &SpeechBubbleComponent::getMaxTextWidth)
-                .def("setOrientationTargetId", &SpeechBubbleComponent::setOrientationTargetId)
-                .def("getOrientationTargetId", &SpeechBubbleComponent::getOrientationTargetId)
-                .def("setOffsetOrientation", &SpeechBubbleComponent::setOffsetOrientation)
-                .def("getOffsetOrientation", &SpeechBubbleComponent::getOffsetOrientation)
-                .def("setPadding", &SpeechBubbleComponent::setPadding)
-                .def("getPadding", &SpeechBubbleComponent::getPadding)
-                .def("setCornerRadius", &SpeechBubbleComponent::setCornerRadius)
-                .def("getCornerRadius", &SpeechBubbleComponent::getCornerRadius)
-                .def("reactOnSpeechDone", &SpeechBubbleComponent::reactOnSpeechDone)];
+        module(lua)
+        [
+            class_<SpeechBubbleComponent, GameObjectComponent>("SpeechBubbleComponent")
+            .def("setActivated", &SpeechBubbleComponent::setActivated)
+            .def("isActivated", &SpeechBubbleComponent::isActivated)
+            .def("setRunSpeech", &SpeechBubbleComponent::setRunSpeech)
+            .def("getRunSpeech", &SpeechBubbleComponent::getRunSpeech)
+            .def("setCaption", (void (SpeechBubbleComponent::*)(const Ogre::String&))&SpeechBubbleComponent::setCaption)
+            .def("getCaption", (Ogre::String (SpeechBubbleComponent::*)(void) const) & SpeechBubbleComponent::getCaption)
+            .def("setCaptionCount", &SpeechBubbleComponent::setCaptionCount)
+            .def("getCaptionCount", &SpeechBubbleComponent::getCaptionCount)
+            .def("setCaptionAt", (void (SpeechBubbleComponent::*)(unsigned int, const Ogre::String&))&SpeechBubbleComponent::setCaption)
+            .def("getCaptionAt", (Ogre::String (SpeechBubbleComponent::*)(unsigned int) const) & SpeechBubbleComponent::getCaption)
+            .def("setSpeechDurationAt", (void (SpeechBubbleComponent::*)(unsigned int, Ogre::Real))&SpeechBubbleComponent::setSpeechDuration)
+            .def("getSpeechDurationAt", (Ogre::Real (SpeechBubbleComponent::*)(unsigned int) const) & SpeechBubbleComponent::getSpeechDuration)
+            .def("restartSequence", &SpeechBubbleComponent::restartSequence)
+            .def("getCurrentCaptionIndex", &SpeechBubbleComponent::getCurrentCaptionIndex)
+            .def("setSpeechDuration", (void (SpeechBubbleComponent::*)(Ogre::Real))&SpeechBubbleComponent::setSpeechDuration)
+            .def("getSpeechDuration", (Ogre::Real (SpeechBubbleComponent::*)(void) const) & SpeechBubbleComponent::getSpeechDuration)
+            .def("setRunSpeechSound", &SpeechBubbleComponent::setRunSpeechSound)
+            .def("getRunSpeechSound", &SpeechBubbleComponent::getRunSpeechSound)
+            .def("setKeepCaption", &SpeechBubbleComponent::setKeepCaption)
+            .def("getKeepCaption", &SpeechBubbleComponent::getKeepCaption)
+            .def("setXOffsetStart", &SpeechBubbleComponent::setXOffsetStart)
+            .def("getXOffsetStart", &SpeechBubbleComponent::getXOffsetStart)
+            .def("setFontName", &SpeechBubbleComponent::setFontName)
+            .def("getFontName", &SpeechBubbleComponent::getFontName)
+            .def("setCharHeight", &SpeechBubbleComponent::setCharHeight)
+            .def("getCharHeight", &SpeechBubbleComponent::getCharHeight)
+            .def("setTextColor", &SpeechBubbleComponent::setTextColor)
+            .def("getTextColor", &SpeechBubbleComponent::getTextColor)
+            .def("setBubbleColor", &SpeechBubbleComponent::setBubbleColor)
+            .def("getBubbleColor", &SpeechBubbleComponent::getBubbleColor)
+            .def("setOffsetPosition", &SpeechBubbleComponent::setOffsetPosition)
+            .def("getOffsetPosition", &SpeechBubbleComponent::getOffsetPosition)
+            .def("setMaxTextWidth", &SpeechBubbleComponent::setMaxTextWidth)
+            .def("getMaxTextWidth", &SpeechBubbleComponent::getMaxTextWidth)
+            .def("setOrientationTargetId", &SpeechBubbleComponent::setOrientationTargetId)
+            .def("getOrientationTargetId", &SpeechBubbleComponent::getOrientationTargetId)
+            .def("setOffsetOrientation", &SpeechBubbleComponent::setOffsetOrientation)
+            .def("getOffsetOrientation", &SpeechBubbleComponent::getOffsetOrientation)
+            .def("setPadding", &SpeechBubbleComponent::setPadding)
+            .def("getPadding", &SpeechBubbleComponent::getPadding)
+            .def("setCornerRadius", &SpeechBubbleComponent::setCornerRadius)
+            .def("getCornerRadius", &SpeechBubbleComponent::getCornerRadius)
+            .def("setAlwaysPresent", &SpeechBubbleComponent::setAlwaysPresent)
+            .def("getAlwaysPresent", &SpeechBubbleComponent::getAlwaysPresent)
+            .def("reactOnSpeechDone", &SpeechBubbleComponent::reactOnSpeechDone)
+        ];
 
         LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "class inherits GameObjectComponent", SpeechBubbleComponent::getStaticInfoText());
         LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setActivated(bool activated)", "Sets whether this component should be activated or not.");
@@ -2171,6 +2263,9 @@ namespace NOWA
         LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "float getPadding()", "Gets the margin between the text block and the bubble border.");
         LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setCornerRadius(float cornerRadius)", "Sets the corner radius of the rounded bubble body.");
         LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "float getCornerRadius()", "Gets the corner radius of the rounded bubble body.");
+        LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setAlwaysPresent(bool alwaysPresent)",
+            "Sets whether the bubble (text and body) is always drawn on top of scene geometry, ignoring depth testing, so it is never occluded.");
+        LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "bool getAlwaysPresent()", "Gets whether the bubble is always drawn on top of scene geometry.");
         LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setCaptionCount(int captionCount)", "Sets how many captions are played back one after another.");
         LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "int getCaptionCount()", "Gets how many captions are played back one after another.");
         LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setCaptionAt(int index, string caption)", "Sets the caption of the given index.");
@@ -2183,9 +2278,12 @@ namespace NOWA
 
         gameObjectClass.def("getSpeechBubbleComponentFromName", &getSpeechBubbleComponentFromName);
         gameObjectClass.def("getSpeechBubbleComponent", (SpeechBubbleComponent * (*)(GameObject*)) & getSpeechBubbleComponent);
+        gameObjectClass.def("getSpeechBubbleComponentFromIndex", (SpeechBubbleComponent * (*)(GameObject*, unsigned int)) & getSpeechBubbleComponentFromIndex);
 
         LuaScriptApi::getInstance()->addClassToCollection("GameObject", "SpeechBubbleComponent getSpeechBubbleComponent()", "Gets the component. This can be used if the game object this component just once.");
         LuaScriptApi::getInstance()->addClassToCollection("GameObject", "SpeechBubbleComponent getSpeechBubbleComponentFromName(String name)", "Gets the component from name.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "ParticleFxComponent getParticleFxComponentFromIndex(unsigned int occurrenceIndex)",
+            "Gets the component by the given occurence index, since a game object may this component maybe several times.");
 
         gameObjectControllerClass.def("castSpeechBubbleComponent", &GameObjectController::cast<SpeechBubbleComponent>);
         LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "SpeechBubbleComponent castSpeechBubbleComponent(SpeechBubbleComponent other)", "Casts an incoming type from function for lua auto completion.");
@@ -2193,11 +2291,7 @@ namespace NOWA
 
     bool SpeechBubbleComponent::canStaticAddComponent(GameObject* gameObject)
     {
-        // The GameObjectTitleComponent requirement is gone - this component brings its
-        // own text now. The occurrence guard below actually returns false when the
-        // limit is reached; the previous version had "return true" in both branches,
-        // so any number of bubbles could be stacked on one game object.
-        return gameObject->getComponentCount<SpeechBubbleComponent>() < 1;
+        return true;
     }
 
 }; // namespace end

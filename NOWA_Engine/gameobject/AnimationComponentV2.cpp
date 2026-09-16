@@ -420,6 +420,7 @@ namespace NOWA
 
     void AnimationComponentV2::setActivated(bool activated)
     {
+        Ogre::String name = this->gameObjectPtr->getName();
         this->activated->setValue(activated);
         // First deactivate
         if (nullptr != this->animationBlender)
@@ -599,9 +600,9 @@ namespace NOWA
         gameObjectClass.def("getAnimationComponentV2FromName", &getAnimationComponentV2FromName);
         gameObjectClass.def("getAnimationComponentV2", (AnimationComponentV2 * (*)(GameObject*)) & getAnimationComponentV2);
         // If its desired to create several of this components for one game object
-        gameObjectClass.def("getAnimationComponentV22", (AnimationComponentV2 * (*)(GameObject*, unsigned int)) & getAnimationComponentV2);
+        gameObjectClass.def("getAnimationComponentV2FromIndex", (AnimationComponentV2 * (*)(GameObject*, unsigned int)) & getAnimationComponentV2);
 
-        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AnimationComponentV2 getAnimationComponentV22(unsigned int occurrenceIndex)",
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AnimationComponentV2 getAnimationComponentFromIndex(unsigned int occurrenceIndex)",
             "Gets the component by the given occurence index, since a game object may this component maybe several times.");
         LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AnimationComponentV2 getAnimationComponentV2()", "Gets the component. This can be used if the game object this component just once.");
         LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AnimationComponentV2 getAnimationComponentV2FromName(String name)", "Gets the component from name.");

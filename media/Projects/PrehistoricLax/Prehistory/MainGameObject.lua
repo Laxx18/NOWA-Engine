@@ -17,11 +17,15 @@ local spellBall = nil;
 local spellBall2 = nil;
 local doorPhysics = nil;
 local crystalOrb = nil;
+local bat = nil;
 local animationBlenderLax = nil;
 local animationBlenderEmma = nil;
 local animationBlenderLuizius = nil;
 local pathFollowEmma = nil;
 local agathePhysicsRagComp = nil;
+
+local laxShouldTurn = false;
+local luiziusShouldTurn = false;
 
 
 MainGameObject = {}
@@ -48,6 +52,7 @@ MainGameObject["connect"] = function(gameObject)
     doorPhysics = AppStateManager:getGameObjectController():getGameObjectFromId("3406634031");
     bed = AppStateManager:getGameObjectController():getGameObjectFromId("3438074172");
     crystalOrb = AppStateManager:getGameObjectController():getGameObjectFromId("2292878869");
+    bat = AppStateManager:getGameObjectController():getGameObjectFromId("1371565728");
     
     animationBlenderLax = lax:getAnimationSequenceComponent():getAnimationBlender();
     animationBlenderEmma = emma:getAnimationComponentV2():getAnimationBlender();
@@ -77,6 +82,7 @@ MainGameObject["connect"] = function(gameObject)
     animationBlenderLax:registerAnimation(AnimationBlender.ANIM_TALK_1, "Boy 1 Idle");
     animationBlenderLax:registerAnimation(AnimationBlender.ANIM_SALTO, "Boy 1 Air Flip");
     animationBlenderLax:registerAnimation(AnimationBlender.ANIM_PICKUP_1, "Boy 1 Idle Pick Up Item");
+    animationBlenderLax:registerAnimation(AnimationBlender.ANIM_GETUP, "Boy 1 Get Up"); 
     
     animationBlenderEmma:registerAnimation(AnimationBlender.ANIM_IDLE_1, "Girl 1 Idle");
     animationBlenderEmma:registerAnimation(AnimationBlender.ANIM_IDLE_2, "Girl 1 Idle Turn Left");
@@ -131,6 +137,10 @@ MainGameObject["connect"] = function(gameObject)
     lax:getAnimationSequenceComponent():setActivated(false);
     agathePhysicsRagComp:setState("Inactive");
     agathe:getAnimationComponentV2():setActivated(true);
+    bed:getParticleFxComponent():setActivated(false);
+    spellBall:getParticleFxComponent():setActivated(false);
+    spellBall2:getParticleFxComponent():setActivated(false);
+    agathe:getParticleFxComponent():setActivated(false);
 end
 
 MainGameObject["disconnect"] = function()
@@ -148,40 +158,44 @@ end
 
 MainGameObject["GoToTimePoint"] = function(timePointSec)
     log("--->GoToTimePoint: " .. toString(timePointSec));
+
+    -- Everything that must happen ONLY ONCE goes in here. Without this guard emma got a
+    -- fresh blend5(ANIM_WALK_NORTH) on every call, so the cross fade restarted every frame
+    -- and never completed - and reactOnPathGoalReached was re-registered just as often.
     lax:getAnimationSequenceComponent():setActivated(false);
     animationBlenderLax:blend5(AnimationBlender.ANIM_IDLE_1, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
+
     pathFollowEmma:setActivated(true);
     animationBlenderEmma:blend5(AnimationBlender.ANIM_WALK_NORTH, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
-    
+
     pathFollowEmma:reactOnPathGoalReached(function()
         animationBlenderEmma:blend5(AnimationBlender.ANIM_IDLE_1, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
-    end)
-    
-    --mainGameObject:getLuaScriptComponent():callMethodOnce("RotateLaxToEmma",  function()
-       --   local resultOrientation = MathHelper:faceTarget(lax:getSceneNode(), emma:getSceneNode());
-     --     lax:getPhysicsActiveComponent():applyOmegaForceRotateTo(resultOrientation, Vector3.UNIT_Y, 10);
-    --end);
+
+        -- Only arms the turning; the work happens frame by frame below. Lax must not
+        -- start turning before emma has actually arrived.
+        laxShouldTurn = true;
+        mainGameObject:getLuaScriptComponent():callDelayedMethod(function()
+           laxShouldTurn = false;
+           animationBlenderLax:blend5(AnimationBlender.ANIM_IDLE_1, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
+        end, 3);
+        
+    end);
 end
 
 MainGameObject["DarkTimePoint"] = function(timePointSec)
     log("--->DarkTimePoint: " .. toString(timePointSec));
     atmosphereComonent:setTimeMultiplicator(0.5);
-    mainGameObject:getLuaScriptComponent():callMethodOnce("StopMusic",  function()
-         mainGameObject:getSimpleSoundComponentFromIndex(0):setActivated(false);
-         cameraComponent:getOwner():getHdrEffectComponent():setEffectName("Neon Night");
-    end);
+     mainGameObject:getSimpleSoundComponentFromIndex(0):setActivated(false);
+     cameraComponent:getOwner():getHdrEffectComponent():setEffectName("Neon Night");
 end
 
 MainGameObject["SleepTimePoint"] = function(timePointSec)
-     log("--->SleepTimePoint: " .. toString(timePointSec));
-    mainGameObject:getLuaScriptComponent():callMethodOnce("TeleportLax",  function()
-        log("--->Delayed method: ");
-        lax:getPhysicsActiveComponent():setConstraintDirection(Vector3.ZERO);
-        lax:getPhysicsComponent():setPosition(Vector3(-11.2204, 1.33183, -14.744));
-        lax:getPhysicsComponent():setOrientation(MathHelper:degreesToQuat(Vector3(-85, 90, 0)));
-        mainGameObject:getSimpleSoundComponentFromIndex(1):setActivated(true);
-        bed:getParticleFxComponent():setActivated(true);
-    end);
+    log("--->SleepTimePoint: " .. toString(timePointSec));
+    lax:getPhysicsActiveComponent():setConstraintDirection(Vector3.ZERO);
+    lax:getPhysicsComponent():setPosition(Vector3(-11.2204, 1.33183, -14.744));
+    lax:getPhysicsComponent():setOrientation(MathHelper:degreesToQuat(Vector3(-85, 90, 0)));
+    mainGameObject:getSimpleSoundComponentFromIndex(1):setActivated(true);
+    bed:getParticleFxComponent():setActivated(true);
     
     atmosphereComonent:setTimeMultiplicator(0.0001);
     emma:setVisible(false);
@@ -191,26 +205,20 @@ end
 
 MainGameObject["CameraDriveTimePoint"] = function(timePointSec)
     log("--->CameraDriveTimePoint: " .. toString(timePointSec));
-    mainGameObject:getLuaScriptComponent():callMethodOnce("CameraDrive", function()
-        atmosphereComonent:setTimeMultiplicator(0.0001);
-        cameraComponent:getOwner():getNodeTrackComponent():setActivated(true);
-    end)
+    atmosphereComonent:setTimeMultiplicator(0.0001);
+    cameraComponent:getOwner():getNodeTrackComponent():setActivated(true);
 end
 
 MainGameObject["LuiziusTimePoint"] = function(timePointSec)
      log("--->LuiziusTimePoint: " .. toString(timePointSec));
-    mainGameObject:getLuaScriptComponent():callMethodOnce("ApearLuizius", function()
-        luizius:getNodeTrackComponentFromName("AppearNodeTrack"):setActivated(true);
-        luizius:getSimpleSoundComponent():setActivated(true);
-    end)
+    luizius:getNodeTrackComponentFromName("AppearNodeTrack"):setActivated(true);
+    luizius:getSimpleSoundComponent():setActivated(true);
 end
 
 MainGameObject["CastSleepSpellTimePoint"] = function(timePointSec)
-    mainGameObject:getLuaScriptComponent():callMethodOnce("CastSpeelLuizius", function()
-        spellBall:setVisible(true);
-        spellBall:getParticleFxComponent():setActivated(true);
-        animationBlenderLuizius:blend5(AnimationBlender.ANIM_CAST_SPELL_1, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
-    end)
+    spellBall:setVisible(true);
+    spellBall:getParticleFxComponent():setActivated(true);
+    animationBlenderLuizius:blend5(AnimationBlender.ANIM_CAST_SPELL_1, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
     
     mainGameObject:getLuaScriptComponent():callDelayedMethod(function()
         spellBall:getNodeTrackComponent():setActivated(true);
@@ -243,28 +251,90 @@ end
 
 MainGameObject["BreakDoorTimePoint"] = function(timePointSec)
      log("--->BreakDoorTimePoint: " .. toString(timePointSec));
-    mainGameObject:getLuaScriptComponent():callMethodOnce("BreakDoorLuizius", function()
-         animationBlenderLuizius:blend5(AnimationBlender.ANIM_CAST_SPELL_2, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
-    end)
+     animationBlenderLuizius:blend5(AnimationBlender.ANIM_CAST_SPELL_2, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
 end
 
 MainGameObject["BreakInTimePoint"] = function(timePointSec)
     log("--->BreakInTimePoint: " .. toString(timePointSec));
-    mainGameObject:getLuaScriptComponent():callMethodOnce("ActivateLuizius", function()
-        luizius:getNodeTrackComponentFromName("BreakInNodeTrack"):setActivated(true);
-        animationBlenderLuizius:blend5(AnimationBlender.ANIM_IDLE_2, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
+
+    luizius:getNodeTrackComponentFromName("BreakInNodeTrack"):setActivated(true);
+    animationBlenderLuizius:blend5(AnimationBlender.ANIM_IDLE_2, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
+
+    luizius:getNodeTrackComponentFromName("BreakInNodeTrack"):reactOnEndOfPathReached(function(trackedGameObject)
+        luizius:getSimpleSoundComponent():setActivated(true);
+        luizius:getTagPointComponent():setSourceId("2292878869");
+
+        -- Only arms the turning here; the work happens above, frame by frame.
+        luiziusShouldTurn = true;
+
+        mainGameObject:getLuaScriptComponent():callDelayedMethod(function()
+            luiziusShouldTurn = false;
+            luizius:getNodeTrackComponentFromName("LeaveNodeTrack"):setActivated(true);
+            crystalOrb:getParticleFxComponent():setActivated(false);
+        end, 3);
+    end);
+end
+
+MainGameObject["CameraDriveBackTimePoint"] = function(timePointSec)
+    cameraComponent:getOwner():getNodeTrackComponent():setReverse(true);
+    cameraComponent:getOwner():getNodeTrackComponent():setActivated(true);
+end
+
+MainGameObject["LaxGetUpTimePoint"] = function(timePointSec)
+    bed:getParticleFxComponent():setActivated(false);
+    animationBlenderLax:blend5(AnimationBlender.ANIM_GETUP, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
+    
+    lax:getPhysicsComponent():setPosition(Vector3(-11.5038, 0.64152, -14.1525));
+    lax:getPhysicsComponent():setOrientation(MathHelper:degreesToQuat(Vector3(0, 20, 0)));
+    
+    mainGameObject:getLuaScriptComponent():callDelayedMethod(function()
+          animationBlenderLax:blend5(AnimationBlender.ANIM_IDLE_2, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
+          lax:getSpeechBubbleComponentFromIndex(0):setActivated(true);
+          -- Set bat to hand
+          local handPosition = lax:getTagPointComponent():getBonePosition("Boy 1 R Hand");
+          local handOrientation = lax:getTagPointComponent():getBoneOrientation("Boy 1 R Hand");
+          bat:getSceneNode():setPosition(Vector3(handPosition.x, handPosition.y, handPosition.z + 0.4));
+          bat:getSceneNode():setOrientation(handOrientation);
+          
+          lax:getTagPointComponent():setSourceId("1371565728");
+     end, 2);
+end
+
+MainGameObject["LaxFollow1TimePoint"] = function(timePointSec)
+    animationBlenderLax:blend5(AnimationBlender.ANIM_RUN, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
+    animationBlenderLax:setAnimationSpeed(1.5);
+    lax:getAiPathFollowComponentFromIndex(0):setActivated(true);
+    lax:getAiPathFollowComponentFromIndex(0):reactOnPathGoalReached(function()
+       lax:getSpeechBubbleComponentFromIndex(0):setActivated(false);
+       lax:getSpeechBubbleComponentFromIndex(1):setActivated(true);
+       animationBlenderLax:blend5(AnimationBlender.ANIM_IDLE_1, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
+       lax:getAiPathFollowComponentFromIndex(0):setActivated(false);
+    end);
+    cameraComponent:getOwner():getNodeTrackComponent():setReverse(false);
+    cameraComponent:getOwner():getNodeTrackComponent():setActivated(true);
+end
+
+MainGameObject["LaxFollow2TimePoint"] = function(timePointSec)
+    lax:getAiPathFollowComponentFromIndex(1):setActivated(true);
+    animationBlenderLax:blend5(AnimationBlender.ANIM_RUN, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
+end
+
+MainGameObject["update"] = function(dt)
+   if (true == laxShouldTurn) then
+        local toEmma = emma:getPosition() - lax:getPosition();
+        local resultOrientation = MathHelper:faceDirection(lax:getOrientation(), toEmma, lax:getDefaultDirection());
         
-        luizius:getNodeTrackComponentFromName("BreakInNodeTrack"):reactOnEndOfPathReached(function(trackedGameObject)
-              luizius:getSimpleSoundComponent():setActivated(true);
-              luizius:getTagPointComponent():setSourceId("2292878869");
-              --local resultQuat = MathHelper:faceDirectionSlerp(luizius:getOrientation(), Vector3(1, 0, 0), luizius:getDefaultDirection(), 0.016, 1);
-              --luizius:setAttributeOrientation(resultQuat);
-              
-              mainGameObject:getLuaScriptComponent():callDelayedMethod(function()
-                  luizius:getNodeTrackComponentFromName("LeaveNodeTrack"):setActivated(true);
-                  crystalOrb:getParticleFxComponent():setActivated(false);
-              end, 3);
-         end);
-    end)
-   
+        mainGameObject:getLuaScriptComponent():callMethodOnce("TurnAnim", function()
+            animationBlenderLax:blend5(AnimationBlender.ANIM_IDLE_2, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
+        end);
+
+        -- UNIT_Y, not UNIT_SCALE: this is a flat world, so only yaw is allowed - no tilting.
+        -- Strength 3 rather than 10, because applyOmegaForceRotateTo clamps at
+        -- MAX_OMEGA = 2.0 rad/s anyway and anything above roughly 2 makes no difference.
+        lax:getPhysicsActiveComponent():applyOmegaForceRotateTo(resultOrientation, Vector3.UNIT_Y, 10);
+  end
+  if (true == luiziusShouldTurn) then
+        local resultQuat = MathHelper:faceDirectionSlerp(luizius:getOrientation(), Vector3(1, 0, 0), luizius:getDefaultDirection(), dt, 10);
+        luizius:getSceneNode():setOrientation(resultQuat);
+   end
 end

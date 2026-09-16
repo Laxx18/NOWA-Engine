@@ -1,13 +1,17 @@
 #ifndef TAG_POINT_COMPONENT_H
 #define TAG_POINT_COMPONENT_H
 
+#include "Animation/OgreTagPoint2.h" // v2 TagPoint (Ogre::TagPoint)
 #include "GameObjectComponent.h"
 #include "OgreTagPoint.h"
-#include "Animation/OgreTagPoint2.h"  // v2 TagPoint (Ogre::TagPoint)
 
 namespace NOWA
 {
+    class TagPointComponent;
     class PhysicsActiveComponent;
+
+    void setSourceId(TagPointComponent* instance, const Ogre::String& sourceId);
+    Ogre::String getSourceId(TagPointComponent* instance);
 
     /**
      * @class 	TagPointComponent
@@ -90,9 +94,7 @@ namespace NOWA
         /**
          * @see  GameObjectComponent::createStaticApiForLua
          */
-        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
-        {
-        }
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 
         virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
@@ -176,6 +178,20 @@ namespace NOWA
         Ogre::Vector3 getOffsetOrientation(void) const;
 
         /**
+         * @brief Gets a named bone position in world space.
+         * @param[in] name The bone name.
+         * @return The bone position, or Ogre::Vector3::ZERO when unavailable.
+         */
+        Ogre::Vector3 getBonePosition(const Ogre::String& name) const;
+
+        /**
+         * @brief Gets a named bone orientation in world space.
+         * @param[in] name The bone name.
+         * @return The bone orientation, or Ogre::Quaternion::IDENTITY when unavailable.
+         */
+        Ogre::Quaternion getBoneOrientation(const Ogre::String& name) const;
+
+        /**
          * @brief Gets the tag point Ogre pointer to work directly with the tag point
          * @return tagPoint The tag point pointer to get
          */
@@ -238,7 +254,7 @@ namespace NOWA
         // V2 members
         Ogre::SkeletonInstance* skeletonInstance;
         Ogre::Bone* attachedBone;
-        Ogre::TagPoint* tagPointV2;   // The real v2 TagPoint (child of a Bone)
+        Ogre::TagPoint* tagPointV2; // The real v2 TagPoint (child of a Bone)
         Ogre::String updateClosureId;
     };
 

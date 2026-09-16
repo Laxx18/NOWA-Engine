@@ -371,66 +371,72 @@ namespace NOWA
     }
 
     Ogre::Quaternion MathHelper::faceDirection(Ogre::SceneNode* source, const Ogre::Vector3& direction)
-	{
-		Ogre::Vector3 axes[3];
+    {
+        if (nullptr == source)
+        {
+            return Ogre::Quaternion::IDENTITY;
+        }
 
-		source->getOrientation().ToAxes(axes);
-		Ogre::Quaternion rotQuat;
+        Ogre::Vector3 axes[3];
+        source->getOrientation().ToAxes(axes);
 
-		if (direction == axes[2])
-		{
-			rotQuat.FromAngleAxis(Ogre::Radian(Ogre::Math::PI), axes[1]);
-		}
-		else
-		{
-			rotQuat = axes[2].getRotationTo(direction);
-		}
-		return rotQuat * source->getOrientation();
-	}
+        // The mesh front axis is axes[2], i.e. the object's local Z in world space.
+        return MathHelper::faceDirection(source->getOrientation(), direction, Ogre::Vector3::UNIT_Z);
+    }
 
-	Ogre::Quaternion MathHelper::faceDirection(Ogre::SceneNode* source, const Ogre::Vector3& direction, const Ogre::Vector3& localDirectionVector)
-	{
-		Ogre::Quaternion currentOrient = source->getOrientation();
+    Ogre::Quaternion MathHelper::faceDirection(Ogre::SceneNode* source, const Ogre::Vector3& direction, const Ogre::Vector3& localDirectionVector)
+    {
+        if (nullptr == source)
+        {
+            return Ogre::Quaternion::IDENTITY;
+        }
 
-		// Get current local direction relative to world space
-		Ogre::Vector3 currentDir = currentOrient * localDirectionVector;
-		Ogre::Quaternion targetOrientation;
-		if ((currentDir + direction).squaredLength() < 0.00005f)
-		{
-			// Oops, a 180 degree turn (infinite possible rotation axes)
-			// Default to yaw i.e. use current UP
-			targetOrientation = Ogre::Quaternion(-currentOrient.y, -currentOrient.z, currentOrient.w, currentOrient.x);
-		}
-		else
-		{
-			// Derive shortest arc to new direction
-			Ogre::Quaternion rotQuat = currentDir.getRotationTo(direction);
-			targetOrientation = rotQuat * currentOrient;
-		}
-		return std::move(targetOrientation);
-	}
+        return MathHelper::faceDirection(source->getOrientation(), direction, localDirectionVector);
+    }
 
-	Ogre::Quaternion MathHelper::faceDirection(const Ogre::Quaternion& sourceOrientation, const Ogre::Vector3& direction, const Ogre::Vector3& localDirectionVector)
-	{
-		// Get current local direction relative to world space
-		Ogre::Vector3 currentDir = sourceOrientation * localDirectionVector;
-		Ogre::Quaternion targetOrientation;
-		if ((currentDir + direction).squaredLength() < 0.00005f)
-		{
-			// Oops, a 180 degree turn (infinite possible rotation axes)
-			// Default to yaw i.e. use current UP
-			targetOrientation = Ogre::Quaternion(-sourceOrientation.y, -sourceOrientation.z, sourceOrientation.w, sourceOrientation.x);
-		}
-		else
-		{
-			// Derive shortest arc to new direction
-			Ogre::Quaternion rotQuat = currentDir.getRotationTo(direction);
-			targetOrientation = rotQuat * sourceOrientation;
-		}
-		return std::move(targetOrientation);
-	}
+    Ogre::Quaternion MathHelper::faceDirection(const Ogre::Quaternion& sourceOrientation, const Ogre::Vector3& direction, const Ogre::Vector3& localDirectionVector)
+    {
+        // Built the same way as faceTargetOnPlanet(), specialised to a flat world where up is
+        // always world Y. In that function the alignUp quaternion degenerates to identity for
+        // up == UNIT_Y, so what remains is a pure yaw around Y - no roll, no pitch, nothing that
+        // could tilt the object.
+        const Ogre::Vector3 up = Ogre::Vector3::UNIT_Y;
 
-#if 0
+        // Projected onto the horizontal plane. Without this a direction with a vertical
+        // component - a target standing higher or lower - leaks into the result and tips the
+        // object forwards or backwards.
+        Ogre::Vector3 flatDirection = direction - up * direction.dotProduct(up);
+        if (flatDirection.squaredLength() < 0.0001f)
+        {
+            // Pointing straight up or down: there is no yaw that can aim at it.
+            return sourceOrientation;
+        }
+        flatDirection.normalise();
+
+        // Get current local direction relative to world space
+        Ogre::Vector3 currentDir = sourceOrientation * localDirectionVector;
+
+        // Flattened as well, for the same reason: a local direction vector carrying a Y
+        // component would otherwise produce a rotation that is not a pure yaw.
+        Ogre::Vector3 flatCurrentDir = currentDir - up * currentDir.dotProduct(up);
+        if (flatCurrentDir.squaredLength() < 0.0001f)
+        {
+            // The mesh points straight up or down - no yaw can aim it anywhere.
+            return sourceOrientation;
+        }
+        flatCurrentDir.normalise();
+
+        // The fallback axis handed to getRotationTo() is what the old 180 degree special case
+        // was trying to emulate by hand. For an exactly opposite pair of vectors the rotation
+        // axis is undefined, and without this hint Ogre picks an arbitrary perpendicular - which
+        // flips the object over instead of turning it around. Passing the up axis makes that
+        // case a clean 180 degree yaw.
+        Ogre::Quaternion rotQuat = flatCurrentDir.getRotationTo(flatDirection, up);
+
+        return rotQuat * sourceOrientation;
+    }
+
+#if 1
 	Ogre::Quaternion MathHelper::faceDirectionSlerp(const Ogre::Quaternion& sourceOrientation, const Ogre::Vector3& direction, const Ogre::Vector3& defaultDirection, Ogre::Real dt, Ogre::Real rotationSpeed)
 	{
 		Ogre::Vector3 currentDirection = sourceOrientation * defaultDirection;

@@ -105,10 +105,7 @@ namespace NOWA
 
     void AnimationBlenderV2::internalInit(const Ogre::String& animationName, bool loop)
     {
-        if (false == this->canAnimate)
-        {
-            return;
-        }
+        this->canAnimate = true;
 
         if (nullptr == this->skeleton)
         {

@@ -1,31 +1,31 @@
 ﻿#include "NOWAPrecompiled.h"
 #include "PlayerControllerComponents.h"
 #include "GameObjectController.h"
-#include "PhysicsActiveComponent.h"
-#include "PhysicsRagDollComponentV2.h"
-#include "PhysicsPlayerControllerComponent.h"
-#include "PhysicsActiveKinematicComponent.h"
-#include "NodeComponent.h"
+#include "InputDeviceComponent.h"
 #include "LuaScriptComponent.h"
+#include "NodeComponent.h"
+#include "PhysicsActiveComponent.h"
+#include "PhysicsActiveKinematicComponent.h"
+#include "PhysicsPlayerControllerComponent.h"
+#include "PhysicsRagDollComponentV2.h"
+#include "main/AppStateManager.h"
 #include "main/Core.h"
 #include "modules/InputDeviceModule.h"
-#include "InputDeviceComponent.h"
-#include "main/AppStateManager.h"
 
-#include "utilities/XMLConverter.h"
 #include "utilities/MathHelper.h"
+#include "utilities/XMLConverter.h"
 
-#include "camera/CameraManager.h"
-#include "camera/BasePhysicsCamera.h"
-#include "camera/FirstPersonCamera.h"
-#include "camera/ThirdPersonCamera.h"
-#include "camera/FollowCamera2D.h"
 #include "CameraBehaviorComponents.h"
+#include "camera/BasePhysicsCamera.h"
+#include "camera/CameraManager.h"
+#include "camera/FirstPersonCamera.h"
+#include "camera/FollowCamera2D.h"
+#include "camera/ThirdPersonCamera.h"
 
-#include "modules/OgreRecastModule.h"
-#include "modules/LuaScriptApi.h"
 #include "AiComponents.h"
 #include "AnimationComponentV2.h"
+#include "modules/LuaScriptApi.h"
+#include "modules/OgreRecastModule.h"
 
 #include "utilities/AnimationBlenderV2.h"
 
@@ -33,23 +33,18 @@
 
 namespace NOWA
 {
-	using namespace rapidxml;
-	using namespace luabind;
+    using namespace rapidxml;
+    using namespace luabind;
 
-	PlayerControllerComponent::AnimationBlenderObserver::AnimationBlenderObserver(luabind::object closureFunction, bool oneTime)
-		: AnimationBlenderV2::IAnimationBlenderObserver(),
-		closureFunction(closureFunction),
-		oneTime(oneTime)
-	{
-		
-	}
+    PlayerControllerComponent::AnimationBlenderObserver::AnimationBlenderObserver(luabind::object closureFunction, bool oneTime) : AnimationBlenderV2::IAnimationBlenderObserver(), closureFunction(closureFunction), oneTime(oneTime)
+    {
+    }
 
-	PlayerControllerComponent::AnimationBlenderObserver::~AnimationBlenderObserver()
-	{
+    PlayerControllerComponent::AnimationBlenderObserver::~AnimationBlenderObserver()
+    {
+    }
 
-	}
-
-	void PlayerControllerComponent::AnimationBlenderObserver::onAnimationFinished(void)
+    void PlayerControllerComponent::AnimationBlenderObserver::onAnimationFinished(void)
     {
         if (false == this->closureFunction.is_valid())
         {
@@ -81,352 +76,346 @@ namespace NOWA
         NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
     }
 
-	bool PlayerControllerComponent::AnimationBlenderObserver::shouldReactOneTime(void) const
-	{
-		return this->oneTime;
-	}
+    bool PlayerControllerComponent::AnimationBlenderObserver::shouldReactOneTime(void) const
+    {
+        return this->oneTime;
+    }
 
-	void PlayerControllerComponent::AnimationBlenderObserver::setNewFunctionName(luabind::object closureFunction, bool oneTime)
-	{
-		this->closureFunction = closureFunction;
-		this->oneTime = oneTime;
-	}
+    void PlayerControllerComponent::AnimationBlenderObserver::setNewFunctionName(luabind::object closureFunction, bool oneTime)
+    {
+        this->closureFunction = closureFunction;
+        this->oneTime = oneTime;
+    }
 
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-	PlayerControllerComponent::PlayerControllerComponent()
-		: GameObjectComponent(),
-		activated(new Variant(PlayerControllerComponent::AttrActivated(), false, this->attributes)),
-		rotationSpeed(new Variant(PlayerControllerComponent::AttrRotationSpeed(), 10.0f, this->attributes)),
-		goalRadius(new Variant(PlayerControllerComponent::AttrGoalRadius(), 0.5f, this->attributes)),
-		animationSpeed(new Variant(PlayerControllerComponent::AttrAnimationSpeed(), 1.0f, this->attributes)),
-		acceleration(new Variant(PlayerControllerComponent::AttrAcceleration(), 0.0f, this->attributes)),
-		categories(new Variant(PlayerControllerComponent::AttrCategories(), Ogre::String("All"), this->attributes)),
-		useStandUp(new Variant(PlayerControllerComponent::AttrUseStandUp(), false, this->attributes)),
+    PlayerControllerComponent::PlayerControllerComponent() :
+        GameObjectComponent(),
+        activated(new Variant(PlayerControllerComponent::AttrActivated(), false, this->attributes)),
+        rotationSpeed(new Variant(PlayerControllerComponent::AttrRotationSpeed(), 10.0f, this->attributes)),
+        goalRadius(new Variant(PlayerControllerComponent::AttrGoalRadius(), 0.5f, this->attributes)),
+        animationSpeed(new Variant(PlayerControllerComponent::AttrAnimationSpeed(), 1.0f, this->attributes)),
+        acceleration(new Variant(PlayerControllerComponent::AttrAcceleration(), 0.0f, this->attributes)),
+        categories(new Variant(PlayerControllerComponent::AttrCategories(), Ogre::String("All"), this->attributes)),
+        useStandUp(new Variant(PlayerControllerComponent::AttrUseStandUp(), false, this->attributes)),
         wallSeparationMode(new Variant(PlayerControllerComponent::AttrWallSeparationMode(), {"None", "Ring3D", "MovementDirection2D"}, this->attributes)),
-		physicsActiveComponent(nullptr),
-		cameraBehaviorComponent(nullptr),
-		inputDeviceComponent(nullptr),
-		animationBlender(nullptr),
-		moveWeight(1.0f),
-		jumpWeight(1.0f),
-		height(500.0f),
-		slope(0.0f),
-		priorValidHeight(500.0f),
-		normal(Ogre::Vector3::UNIT_SCALE * 100.0f),
-		priorValidNormal(Ogre::Vector3::UNIT_SCALE * 100.0f),
-		categoriesId(GameObjectController::ALL_CATEGORIES_ID),
-		idle(true),
-		canMove(true),
-		canJump(false),
-		hitGameObjectBelow(nullptr),
-		hitGameObjectFront(nullptr),
-		hitGameObjectUp(nullptr),
+        physicsActiveComponent(nullptr),
+        cameraBehaviorComponent(nullptr),
+        inputDeviceComponent(nullptr),
+        animationBlender(nullptr),
+        moveWeight(1.0f),
+        jumpWeight(1.0f),
+        height(500.0f),
+        slope(0.0f),
+        priorValidHeight(500.0f),
+        normal(Ogre::Vector3::UNIT_SCALE * 100.0f),
+        priorValidNormal(Ogre::Vector3::UNIT_SCALE * 100.0f),
+        categoriesId(GameObjectController::ALL_CATEGORIES_ID),
+        idle(true),
+        canMove(true),
+        canJump(false),
+        hitGameObjectBelow(nullptr),
+        hitGameObjectFront(nullptr),
+        hitGameObjectUp(nullptr),
         frontNormal(Ogre::Vector3::ZERO),
         lastWallPushForce(Ogre::Vector3::ZERO),
-		timeFallen(0.0f),
-		isFallen(false),
-		fallThreshold(0.7f),
-		recoveryTime(2.0f),
-		debugWaypointNode(nullptr)
-	{
-		this->acceleration->setDescription("The acceleration rate, if set to 0, acceleration is disabled and player moves with full speed.");
-		this->useStandUp->setDescription("Sets whether to use stand up feature for a player, so that if he fell down, after 2 seconds, he will stand up again.");
+        timeFallen(0.0f),
+        isFallen(false),
+        fallThreshold(0.7f),
+        recoveryTime(2.0f),
+        debugWaypointNode(nullptr)
+    {
+        this->acceleration->setDescription("The acceleration rate, if set to 0, acceleration is disabled and player moves with full speed.");
+        this->useStandUp->setDescription("Sets whether to use stand up feature for a player, so that if he fell down, after 2 seconds, he will stand up again.");
         this->wallSeparationMode->setDescription("Controls how the player is pushed away from walls/obstacles to prevent sticking. 'None' disables it. 'Ring3D' casts probes in a full ring around the player (best for free 3D movement/planet worlds). "
                                                  "'MovementDirection2D' casts a single probe along the current movement direction (cheaper, best for 2.5D side-scrolling where movement is constrained to left/right).");
 
-		for (int i = 0; i < 6; ++i)
+        for (int i = 0; i < 6; ++i)
         {
             this->lastWallPushForces[i] = Ogre::Vector3::ZERO;
         }
-	}
+    }
 
-	PlayerControllerComponent::~PlayerControllerComponent()
-	{
-		AppStateManager::getSingletonPtr()->getGameObjectController()->removePlayerController(this->gameObjectPtr->getId());
-	
-		if (nullptr != this->animationBlender)
-		{
-			this->animationBlender->deleteAllObservers();
-			delete this->animationBlender;
-			this->animationBlender = nullptr;
-		}
-		this->physicsActiveComponent = nullptr;
-		this->cameraBehaviorComponent = nullptr;
-	}
+    PlayerControllerComponent::~PlayerControllerComponent()
+    {
+        AppStateManager::getSingletonPtr()->getGameObjectController()->removePlayerController(this->gameObjectPtr->getId());
 
-	void PlayerControllerComponent::deleteDebugData(void)
-	{
-		if (nullptr != this->debugWaypointNode)
-		{
-			this->debugWaypointNode->detachAllObjects();
+        if (nullptr != this->animationBlender)
+        {
+            this->animationBlender->deleteAllObservers();
+            delete this->animationBlender;
+            this->animationBlender = nullptr;
+        }
+        this->physicsActiveComponent = nullptr;
+        this->cameraBehaviorComponent = nullptr;
+    }
 
-			for (auto it = this->debugWaypointNode->getAttachedObjectIterator().begin(); it != this->debugWaypointNode->getAttachedObjectIterator().end(); ++it)
-			{
-				this->gameObjectPtr->getSceneManager()->destroyMovableObject(*it);
-			}
+    void PlayerControllerComponent::deleteDebugData(void)
+    {
+        if (nullptr != this->debugWaypointNode)
+        {
+            this->debugWaypointNode->detachAllObjects();
 
-			NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->debugWaypointNode);
-			this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugWaypointNode);
-			this->debugWaypointNode = nullptr;
-		}
-	}
+            for (auto it = this->debugWaypointNode->getAttachedObjectIterator().begin(); it != this->debugWaypointNode->getAttachedObjectIterator().end(); ++it)
+            {
+                this->gameObjectPtr->getSceneManager()->destroyMovableObject(*it);
+            }
 
-	void PlayerControllerComponent::onRemoveComponent(void)
-	{
-		GameObjectComponent::onRemoveComponent();
+            NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->debugWaypointNode);
+            this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugWaypointNode);
+            this->debugWaypointNode = nullptr;
+        }
+    }
 
-		this->deleteDebugData();
-	}
+    void PlayerControllerComponent::onRemoveComponent(void)
+    {
+        GameObjectComponent::onRemoveComponent();
 
-	void PlayerControllerComponent::onOtherComponentRemoved(unsigned int index)
-	{
-		auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
-		if (nullptr != gameObjectCompPtr)
-		{
-			auto inputDeviceCompPtr = boost::dynamic_pointer_cast<InputDeviceComponent>(gameObjectCompPtr);
-			if (nullptr != inputDeviceCompPtr)
-			{
-				this->inputDeviceComponent = nullptr;
-			}
-		}
-	}
+        this->deleteDebugData();
+    }
 
-	bool PlayerControllerComponent::init(rapidxml::xml_node<>*& propertyElement)
-	{
-		GameObjectComponent::init(propertyElement);
+    void PlayerControllerComponent::onOtherComponentRemoved(unsigned int index)
+    {
+        auto gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
+        if (nullptr != gameObjectCompPtr)
+        {
+            auto inputDeviceCompPtr = boost::dynamic_pointer_cast<InputDeviceComponent>(gameObjectCompPtr);
+            if (nullptr != inputDeviceCompPtr)
+            {
+                this->inputDeviceComponent = nullptr;
+            }
+        }
+    }
 
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
-		{
-			this->activated->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RotationSpeed")
-		{
-			this->setRotationSpeed(XMLConverter::getAttribReal(propertyElement, "data", 10.0f));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "GoalRadius")
-		{
-			this->setGoalRadius(XMLConverter::getAttribReal(propertyElement, "data", 0.5f));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimationSpeed")
-		{
-			this->setAnimationSpeed(XMLConverter::getAttribReal(propertyElement, "data", 1.0f));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Acceleration")
-		{
-			this->setAcceleration(XMLConverter::getAttribReal(propertyElement, "data", 1.0f));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Categories")
-		{
-			this->categories->setValue(XMLConverter::getAttrib(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseStandUp")
-		{
-			this->useStandUp->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
-			propertyElement = propertyElement->next_sibling("property");
-		}
+    bool PlayerControllerComponent::init(rapidxml::xml_node<>*& propertyElement)
+    {
+        GameObjectComponent::init(propertyElement);
+
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
+        {
+            this->activated->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RotationSpeed")
+        {
+            this->setRotationSpeed(XMLConverter::getAttribReal(propertyElement, "data", 10.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "GoalRadius")
+        {
+            this->setGoalRadius(XMLConverter::getAttribReal(propertyElement, "data", 0.5f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimationSpeed")
+        {
+            this->setAnimationSpeed(XMLConverter::getAttribReal(propertyElement, "data", 1.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Acceleration")
+        {
+            this->setAcceleration(XMLConverter::getAttribReal(propertyElement, "data", 1.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Categories")
+        {
+            this->categories->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseStandUp")
+        {
+            this->useStandUp->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+            propertyElement = propertyElement->next_sibling("property");
+        }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == PlayerControllerComponent::AttrWallSeparationMode())
         {
             this->wallSeparationMode->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
         }
 
-		return true;
-	}
+        return true;
+    }
 
-	bool PlayerControllerComponent::postInit(void)
-	{
-		Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-		if (nullptr != item)
-		{
-			this->animationBlender = new NOWA::AnimationBlenderV2(item);
-		}
-		else
-		{
-			return false;
-		}
+    bool PlayerControllerComponent::postInit(void)
+    {
+        Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+        if (nullptr != item)
+        {
+            this->animationBlender = new NOWA::AnimationBlenderV2(item);
+        }
+        else
+        {
+            return false;
+        }
 
-		// Component must be dynamic, because it will be moved
-		this->gameObjectPtr->setDynamic(true);
-		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
+        // Component must be dynamic, because it will be moved
+        this->gameObjectPtr->setDynamic(true);
+        this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
 
-		this->setAnimationSpeed(this->animationSpeed->getReal());
+        this->setAnimationSpeed(this->animationSpeed->getReal());
 
-		return true;
-	}
+        return true;
+    }
 
-	bool PlayerControllerComponent::connect(void)
-	{
-		GameObjectComponent::connect();
+    bool PlayerControllerComponent::connect(void)
+    {
+        GameObjectComponent::connect();
 
-		this->setActivated(this->activated->getBool());
+        this->setActivated(this->activated->getBool());
 
-		return true;
-	}
+        return true;
+    }
 
-	bool PlayerControllerComponent::disconnect(void)
-	{
-		GameObjectComponent::disconnect();
+    bool PlayerControllerComponent::disconnect(void)
+    {
+        GameObjectComponent::disconnect();
 
-		if (nullptr != this->animationBlender)
-		{
-			this->animationBlender->init("", false);
-		}
+        if (nullptr != this->animationBlender)
+        {
+            this->animationBlender->init("", false);
+        }
 
-		AppStateManager::getSingletonPtr()->getGameObjectController()->removePlayerController(this->gameObjectPtr->getId());
-		this->cameraBehaviorComponent = nullptr;
-		this->physicsActiveComponent = nullptr;
-		// Will cause crash in state, input device component shall be existing!
-		// this->inputDeviceComponent = nullptr;
-		this->moveLockOwner.clear();
-		this->jumpWeightOwner.clear();
+        AppStateManager::getSingletonPtr()->getGameObjectController()->removePlayerController(this->gameObjectPtr->getId());
+        this->cameraBehaviorComponent = nullptr;
+        this->physicsActiveComponent = nullptr;
+        // Will cause crash in state, input device component shall be existing!
+        // this->inputDeviceComponent = nullptr;
+        this->moveLockOwner.clear();
+        this->jumpWeightOwner.clear();
 
-		this->height = 0.0f;
-		this->normal = Ogre::Vector3::ZERO;
+        this->height = 0.0f;
+        this->normal = Ogre::Vector3::ZERO;
         this->frontNormal = Ogre::Vector3::ZERO;
         for (int i = 0; i < 6; ++i)
         {
             this->lastWallPushForces[i] = Ogre::Vector3::ZERO;
         }
         this->lastWallPushForce = Ogre::Vector3::ZERO;
-		this->priorValidHeight = 0.0f;
-		this->priorValidNormal = Ogre::Vector3::ZERO;
-		this->timeFallen = 0.0f;
+        this->priorValidHeight = 0.0f;
+        this->priorValidNormal = Ogre::Vector3::ZERO;
+        this->timeFallen = 0.0f;
 
-		AppStateManager::getSingletonPtr()->getOgreRecastModule()->removeDrawnPath();
+        AppStateManager::getSingletonPtr()->getOgreRecastModule()->removeDrawnPath();
 
-		this->internalShowDebugData();
-		return true;
-	}
+        this->internalShowDebugData();
+        return true;
+    }
 
-	void PlayerControllerComponent::update(Ogre::Real dt, bool notSimulating)
-	{
-		if (false == notSimulating && nullptr != this->physicsActiveComponent/* && true == this->activated->getBool()*/)
-		{
-			// auto widget = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow", false);
+    void PlayerControllerComponent::update(Ogre::Real dt, bool notSimulating)
+    {
+        if (false == notSimulating && nullptr != this->physicsActiveComponent /* && true == this->activated->getBool()*/)
+        {
+            // auto widget = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow", false);
 
-			this->setMoveWeight(1.0f);
-			this->setJumpWeight(1.0f);
+            this->setMoveWeight(1.0f);
+            this->setJumpWeight(1.0f);
 
-			Ogre::Vector3 playerSize = this->gameObjectPtr->getSize();
-			Ogre::Vector3 bottomOffset = this->gameObjectPtr->getBottomOffset();
-			Ogre::Vector3 centerOffset = this->gameObjectPtr->getCenterOffset();
-			Ogre::Vector3 middleOfPlayer = this->gameObjectPtr->getMiddle();
+            Ogre::Vector3 playerSize = this->gameObjectPtr->getSize();
+            Ogre::Vector3 bottomOffset = this->gameObjectPtr->getBottomOffset();
+            Ogre::Vector3 centerOffset = this->gameObjectPtr->getCenterOffset();
+            Ogre::Vector3 middleOfPlayer = this->gameObjectPtr->getMiddle();
 
-			// Note on ogrenewt raycast, the startpoint is always the absolute game object position.
-			// The root is in the middle of the game object, so we need to move the ray start down to the FEET.
-			const Ogre::Real halfHeight = bottomOffset.y;							// e.g. ~1.0 for a 2m player
-			Ogre::Vector3 centerBottom = Ogre::Vector3(0.0f, -halfHeight, 0.0f);	// local feet position
-			const Ogre::Real fraction = 0.4f;
+            // Note on ogrenewt raycast, the startpoint is always the absolute game object position.
+            // The root is in the middle of the game object, so we need to move the ray start down to the FEET.
+            const Ogre::Real halfHeight = bottomOffset.y;                        // e.g. ~1.0 for a 2m player
+            Ogre::Vector3 centerBottom = Ogre::Vector3(0.0f, -halfHeight, 0.0f); // local feet position
+            const Ogre::Real fraction = 0.4f;
 
-			bool showDebugData = false;
+            bool showDebugData = false;
 
-			// 1. Check objects that are below the player
-			// Use feetY + small epsilon, so the ray starts slightly above the feet
-			PhysicsActiveComponent::ContactData contactsDataBelow1 = this->physicsActiveComponent->getContactBelow(0,
-				Ogre::Vector3(-playerSize.z * fraction, centerBottom.y + 0.2f, 0.0f), showDebugData, this->categoriesId, true); // y is near feet
+            // 1. Check objects that are below the player
+            // Use feetY + small epsilon, so the ray starts slightly above the feet
+            PhysicsActiveComponent::ContactData contactsDataBelow1 = this->physicsActiveComponent->getContactBelow(0, Ogre::Vector3(-playerSize.z * fraction, centerBottom.y + 0.2f, 0.0f), showDebugData, this->categoriesId, true); // y is near feet
 
-			PhysicsActiveComponent::ContactData contactsDataBelow2 = this->physicsActiveComponent->getContactBelow(1,
-				Ogre::Vector3(0.0f, centerBottom.y + 0.2f, playerSize.z * fraction), showDebugData, this->categoriesId, true);  // y is near feet
+            PhysicsActiveComponent::ContactData contactsDataBelow2 = this->physicsActiveComponent->getContactBelow(1, Ogre::Vector3(0.0f, centerBottom.y + 0.2f, playerSize.z * fraction), showDebugData, this->categoriesId, true); // y is near feet
 
-			PhysicsActiveComponent::ContactData contactsDataBelow3 = this->physicsActiveComponent->getContactBelow(2,
-				Ogre::Vector3(playerSize.z * fraction, centerBottom.y + 0.2f, 0.0f), showDebugData, this->categoriesId, true);  // y is near feet
+            PhysicsActiveComponent::ContactData contactsDataBelow3 = this->physicsActiveComponent->getContactBelow(2, Ogre::Vector3(playerSize.z * fraction, centerBottom.y + 0.2f, 0.0f), showDebugData, this->categoriesId, true); // y is near feet
 
-			/*PhysicsActiveComponent::ContactData contactsDataBelowLine = this->physicsActiveComponent->getContactToDirection(0, Ogre::Vector3::UNIT_X,
-				Ogre::Vector3(0.0f, centerBottom.y + 0.1f, 0.0f), -playerSize.z * fraction, playerSize.z * fraction, showDebugData, this->categoriesId);*/
+            /*PhysicsActiveComponent::ContactData contactsDataBelowLine = this->physicsActiveComponent->getContactToDirection(0, Ogre::Vector3::UNIT_X,
+                Ogre::Vector3(0.0f, centerBottom.y + 0.1f, 0.0f), -playerSize.z * fraction, playerSize.z * fraction, showDebugData, this->categoriesId);*/
 
-			this->hitGameObjectBelow = contactsDataBelow1.getHitGameObject();
-			if (nullptr == this->hitGameObjectBelow)
-			{
-				this->hitGameObjectBelow = contactsDataBelow2.getHitGameObject();
-			}
-			if (nullptr == this->hitGameObjectBelow)
-			{
-				this->hitGameObjectBelow = contactsDataBelow3.getHitGameObject();
-			}
-			/*if (nullptr == this->hitGameObjectBelow)
-			{
-				this->hitGameObjectBelow = contactsDataBelowLine.getHitGameObject();
-			}*/
-			/*if (widget) widget->setCaption("h1: " + Ogre::StringConverter::toString(std::get<1>(contactsDataBelow1))
-				+ " h2: " + Ogre::StringConverter::toString(std::get<1>(contactsDataBelow2))
-				+ " h3: " + Ogre::StringConverter::toString(std::get<1>(contactsDataBelow3)));*/
+            this->hitGameObjectBelow = contactsDataBelow1.getHitGameObject();
+            if (nullptr == this->hitGameObjectBelow)
+            {
+                this->hitGameObjectBelow = contactsDataBelow2.getHitGameObject();
+            }
+            if (nullptr == this->hitGameObjectBelow)
+            {
+                this->hitGameObjectBelow = contactsDataBelow3.getHitGameObject();
+            }
+            /*if (nullptr == this->hitGameObjectBelow)
+            {
+                this->hitGameObjectBelow = contactsDataBelowLine.getHitGameObject();
+            }*/
+            /*if (widget) widget->setCaption("h1: " + Ogre::StringConverter::toString(std::get<1>(contactsDataBelow1))
+                + " h2: " + Ogre::StringConverter::toString(std::get<1>(contactsDataBelow2))
+                + " h3: " + Ogre::StringConverter::toString(std::get<1>(contactsDataBelow3)));*/
 
-			if (500.0f != this->height)
-				this->priorValidHeight = this->height;
+            if (500.0f != this->height)
+            {
+                this->priorValidHeight = this->height;
+            }
 
-			if (Ogre::Vector3::UNIT_SCALE * 100.0f != this->normal)
-				this->priorValidNormal = this->normal;
+            if (Ogre::Vector3::UNIT_SCALE * 100.0f != this->normal)
+            {
+                this->priorValidNormal = this->normal;
+            }
 
-			this->height = std::min(contactsDataBelow2.getHeight(), std::min(contactsDataBelow1.getHeight(), contactsDataBelow3.getHeight()));
-			this->normal = std::min(contactsDataBelow2.getNormal(), std::min(contactsDataBelow1.getNormal(), contactsDataBelow3.getNormal()));
-			this->slope = std::min(contactsDataBelow2.getSlope(), std::min(contactsDataBelow1.getSlope(), contactsDataBelow3.getSlope()));
+            this->height = std::min(contactsDataBelow2.getHeight(), std::min(contactsDataBelow1.getHeight(), contactsDataBelow3.getHeight()));
+            this->normal = std::min(contactsDataBelow2.getNormal(), std::min(contactsDataBelow1.getNormal(), contactsDataBelow3.getNormal()));
+            this->slope = std::min(contactsDataBelow2.getSlope(), std::min(contactsDataBelow1.getSlope(), contactsDataBelow3.getSlope()));
 
-			// Nothing found below, player must be in air!
-			if (nullptr == contactsDataBelow1.getHitGameObject() && nullptr == contactsDataBelow2.getHitGameObject() && contactsDataBelow3.getHitGameObject())
-			{
-				this->height = this->priorValidHeight; // in in air in any case!
-				this->normal = this->priorValidNormal;
-			}
+            // Nothing found below, player must be in air!
+            if (nullptr == contactsDataBelow1.getHitGameObject() && nullptr == contactsDataBelow2.getHitGameObject() && contactsDataBelow3.getHitGameObject())
+            {
+                this->height = this->priorValidHeight; // in in air in any case!
+                this->normal = this->priorValidNormal;
+            }
 
-			if (nullptr == this->hitGameObjectBelow)
-			{
-				this->height = this->priorValidHeight;
-				this->normal = this->priorValidNormal;
-			}
+            if (nullptr == this->hitGameObjectBelow)
+            {
+                this->height = this->priorValidHeight;
+                this->normal = this->priorValidNormal;
+            }
 
-			if (this->height >= 500.0f)
-			{
-				this->height = 0.0f;
-			}
+            if (this->height >= 500.0f)
+            {
+                this->height = 0.0f;
+            }
 
-			/*if (widget)
-				widget->setCaption("Height: " + Ogre::StringConverter::toString(this->height));*/
+            /*if (widget)
+                widget->setCaption("Height: " + Ogre::StringConverter::toString(this->height));*/
 
-				// if (widget)
-				// 	widget->setCaption("Normal: " + Ogre::StringConverter::toString(this->normal));
+            // if (widget)
+            // 	widget->setCaption("Normal: " + Ogre::StringConverter::toString(this->normal));
 
-				// 2. Check all objects that are in front of the player
+            // 2. Check all objects that are in front of the player
 
-				// never change -0.2, because else the rope does not exist anymore and the player gets stuck on a wall
+            // never change -0.2, because else the rope does not exist anymore and the player gets stuck on a wall
 
-			Ogre::Vector3 direction = this->physicsActiveComponent->getOrientation() * this->gameObjectPtr->getDefaultDirection();
+            Ogre::Vector3 direction = this->physicsActiveComponent->getOrientation() * this->gameObjectPtr->getDefaultDirection();
 
-			PhysicsActiveComponent::ContactData contactDataFront[3];
+            PhysicsActiveComponent::ContactData contactDataFront[3];
 
 #if 1
-			contactDataFront[0] = this->physicsActiveComponent->getContactToDirection(1, direction,
-				Ogre::Vector3(0.0f, centerBottom.y + playerSize.y, playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
+            contactDataFront[0] = this->physicsActiveComponent->getContactToDirection(1, direction, Ogre::Vector3(0.0f, centerBottom.y + playerSize.y, playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
 
-			contactDataFront[1] = this->physicsActiveComponent->getContactToDirection(2, direction,
-				Ogre::Vector3(0.0f, 0.2f, playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
+            contactDataFront[1] = this->physicsActiveComponent->getContactToDirection(2, direction, Ogre::Vector3(0.0f, 0.2f, playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
 
-			contactDataFront[2] = this->physicsActiveComponent->getContactToDirection(3, direction,
-				Ogre::Vector3(0.0f, centerBottom.y + (playerSize.y * 0.5f), playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
+            contactDataFront[2] = this->physicsActiveComponent->getContactToDirection(3, direction, Ogre::Vector3(0.0f, centerBottom.y + (playerSize.y * 0.5f), playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
 #else
-			contactDataFront[0] = this->physicsActiveComponent->getContactAhead(1,
-				Ogre::Vector3(0.0f, centerBottom.y + playerSize.y, playerSize.z - 0.2f), 0.1f, showDebugData, this->categoriesId);
+            contactDataFront[0] = this->physicsActiveComponent->getContactAhead(1, Ogre::Vector3(0.0f, centerBottom.y + playerSize.y, playerSize.z - 0.2f), 0.1f, showDebugData, this->categoriesId);
 
-			contactDataFront[1] = this->physicsActiveComponent->getContactAhead(2,
-				Ogre::Vector3(0.0f, 0.2f, playerSize.z - 0.2f), 0.1f, showDebugData, this->categoriesId);
+            contactDataFront[1] = this->physicsActiveComponent->getContactAhead(2, Ogre::Vector3(0.0f, 0.2f, playerSize.z - 0.2f), 0.1f, showDebugData, this->categoriesId);
 
-			contactDataFront[2] = this->physicsActiveComponent->getContactAhead(3,
-				Ogre::Vector3(0.0f, centerBottom.y + (playerSize.y * 0.5f), playerSize.z - 0.2f), 0.1f, showDebugData, this->categoriesId);
+            contactDataFront[2] = this->physicsActiveComponent->getContactAhead(3, Ogre::Vector3(0.0f, centerBottom.y + (playerSize.y * 0.5f), playerSize.z - 0.2f), 0.1f, showDebugData, this->categoriesId);
 #endif
 
-			//// Build:	T |
-			////		A | -> Line to check front
-			//contactDataFront[3] = this->physicsActiveComponent->getContactToDirection(4, Ogre::Vector3::UNIT_Y, 
-			//	Ogre::Vector3(0.0f, centerBottom.y + 0.1f, playerSize.z * 0.5f), -0.05f, playerSize.y + 0.05f, showDebugData, this->categoriesId); // 0.2 is to much, and player would stuck in certain ground
+            //// Build:	T |
+            ////		A | -> Line to check front
+            // contactDataFront[3] = this->physicsActiveComponent->getContactToDirection(4, Ogre::Vector3::UNIT_Y,
+            //	Ogre::Vector3(0.0f, centerBottom.y + 0.1f, playerSize.z * 0.5f), -0.05f, playerSize.y + 0.05f, showDebugData, this->categoriesId); // 0.2 is to much, and player would stuck in certain ground
 
-			this->hitGameObjectFront = nullptr;
+            this->hitGameObjectFront = nullptr;
             this->frontNormal = Ogre::Vector3::ZERO;
 
             if (nullptr != contactDataFront[0].getHitGameObject())
@@ -445,7 +434,7 @@ namespace NOWA
                 this->frontNormal = contactDataFront[2].getNormal();
             }
 
-// -------------------------------------------------------------------------
+            // -------------------------------------------------------------------------
             // Wall separation, mode-selectable via wallSeparationMode:
             //
             // "Ring3D": casts probes in a full horizontal ring around the player,
@@ -712,400 +701,398 @@ namespace NOWA
                                                                                         " f2: " + (nullptr != contactDataFront[2].getHitGameObject() ? "HIT" : "miss"));*/
             }
 
-			this->hitGameObjectUp = nullptr;
-			this->hitGameObjectUp = this->physicsActiveComponent->getContactAbove(5, Ogre::Vector3(0.0f, playerSize.y + 0.1f, 0.0f), showDebugData, this->categoriesId, true).getHitGameObject();
+            this->hitGameObjectUp = nullptr;
+            this->hitGameObjectUp = this->physicsActiveComponent->getContactAbove(5, Ogre::Vector3(0.0f, playerSize.y + 0.1f, 0.0f), showDebugData, this->categoriesId, true).getHitGameObject();
 
-			if (true == this->useStandUp->getBool())
-			{
-				// 90° * threshold (0.7 = 63°)
-				Ogre::Real fallThresholdAngle = Ogre::Degree(90.0f * 0.7f).valueDegrees();
+            if (true == this->useStandUp->getBool())
+            {
+                // 90° * threshold (0.7 = 63°)
+                Ogre::Real fallThresholdAngle = Ogre::Degree(90.0f * 0.7f).valueDegrees();
 
-				// Gravity up direction (should always be stable)
-				Ogre::Vector3 gravityUp = -this->physicsActiveComponent->getGravityDirection();
+                // Gravity up direction (should always be stable)
+                Ogre::Vector3 gravityUp = -this->physicsActiveComponent->getGravityDirection();
 
-				// Player's current up vector based on orientation
-				Ogre::Vector3 currentPlayerUp = this->physicsActiveComponent->getOrientation() * Ogre::Vector3::UNIT_Y;
+                // Player's current up vector based on orientation
+                Ogre::Vector3 currentPlayerUp = this->physicsActiveComponent->getOrientation() * Ogre::Vector3::UNIT_Y;
 
-				// Compute angle deviation between player's up and gravity up
-				Ogre::Real angleDeviation = Ogre::Math::ACos(currentPlayerUp.dotProduct(gravityUp)).valueDegrees();
+                // Compute angle deviation between player's up and gravity up
+                Ogre::Real angleDeviation = Ogre::Math::ACos(currentPlayerUp.dotProduct(gravityUp)).valueDegrees();
 
-				// Player is tilted significantly
-				if (angleDeviation > fallThresholdAngle)
-				{
-					if (false == this->isFallen) // Start counting time
-					{
-						this->timeFallen = 0.0f;
-						this->isFallen = true;
-					}
-					else
-					{
-						timeFallen += dt; // Accumulate time
-						if (timeFallen >= recoveryTime) // If fallen for 2 seconds
-						{
-							this->standUp();
-							this->isFallen = false; // Reset state
-						}
-					}
-				}
-				else
-				{
-					this->isFallen = false; // Reset if player recovers naturally
-					this->timeFallen = 0.0f;
-				}
-			}
-		}
-	}
+                // Player is tilted significantly
+                if (angleDeviation > fallThresholdAngle)
+                {
+                    if (false == this->isFallen) // Start counting time
+                    {
+                        this->timeFallen = 0.0f;
+                        this->isFallen = true;
+                    }
+                    else
+                    {
+                        timeFallen += dt;               // Accumulate time
+                        if (timeFallen >= recoveryTime) // If fallen for 2 seconds
+                        {
+                            this->standUp();
+                            this->isFallen = false; // Reset state
+                        }
+                    }
+                }
+                else
+                {
+                    this->isFallen = false; // Reset if player recovers naturally
+                    this->timeFallen = 0.0f;
+                }
+            }
+        }
+    }
 
+    void PlayerControllerComponent::actualizeValue(Variant* attribute)
+    {
+        GameObjectComponent::actualizeValue(attribute);
 
-	void PlayerControllerComponent::actualizeValue(Variant* attribute)
-	{
-		GameObjectComponent::actualizeValue(attribute);
-
-		if (PlayerControllerComponent::AttrActivated() == attribute->getName())
-		{
-			this->setActivated(attribute->getBool());
-		}
-		else if (PlayerControllerComponent::AttrRotationSpeed() == attribute->getName())
-		{
-			this->setRotationSpeed(attribute->getReal());
-		}
-		else if (PlayerControllerComponent::AttrGoalRadius() == attribute->getName())
-		{
-			this->setGoalRadius(attribute->getReal());
-		}
-		else if (PlayerControllerComponent::AttrAnimationSpeed() == attribute->getName())
-		{
-			this->setAnimationSpeed(attribute->getReal());
-		}
-		else if (PlayerControllerComponent::AttrAcceleration() == attribute->getName())
-		{
-			this->setAcceleration(attribute->getReal());
-		}
-		else if (PlayerControllerComponent::AttrCategories() == attribute->getName())
-		{
-			this->setCategories(attribute->getString());
-		}
-		else if (PlayerControllerComponent::AttrUseStandUp() == attribute->getName())
-		{
-			this->setUseStandUp(attribute->getBool());
-		}
+        if (PlayerControllerComponent::AttrActivated() == attribute->getName())
+        {
+            this->setActivated(attribute->getBool());
+        }
+        else if (PlayerControllerComponent::AttrRotationSpeed() == attribute->getName())
+        {
+            this->setRotationSpeed(attribute->getReal());
+        }
+        else if (PlayerControllerComponent::AttrGoalRadius() == attribute->getName())
+        {
+            this->setGoalRadius(attribute->getReal());
+        }
+        else if (PlayerControllerComponent::AttrAnimationSpeed() == attribute->getName())
+        {
+            this->setAnimationSpeed(attribute->getReal());
+        }
+        else if (PlayerControllerComponent::AttrAcceleration() == attribute->getName())
+        {
+            this->setAcceleration(attribute->getReal());
+        }
+        else if (PlayerControllerComponent::AttrCategories() == attribute->getName())
+        {
+            this->setCategories(attribute->getString());
+        }
+        else if (PlayerControllerComponent::AttrUseStandUp() == attribute->getName())
+        {
+            this->setUseStandUp(attribute->getBool());
+        }
         else if (PlayerControllerComponent::AttrWallSeparationMode() == attribute->getName())
         {
             this->setWallSeparationMode(attribute->getListSelectedValue());
         }
-	}
+    }
 
-	void PlayerControllerComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
-	{
-		// 2 = int
-		// 6 = real
-		// 7 = string
-		// 8 = vector2
-		// 9 = vector3
-		// 10 = vector4 -> also quaternion
-		// 12 = bool
-		GameObjectComponent::writeXML(propertiesXML, doc);
+    void PlayerControllerComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+    {
+        // 2 = int
+        // 6 = real
+        // 7 = string
+        // 8 = vector2
+        // 9 = vector3
+        // 10 = vector4 -> also quaternion
+        // 12 = bool
+        GameObjectComponent::writeXML(propertiesXML, doc);
 
-		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
-		propertiesXML->append_node(propertyXML);
+        xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "RotationSpeed"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->rotationSpeed->getReal())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "RotationSpeed"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->rotationSpeed->getReal())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "GoalRadius"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->goalRadius->getReal())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "GoalRadius"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->goalRadius->getReal())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "AnimationSpeed"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animationSpeed->getReal())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AnimationSpeed"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animationSpeed->getReal())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Acceleration"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->acceleration->getReal())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Acceleration"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->acceleration->getReal())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Categories"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->categories->getString())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Categories"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->categories->getString())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "UseStandUp"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useStandUp->getBool())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "UseStandUp"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useStandUp->getBool())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
         propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(PlayerControllerComponent::AttrWallSeparationMode().c_str())));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->wallSeparationMode->getListSelectedValue())));
         propertiesXML->append_node(propertyXML);
-	}
+    }
 
-	Ogre::String PlayerControllerComponent::getClassName(void) const
-	{
-		return "PlayerControllerComponent";
-	}
+    Ogre::String PlayerControllerComponent::getClassName(void) const
+    {
+        return "PlayerControllerComponent";
+    }
 
-	Ogre::String PlayerControllerComponent::getParentClassName(void) const
-	{
-		return "GameObjectComponent";
-	}
+    Ogre::String PlayerControllerComponent::getParentClassName(void) const
+    {
+        return "GameObjectComponent";
+    }
 
-	GameObjectCompPtr PlayerControllerComponent::clone(GameObjectPtr clonedGameObjectPtr)
-	{
-		PlayerControllerCompPtr clonedCompPtr(boost::make_shared<PlayerControllerComponent>());
+    GameObjectCompPtr PlayerControllerComponent::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        PlayerControllerCompPtr clonedCompPtr(boost::make_shared<PlayerControllerComponent>());
 
-		// Do not clone activated, since its no visible and switched manually in game object controller
-		// clonedCompPtr->setActivated(this->activated->getBool());
-		clonedCompPtr->setRotationSpeed(this->rotationSpeed->getReal());
-		clonedCompPtr->setGoalRadius(this->goalRadius->getReal());
-		clonedCompPtr->setAnimationSpeed(this->animationSpeed->getReal());
-		clonedCompPtr->setAcceleration(this->acceleration->getReal());
-		clonedCompPtr->setCategories(this->categories->getString());
+        // Do not clone activated, since its no visible and switched manually in game object controller
+        // clonedCompPtr->setActivated(this->activated->getBool());
+        clonedCompPtr->setRotationSpeed(this->rotationSpeed->getReal());
+        clonedCompPtr->setGoalRadius(this->goalRadius->getReal());
+        clonedCompPtr->setAnimationSpeed(this->animationSpeed->getReal());
+        clonedCompPtr->setAcceleration(this->acceleration->getReal());
+        clonedCompPtr->setCategories(this->categories->getString());
         clonedCompPtr->setUseStandUp(this->useStandUp->getBool());
         clonedCompPtr->setWallSeparationMode(this->wallSeparationMode->getListSelectedValue());
 
-		for (unsigned int i = 0; i < static_cast<unsigned int>(this->animations.size()); i++)
-		{
-			clonedCompPtr->setAnimationName(this->animations[i]->getListSelectedValue(), i);
-		}
+        for (unsigned int i = 0; i < static_cast<unsigned int>(this->animations.size()); i++)
+        {
+            clonedCompPtr->setAnimationName(this->animations[i]->getListSelectedValue(), i);
+        }
 
-		clonedGameObjectPtr->addComponent(clonedCompPtr);
-		clonedCompPtr->setOwner(clonedGameObjectPtr);
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
 
-		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
-		return clonedCompPtr;
-	}
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+        return clonedCompPtr;
+    }
 
-	void PlayerControllerComponent::setActivated(bool activated)
-	{
-		this->activated->setValue(activated);
+    void PlayerControllerComponent::setActivated(bool activated)
+    {
+        this->activated->setValue(activated);
 
-		// Add the player controller to the player controller component map, but as weak ptr, because game object controller should not hold the life cycle of this components, because the game objects already do, which are
-		// also hold shared by the game object controller
-		AppStateManager::getSingletonPtr()->getGameObjectController()->addPlayerController(boost::dynamic_pointer_cast<PlayerControllerComponent>(shared_from_this()));
+        // Add the player controller to the player controller component map, but as weak ptr, because game object controller should not hold the life cycle of this components, because the game objects already do, which are
+        // also hold shared by the game object controller
+        AppStateManager::getSingletonPtr()->getGameObjectController()->addPlayerController(boost::dynamic_pointer_cast<PlayerControllerComponent>(shared_from_this()));
 
-		// Must be done here, because in post init, it may be, that a component does not yet exist, if its added after this component!
-		auto physicsPlayerControllerCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsPlayerControllerComponent>());
-		if (nullptr == physicsPlayerControllerCompPtr)
-		{
-			auto physicsActiveCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveComponent>());
-			if (nullptr == physicsActiveCompPtr)
-			{
-				auto physicsActiveKinematicCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveKinematicComponent>());
-				if (nullptr == physicsActiveKinematicCompPtr)
-				{
-					return;
-				}
-				else
-				{
-					this->physicsActiveComponent = dynamic_cast<PhysicsActiveKinematicComponent*>(physicsActiveKinematicCompPtr.get());
-				}
-			}
-			else
-			{
-				this->physicsActiveComponent = physicsActiveCompPtr.get();
-			}
-		}
-		else
-		{
-			this->physicsActiveComponent = dynamic_cast<PhysicsActiveComponent*>(physicsPlayerControllerCompPtr.get());
-		}
-
-		// Get optional camera behavior component, for activation in game object controller
-		auto cameraBehaviorCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<CameraBehaviorComponent>());
-		if (nullptr != cameraBehaviorCompPtr)
-		{
-			this->cameraBehaviorComponent = cameraBehaviorCompPtr.get();
-		}
-		else
-		{
-			this->cameraBehaviorComponent = nullptr;
-		}
-
-		if (true == activated)
-		{
-			// In post init not all game objects are known, and so there are maybe no categories yet, so set the categories here
-			this->setCategories(this->categories->getString());
-
-			this->internalShowDebugData();
-
-			auto inputDeviceCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<InputDeviceComponent>());
-			if (nullptr != inputDeviceCompPtr)
-			{
-				this->inputDeviceComponent = inputDeviceCompPtr.get();
-
-				if (false == this->inputDeviceComponent->hasValidDevice())
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlayerControllerComponent] Cannot use any state, because the InputDeviceComponent has not valid input device set.");
-				}
-			}
+        // Must be done here, because in post init, it may be, that a component does not yet exist, if its added after this component!
+        auto physicsPlayerControllerCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsPlayerControllerComponent>());
+        if (nullptr == physicsPlayerControllerCompPtr)
+        {
+            auto physicsActiveCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveComponent>());
+            if (nullptr == physicsActiveCompPtr)
+            {
+                auto physicsActiveKinematicCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveKinematicComponent>());
+                if (nullptr == physicsActiveKinematicCompPtr)
+                {
+                    return;
+                }
+                else
+                {
+                    this->physicsActiveComponent = dynamic_cast<PhysicsActiveKinematicComponent*>(physicsActiveKinematicCompPtr.get());
+                }
+            }
             else
             {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                    "[PlayerControllerComponent] Player controller will not work, because an input device component is missing for this game object: " + this->gameObjectPtr->getName());
+                this->physicsActiveComponent = physicsActiveCompPtr.get();
             }
-		}
+        }
+        else
+        {
+            this->physicsActiveComponent = dynamic_cast<PhysicsActiveComponent*>(physicsPlayerControllerCompPtr.get());
+        }
 
-		// Sent event, that this player controller has been activated or deactivated
-		boost::shared_ptr<EventDataActivatePlayerController> eventDataActivePlayerController(new EventDataActivatePlayerController(this->activated->getBool()));
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataActivePlayerController);
-	}
+        // Get optional camera behavior component, for activation in game object controller
+        auto cameraBehaviorCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<CameraBehaviorComponent>());
+        if (nullptr != cameraBehaviorCompPtr)
+        {
+            this->cameraBehaviorComponent = cameraBehaviorCompPtr.get();
+        }
+        else
+        {
+            this->cameraBehaviorComponent = nullptr;
+        }
 
-	bool PlayerControllerComponent::isActivated(void) const
-	{
-		return this->activated->getBool();
-	}
+        if (true == activated)
+        {
+            // In post init not all game objects are known, and so there are maybe no categories yet, so set the categories here
+            this->setCategories(this->categories->getString());
 
-	void PlayerControllerComponent::internalShowDebugData(void)
-	{
-		if (nullptr != this->animationBlender)
-		{
-			// this->animationBlender->setDebugLog(this->bShowDebugData);
-		}
-		if (false == this->bShowDebugData)
-		{
-			this->deleteDebugData();
-		}
-	}
+            this->internalShowDebugData();
 
-	void PlayerControllerComponent::setRotationSpeed(Ogre::Real rotationSpeed)
-	{
-		if (rotationSpeed < 5.0f)
-		{
-			rotationSpeed = 5.0f;
-		}
-		else if (rotationSpeed > 15.0f)
-		{
-			rotationSpeed = 15.0f;
-		}
-		this->rotationSpeed->setValue(rotationSpeed);
-	}
+            auto inputDeviceCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<InputDeviceComponent>());
+            if (nullptr != inputDeviceCompPtr)
+            {
+                this->inputDeviceComponent = inputDeviceCompPtr.get();
 
-	Ogre::Real PlayerControllerComponent::getRotationSpeed(void) const
-	{
-		return this->rotationSpeed->getReal();
-	}
+                if (false == this->inputDeviceComponent->hasValidDevice())
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlayerControllerComponent] Cannot use any state, because the InputDeviceComponent has not valid input device set.");
+                }
+            }
+            else
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlayerControllerComponent] Player controller will not work, because an input device component is missing for this game object: " + this->gameObjectPtr->getName());
+            }
+        }
 
-	void PlayerControllerComponent::setGoalRadius(Ogre::Real goalRadius)
-	{
-		if (goalRadius < 0.2f)
-		{
-			goalRadius = 0.2f;
-		}
-		this->goalRadius->setValue(goalRadius);
-	}
+        // Sent event, that this player controller has been activated or deactivated
+        boost::shared_ptr<EventDataActivatePlayerController> eventDataActivePlayerController(new EventDataActivatePlayerController(this->activated->getBool()));
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataActivePlayerController);
+    }
 
-	Ogre::Real PlayerControllerComponent::getGoalRadius(void) const
-	{
-		return this->goalRadius->getReal();
-	}
+    bool PlayerControllerComponent::isActivated(void) const
+    {
+        return this->activated->getBool();
+    }
 
-	AnimationBlenderV2* PlayerControllerComponent::getAnimationBlender(void) const
-	{
-		return this->animationBlender;
-	}
+    void PlayerControllerComponent::internalShowDebugData(void)
+    {
+        if (nullptr != this->animationBlender)
+        {
+            // this->animationBlender->setDebugLog(this->bShowDebugData);
+        }
+        if (false == this->bShowDebugData)
+        {
+            this->deleteDebugData();
+        }
+    }
 
-	PhysicsActiveComponent* PlayerControllerComponent::getPhysicsComponent(void) const
-	{
-		return this->physicsActiveComponent;
-	}
+    void PlayerControllerComponent::setRotationSpeed(Ogre::Real rotationSpeed)
+    {
+        if (rotationSpeed < 5.0f)
+        {
+            rotationSpeed = 5.0f;
+        }
+        else if (rotationSpeed > 15.0f)
+        {
+            rotationSpeed = 15.0f;
+        }
+        this->rotationSpeed->setValue(rotationSpeed);
+    }
 
-	PhysicsRagDollComponentV2* PlayerControllerComponent::getPhysicsRagDollComponent(void) const
-	{
-		return dynamic_cast<PhysicsRagDollComponentV2*>(this->physicsActiveComponent);
-	}
+    Ogre::Real PlayerControllerComponent::getRotationSpeed(void) const
+    {
+        return this->rotationSpeed->getReal();
+    }
 
-	void PlayerControllerComponent::lockMovement(const Ogre::String& ownerName, bool lock)
-	{
-		if (true == lock)
-		{
-			if (true == this->moveLockOwner.empty())
-			{
-				this->moveLockOwner = ownerName;
-				this->moveWeight = 0.0f;
-				this->jumpWeight = 0.0f;
-			}
-			/*else
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlayerControllerComponent] Could not request move weight because there is already an owner: '"
-					+ this->moveLockOwner + "'. Please call first lockMovement with false for that owner!");
-			}*/
-		}
-		else
-		{
-			if (this->moveLockOwner == ownerName)
-			{
-				this->moveLockOwner.clear();
-			}
-			/*else
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlayerControllerComponent] Could not release move weight because there no such owner name: '"
-					+ ownerName + "'.");
-			}*/
-		}
-	}
+    void PlayerControllerComponent::setGoalRadius(Ogre::Real goalRadius)
+    {
+        if (goalRadius < 0.2f)
+        {
+            goalRadius = 0.2f;
+        }
+        this->goalRadius->setValue(goalRadius);
+    }
 
-	void PlayerControllerComponent::setMoveWeight(Ogre::Real moveWeight)
-	{
-		if (true == this->moveLockOwner.empty())
-		{
-			this->moveWeight = moveWeight;
-			this->jumpWeight = moveWeight;
-		}
-	}
+    Ogre::Real PlayerControllerComponent::getGoalRadius(void) const
+    {
+        return this->goalRadius->getReal();
+    }
 
-	Ogre::Real PlayerControllerComponent::getMoveWeight(void) const
-	{
-		return this->moveWeight;
-	}
+    AnimationBlenderV2* PlayerControllerComponent::getAnimationBlender(void) const
+    {
+        return this->animationBlender;
+    }
 
-	void PlayerControllerComponent::setJumpWeight(Ogre::Real jumpWeight)
-	{
-		if (true == this->moveLockOwner.empty())
-		{
-			this->jumpWeight = jumpWeight;
-		}
-	}
+    PhysicsActiveComponent* PlayerControllerComponent::getPhysicsComponent(void) const
+    {
+        return this->physicsActiveComponent;
+    }
 
-	Ogre::Real PlayerControllerComponent::getJumpWeight(void) const
-	{
-		return this->jumpWeight;
-	}
+    PhysicsRagDollComponentV2* PlayerControllerComponent::getPhysicsRagDollComponent(void) const
+    {
+        return dynamic_cast<PhysicsRagDollComponentV2*>(this->physicsActiveComponent);
+    }
 
-	void PlayerControllerComponent::setIdle(bool idle)
-	{
-		this->idle = idle;
-	}
+    void PlayerControllerComponent::lockMovement(const Ogre::String& ownerName, bool lock)
+    {
+        if (true == lock)
+        {
+            if (true == this->moveLockOwner.empty())
+            {
+                this->moveLockOwner = ownerName;
+                this->moveWeight = 0.0f;
+                this->jumpWeight = 0.0f;
+            }
+            /*else
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlayerControllerComponent] Could not request move weight because there is already an owner: '"
+                    + this->moveLockOwner + "'. Please call first lockMovement with false for that owner!");
+            }*/
+        }
+        else
+        {
+            if (this->moveLockOwner == ownerName)
+            {
+                this->moveLockOwner.clear();
+            }
+            /*else
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlayerControllerComponent] Could not release move weight because there no such owner name: '"
+                    + ownerName + "'.");
+            }*/
+        }
+    }
 
-	bool PlayerControllerComponent::isIdle(void) const
-	{
-		return this->idle;
-	}
+    void PlayerControllerComponent::setMoveWeight(Ogre::Real moveWeight)
+    {
+        if (true == this->moveLockOwner.empty())
+        {
+            this->moveWeight = moveWeight;
+            this->jumpWeight = moveWeight;
+        }
+    }
 
-	void PlayerControllerComponent::setAnimationSpeed(Ogre::Real animationSpeed)
-	{
-		if (animationSpeed < 0.0f)
-		{
-			animationSpeed = 1.0f;
-		}
-		this->animationSpeed->setValue(animationSpeed);
+    Ogre::Real PlayerControllerComponent::getMoveWeight(void) const
+    {
+        return this->moveWeight;
+    }
 
-		if (nullptr != this->gameObjectPtr)
+    void PlayerControllerComponent::setJumpWeight(Ogre::Real jumpWeight)
+    {
+        if (true == this->moveLockOwner.empty())
+        {
+            this->jumpWeight = jumpWeight;
+        }
+    }
+
+    Ogre::Real PlayerControllerComponent::getJumpWeight(void) const
+    {
+        return this->jumpWeight;
+    }
+
+    void PlayerControllerComponent::setIdle(bool idle)
+    {
+        this->idle = idle;
+    }
+
+    bool PlayerControllerComponent::isIdle(void) const
+    {
+        return this->idle;
+    }
+
+    void PlayerControllerComponent::setAnimationSpeed(Ogre::Real animationSpeed)
+    {
+        if (animationSpeed < 0.0f)
+        {
+            animationSpeed = 1.0f;
+        }
+        this->animationSpeed->setValue(animationSpeed);
+
+        if (nullptr != this->gameObjectPtr)
         {
             auto animationCompPtrV2 = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<AnimationComponentV2>());
             if (nullptr != animationCompPtrV2)
@@ -1113,109 +1100,109 @@ namespace NOWA
                 animationCompPtrV2->setSpeed(animationSpeed);
             }
 
-			if (nullptr != this->animationBlender)
+            if (nullptr != this->animationBlender)
             {
                 this->animationBlender->setAnimationSpeed(animationSpeed);
             }
         }
-	}
+    }
 
-	Ogre::Real PlayerControllerComponent::getAnimationSpeed(void) const
-	{
-		return this->animationSpeed->getReal();
-	}
+    Ogre::Real PlayerControllerComponent::getAnimationSpeed(void) const
+    {
+        return this->animationSpeed->getReal();
+    }
 
-	void PlayerControllerComponent::setAcceleration(Ogre::Real acceleration)
-	{
-		if (acceleration < 0.0f)
-		{
-			acceleration = 0.0f;
-		}
-		this->acceleration->setValue(acceleration);
-	}
+    void PlayerControllerComponent::setAcceleration(Ogre::Real acceleration)
+    {
+        if (acceleration < 0.0f)
+        {
+            acceleration = 0.0f;
+        }
+        this->acceleration->setValue(acceleration);
+    }
 
-	Ogre::Real PlayerControllerComponent::getAcceleration(void) const
-	{
-		return this->acceleration->getReal();
-	}
+    Ogre::Real PlayerControllerComponent::getAcceleration(void) const
+    {
+        return this->acceleration->getReal();
+    }
 
-	void PlayerControllerComponent::setCategories(const Ogre::String& categories)
-	{
-		this->categories->setValue(categories);
-		this->categoriesId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(categories);
-	}
+    void PlayerControllerComponent::setCategories(const Ogre::String& categories)
+    {
+        this->categories->setValue(categories);
+        this->categoriesId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(categories);
+    }
 
-	Ogre::String PlayerControllerComponent::getCategories(void) const
-	{
-		return this->categories->getString();
-	}
+    Ogre::String PlayerControllerComponent::getCategories(void) const
+    {
+        return this->categories->getString();
+    }
 
-	void PlayerControllerComponent::setUseStandUp(bool useStandUp)
-	{
-		this->useStandUp->setValue(useStandUp);
-	}
+    void PlayerControllerComponent::setUseStandUp(bool useStandUp)
+    {
+        this->useStandUp->setValue(useStandUp);
+    }
 
-	bool PlayerControllerComponent::getUseStandUp(void) const
-	{
-		return this->useStandUp->getBool();
-	}
+    bool PlayerControllerComponent::getUseStandUp(void) const
+    {
+        return this->useStandUp->getBool();
+    }
 
-	void PlayerControllerComponent::setAnimationName(const Ogre::String& name, unsigned int index)
-	{
-		if (index >= this->animations.size())
-		{
-			return;
-		}
-		this->animations[index]->setListSelectedValue(name);
-	}
+    void PlayerControllerComponent::setAnimationName(const Ogre::String& name, unsigned int index)
+    {
+        if (index >= this->animations.size())
+        {
+            return;
+        }
+        this->animations[index]->setListSelectedValue(name);
+    }
 
-	Ogre::String PlayerControllerComponent::getAnimationName(unsigned int index)
-	{
-		if (index >= this->animations.size())
-		{
-			return "";
-		}
-		return this->animations[index]->getListSelectedValue();
-	}
+    Ogre::String PlayerControllerComponent::getAnimationName(unsigned int index)
+    {
+        if (index >= this->animations.size())
+        {
+            return "";
+        }
+        return this->animations[index]->getListSelectedValue();
+    }
 
-	CameraBehaviorComponent* PlayerControllerComponent::getCameraBehaviorComponent(void) const
-	{
-		return this->cameraBehaviorComponent;
-	}
+    CameraBehaviorComponent* PlayerControllerComponent::getCameraBehaviorComponent(void) const
+    {
+        return this->cameraBehaviorComponent;
+    }
 
-	InputDeviceComponent* PlayerControllerComponent::getInputDeviceComponent(void) const
-	{
-		return this->inputDeviceComponent;
-	}
-	
-	Ogre::Real PlayerControllerComponent::getHeight(void) const
-	{
-		return this->height;
-	}
-	
-	Ogre::Vector3 PlayerControllerComponent::getNormal(void) const
-	{
-		return this->normal;
-	}
+    InputDeviceComponent* PlayerControllerComponent::getInputDeviceComponent(void) const
+    {
+        return this->inputDeviceComponent;
+    }
 
-	Ogre::Real PlayerControllerComponent::getSlope(void) const
-	{
-		return this->slope;
-	}
+    Ogre::Real PlayerControllerComponent::getHeight(void) const
+    {
+        return this->height;
+    }
 
-	GameObject* PlayerControllerComponent::getHitGameObjectBelow(void) const
-	{
-		return this->hitGameObjectBelow;
-	}
+    Ogre::Vector3 PlayerControllerComponent::getNormal(void) const
+    {
+        return this->normal;
+    }
 
-	GameObject* PlayerControllerComponent::getHitGameObjectFront(void) const
-	{
-		return this->hitGameObjectFront;
-	}
+    Ogre::Real PlayerControllerComponent::getSlope(void) const
+    {
+        return this->slope;
+    }
 
-	GameObject* PlayerControllerComponent::getHitGameObjectUp(void) const
-	{
-		return this->hitGameObjectUp;
+    GameObject* PlayerControllerComponent::getHitGameObjectBelow(void) const
+    {
+        return this->hitGameObjectBelow;
+    }
+
+    GameObject* PlayerControllerComponent::getHitGameObjectFront(void) const
+    {
+        return this->hitGameObjectFront;
+    }
+
+    GameObject* PlayerControllerComponent::getHitGameObjectUp(void) const
+    {
+        return this->hitGameObjectUp;
     }
 
     Ogre::Vector3 PlayerControllerComponent::getFrontNormal(void) const
@@ -1223,26 +1210,26 @@ namespace NOWA
         return this->frontNormal;
     }
 
-	bool PlayerControllerComponent::getIsFallen(void) const
-	{
-		return this->isFallen;
-	}
+    bool PlayerControllerComponent::getIsFallen(void) const
+    {
+        return this->isFallen;
+    }
 
-	void PlayerControllerComponent::standUp(void)
-	{
+    void PlayerControllerComponent::standUp(void)
+    {
 #if 1
-		// Hacks the physics, to let the player stand up
-		Ogre::Quaternion uprightRotation = Ogre::Vector3::UNIT_Y.getRotationTo(-this->physicsActiveComponent->getGravityDirection());
-		this->physicsActiveComponent->setOrientation(uprightRotation);
+        // Hacks the physics, to let the player stand up
+        Ogre::Quaternion uprightRotation = Ogre::Vector3::UNIT_Y.getRotationTo(-this->physicsActiveComponent->getGravityDirection());
+        this->physicsActiveComponent->setOrientation(uprightRotation);
 #else
-		// Hacks the physics, to let the player stand up
-		Ogre::Quaternion currentOrientation = this->physicsActiveComponent->getOrientation();
-		Ogre::Quaternion targetOrientation = Ogre::Vector3::UNIT_Y.getRotationTo(-this->physicsActiveComponent->getGravityDirection());
+        // Hacks the physics, to let the player stand up
+        Ogre::Quaternion currentOrientation = this->physicsActiveComponent->getOrientation();
+        Ogre::Quaternion targetOrientation = Ogre::Vector3::UNIT_Y.getRotationTo(-this->physicsActiveComponent->getGravityDirection());
 
-		// Interpolate with Slerp (0.1 is the interpolation factor, adjust as needed)
-		Ogre::Quaternion smoothOrientation = Ogre::Quaternion::Slerp(0.1f, currentOrientation, targetOrientation, true);
+        // Interpolate with Slerp (0.1 is the interpolation factor, adjust as needed)
+        Ogre::Quaternion smoothOrientation = Ogre::Quaternion::Slerp(0.1f, currentOrientation, targetOrientation, true);
 
-		this->physicsActiveComponent->setOrientation(smoothOrientation);
+        this->physicsActiveComponent->setOrientation(smoothOrientation);
 #endif
     }
 
@@ -1256,211 +1243,234 @@ namespace NOWA
         return this->wallSeparationMode->getListSelectedValue();
     }
 
-	void PlayerControllerComponent::reactOnAnimationFinished(luabind::object closureFunction, bool oneTime)
-	{
-		if (nullptr == this->animationBlender)
-		{
-			return;
-		}
+    void PlayerControllerComponent::reactOnAnimationFinished(luabind::object closureFunction, bool oneTime)
+    {
+        if (nullptr == this->animationBlender)
+        {
+            return;
+        }
 
-		AnimationBlenderObserver* newObserver = new AnimationBlenderObserver(closureFunction, oneTime);
-		this->animationBlender->addAnimationBlenderObserver(newObserver);
-	}
-	
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	
-	PlayerControllerJumpNRunComponent::PlayerControllerJumpNRunComponent()
-		: PlayerControllerComponent(),
-		stateMachine(nullptr),
-		jumpForce(new Variant(PlayerControllerJumpNRunComponent::AttrJumpForce(), 15.0f, this->attributes)),
-		doubleJump(new Variant(PlayerControllerJumpNRunComponent::AttrDoubleJump(), false, this->attributes)),
-		runAfterWalkTime(new Variant(PlayerControllerJumpNRunComponent::AttrRunAfterWalkTime(), 0.0f, this->attributes)),
-		for2D(new Variant(PlayerControllerJumpNRunComponent::AttrFor2D(), false, this->attributes))
-	{
-		this->animations.resize(this->animationsCount);
-		this->animations[0] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimIdle1(), std::vector<Ogre::String>(), this->attributes);
+        AnimationBlenderObserver* newObserver = new AnimationBlenderObserver(closureFunction, oneTime);
+        this->animationBlender->addAnimationBlenderObserver(newObserver);
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    PlayerControllerJumpNRunComponent::PlayerControllerJumpNRunComponent() :
+        PlayerControllerComponent(),
+        stateMachine(nullptr),
+        jumpForce(new Variant(PlayerControllerJumpNRunComponent::AttrJumpForce(), 15.0f, this->attributes)),
+        doubleJump(new Variant(PlayerControllerJumpNRunComponent::AttrDoubleJump(), false, this->attributes)),
+        runAfterWalkTime(new Variant(PlayerControllerJumpNRunComponent::AttrRunAfterWalkTime(), 0.0f, this->attributes)),
+        for2D(new Variant(PlayerControllerJumpNRunComponent::AttrFor2D(), false, this->attributes)),
+        xJump(new Variant(PlayerControllerJumpNRunComponent::AttrXJump(), false, this->attributes)),
+        useAcceleration(new Variant(PlayerControllerJumpNRunComponent::AttrUseAcceleration(), false, this->attributes)),
+        accelerationDuration(new Variant(PlayerControllerJumpNRunComponent::AttrAccelerationDuration(), 10.0f, this->attributes))
+    {
+        this->animations.resize(this->animationsCount);
+        this->animations[0] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimIdle1(), std::vector<Ogre::String>(), this->attributes);
         this->animations[0]->addUserData(GameObject::AttrActionAutoComplete());
-		this->animations[1] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimIdle2(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[1] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimIdle2(), std::vector<Ogre::String>(), this->attributes);
         this->animations[1]->addUserData(GameObject::AttrActionAutoComplete());
-		this->animations[2] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimIdle3(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[2] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimIdle3(), std::vector<Ogre::String>(), this->attributes);
         this->animations[2]->addUserData(GameObject::AttrActionAutoComplete());
-		this->animations[3] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimWalkNorth(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[3] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimWalkNorth(), std::vector<Ogre::String>(), this->attributes);
         this->animations[3]->addUserData(GameObject::AttrActionAutoComplete());
-		this->animations[4] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimWalkSouth(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[4] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimWalkSouth(), std::vector<Ogre::String>(), this->attributes);
         this->animations[4]->addUserData(GameObject::AttrActionAutoComplete());
-		this->animations[5] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimWalkWest(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[5] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimWalkWest(), std::vector<Ogre::String>(), this->attributes);
         this->animations[5]->addUserData(GameObject::AttrActionAutoComplete());
-		this->animations[6] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimWalkEast(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[6] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimWalkEast(), std::vector<Ogre::String>(), this->attributes);
         this->animations[6]->addUserData(GameObject::AttrActionAutoComplete());
-		this->animations[7] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimJumpStart(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[7] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimJumpStart(), std::vector<Ogre::String>(), this->attributes);
         this->animations[7]->addUserData(GameObject::AttrActionAutoComplete());
-		this->animations[8] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimJumpWalk(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[8] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimJumpWalk(), std::vector<Ogre::String>(), this->attributes);
         this->animations[8]->addUserData(GameObject::AttrActionAutoComplete());
-		this->animations[9] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimHighJumpEnd(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[9] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimHighJumpEnd(), std::vector<Ogre::String>(), this->attributes);
         this->animations[9]->addUserData(GameObject::AttrActionAutoComplete());
-		this->animations[10] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimJumpEnd(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[10] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimJumpEnd(), std::vector<Ogre::String>(), this->attributes);
         this->animations[10]->addUserData(GameObject::AttrActionAutoComplete());
-		this->animations[11] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimRun(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[11] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimRun(), std::vector<Ogre::String>(), this->attributes);
         this->animations[11]->addUserData(GameObject::AttrActionAutoComplete());
-		this->animations[12] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimSneak(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[12] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimSneak(), std::vector<Ogre::String>(), this->attributes);
         this->animations[12]->addUserData(GameObject::AttrActionAutoComplete());
-		this->animations[13] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimDuck(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[13] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimDuck(), std::vector<Ogre::String>(), this->attributes);
         this->animations[13]->addUserData(GameObject::AttrActionAutoComplete());
 
-		this->runAfterWalkTime->setDescription("Specifies the time in seconds at which the player will start to run, after walking without interruption. If set to 0, the player will never run.");
-		this->for2D->setDescription("If set to true, in the PhysicsActiveComponent the 'ConstraintAxis' attribute should be set to '0 0 1'. So that the player only can move on x and y axis.");
-	}
+        this->runAfterWalkTime->setDescription("Specifies the time in seconds at which the player will start to run, after walking without interruption. If set to 0, the player will never run.");
+        this->for2D->setDescription("If set to true, in the PhysicsActiveComponent the 'ConstraintAxis' attribute should be set to '0 0 1'. So that the player only can move on x and y axis.");
+        this->xJump->setDescription("If set to true, the player may jump an unlimited number of times while in the air (metroid style). Overrides 'Double Jump'. Air jumps play the 'Anim Air Jump' animation.");
+        this->useAcceleration->setDescription("If set to true, the player accelerates from the physics component's speed up to its max speed while running without interruption.");
+        this->accelerationDuration->setDescription("Seconds of uninterrupted running needed to reach max speed. The ramp is reset by a direction change or by hitting something in front, but deliberately NOT by jumping.");
+    }
 
-	PlayerControllerJumpNRunComponent::~PlayerControllerJumpNRunComponent()
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlayerControllerJumpNRunComponent] Destructor player controller 3D component for game object: " + this->gameObjectPtr->getName());
+    PlayerControllerJumpNRunComponent::~PlayerControllerJumpNRunComponent()
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlayerControllerJumpNRunComponent] Destructor player controller 3D component for game object: " + this->gameObjectPtr->getName());
 
-		if (this->stateMachine)
-		{
-			delete this->stateMachine;
-			this->stateMachine = nullptr;
-		}
-	}
+        if (this->stateMachine)
+        {
+            delete this->stateMachine;
+            this->stateMachine = nullptr;
+        }
+    }
 
-	bool PlayerControllerJumpNRunComponent::init(rapidxml::xml_node<>*& propertyElement)
-	{
-		bool success = PlayerControllerComponent::init(propertyElement);
+    bool PlayerControllerJumpNRunComponent::init(rapidxml::xml_node<>*& propertyElement)
+    {
+        bool success = PlayerControllerComponent::init(propertyElement);
 
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JumpForce")
-		{
-			this->jumpForce->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "DoubleJump")
-		{
-			this->doubleJump->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RunAfterWalkTime")
-		{
-			this->runAfterWalkTime->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "For2D")
-		{
-			this->for2D->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimIdle1")
-		{
-			this->animations[0]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimIdle2")
-		{
-			this->animations[1]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimIdle3")
-		{
-			this->animations[2]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimWalkNorth")
-		{
-			this->animations[3]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimWalkSouth")
-		{
-			this->animations[4]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimWalkWest")
-		{
-			this->animations[5]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimWalkEast")
-		{
-			this->animations[6]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimJumpStart")
-		{
-			this->animations[7]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimJumpWalk")
-		{
-			this->animations[8]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimHighJumpEnd")
-		{
-			this->animations[9]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimJumpEnd")
-		{
-			this->animations[10]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimRun")
-		{
-			this->animations[11]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimSneak")
-		{
-			this->animations[12]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimDuck")
-		{
-			this->animations[13]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		return success;
-	}
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JumpForce")
+        {
+            this->jumpForce->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "DoubleJump")
+        {
+            this->doubleJump->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RunAfterWalkTime")
+        {
+            this->runAfterWalkTime->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "For2D")
+        {
+            this->for2D->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "XJump")
+        {
+            this->xJump->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseAcceleration")
+        {
+            this->useAcceleration->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AccelerationDuration")
+        {
+            this->accelerationDuration->setValue(XMLConverter::getAttribReal(propertyElement, "data", 10.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimIdle1")
+        {
+            this->animations[0]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimIdle2")
+        {
+            this->animations[1]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimIdle3")
+        {
+            this->animations[2]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimWalkNorth")
+        {
+            this->animations[3]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimWalkSouth")
+        {
+            this->animations[4]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimWalkWest")
+        {
+            this->animations[5]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimWalkEast")
+        {
+            this->animations[6]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimJumpStart")
+        {
+            this->animations[7]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimJumpWalk")
+        {
+            this->animations[8]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimHighJumpEnd")
+        {
+            this->animations[9]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimJumpEnd")
+        {
+            this->animations[10]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimRun")
+        {
+            this->animations[11]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimSneak")
+        {
+            this->animations[12]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimDuck")
+        {
+            this->animations[13]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        return success;
+    }
 
-	GameObjectCompPtr PlayerControllerJumpNRunComponent::clone(GameObjectPtr clonedGameObjectPtr)
-	{
-		PlayerControllerJumpNRunCompPtr clonedCompPtr(boost::make_shared<PlayerControllerJumpNRunComponent>());
+    GameObjectCompPtr PlayerControllerJumpNRunComponent::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        PlayerControllerJumpNRunCompPtr clonedCompPtr(boost::make_shared<PlayerControllerJumpNRunComponent>());
 
-		
-		// Do not clone activated, since its no visible and switched manually in game object controller
-		// clonedCompPtr->setActivated(this->activated->getBool());
-		clonedCompPtr->setRotationSpeed(this->rotationSpeed->getReal());
-		clonedCompPtr->setGoalRadius(this->goalRadius->getReal());
-		clonedCompPtr->setJumpForce(this->jumpForce->getReal());
-		clonedCompPtr->setDoubleJump(this->doubleJump->getReal());
-		clonedCompPtr->setRunAfterWalkTime(this->runAfterWalkTime->getReal());
-		clonedCompPtr->setFor2D(this->for2D->getBool());
-		clonedCompPtr->setAnimationSpeed(this->animationSpeed->getReal());
-		clonedCompPtr->setAcceleration(this->acceleration->getReal());
-		clonedCompPtr->setCategories(this->categories->getString());
-		clonedCompPtr->setUseStandUp(this->useStandUp->getBool());
+        // Do not clone activated, since its no visible and switched manually in game object controller
+        // clonedCompPtr->setActivated(this->activated->getBool());
+        clonedCompPtr->setRotationSpeed(this->rotationSpeed->getReal());
+        clonedCompPtr->setGoalRadius(this->goalRadius->getReal());
+        clonedCompPtr->setJumpForce(this->jumpForce->getReal());
+        clonedCompPtr->setDoubleJump(this->doubleJump->getReal());
+        clonedCompPtr->setRunAfterWalkTime(this->runAfterWalkTime->getReal());
+        clonedCompPtr->setFor2D(this->for2D->getBool());
+        clonedCompPtr->setXJump(this->xJump->getBool());
+        clonedCompPtr->setUseAcceleration(this->useAcceleration->getBool());
+        clonedCompPtr->setAccelerationDuration(this->accelerationDuration->getReal());
+        clonedCompPtr->setAnimationSpeed(this->animationSpeed->getReal());
+        clonedCompPtr->setAcceleration(this->acceleration->getReal());
+        clonedCompPtr->setCategories(this->categories->getString());
+        clonedCompPtr->setUseStandUp(this->useStandUp->getBool());
 
-		for (unsigned int i = 0; i < static_cast<unsigned int>(this->animations.size()); i++)
-		{
-			clonedCompPtr->setAnimationName(this->animations[i]->getListSelectedValue(), i);
-		}
-		
-		clonedGameObjectPtr->addComponent(clonedCompPtr);
-		clonedCompPtr->setOwner(clonedGameObjectPtr);
+        for (unsigned int i = 0; i < static_cast<unsigned int>(this->animations.size()); i++)
+        {
+            clonedCompPtr->setAnimationName(this->animations[i]->getListSelectedValue(), i);
+        }
 
-		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
-		return clonedCompPtr;
-	}
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
 
-	bool PlayerControllerJumpNRunComponent::postInit(void)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlayerControllerJumpNRunComponent] Init player controller 3D component for game object: " + this->gameObjectPtr->getName());
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+        return clonedCompPtr;
+    }
 
-		Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-		if (nullptr != item)
-		{
-			std::vector<Ogre::String> animationNames;
-			// Add also none, so that when choosen, no animation will be done, because it does not exist
-			animationNames.emplace_back("None");
+    bool PlayerControllerJumpNRunComponent::postInit(void)
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlayerControllerJumpNRunComponent] Init player controller 3D component for game object: " + this->gameObjectPtr->getName());
 
-			Ogre::SkeletonInstance* skeleton = item->getSkeletonInstance();
+        Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+        if (nullptr != item)
+        {
+            std::vector<Ogre::String> animationNames;
+            // Add also none, so that when choosen, no animation will be done, because it does not exist
+            animationNames.emplace_back("None");
+
+            Ogre::SkeletonInstance* skeleton = item->getSkeletonInstance();
             if (nullptr != skeleton)
             {
                 for (auto& anim : skeleton->getAnimationsNonConst())
@@ -1473,15 +1483,15 @@ namespace NOWA
                     this->animations[i]->setValue(animationNames);
                 }
             }
-		}
+        }
 
-		this->stateMachine = new NOWA::KI::StateMachine<GameObject>(this->gameObjectPtr.get());
-		this->stateMachine->registerState<WalkingStateJumpNRun>(WalkingStateJumpNRun::getName());
+        this->stateMachine = new NOWA::KI::StateMachine<GameObject>(this->gameObjectPtr.get());
+        this->stateMachine->registerState<WalkingStateJumpNRun>(WalkingStateJumpNRun::getName());
 
-		return PlayerControllerComponent::postInit();
-	}
+        return PlayerControllerComponent::postInit();
+    }
 
-	bool PlayerControllerJumpNRunComponent::connect(void)
+    bool PlayerControllerJumpNRunComponent::connect(void)
     {
         bool success = PlayerControllerComponent::connect();
 
@@ -1504,247 +1514,267 @@ namespace NOWA
         return success;
     }
 
-	bool PlayerControllerJumpNRunComponent::disconnect(void)
-	{
-		bool success = PlayerControllerComponent::disconnect();
+    bool PlayerControllerJumpNRunComponent::disconnect(void)
+    {
+        bool success = PlayerControllerComponent::disconnect();
 
-		if (nullptr != this->animationBlender)
-		{
-			// this->animationBlender->clearAnimations();
-			this->animationBlender->init(NOWA::AnimationBlenderV2::ANIM_IDLE_1);
-			// Reset animation to T-Pose
-			this->animationBlender->setSourceEnabled(false);
-		}
+        if (nullptr != this->animationBlender)
+        {
+            // this->animationBlender->clearAnimations();
+            this->animationBlender->init(NOWA::AnimationBlenderV2::ANIM_IDLE_1);
+            // Reset animation to T-Pose
+            this->animationBlender->setSourceEnabled(false);
+        }
 
-		// Hand control of addTime() back to AnimationComponentV2's default drive.
+        // Hand control of addTime() back to AnimationComponentV2's default drive.
         auto animationCompPtrV2 = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<AnimationComponentV2>());
         if (nullptr != animationCompPtrV2)
         {
             animationCompPtrV2->setExternallyDriven(false);
         }
 
-		if (nullptr != this->stateMachine->getCurrentState())
-		{
-			this->stateMachine->getCurrentState()->exit(this->gameObjectPtr.get());
-		}
+        if (nullptr != this->stateMachine->getCurrentState())
+        {
+            this->stateMachine->getCurrentState()->exit(this->gameObjectPtr.get());
+        }
 
-		PhysicsPlayerControllerComponent* physicsPlayerControllerComponent = dynamic_cast<PhysicsPlayerControllerComponent*>(this->physicsActiveComponent);
-		if (nullptr != physicsPlayerControllerComponent)
-		{
-			// Deactivates the movement, because internally newtons player body update would run and let the player fall, even he is not active yet via the walking state on a planet
-			physicsPlayerControllerComponent->setActivated(false);
-		}
+        PhysicsPlayerControllerComponent* physicsPlayerControllerComponent = dynamic_cast<PhysicsPlayerControllerComponent*>(this->physicsActiveComponent);
+        if (nullptr != physicsPlayerControllerComponent)
+        {
+            // Deactivates the movement, because internally newtons player body update would run and let the player fall, even he is not active yet via the walking state on a planet
+            physicsPlayerControllerComponent->setActivated(false);
+        }
 
-		return success;
-	}
+        return success;
+    }
 
-	void PlayerControllerJumpNRunComponent::update(Ogre::Real dt, bool notSimulating)
-	{
-		PlayerControllerComponent::update(dt, notSimulating);
-		if (false == notSimulating/* && true == this->activated->getBool()*/)
-		{
-			this->stateMachine->update(dt);
-		}
-	}
+    void PlayerControllerJumpNRunComponent::update(Ogre::Real dt, bool notSimulating)
+    {
+        PlayerControllerComponent::update(dt, notSimulating);
+        if (false == notSimulating /* && true == this->activated->getBool()*/)
+        {
+            this->stateMachine->update(dt);
+        }
+    }
 
-	void PlayerControllerJumpNRunComponent::actualizeValue(Variant* attribute)
-	{
-		PlayerControllerComponent::actualizeValue(attribute);
+    void PlayerControllerJumpNRunComponent::actualizeValue(Variant* attribute)
+    {
+        PlayerControllerComponent::actualizeValue(attribute);
 
-		if (PlayerControllerJumpNRunComponent::AttrJumpForce() == attribute->getName())
-		{
-			this->setJumpForce(attribute->getReal());
-		}
-		else if (PlayerControllerJumpNRunComponent::AttrDoubleJump() == attribute->getName())
-		{
-			this->setDoubleJump(attribute->getBool());
-		}
-		else if (PlayerControllerJumpNRunComponent::AttrRunAfterWalkTime() == attribute->getName())
-		{
-			this->setRunAfterWalkTime(attribute->getReal());
-		}
-		else if (PlayerControllerJumpNRunComponent::AttrFor2D() == attribute->getName())
-		{
-			this->setFor2D(attribute->getBool());
-		}
-		else if (PlayerControllerJumpNRunComponent::AttrAnimIdle1() == attribute->getName())
-		{
-			this->setAnimationName(attribute->getListSelectedValue(), 0);
-		}
-		else if (PlayerControllerJumpNRunComponent::AttrAnimIdle2() == attribute->getName())
-		{
-			this->setAnimationName(attribute->getListSelectedValue(), 1);
-		}
-		else if (PlayerControllerJumpNRunComponent::AttrAnimIdle3() == attribute->getName())
-		{
-			this->setAnimationName(attribute->getListSelectedValue(), 2);
-		}
-		else if (PlayerControllerJumpNRunComponent::AttrAnimWalkNorth() == attribute->getName())
-		{
-			this->setAnimationName(attribute->getListSelectedValue(), 3);
-		}
-		else if (PlayerControllerJumpNRunComponent::AttrAnimWalkSouth() == attribute->getName())
-		{
-			this->setAnimationName(attribute->getListSelectedValue(), 4);
-		}
-		else if (PlayerControllerJumpNRunComponent::AttrAnimWalkWest() == attribute->getName())
-		{
-			this->setAnimationName(attribute->getListSelectedValue(), 5);
-		}
-		else if (PlayerControllerJumpNRunComponent::AttrAnimWalkEast() == attribute->getName())
-		{
-			this->setAnimationName(attribute->getListSelectedValue(), 6);
-		}
-		else if (PlayerControllerJumpNRunComponent::AttrAnimJumpStart() == attribute->getName())
-		{
-			this->setAnimationName(attribute->getListSelectedValue(), 7);
-		}
-		else if (PlayerControllerJumpNRunComponent::AttrAnimJumpWalk() == attribute->getName())
-		{
-			this->setAnimationName(attribute->getListSelectedValue(), 8);
-		}
-		else if (PlayerControllerJumpNRunComponent::AttrAnimHighJumpEnd() == attribute->getName())
-		{
-			this->setAnimationName(attribute->getListSelectedValue(), 9);
-		}
-		else if (PlayerControllerJumpNRunComponent::AttrAnimJumpEnd() == attribute->getName())
-		{
-			this->setAnimationName(attribute->getListSelectedValue(), 10);
-		}
-		else if (PlayerControllerJumpNRunComponent::AttrAnimRun() == attribute->getName())
-		{
-			this->setAnimationName(attribute->getListSelectedValue(), 11);
-		}
-		else if (PlayerControllerJumpNRunComponent::AttrAnimSneak() == attribute->getName())
-		{
-			this->setAnimationName(attribute->getListSelectedValue(), 12);
-		}
-		else if (PlayerControllerJumpNRunComponent::AttrAnimDuck() == attribute->getName())
-		{
-			this->setAnimationName(attribute->getListSelectedValue(), 13);
-		}
-	}
+        if (PlayerControllerJumpNRunComponent::AttrJumpForce() == attribute->getName())
+        {
+            this->setJumpForce(attribute->getReal());
+        }
+        else if (PlayerControllerJumpNRunComponent::AttrDoubleJump() == attribute->getName())
+        {
+            this->setDoubleJump(attribute->getBool());
+        }
+        else if (PlayerControllerJumpNRunComponent::AttrRunAfterWalkTime() == attribute->getName())
+        {
+            this->setRunAfterWalkTime(attribute->getReal());
+        }
+        else if (PlayerControllerJumpNRunComponent::AttrFor2D() == attribute->getName())
+        {
+            this->setFor2D(attribute->getBool());
+        }
+        else if (PlayerControllerJumpNRunComponent::AttrAnimIdle1() == attribute->getName())
+        {
+            this->setAnimationName(attribute->getListSelectedValue(), 0);
+        }
+        else if (PlayerControllerJumpNRunComponent::AttrAnimIdle2() == attribute->getName())
+        {
+            this->setAnimationName(attribute->getListSelectedValue(), 1);
+        }
+        else if (PlayerControllerJumpNRunComponent::AttrAnimIdle3() == attribute->getName())
+        {
+            this->setAnimationName(attribute->getListSelectedValue(), 2);
+        }
+        else if (PlayerControllerJumpNRunComponent::AttrAnimWalkNorth() == attribute->getName())
+        {
+            this->setAnimationName(attribute->getListSelectedValue(), 3);
+        }
+        else if (PlayerControllerJumpNRunComponent::AttrAnimWalkSouth() == attribute->getName())
+        {
+            this->setAnimationName(attribute->getListSelectedValue(), 4);
+        }
+        else if (PlayerControllerJumpNRunComponent::AttrAnimWalkWest() == attribute->getName())
+        {
+            this->setAnimationName(attribute->getListSelectedValue(), 5);
+        }
+        else if (PlayerControllerJumpNRunComponent::AttrAnimWalkEast() == attribute->getName())
+        {
+            this->setAnimationName(attribute->getListSelectedValue(), 6);
+        }
+        else if (PlayerControllerJumpNRunComponent::AttrAnimJumpStart() == attribute->getName())
+        {
+            this->setAnimationName(attribute->getListSelectedValue(), 7);
+        }
+        else if (PlayerControllerJumpNRunComponent::AttrAnimJumpWalk() == attribute->getName())
+        {
+            this->setAnimationName(attribute->getListSelectedValue(), 8);
+        }
+        else if (PlayerControllerJumpNRunComponent::AttrAnimHighJumpEnd() == attribute->getName())
+        {
+            this->setAnimationName(attribute->getListSelectedValue(), 9);
+        }
+        else if (PlayerControllerJumpNRunComponent::AttrAnimJumpEnd() == attribute->getName())
+        {
+            this->setAnimationName(attribute->getListSelectedValue(), 10);
+        }
+        else if (PlayerControllerJumpNRunComponent::AttrAnimRun() == attribute->getName())
+        {
+            this->setAnimationName(attribute->getListSelectedValue(), 11);
+        }
+        else if (PlayerControllerJumpNRunComponent::AttrAnimSneak() == attribute->getName())
+        {
+            this->setAnimationName(attribute->getListSelectedValue(), 12);
+        }
+        else if (PlayerControllerJumpNRunComponent::AttrAnimDuck() == attribute->getName())
+        {
+            this->setAnimationName(attribute->getListSelectedValue(), 13);
+        }
+    }
 
-	void PlayerControllerJumpNRunComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
-	{
-		PlayerControllerComponent::writeXML(propertiesXML, doc);
+    void PlayerControllerJumpNRunComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+    {
+        PlayerControllerComponent::writeXML(propertiesXML, doc);
 
-		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "JumpForce"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->jumpForce->getReal())));
-		propertiesXML->append_node(propertyXML);
+        xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "JumpForce"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->jumpForce->getReal())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "DoubleJump"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->doubleJump->getBool())));
-		propertiesXML->append_node(propertyXML);
-		
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "RunAfterWalkTime"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->runAfterWalkTime->getReal())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "DoubleJump"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->doubleJump->getBool())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "For2D"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->for2D->getBool())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "RunAfterWalkTime"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->runAfterWalkTime->getReal())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "AnimIdle1"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[0]->getListSelectedValue())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "For2D"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->for2D->getBool())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "AnimIdle2"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[1]->getListSelectedValue())));
-		propertiesXML->append_node(propertyXML);
+        // Written right after For2D, matching the order init() parses them in - that parser
+        // walks the properties sequentially, so the two have to agree.
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "XJump"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->xJump->getBool())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "AnimIdle3"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[2]->getListSelectedValue())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "UseAcceleration"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useAcceleration->getBool())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "AnimWalkNorth"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[3]->getListSelectedValue())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AccelerationDuration"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->accelerationDuration->getReal())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "AnimWalkSouth"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[4]->getListSelectedValue())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AnimIdle1"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[0]->getListSelectedValue())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "AnimWalkWest"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[5]->getListSelectedValue())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AnimIdle2"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[1]->getListSelectedValue())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "AnimWalkEast"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[6]->getListSelectedValue())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AnimIdle3"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[2]->getListSelectedValue())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "AnimJumpStart"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[7]->getListSelectedValue())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AnimWalkNorth"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[3]->getListSelectedValue())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "AnimJumpWalk"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[8]->getListSelectedValue())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AnimWalkSouth"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[4]->getListSelectedValue())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "AnimHighJumpEnd"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[9]->getListSelectedValue())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AnimWalkWest"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[5]->getListSelectedValue())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "AnimJumpEnd"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[10]->getListSelectedValue())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AnimWalkEast"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[6]->getListSelectedValue())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "AnimRun"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[11]->getListSelectedValue())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AnimJumpStart"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[7]->getListSelectedValue())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "AnimSneak"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[12]->getListSelectedValue())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AnimJumpWalk"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[8]->getListSelectedValue())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "AnimDuck"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[13]->getListSelectedValue())));
-		propertiesXML->append_node(propertyXML);
-	}
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AnimHighJumpEnd"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[9]->getListSelectedValue())));
+        propertiesXML->append_node(propertyXML);
 
-	void PlayerControllerJumpNRunComponent::setActivated(bool activated)
-	{
-		PlayerControllerComponent::setActivated(activated);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AnimJumpEnd"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[10]->getListSelectedValue())));
+        propertiesXML->append_node(propertyXML);
 
-		if (true == activated)
-		{
-			this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_IDLE_1, this->animations[0]->getListSelectedValue());
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AnimRun"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[11]->getListSelectedValue())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AnimSneak"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[12]->getListSelectedValue())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AnimDuck"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[13]->getListSelectedValue())));
+        propertiesXML->append_node(propertyXML);
+    }
+
+    void PlayerControllerJumpNRunComponent::setActivated(bool activated)
+    {
+        PlayerControllerComponent::setActivated(activated);
+
+        if (true == activated)
+        {
+            this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_IDLE_1, this->animations[0]->getListSelectedValue());
             this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_IDLE_2, this->animations[1]->getListSelectedValue());
             this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_IDLE_3, this->animations[2]->getListSelectedValue());
             this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_WALK_NORTH, this->animations[3]->getListSelectedValue());
@@ -1759,449 +1789,524 @@ namespace NOWA
             this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_SNEAK, this->animations[12]->getListSelectedValue());
             this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_DUCK, this->animations[13]->getListSelectedValue());
 
-			this->animationBlender->init(NOWA::AnimationBlenderV2::ANIM_IDLE_1);
+            this->animationBlender->init(NOWA::AnimationBlenderV2::ANIM_IDLE_1);
 
-			this->stateMachine->setCurrentState(WalkingStateJumpNRun::getName());
-		}
-	}
+            this->stateMachine->setCurrentState(WalkingStateJumpNRun::getName());
+        }
+    }
 
-	KI::StateMachine<GameObject>* PlayerControllerJumpNRunComponent::getStateMaschine(void) const
-	{
-		return this->stateMachine;
-	}
+    KI::StateMachine<GameObject>* PlayerControllerJumpNRunComponent::getStateMaschine(void) const
+    {
+        return this->stateMachine;
+    }
 
-	void PlayerControllerJumpNRunComponent::setJumpForce(Ogre::Real jumpForce)
-	{
-		this->jumpForce->setValue(jumpForce);
-	}
+    void PlayerControllerJumpNRunComponent::setJumpForce(Ogre::Real jumpForce)
+    {
+        this->jumpForce->setValue(jumpForce);
+    }
 
-	Ogre::Real PlayerControllerJumpNRunComponent::getJumpForce(void) const
-	{
-		return this->jumpForce->getReal();
-	}
+    Ogre::Real PlayerControllerJumpNRunComponent::getJumpForce(void) const
+    {
+        return this->jumpForce->getReal();
+    }
 
-	void PlayerControllerJumpNRunComponent::setDoubleJump(bool doubleJump)
-	{
-		this->doubleJump->setValue(doubleJump);
-	}
+    void PlayerControllerJumpNRunComponent::setDoubleJump(bool doubleJump)
+    {
+        this->doubleJump->setValue(doubleJump);
+    }
 
-	bool PlayerControllerJumpNRunComponent::getDoubleJump(void) const
-	{
-		return this->doubleJump->getBool();
-	}
-	
-	void PlayerControllerJumpNRunComponent::setRunAfterWalkTime(Ogre::Real runAfterWalkTime)
-	{
-		this->runAfterWalkTime->setValue(runAfterWalkTime);
-	}
-	
-	Ogre::Real PlayerControllerJumpNRunComponent::getRunAfterWalkTime(void) const
-	{
-		return this->runAfterWalkTime->getReal();
-	}
+    bool PlayerControllerJumpNRunComponent::getDoubleJump(void) const
+    {
+        return this->doubleJump->getBool();
+    }
 
-	void PlayerControllerJumpNRunComponent::setFor2D(bool for2D)
-	{
-		this->for2D->setValue(for2D);
-	}
+    void PlayerControllerJumpNRunComponent::setRunAfterWalkTime(Ogre::Real runAfterWalkTime)
+    {
+        this->runAfterWalkTime->setValue(runAfterWalkTime);
+    }
 
-	bool PlayerControllerJumpNRunComponent::getIsFor2D(void) const
-	{
-		return this->for2D->getBool();
-	}
+    Ogre::Real PlayerControllerJumpNRunComponent::getRunAfterWalkTime(void) const
+    {
+        return this->runAfterWalkTime->getReal();
+    }
 
-	Ogre::String PlayerControllerJumpNRunComponent::getClassName(void) const
-	{
-		return "PlayerControllerJumpNRunComponent";
-	}
+    void PlayerControllerJumpNRunComponent::setFor2D(bool for2D)
+    {
+        this->for2D->setValue(for2D);
+    }
 
-	Ogre::String PlayerControllerJumpNRunComponent::getParentClassName(void) const
-	{
-		return "PlayerControllerComponent";
-	}
+    bool PlayerControllerJumpNRunComponent::getIsFor2D(void) const
+    {
+        return this->for2D->getBool();
+    }
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////
-	
-	PlayerControllerJumpNRunLuaComponent::PlayerControllerJumpNRunLuaComponent()
-		: PlayerControllerComponent(),
-		luaStateMachine(nullptr),
-		startStateName(new Variant(PlayerControllerJumpNRunLuaComponent::AttrStartStateName(), "MyState", this->attributes))
-	{
-		
-	}
+    void PlayerControllerJumpNRunComponent::setXJump(bool xJump)
+    {
+        this->xJump->setValue(xJump);
+    }
 
-	PlayerControllerJumpNRunLuaComponent::~PlayerControllerJumpNRunLuaComponent()
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlayerControllerJumpNRunLuaComponent] Destructor player controller 3D Lua component for game object: " + this->gameObjectPtr->getName());
+    bool PlayerControllerJumpNRunComponent::getXJump(void) const
+    {
+        return this->xJump->getBool();
+    }
 
-		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PlayerControllerJumpNRunLuaComponent::handleLuaScriptConnected), EventDataLuaScriptConnected::getStaticEventType());
+    void PlayerControllerJumpNRunComponent::setUseAcceleration(bool useAcceleration)
+    {
+        this->useAcceleration->setValue(useAcceleration);
+    }
 
-		if (this->luaStateMachine)
-		{
-			delete this->luaStateMachine;
-			this->luaStateMachine = nullptr;
-		}
-	}
+    bool PlayerControllerJumpNRunComponent::getUseAcceleration(void) const
+    {
+        return this->useAcceleration->getBool();
+    }
 
-	bool PlayerControllerJumpNRunLuaComponent::init(rapidxml::xml_node<>*& propertyElement)
-	{
-		bool success = PlayerControllerComponent::init(propertyElement);
+    void PlayerControllerJumpNRunComponent::setAccelerationDuration(Ogre::Real accelerationDuration)
+    {
+        if (accelerationDuration < 0.1f)
+        {
+            // Guards the division in the ramp below and keeps a value of zero from meaning
+            // "instantly at max speed", which would make the attribute pointless.
+            accelerationDuration = 0.1f;
+        }
+        this->accelerationDuration->setValue(accelerationDuration);
+    }
 
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "StartStateName")
-		{
-			this->startStateName->setValue(XMLConverter::getAttrib(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
+    Ogre::Real PlayerControllerJumpNRunComponent::getAccelerationDuration(void) const
+    {
+        return this->accelerationDuration->getReal();
+    }
 
-		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PlayerControllerJumpNRunLuaComponent::handleLuaScriptConnected), EventDataLuaScriptConnected::getStaticEventType());
+    void PlayerControllerJumpNRunComponent::reactOnDirectionChanged(luabind::object closureFunction)
+    {
+        // Replacing, not appending: calling this repeatedly leaves exactly one reaction.
+        this->directionChangedClosureFunction = closureFunction;
+    }
 
-		return success;
-	}
+    void PlayerControllerJumpNRunComponent::reactOnJump(luabind::object closureFunction)
+    {
+        this->jumpClosureFunction = closureFunction;
+    }
 
-	GameObjectCompPtr PlayerControllerJumpNRunLuaComponent::clone(GameObjectPtr clonedGameObjectPtr)
-	{
-		PlayerControllerJumpNRunLuaCompPtr clonedCompPtr(boost::make_shared<PlayerControllerJumpNRunLuaComponent>());
+    void PlayerControllerJumpNRunComponent::reactOnLand(luabind::object closureFunction)
+    {
+        this->landClosureFunction = closureFunction;
+    }
 
-		
-		// Do not clone activated, since its no visible and switched manually in game object controller
-		// clonedCompPtr->setActivated(this->activated->getBool());
+    void PlayerControllerJumpNRunComponent::reactOnAccelerationChanged(luabind::object closureFunction)
+    {
+        this->accelerationChangedClosureFunction = closureFunction;
+    }
 
-		clonedCompPtr->setRotationSpeed(this->rotationSpeed->getReal());
-		clonedCompPtr->setGoalRadius(this->goalRadius->getReal());
-		clonedCompPtr->setAnimationSpeed(this->animationSpeed->getReal());
-		clonedCompPtr->setAcceleration(this->acceleration->getReal());
-		clonedCompPtr->setCategories(this->categories->getString());
-		clonedCompPtr->setUseStandUp(this->useStandUp->getBool());
+    luabind::object PlayerControllerJumpNRunComponent::getDirectionChangedClosure(void) const
+    {
+        return this->directionChangedClosureFunction;
+    }
 
-		clonedCompPtr->setStartStateName(this->startStateName->getString());
-		
-		clonedGameObjectPtr->addComponent(clonedCompPtr);
-		clonedCompPtr->setOwner(clonedGameObjectPtr);
+    luabind::object PlayerControllerJumpNRunComponent::getJumpClosure(void) const
+    {
+        return this->jumpClosureFunction;
+    }
 
-		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
-		return clonedCompPtr;
-	}
+    luabind::object PlayerControllerJumpNRunComponent::getLandClosure(void) const
+    {
+        return this->landClosureFunction;
+    }
 
-	bool PlayerControllerJumpNRunLuaComponent::postInit(void)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlayerControllerJumpNRunLuaComponent] Init player controller 3D Lua component for game object: " + this->gameObjectPtr->getName());
+    luabind::object PlayerControllerJumpNRunComponent::getAccelerationChangedClosure(void) const
+    {
+        return this->accelerationChangedClosureFunction;
+    }
 
-		this->luaStateMachine = new LuaStateMachine<GameObject>(this->gameObjectPtr.get());
+    Ogre::String PlayerControllerJumpNRunComponent::getClassName(void) const
+    {
+        return "PlayerControllerJumpNRunComponent";
+    }
 
-		return PlayerControllerComponent::postInit();
-	}
+    Ogre::String PlayerControllerJumpNRunComponent::getParentClassName(void) const
+    {
+        return "PlayerControllerComponent";
+    }
 
-	bool PlayerControllerJumpNRunLuaComponent::connect(void)
-	{
-		bool success = PlayerControllerComponent::connect();
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-		return success;
-	}
+    PlayerControllerJumpNRunLuaComponent::PlayerControllerJumpNRunLuaComponent() :
+        PlayerControllerComponent(),
+        luaStateMachine(nullptr),
+        startStateName(new Variant(PlayerControllerJumpNRunLuaComponent::AttrStartStateName(), "MyState", this->attributes))
+    {
+    }
 
-	void PlayerControllerJumpNRunLuaComponent::handleLuaScriptConnected(NOWA::EventDataPtr eventData)
-	{
-		boost::shared_ptr<EventDataLuaScriptConnected> castEventData = boost::static_pointer_cast<EventDataLuaScriptConnected>(eventData);
-		// Found the game object
-		if (this->gameObjectPtr->getId() == castEventData->getGameObjectId())
-		{
-			// Call enter on the start state
-			if (nullptr != this->gameObjectPtr->getLuaScript())
-			{
-				// http://www.allacrost.org/wiki/index.php?title=Scripting_Engine
+    PlayerControllerJumpNRunLuaComponent::~PlayerControllerJumpNRunLuaComponent()
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlayerControllerJumpNRunLuaComponent] Destructor player controller 3D Lua component for game object: " + this->gameObjectPtr->getName());
 
-				this->gameObjectPtr->getLuaScript()->setInterfaceFunctionsTemplate(
-					"\n" + this->startStateName->getString() + " = { };\n"
-					"aiLuaComponent = nil;\n\n"
-					+ this->startStateName->getString() + "[\"enter\"] = function(gameObject)\n"
-					"\taiLuaComponent = gameObject:getAiLuaComponent();\nend\n\n"
-					+ this->startStateName->getString() + "[\"execute\"] = function(gameObject, dt)\n\nend\n\n"
-					+ this->startStateName->getString() + "[\"exit\"] = function(gameObject)\n\nend");
+        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PlayerControllerJumpNRunLuaComponent::handleLuaScriptConnected), EventDataLuaScriptConnected::getStaticEventType());
 
-				if (true == this->gameObjectPtr->getLuaScript()->createLuaEnvironmentForStateTable(this->startStateName->getString()))
-				{
-					const luabind::object& compiledStateScriptReference = this->gameObjectPtr->getLuaScript()->getCompiledStateScriptReference();
+        if (this->luaStateMachine)
+        {
+            delete this->luaStateMachine;
+            this->luaStateMachine = nullptr;
+        }
+    }
 
-					// Call the start state name to start the lua file with that state
-					this->luaStateMachine->setCurrentState(compiledStateScriptReference);
-				}
-			}
-		}
-	}
+    bool PlayerControllerJumpNRunLuaComponent::init(rapidxml::xml_node<>*& propertyElement)
+    {
+        bool success = PlayerControllerComponent::init(propertyElement);
 
-	bool PlayerControllerJumpNRunLuaComponent::disconnect(void)
-	{
-		bool success = PlayerControllerComponent::disconnect();
-		
-		return success;
-	}
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "StartStateName")
+        {
+            this->startStateName->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
 
-	void PlayerControllerJumpNRunLuaComponent::update(Ogre::Real dt, bool notSimulating)
-	{
-		PlayerControllerComponent::update(dt, notSimulating);
-		if (false == notSimulating/* && true == this->activated->getBool()*/)
-		{
-			this->luaStateMachine->update(dt);
-		}
-	}
+        AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PlayerControllerJumpNRunLuaComponent::handleLuaScriptConnected), EventDataLuaScriptConnected::getStaticEventType());
 
-	void PlayerControllerJumpNRunLuaComponent::actualizeValue(Variant* attribute)
-	{
-		PlayerControllerComponent::actualizeValue(attribute);
+        return success;
+    }
 
-		if (PlayerControllerJumpNRunLuaComponent::AttrStartStateName() == attribute->getName())
-		{
-			this->setStartStateName(attribute->getString());
-		}
-	}
+    GameObjectCompPtr PlayerControllerJumpNRunLuaComponent::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        PlayerControllerJumpNRunLuaCompPtr clonedCompPtr(boost::make_shared<PlayerControllerJumpNRunLuaComponent>());
 
-	void PlayerControllerJumpNRunLuaComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
-	{
-		PlayerControllerComponent::writeXML(propertiesXML, doc);
+        // Do not clone activated, since its no visible and switched manually in game object controller
+        // clonedCompPtr->setActivated(this->activated->getBool());
 
-		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "StartStateName"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->startStateName->getString())));
-		propertiesXML->append_node(propertyXML);
-	}
+        clonedCompPtr->setRotationSpeed(this->rotationSpeed->getReal());
+        clonedCompPtr->setGoalRadius(this->goalRadius->getReal());
+        clonedCompPtr->setAnimationSpeed(this->animationSpeed->getReal());
+        clonedCompPtr->setAcceleration(this->acceleration->getReal());
+        clonedCompPtr->setCategories(this->categories->getString());
+        clonedCompPtr->setUseStandUp(this->useStandUp->getBool());
 
-	Ogre::String PlayerControllerJumpNRunLuaComponent::getClassName(void) const
-	{
-		return "PlayerControllerJumpNRunLuaComponent";
-	}
+        clonedCompPtr->setStartStateName(this->startStateName->getString());
 
-	Ogre::String PlayerControllerJumpNRunLuaComponent::getParentClassName(void) const
-	{
-		return "PlayerControllerComponent";
-	}
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
 
-	NOWA::KI::LuaStateMachine<GameObject>* PlayerControllerJumpNRunLuaComponent::getStateMachine(void) const
-	{
-		return this->luaStateMachine;
-	}
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+        return clonedCompPtr;
+    }
 
-	void PlayerControllerJumpNRunLuaComponent::setActivated(bool activated)
-	{
-		PlayerControllerComponent::setActivated(activated);
-	}
+    bool PlayerControllerJumpNRunLuaComponent::postInit(void)
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlayerControllerJumpNRunLuaComponent] Init player controller 3D Lua component for game object: " + this->gameObjectPtr->getName());
 
-	void PlayerControllerJumpNRunLuaComponent::setStartStateName(const Ogre::String& startStateName)
-	{
-		this->startStateName->setValue(startStateName);
-	}
+        this->luaStateMachine = new LuaStateMachine<GameObject>(this->gameObjectPtr.get());
 
-	Ogre::String PlayerControllerJumpNRunLuaComponent::getStartStateName(void) const
-	{
-		return this->startStateName->getString();
-	}
+        return PlayerControllerComponent::postInit();
+    }
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////
+    bool PlayerControllerJumpNRunLuaComponent::connect(void)
+    {
+        bool success = PlayerControllerComponent::connect();
 
-	PlayerControllerClickToPointComponent::PlayerControllerClickToPointComponent()
-		: PlayerControllerComponent(),
-		stateMachine(nullptr),
-		// movingBehavior(nullptr),
-		drawPath(false),
-		raySceneQuery(nullptr),
-		// categories(new Variant(PlayerControllerClickToPointComponent::AttrCategories(), Ogre::String("All"), this->attributes)),
-		range(new Variant(PlayerControllerClickToPointComponent::AttrRange(), 100.0f, this->attributes)),
-		pathSlot(new Variant(PlayerControllerClickToPointComponent::AttrPathSlot(), static_cast<int>(0), this->attributes))
-	{
-		this->animations.resize(this->animationsCount);
-		this->animations[0] = new Variant(PlayerControllerClickToPointComponent::AttrAnimIdle1(), std::vector<Ogre::String>(), this->attributes);
+        return success;
+    }
+
+    void PlayerControllerJumpNRunLuaComponent::handleLuaScriptConnected(NOWA::EventDataPtr eventData)
+    {
+        boost::shared_ptr<EventDataLuaScriptConnected> castEventData = boost::static_pointer_cast<EventDataLuaScriptConnected>(eventData);
+        // Found the game object
+        if (this->gameObjectPtr->getId() == castEventData->getGameObjectId())
+        {
+            // Call enter on the start state
+            if (nullptr != this->gameObjectPtr->getLuaScript())
+            {
+                // http://www.allacrost.org/wiki/index.php?title=Scripting_Engine
+
+                this->gameObjectPtr->getLuaScript()->setInterfaceFunctionsTemplate("\n" + this->startStateName->getString() +
+                                                                                   " = { };\n"
+                                                                                   "aiLuaComponent = nil;\n\n" +
+                                                                                   this->startStateName->getString() +
+                                                                                   "[\"enter\"] = function(gameObject)\n"
+                                                                                   "\taiLuaComponent = gameObject:getAiLuaComponent();\nend\n\n" +
+                                                                                   this->startStateName->getString() + "[\"execute\"] = function(gameObject, dt)\n\nend\n\n" + this->startStateName->getString() +
+                                                                                   "[\"exit\"] = function(gameObject)\n\nend");
+
+                if (true == this->gameObjectPtr->getLuaScript()->createLuaEnvironmentForStateTable(this->startStateName->getString()))
+                {
+                    const luabind::object& compiledStateScriptReference = this->gameObjectPtr->getLuaScript()->getCompiledStateScriptReference();
+
+                    // Call the start state name to start the lua file with that state
+                    this->luaStateMachine->setCurrentState(compiledStateScriptReference);
+                }
+            }
+        }
+    }
+
+    bool PlayerControllerJumpNRunLuaComponent::disconnect(void)
+    {
+        bool success = PlayerControllerComponent::disconnect();
+
+        return success;
+    }
+
+    void PlayerControllerJumpNRunLuaComponent::update(Ogre::Real dt, bool notSimulating)
+    {
+        PlayerControllerComponent::update(dt, notSimulating);
+        if (false == notSimulating /* && true == this->activated->getBool()*/)
+        {
+            this->luaStateMachine->update(dt);
+        }
+    }
+
+    void PlayerControllerJumpNRunLuaComponent::actualizeValue(Variant* attribute)
+    {
+        PlayerControllerComponent::actualizeValue(attribute);
+
+        if (PlayerControllerJumpNRunLuaComponent::AttrStartStateName() == attribute->getName())
+        {
+            this->setStartStateName(attribute->getString());
+        }
+    }
+
+    void PlayerControllerJumpNRunLuaComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+    {
+        PlayerControllerComponent::writeXML(propertiesXML, doc);
+
+        xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "StartStateName"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->startStateName->getString())));
+        propertiesXML->append_node(propertyXML);
+    }
+
+    Ogre::String PlayerControllerJumpNRunLuaComponent::getClassName(void) const
+    {
+        return "PlayerControllerJumpNRunLuaComponent";
+    }
+
+    Ogre::String PlayerControllerJumpNRunLuaComponent::getParentClassName(void) const
+    {
+        return "PlayerControllerComponent";
+    }
+
+    NOWA::KI::LuaStateMachine<GameObject>* PlayerControllerJumpNRunLuaComponent::getStateMachine(void) const
+    {
+        return this->luaStateMachine;
+    }
+
+    void PlayerControllerJumpNRunLuaComponent::setActivated(bool activated)
+    {
+        PlayerControllerComponent::setActivated(activated);
+    }
+
+    void PlayerControllerJumpNRunLuaComponent::setStartStateName(const Ogre::String& startStateName)
+    {
+        this->startStateName->setValue(startStateName);
+    }
+
+    Ogre::String PlayerControllerJumpNRunLuaComponent::getStartStateName(void) const
+    {
+        return this->startStateName->getString();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    PlayerControllerClickToPointComponent::PlayerControllerClickToPointComponent() :
+        PlayerControllerComponent(),
+        stateMachine(nullptr),
+        // movingBehavior(nullptr),
+        drawPath(false),
+        raySceneQuery(nullptr),
+        // categories(new Variant(PlayerControllerClickToPointComponent::AttrCategories(), Ogre::String("All"), this->attributes)),
+        range(new Variant(PlayerControllerClickToPointComponent::AttrRange(), 100.0f, this->attributes)),
+        pathSlot(new Variant(PlayerControllerClickToPointComponent::AttrPathSlot(), static_cast<int>(0), this->attributes))
+    {
+        this->animations.resize(this->animationsCount);
+        this->animations[0] = new Variant(PlayerControllerClickToPointComponent::AttrAnimIdle1(), std::vector<Ogre::String>(), this->attributes);
         this->animations[0]->addUserData(GameObject::AttrActionAutoComplete());
-		this->animations[1] = new Variant(PlayerControllerClickToPointComponent::AttrAnimIdle2(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[1] = new Variant(PlayerControllerClickToPointComponent::AttrAnimIdle2(), std::vector<Ogre::String>(), this->attributes);
         this->animations[1]->addUserData(GameObject::AttrActionAutoComplete());
-		this->animations[2] = new Variant(PlayerControllerClickToPointComponent::AttrAnimIdle3(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[2] = new Variant(PlayerControllerClickToPointComponent::AttrAnimIdle3(), std::vector<Ogre::String>(), this->attributes);
         this->animations[2]->addUserData(GameObject::AttrActionAutoComplete());
-		this->animations[3] = new Variant(PlayerControllerClickToPointComponent::AttrAnimWalkNorth(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[3] = new Variant(PlayerControllerClickToPointComponent::AttrAnimWalkNorth(), std::vector<Ogre::String>(), this->attributes);
         this->animations[3]->addUserData(GameObject::AttrActionAutoComplete());
-		this->animations[4] = new Variant(PlayerControllerClickToPointComponent::AttrAnimRun(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[4] = new Variant(PlayerControllerClickToPointComponent::AttrAnimRun(), std::vector<Ogre::String>(), this->attributes);
         this->animations[4]->addUserData(GameObject::AttrActionAutoComplete());
-		this->autoClick = new Variant(PlayerControllerClickToPointComponent::AttrAutoClick(), false, this->attributes);
+        this->autoClick = new Variant(PlayerControllerClickToPointComponent::AttrAutoClick(), false, this->attributes);
 
-		this->autoClick->setDescription("If set to true, the user can hold the middle button and the player will automatically update the waypoints. If set to false, the player must click each time to update the waypoints.");
-	}
+        this->autoClick->setDescription("If set to true, the user can hold the middle button and the player will automatically update the waypoints. If set to false, the player must click each time to update the waypoints.");
+    }
 
-	PlayerControllerClickToPointComponent::~PlayerControllerClickToPointComponent()
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlayerControllerClickToPointComponent] Destructor player controller click to point component for game object: " + this->gameObjectPtr->getName());
+    PlayerControllerClickToPointComponent::~PlayerControllerClickToPointComponent()
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlayerControllerClickToPointComponent] Destructor player controller click to point component for game object: " + this->gameObjectPtr->getName());
 
-		if (nullptr != this->stateMachine)
-		{
-			delete this->stateMachine;
-			this->stateMachine = nullptr;
-		}
-		// Is done in onRemoveComponent
-		/*if (nullptr != this->movingBehavior)
-		{
-			delete this->movingBehavior;
-			this->movingBehavior = nullptr;
-		}*/
-	}
+        if (nullptr != this->stateMachine)
+        {
+            delete this->stateMachine;
+            this->stateMachine = nullptr;
+        }
+        // Is done in onRemoveComponent
+        /*if (nullptr != this->movingBehavior)
+        {
+            delete this->movingBehavior;
+            this->movingBehavior = nullptr;
+        }*/
+    }
 
-	bool PlayerControllerClickToPointComponent::init(rapidxml::xml_node<>*& propertyElement)
-	{
-		bool success = PlayerControllerComponent::init(propertyElement);
+    bool PlayerControllerClickToPointComponent::init(rapidxml::xml_node<>*& propertyElement)
+    {
+        bool success = PlayerControllerComponent::init(propertyElement);
 
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Categories")
-		{
-			this->categories->setValue(XMLConverter::getAttrib(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Range")
-		{
-			this->range->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "PathSlot")
-		{
-			this->pathSlot->setValue(XMLConverter::getAttribInt(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimIdle1")
-		{
-			this->animations[0]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimIdle2")
-		{
-			this->animations[1]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimIdle3")
-		{
-			this->animations[2]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimWalkNorth")
-		{
-			this->animations[3]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimRun")
-		{
-			this->animations[4]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AutoClick")
-		{
-			this->autoClick->setValue(XMLConverter::getAttribBool(propertyElement, "data", "None"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Categories")
+        {
+            this->categories->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Range")
+        {
+            this->range->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "PathSlot")
+        {
+            this->pathSlot->setValue(XMLConverter::getAttribInt(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimIdle1")
+        {
+            this->animations[0]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimIdle2")
+        {
+            this->animations[1]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimIdle3")
+        {
+            this->animations[2]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimWalkNorth")
+        {
+            this->animations[3]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimRun")
+        {
+            this->animations[4]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AutoClick")
+        {
+            this->autoClick->setValue(XMLConverter::getAttribBool(propertyElement, "data", "None"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
 
-		return success;
-	}
+        return success;
+    }
 
-	GameObjectCompPtr PlayerControllerClickToPointComponent::clone(GameObjectPtr clonedGameObjectPtr)
-	{
-		PlayerControllerPointToClickCompPtr clonedCompPtr(boost::make_shared<PlayerControllerClickToPointComponent>());
+    GameObjectCompPtr PlayerControllerClickToPointComponent::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        PlayerControllerPointToClickCompPtr clonedCompPtr(boost::make_shared<PlayerControllerClickToPointComponent>());
 
-		
-		// Do not clone activated, since its no visible and switched manually in game object controller
-		// clonedCompPtr->setActivated(this->activated->getBool());
-		clonedCompPtr->setAnimationSpeed(this->animationSpeed->getReal());
-		clonedCompPtr->setRotationSpeed(this->rotationSpeed->getReal());
-		clonedCompPtr->setGoalRadius(this->goalRadius->getReal());
-		clonedCompPtr->setAcceleration(this->acceleration->getReal());
-		clonedCompPtr->setCategories(this->categories->getString());
-		clonedCompPtr->setUseStandUp(this->useStandUp->getBool());
-		clonedCompPtr->setRange(this->range->getReal());
+        // Do not clone activated, since its no visible and switched manually in game object controller
+        // clonedCompPtr->setActivated(this->activated->getBool());
+        clonedCompPtr->setAnimationSpeed(this->animationSpeed->getReal());
+        clonedCompPtr->setRotationSpeed(this->rotationSpeed->getReal());
+        clonedCompPtr->setGoalRadius(this->goalRadius->getReal());
+        clonedCompPtr->setAcceleration(this->acceleration->getReal());
+        clonedCompPtr->setCategories(this->categories->getString());
+        clonedCompPtr->setUseStandUp(this->useStandUp->getBool());
+        clonedCompPtr->setRange(this->range->getReal());
 
-		for (unsigned int i = 0; i < static_cast<unsigned int>(this->animations.size()); i++)
-		{
-			clonedCompPtr->setAnimationName(this->animations[i]->getListSelectedValue(), i);
-		}
+        for (unsigned int i = 0; i < static_cast<unsigned int>(this->animations.size()); i++)
+        {
+            clonedCompPtr->setAnimationName(this->animations[i]->getListSelectedValue(), i);
+        }
 
-		clonedCompPtr->setAutoClick(this->autoClick->getBool());
+        clonedCompPtr->setAutoClick(this->autoClick->getBool());
 
-		clonedGameObjectPtr->addComponent(clonedCompPtr);
-		clonedCompPtr->setOwner(clonedGameObjectPtr);
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
 
-		clonedCompPtr->setPathSlot(this->pathSlot->getInt());
+        clonedCompPtr->setPathSlot(this->pathSlot->getInt());
 
-		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
-		return clonedCompPtr;
-	}
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+        return clonedCompPtr;
+    }
 
-	bool PlayerControllerClickToPointComponent::postInit(void)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlayerControllerClickToPointComponent] Init player controller click to point component for game object: " + this->gameObjectPtr->getName());
+    bool PlayerControllerClickToPointComponent::postInit(void)
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlayerControllerClickToPointComponent] Init player controller click to point component for game object: " + this->gameObjectPtr->getName());
 
-		bool success = PlayerControllerComponent::postInit();
+        bool success = PlayerControllerComponent::postInit();
 
-		this->categoriesId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(this->categories->getString());
+        this->categoriesId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(this->categories->getString());
 
-		Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-		if (nullptr != item)
-		{
-			std::vector<Ogre::String> animationNames = this->animationBlender->getAllAvailableAnimationNames();
-			// Add also none, so that when choosen, no animation will be done, because it does not exist
-			animationNames.insert(animationNames.cbegin(), "None");
+        Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+        if (nullptr != item)
+        {
+            std::vector<Ogre::String> animationNames = this->animationBlender->getAllAvailableAnimationNames();
+            // Add also none, so that when choosen, no animation will be done, because it does not exist
+            animationNames.insert(animationNames.cbegin(), "None");
 
-			// Add all available animation names to list
-			for (unsigned short i = 0; i < this->animationsCount; i++)
-			{
-				this->animations[i]->setValue(animationNames);
-			}
-		}
+            // Add all available animation names to list
+            for (unsigned short i = 0; i < this->animationsCount; i++)
+            {
+                this->animations[i]->setValue(animationNames);
+            }
+        }
 
-		this->stateMachine = new NOWA::KI::StateMachine<GameObject>(this->gameObjectPtr.get());
-		this->stateMachine->registerState<PathFollowState3D>(PathFollowState3D::getName());
+        this->stateMachine = new NOWA::KI::StateMachine<GameObject>(this->gameObjectPtr.get());
+        this->stateMachine->registerState<PathFollowState3D>(PathFollowState3D::getName());
 
-		// Moving behavior is added and create in game object controller, because even this component, which is a player controller, could also have some other ai components
-		// so the moving behavior is shared amongst all components
-		this->movingBehaviorPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->addMovingBehavior(this->gameObjectPtr->getId());
+        // Moving behavior is added and create in game object controller, because even this component, which is a player controller, could also have some other ai components
+        // so the moving behavior is shared amongst all components
+        this->movingBehaviorPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->addMovingBehavior(this->gameObjectPtr->getId());
 
-		if (nullptr == AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast())
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage("PlayerControllerClickToPointComponent: Cannot use click to point controller because, there is no valid OgreRecast path navigation configured. Is it not checked in the settings?");
-			return true;
-		}
+        if (nullptr == AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage("PlayerControllerClickToPointComponent: Cannot use click to point controller because, there is no valid OgreRecast path navigation configured. Is it not checked in the settings?");
+            return true;
+        }
 
-		return success;
-	}
+        return success;
+    }
 
-	bool PlayerControllerClickToPointComponent::connect(void)
-	{
-		GameObjectComponent::connect(); // Lua script is requested
-		bool success = PlayerControllerComponent::connect();
+    bool PlayerControllerClickToPointComponent::connect(void)
+    {
+        GameObjectComponent::connect(); // Lua script is requested
+        bool success = PlayerControllerComponent::connect();
 
-		if (nullptr == this->movingBehaviorPtr)
-		{
-			this->postInit();
-		}
+        if (nullptr == this->movingBehaviorPtr)
+        {
+            this->postInit();
+        }
 
-		if (nullptr != this->animationBlender)
-		{
-			this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_IDLE_1, this->animations[0]->getListSelectedValue());
-			this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_IDLE_2, this->animations[1]->getListSelectedValue());
-			this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_IDLE_3, this->animations[2]->getListSelectedValue());
-			this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_WALK_NORTH, this->animations[3]->getListSelectedValue());
-			this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_RUN, this->animations[4]->getListSelectedValue());
+        if (nullptr != this->animationBlender)
+        {
+            this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_IDLE_1, this->animations[0]->getListSelectedValue());
+            this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_IDLE_2, this->animations[1]->getListSelectedValue());
+            this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_IDLE_3, this->animations[2]->getListSelectedValue());
+            this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_WALK_NORTH, this->animations[3]->getListSelectedValue());
+            this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_RUN, this->animations[4]->getListSelectedValue());
 
-			this->animationBlender->init(NOWA::AnimationBlenderV2::ANIM_IDLE_1);
-		}
+            this->animationBlender->init(NOWA::AnimationBlenderV2::ANIM_IDLE_1);
+        }
 
-		if (nullptr != this->movingBehaviorPtr)
-		{
-			this->movingBehaviorPtr->addBehavior(NOWA::KI::MovingBehavior::FOLLOW_PATH);
-			this->movingBehaviorPtr->setRotationSpeed(this->rotationSpeed->getReal());
-			this->movingBehaviorPtr->setGoalRadius(this->goalRadius->getReal());
-			// this->movingBehaviorPtr->setGoalRadius(0.5f);
-			this->movingBehaviorPtr->setStuckCheckTime(5000.0f);
-			this->movingBehaviorPtr->setFlyMode(false);
-		}
+        if (nullptr != this->movingBehaviorPtr)
+        {
+            this->movingBehaviorPtr->addBehavior(NOWA::KI::MovingBehavior::FOLLOW_PATH);
+            this->movingBehaviorPtr->setRotationSpeed(this->rotationSpeed->getReal());
+            this->movingBehaviorPtr->setGoalRadius(this->goalRadius->getReal());
+            // this->movingBehaviorPtr->setGoalRadius(0.5f);
+            this->movingBehaviorPtr->setStuckCheckTime(5000.0f);
+            this->movingBehaviorPtr->setFlyMode(false);
+        }
 
-		auto* ogreRecast = AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast();
+        auto* ogreRecast = AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast();
         if (nullptr != ogreRecast)
         {
             ogreRecast->createNavQueryForSlot(this->pathSlot->getInt()); // creates slot 0 if missing
         }
 
-		this->stateMachine->setCurrentState(PathFollowState3D::getName());
+        this->stateMachine->setCurrentState(PathFollowState3D::getName());
 
-		// WalkingStateJumpNRun now drives addTime() itself with movement-derived
+        // WalkingStateJumpNRun now drives addTime() itself with movement-derived
         // speed. Tell AnimationComponentV2 to stop self-driving with its default
         // constant speed while this state machine is active.
         auto animationCompPtrV2 = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<AnimationComponentV2>());
@@ -2209,237 +2314,237 @@ namespace NOWA
         {
             animationCompPtrV2->setExternallyDriven(true);
         }
-		
-		return success;
-	}
 
-	bool PlayerControllerClickToPointComponent::disconnect(void)
-	{
-		bool success = PlayerControllerComponent::disconnect();
+        return success;
+    }
 
-		if (nullptr != this->movingBehaviorPtr && nullptr != this->movingBehaviorPtr->getPath())
-		{
-			this->movingBehaviorPtr->getPath()->clear();
-		}
+    bool PlayerControllerClickToPointComponent::disconnect(void)
+    {
+        bool success = PlayerControllerComponent::disconnect();
 
-		// Hand control of addTime() back to AnimationComponentV2's default drive.
+        if (nullptr != this->movingBehaviorPtr && nullptr != this->movingBehaviorPtr->getPath())
+        {
+            this->movingBehaviorPtr->getPath()->clear();
+        }
+
+        // Hand control of addTime() back to AnimationComponentV2's default drive.
         auto animationCompPtrV2 = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<AnimationComponentV2>());
         if (nullptr != animationCompPtrV2)
         {
             animationCompPtrV2->setExternallyDriven(false);
         }
 
-		if (nullptr != this->stateMachine && nullptr != this->stateMachine->getCurrentState())
-		{
-			this->stateMachine->getCurrentState()->exit(this->gameObjectPtr.get());
-		}
+        if (nullptr != this->stateMachine && nullptr != this->stateMachine->getCurrentState())
+        {
+            this->stateMachine->getCurrentState()->exit(this->gameObjectPtr.get());
+        }
 
-		this->animationBlender->clearAnimations();
+        this->animationBlender->clearAnimations();
 
-		if (nullptr != AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast())
+        if (nullptr != AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast())
         {
             AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast()->destroyNavQueryForSlot(this->pathSlot->getInt());
         }
 
-		AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
-		AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
+        AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
+        AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
 
-		return success;
-	}
+        return success;
+    }
 
-	void PlayerControllerClickToPointComponent::onRemoveComponent(void)
-	{
-		GameObjectComponent::onRemoveComponent();
+    void PlayerControllerClickToPointComponent::onRemoveComponent(void)
+    {
+        GameObjectComponent::onRemoveComponent();
 
-		if (nullptr != this->raySceneQuery)
-		{
-			this->gameObjectPtr->getSceneManager()->destroyQuery(this->raySceneQuery);
-			this->raySceneQuery = nullptr;
-		}
+        if (nullptr != this->raySceneQuery)
+        {
+            this->gameObjectPtr->getSceneManager()->destroyQuery(this->raySceneQuery);
+            this->raySceneQuery = nullptr;
+        }
 
-		// Dangerous in destructor, as when exiting the simulation, the game object will be deleted and this function called, to seek for another ai component, that has been deleted
-		// Thus handle it, just when a component is removed
-		bool stillAiComponentActive = false;
-		for (size_t i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
-		{
-			boost::shared_ptr<AiComponent> aiCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<AiComponent>());
-			// Seek for this component and go to the previous one to process
-			if (aiCompPtr != nullptr)
-			{
-				stillAiComponentActive = true;
-				break;
-			}
-		}
+        // Dangerous in destructor, as when exiting the simulation, the game object will be deleted and this function called, to seek for another ai component, that has been deleted
+        // Thus handle it, just when a component is removed
+        bool stillAiComponentActive = false;
+        for (size_t i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
+        {
+            boost::shared_ptr<AiComponent> aiCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<AiComponent>());
+            // Seek for this component and go to the previous one to process
+            if (aiCompPtr != nullptr)
+            {
+                stillAiComponentActive = true;
+                break;
+            }
+        }
 
-		// If there is no ai component for this game object anymore, remove the behavior
-		if (false == stillAiComponentActive)
-		{
-			AppStateManager::getSingletonPtr()->getGameObjectController()->removeMovingBehavior(this->gameObjectPtr->getId());
-		}
+        // If there is no ai component for this game object anymore, remove the behavior
+        if (false == stillAiComponentActive)
+        {
+            AppStateManager::getSingletonPtr()->getGameObjectController()->removeMovingBehavior(this->gameObjectPtr->getId());
+        }
 
-		AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
-		AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
-	}
+        AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
+        AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
+    }
 
-	void PlayerControllerClickToPointComponent::update(Ogre::Real dt, bool notSimulating)
-	{
-		PlayerControllerComponent::update(dt, notSimulating);
-		if (false == notSimulating /*&& true == this->activated->getBool()*/)
-		{
-			this->stateMachine->update(dt);
-		}
-		/*if (true == this->bShowDebugData)
-		{
-			if (nullptr != this->movingBehaviorPtr)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MovingBehavior] Current behavior: " + this->movingBehaviorPtr->getCurrentBehavior());
-			}
-		}*/
-	}
+    void PlayerControllerClickToPointComponent::update(Ogre::Real dt, bool notSimulating)
+    {
+        PlayerControllerComponent::update(dt, notSimulating);
+        if (false == notSimulating /*&& true == this->activated->getBool()*/)
+        {
+            this->stateMachine->update(dt);
+        }
+        /*if (true == this->bShowDebugData)
+        {
+            if (nullptr != this->movingBehaviorPtr)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MovingBehavior] Current behavior: " + this->movingBehaviorPtr->getCurrentBehavior());
+            }
+        }*/
+    }
 
-	void PlayerControllerClickToPointComponent::actualizeValue(Variant* attribute)
-	{
-		PlayerControllerComponent::actualizeValue(attribute);
+    void PlayerControllerClickToPointComponent::actualizeValue(Variant* attribute)
+    {
+        PlayerControllerComponent::actualizeValue(attribute);
 
-		if (PlayerControllerClickToPointComponent::AttrCategories() == attribute->getName())
-		{
-			this->setCategories(attribute->getString());
-		}
-		else if (PlayerControllerClickToPointComponent::AttrRange() == attribute->getName())
-		{
-			this->setRange(attribute->getReal());
-		}
-		else if (PlayerControllerClickToPointComponent::AttrPathSlot() == attribute->getName())
-		{
-			this->setPathSlot(attribute->getInt());
-		}
-		else if (PlayerControllerClickToPointComponent::AttrAnimIdle1() == attribute->getName())
-		{
-			this->setAnimationName(attribute->getListSelectedValue(), 0);
-		}
-		else if (PlayerControllerClickToPointComponent::AttrAnimIdle2() == attribute->getName())
-		{
-			this->setAnimationName(attribute->getListSelectedValue(), 1);
-		}
-		else if (PlayerControllerClickToPointComponent::AttrAnimIdle3() == attribute->getName())
-		{
-			this->setAnimationName(attribute->getListSelectedValue(), 2);
-		}
-		else if (PlayerControllerClickToPointComponent::AttrAnimWalkNorth() == attribute->getName())
-		{
-			this->setAnimationName(attribute->getListSelectedValue(), 3);
-		}
-		else if (PlayerControllerClickToPointComponent::AttrAnimRun() == attribute->getName())
-		{
-			this->setAnimationName(attribute->getListSelectedValue(), 4);
-		}
-		else if (PlayerControllerClickToPointComponent::AttrAutoClick() == attribute->getName())
-		{
-			this->setAutoClick(attribute->getBool());
-		}
-	}
+        if (PlayerControllerClickToPointComponent::AttrCategories() == attribute->getName())
+        {
+            this->setCategories(attribute->getString());
+        }
+        else if (PlayerControllerClickToPointComponent::AttrRange() == attribute->getName())
+        {
+            this->setRange(attribute->getReal());
+        }
+        else if (PlayerControllerClickToPointComponent::AttrPathSlot() == attribute->getName())
+        {
+            this->setPathSlot(attribute->getInt());
+        }
+        else if (PlayerControllerClickToPointComponent::AttrAnimIdle1() == attribute->getName())
+        {
+            this->setAnimationName(attribute->getListSelectedValue(), 0);
+        }
+        else if (PlayerControllerClickToPointComponent::AttrAnimIdle2() == attribute->getName())
+        {
+            this->setAnimationName(attribute->getListSelectedValue(), 1);
+        }
+        else if (PlayerControllerClickToPointComponent::AttrAnimIdle3() == attribute->getName())
+        {
+            this->setAnimationName(attribute->getListSelectedValue(), 2);
+        }
+        else if (PlayerControllerClickToPointComponent::AttrAnimWalkNorth() == attribute->getName())
+        {
+            this->setAnimationName(attribute->getListSelectedValue(), 3);
+        }
+        else if (PlayerControllerClickToPointComponent::AttrAnimRun() == attribute->getName())
+        {
+            this->setAnimationName(attribute->getListSelectedValue(), 4);
+        }
+        else if (PlayerControllerClickToPointComponent::AttrAutoClick() == attribute->getName())
+        {
+            this->setAutoClick(attribute->getBool());
+        }
+    }
 
-	void PlayerControllerClickToPointComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
-	{
-		PlayerControllerComponent::writeXML(propertiesXML, doc);
+    void PlayerControllerClickToPointComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+    {
+        PlayerControllerComponent::writeXML(propertiesXML, doc);
 
-		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Categories"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->categories->getString())));
-		propertiesXML->append_node(propertyXML);
+        xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Categories"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->categories->getString())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Range"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->range->getReal())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Range"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->range->getReal())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "PathSlot"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->pathSlot->getUInt())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "PathSlot"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->pathSlot->getUInt())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "AnimIdle1"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[0]->getListSelectedValue())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AnimIdle1"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[0]->getListSelectedValue())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "AnimIdle2"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[1]->getListSelectedValue())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AnimIdle2"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[1]->getListSelectedValue())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "AnimIdle3"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[2]->getListSelectedValue())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AnimIdle3"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[2]->getListSelectedValue())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "AnimWalkNorth"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[3]->getListSelectedValue())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AnimWalkNorth"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[3]->getListSelectedValue())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "AnimRun"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[4]->getListSelectedValue())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AnimRun"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[4]->getListSelectedValue())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "AutoClick"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->autoClick->getBool())));
-		propertiesXML->append_node(propertyXML);
-	}
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AutoClick"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->autoClick->getBool())));
+        propertiesXML->append_node(propertyXML);
+    }
 
-	void PlayerControllerClickToPointComponent::internalShowDebugData(void)
-	{
-		PlayerControllerComponent::internalShowDebugData();
-		this->drawPath = this->bShowDebugData;
-	}
+    void PlayerControllerClickToPointComponent::internalShowDebugData(void)
+    {
+        PlayerControllerComponent::internalShowDebugData();
+        this->drawPath = this->bShowDebugData;
+    }
 
-	Ogre::String PlayerControllerClickToPointComponent::getClassName(void) const
-	{
-		return "PlayerControllerClickToPointComponent";
-	}
+    Ogre::String PlayerControllerClickToPointComponent::getClassName(void) const
+    {
+        return "PlayerControllerClickToPointComponent";
+    }
 
-	Ogre::String PlayerControllerClickToPointComponent::getParentClassName(void) const
-	{
-		return "PlayerControllerComponent";
-	}
+    Ogre::String PlayerControllerClickToPointComponent::getParentClassName(void) const
+    {
+        return "PlayerControllerComponent";
+    }
 
-	void PlayerControllerClickToPointComponent::setActivated(bool activated)
-	{
-		PlayerControllerComponent::setActivated(activated);
-	}
+    void PlayerControllerClickToPointComponent::setActivated(bool activated)
+    {
+        PlayerControllerComponent::setActivated(activated);
+    }
 
-	KI::StateMachine<GameObject>* PlayerControllerClickToPointComponent::getStateMachine(void) const
-	{
-		return this->stateMachine;
-	}
+    KI::StateMachine<GameObject>* PlayerControllerClickToPointComponent::getStateMachine(void) const
+    {
+        return this->stateMachine;
+    }
 
-	NOWA::KI::MovingBehavior* PlayerControllerClickToPointComponent::getMovingBehavior(void) const
-	{
-		return this->movingBehaviorPtr.get();
-	}
+    NOWA::KI::MovingBehavior* PlayerControllerClickToPointComponent::getMovingBehavior(void) const
+    {
+        return this->movingBehaviorPtr.get();
+    }
 
-	void PlayerControllerClickToPointComponent::setRange(Ogre::Real range)
-	{
-		this->range->setValue(range);
-	}
+    void PlayerControllerClickToPointComponent::setRange(Ogre::Real range)
+    {
+        this->range->setValue(range);
+    }
 
-	Ogre::Real PlayerControllerClickToPointComponent::getRange(void) const
-	{
-		return this->range->getReal();
-	}
+    Ogre::Real PlayerControllerClickToPointComponent::getRange(void) const
+    {
+        return this->range->getReal();
+    }
 
-	void PlayerControllerClickToPointComponent::setPathSlot(int pathSlot)
+    void PlayerControllerClickToPointComponent::setPathSlot(int pathSlot)
     {
         if (nullptr == this->gameObjectPtr)
         {
@@ -2482,121 +2587,158 @@ namespace NOWA
         }
     }
 
-	int PlayerControllerClickToPointComponent::getPathSlot(void) const
-	{
-		return this->pathSlot->getUInt();
-	}
+    int PlayerControllerClickToPointComponent::getPathSlot(void) const
+    {
+        return this->pathSlot->getUInt();
+    }
 
-	void PlayerControllerClickToPointComponent::setAutoClick(bool autoClick)
-	{
-		this->autoClick->setValue(autoClick);
-	}
+    void PlayerControllerClickToPointComponent::setAutoClick(bool autoClick)
+    {
+        this->autoClick->setValue(autoClick);
+    }
 
-	bool PlayerControllerClickToPointComponent::getAutoClick(void) const
-	{
-		return this->autoClick->getBool();
-	}
+    bool PlayerControllerClickToPointComponent::getAutoClick(void) const
+    {
+        return this->autoClick->getBool();
+    }
 
-	void PlayerControllerClickToPointComponent::setCategories(const Ogre::String& categories)
-	{
-		this->categories->setValue(categories);
-		this->categoriesId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(categories);
-	}
+    void PlayerControllerClickToPointComponent::setCategories(const Ogre::String& categories)
+    {
+        this->categories->setValue(categories);
+        this->categoriesId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(categories);
+    }
 
-	Ogre::String PlayerControllerClickToPointComponent::getCategories(void) const
-	{
-		return this->categories->getString();
-	}
+    Ogre::String PlayerControllerClickToPointComponent::getCategories(void) const
+    {
+        return this->categories->getString();
+    }
 
-	unsigned int PlayerControllerClickToPointComponent::getCategoriesId(void) const
-	{
-		return this->categoriesId;
-	}
+    unsigned int PlayerControllerClickToPointComponent::getCategoriesId(void) const
+    {
+        return this->categoriesId;
+    }
 
-	bool PlayerControllerClickToPointComponent::getDrawPath(void) const
-	{
-		return this->drawPath;
-	}
+    bool PlayerControllerClickToPointComponent::getDrawPath(void) const
+    {
+        return this->drawPath;
+    }
 
-	Ogre::RaySceneQuery* PlayerControllerClickToPointComponent::getRaySceneQuery(void) const
-	{
-		return this->raySceneQuery;
-	}
+    Ogre::RaySceneQuery* PlayerControllerClickToPointComponent::getRaySceneQuery(void) const
+    {
+        return this->raySceneQuery;
+    }
 
-	//---------------------------WalkingState-------------------
+    //---------------------------WalkingState-------------------
 
-	WalkingStateJumpNRun::WalkingStateJumpNRun()
-		: playerController(nullptr),
-		direction(Direction::NONE),
-		directionChanged(false),
-		oldDirection(Direction::NONE),
-		isJumping(false),
-		keyDirection(Ogre::Vector3::ZERO),
-		boringTimer(5.0f),
-		noMoveTimer(0.0f),
-		jumpForce(0.0f),
-		inAir(false),
-		isAttacking(false),
-		tryJump(false),
-		highFalling(false),
-		jumpKeyPressed(false),
-		jumpCount(0),
-		canDoubleJump(false),
-		walkCount(0.0f),
-		isOnRope(false),
-		groundedOnce(false),
-		duckedOnce(false),
-		hasPhysicsPlayerControllerComponent(false),
-		acceleration(0.5f),
-		hasInputDevice(true),
-		sceneManager(nullptr),
-		walkSound(nullptr),
-		jumpSound(nullptr)
-	{
-		
-	}
+    namespace
+    {
+        // One place for all four player controller closures. The closure object is COPIED
+        // into the command: this state is owned by the component and destroyed with it, so
+        // reading the member a few frames later on the logic thread would touch freed
+        // memory - and unlike a GameObjectComponent there is no shared_from_this() here to
+        // weak-reference.
+        template <class... Args> void enqueuePlayerClosure(luabind::object closureFunction, const char* reactionName, Args... args)
+        {
+            if (false == closureFunction.is_valid())
+            {
+                return;
+            }
 
-	WalkingStateJumpNRun::~WalkingStateJumpNRun()
-	{
-		if (nullptr != this->walkSound)
-		{
-			OgreALModule::getInstance()->deleteSound(this->sceneManager, this->walkSound);
-			this->walkSound = nullptr;
-		}
-		if (nullptr != this->jumpSound)
-		{
-			OgreALModule::getInstance()->deleteSound(this->sceneManager, this->jumpSound);
-			this->jumpSound = nullptr;
-		}
-	}
+            const Ogre::String capturedReactionName = reactionName;
 
-	void WalkingStateJumpNRun::enter(GameObject* player)
-	{
-		this->playerController = NOWA::makeStrongPtr(player->getComponent<PlayerControllerJumpNRunComponent>()).get();
-		this->walkSound = OgreALModule::getInstance()->createSound(this->playerController->getOwner()->getSceneManager(), "PlayerWalk1", "Walk.wav");
-		this->walkSound->setGain(0.5f);
-		this->jumpSound = OgreALModule::getInstance()->createSound(this->playerController->getOwner()->getSceneManager(), "PlayerJump1", "Jump1.wav");
-		this->jumpSound->setGain(0.5f);
+            NOWA::AppStateManager::LogicCommand logicCommand = [closureFunction, capturedReactionName, args...]()
+            {
+                try
+                {
+                    luabind::call_function<void>(closureFunction, args...);
+                }
+                catch (luabind::error& error)
+                {
+                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                    std::stringstream msg;
+                    msg << errorMsg;
 
-		this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_IDLE_1, NOWA::AnimationBlenderV2::BlendThenAnimate, 0.2f, true);
-		this->boringTimer = 0.0f;
-		this->noMoveTimer = 0.0f;
-		// acquire the jump force from attributes
-		// this->jumpForce = this->playerController->getAttributesComponent()->getAttribute("AttributeJumpForce")->getValueReal();
-		this->jumpForce = this->playerController->getJumpForce();
+                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PlayerControllerJumpNRunComponent] Caught error in '" + capturedReactionName + "' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                }
+            };
+            NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+        }
+    }
 
-		PhysicsPlayerControllerComponent* physicsPlayerControllerComponent = dynamic_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent());
-		if (nullptr != physicsPlayerControllerComponent)
-		{
-			this->hasPhysicsPlayerControllerComponent = true;
-			// Just here activate the player for potentional planetary movement
-			physicsPlayerControllerComponent->setActivated(true);
-		}
+    WalkingStateJumpNRun::WalkingStateJumpNRun() :
+        playerController(nullptr),
+        direction(Direction::NONE),
+        directionChanged(false),
+        oldDirection(Direction::NONE),
+        isJumping(false),
+        keyDirection(Ogre::Vector3::ZERO),
+        boringTimer(5.0f),
+        noMoveTimer(0.0f),
+        jumpForce(0.0f),
+        inAir(false),
+        isAttacking(false),
+        tryJump(false),
+        highFalling(false),
+        jumpKeyPressed(false),
+        jumpCount(0),
+        canDoubleJump(false),
+        walkCount(0.0f),
+        isOnRope(false),
+        groundedOnce(false),
+        duckedOnce(false),
+        hasPhysicsPlayerControllerComponent(false),
+        acceleration(0.5f),
+        accelerationTimer(0.0f),
+        lastReportedSpeed(0.0f),
+        fallTimer(0.0f),
+        hasInputDevice(true),
+        sceneManager(nullptr),
+        walkSound(nullptr),
+        jumpSound(nullptr)
+    {
+    }
 
-		this->sceneManager = this->playerController->getOwner()->getSceneManager();
-	}
+    WalkingStateJumpNRun::~WalkingStateJumpNRun()
+    {
+        if (nullptr != this->walkSound)
+        {
+            OgreALModule::getInstance()->deleteSound(this->sceneManager, this->walkSound);
+            this->walkSound = nullptr;
+        }
+        if (nullptr != this->jumpSound)
+        {
+            OgreALModule::getInstance()->deleteSound(this->sceneManager, this->jumpSound);
+            this->jumpSound = nullptr;
+        }
+    }
 
-	void WalkingStateJumpNRun::update(GameObject* player, Ogre::Real dt)
+    void WalkingStateJumpNRun::enter(GameObject* player)
+    {
+        this->playerController = NOWA::makeStrongPtr(player->getComponent<PlayerControllerJumpNRunComponent>()).get();
+        this->walkSound = OgreALModule::getInstance()->createSound(this->playerController->getOwner()->getSceneManager(), "PlayerWalk1", "Walk.wav");
+        this->walkSound->setGain(0.5f);
+        this->jumpSound = OgreALModule::getInstance()->createSound(this->playerController->getOwner()->getSceneManager(), "PlayerJump1", "Jump1.wav");
+        this->jumpSound->setGain(0.5f);
+
+        this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_IDLE_1, NOWA::AnimationBlenderV2::BlendThenAnimate, 0.2f, true);
+        this->boringTimer = 0.0f;
+        this->noMoveTimer = 0.0f;
+        // acquire the jump force from attributes
+        // this->jumpForce = this->playerController->getAttributesComponent()->getAttribute("AttributeJumpForce")->getValueReal();
+        this->jumpForce = this->playerController->getJumpForce();
+
+        PhysicsPlayerControllerComponent* physicsPlayerControllerComponent = dynamic_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent());
+        if (nullptr != physicsPlayerControllerComponent)
+        {
+            this->hasPhysicsPlayerControllerComponent = true;
+            // Just here activate the player for potentional planetary movement
+            physicsPlayerControllerComponent->setActivated(true);
+        }
+
+        this->sceneManager = this->playerController->getOwner()->getSceneManager();
+    }
+
+    void WalkingStateJumpNRun::update(GameObject* player, Ogre::Real dt)
     {
         this->hasInputDevice = true;
 
@@ -2835,40 +2977,126 @@ namespace NOWA
 
                 if (true == movingLeft)
                 {
-                    if (this->playerController->getRunAfterWalkTime() > 0.0f)
+                    if (true == this->playerController->getUseAcceleration())
                     {
-                        this->walkCount += dt;
-                    }
-                    if (this->walkCount >= this->playerController->getRunAfterWalkTime())
-                    {
-                        animId = NOWA::AnimationBlenderV2::ANIM_RUN;
-                        tempSpeed = this->playerController->getPhysicsComponent()->getMaxSpeed() * this->playerController->getMoveWeight();
-                        tempAnimationSpeed *= 0.5f;
+                        // Ramp instead of the hard switch the old code did at
+                        // runAfterWalkTime: the speed rises continuously from getSpeed() to
+                        // getMaxSpeed() over accelerationDuration seconds of uninterrupted
+                        // running. Jumping deliberately does NOT reset the timer - only a
+                        // direction change or hitting something in front does.
+                        this->accelerationTimer += dt;
+
+                        const Ogre::Real rampDuration = this->playerController->getAccelerationDuration();
+                        Ogre::Real rampFactor = this->accelerationTimer / rampDuration;
+                        if (rampFactor > 1.0f)
+                        {
+                            rampFactor = 1.0f;
+                        }
+
+                        const Ogre::Real baseSpeed = this->playerController->getPhysicsComponent()->getSpeed();
+                        const Ogre::Real topSpeed = this->playerController->getPhysicsComponent()->getMaxSpeed();
+                        tempSpeed = (baseSpeed + (topSpeed - baseSpeed) * rampFactor) * this->playerController->getMoveWeight();
+
+                        // Switched to the run animation once the ramp is mostly through, so
+                        // the visuals follow the actual speed rather than a separate timer.
+                        if (rampFactor >= 0.8f)
+                        {
+                            animId = NOWA::AnimationBlenderV2::ANIM_RUN;
+                            tempAnimationSpeed *= 0.5f;
+                        }
+                        else
+                        {
+                            animId = NOWA::AnimationBlenderV2::ANIM_WALK_NORTH;
+                        }
+
+                        // Reported only on a real change, so a script is not flooded with
+                        // one call per frame.
+                        if (Ogre::Math::Abs(tempSpeed - this->lastReportedSpeed) > 0.01f)
+                        {
+                            this->lastReportedSpeed = tempSpeed;
+                            enqueuePlayerClosure(this->playerController->getAccelerationChangedClosure(), "reactOnAccelerationChanged", tempSpeed, topSpeed);
+                        }
                     }
                     else
                     {
-                        tempSpeed = this->playerController->getPhysicsComponent()->getSpeed() * this->playerController->getMoveWeight();
-                        animId = NOWA::AnimationBlenderV2::ANIM_WALK_NORTH;
+                        if (this->playerController->getRunAfterWalkTime() > 0.0f)
+                        {
+                            this->walkCount += dt;
+                        }
+                        if (this->walkCount >= this->playerController->getRunAfterWalkTime())
+                        {
+                            animId = NOWA::AnimationBlenderV2::ANIM_RUN;
+                            tempSpeed = this->playerController->getPhysicsComponent()->getMaxSpeed() * this->playerController->getMoveWeight();
+                            tempAnimationSpeed *= 0.5f;
+                        }
+                        else
+                        {
+                            tempSpeed = this->playerController->getPhysicsComponent()->getSpeed() * this->playerController->getMoveWeight();
+                            animId = NOWA::AnimationBlenderV2::ANIM_WALK_NORTH;
+                        }
                     }
                     this->direction = Direction::LEFT;
                     this->keyDirection = Ogre::Vector3(-1.0f, 0.0f, 0.0f);
                 }
                 else if (true == movingRight)
                 {
-                    if (this->playerController->getRunAfterWalkTime() > 0.0f)
+                    if (true == this->playerController->getUseAcceleration())
                     {
-                        this->walkCount += dt;
-                    }
-                    if (this->walkCount >= this->playerController->getRunAfterWalkTime())
-                    {
-                        animId = NOWA::AnimationBlenderV2::ANIM_RUN;
-                        tempSpeed = this->playerController->getPhysicsComponent()->getMaxSpeed() * this->playerController->getMoveWeight();
-                        tempAnimationSpeed *= 0.5f;
+                        // Ramp instead of the hard switch the old code did at
+                        // runAfterWalkTime: the speed rises continuously from getSpeed() to
+                        // getMaxSpeed() over accelerationDuration seconds of uninterrupted
+                        // running. Jumping deliberately does NOT reset the timer - only a
+                        // direction change or hitting something in front does.
+                        this->accelerationTimer += dt;
+
+                        const Ogre::Real rampDuration = this->playerController->getAccelerationDuration();
+                        Ogre::Real rampFactor = this->accelerationTimer / rampDuration;
+                        if (rampFactor > 1.0f)
+                        {
+                            rampFactor = 1.0f;
+                        }
+
+                        const Ogre::Real baseSpeed = this->playerController->getPhysicsComponent()->getSpeed();
+                        const Ogre::Real topSpeed = this->playerController->getPhysicsComponent()->getMaxSpeed();
+                        tempSpeed = (baseSpeed + (topSpeed - baseSpeed) * rampFactor) * this->playerController->getMoveWeight();
+
+                        // Switched to the run animation once the ramp is mostly through, so
+                        // the visuals follow the actual speed rather than a separate timer.
+                        if (rampFactor >= 0.8f)
+                        {
+                            animId = NOWA::AnimationBlenderV2::ANIM_RUN;
+                            tempAnimationSpeed *= 0.5f;
+                        }
+                        else
+                        {
+                            animId = NOWA::AnimationBlenderV2::ANIM_WALK_NORTH;
+                        }
+
+                        // Reported only on a real change, so a script is not flooded with
+                        // one call per frame.
+                        if (Ogre::Math::Abs(tempSpeed - this->lastReportedSpeed) > 0.01f)
+                        {
+                            this->lastReportedSpeed = tempSpeed;
+                            enqueuePlayerClosure(this->playerController->getAccelerationChangedClosure(), "reactOnAccelerationChanged", tempSpeed, topSpeed);
+                        }
                     }
                     else
                     {
-                        tempSpeed = this->playerController->getPhysicsComponent()->getSpeed() * this->playerController->getMoveWeight();
-                        animId = NOWA::AnimationBlenderV2::ANIM_WALK_NORTH;
+                        if (this->playerController->getRunAfterWalkTime() > 0.0f)
+                        {
+                            this->walkCount += dt;
+                        }
+                        if (this->walkCount >= this->playerController->getRunAfterWalkTime())
+                        {
+                            animId = NOWA::AnimationBlenderV2::ANIM_RUN;
+                            tempSpeed = this->playerController->getPhysicsComponent()->getMaxSpeed() * this->playerController->getMoveWeight();
+                            tempAnimationSpeed *= 0.5f;
+                        }
+                        else
+                        {
+                            tempSpeed = this->playerController->getPhysicsComponent()->getSpeed() * this->playerController->getMoveWeight();
+                            animId = NOWA::AnimationBlenderV2::ANIM_WALK_NORTH;
+                        }
                     }
                     this->direction = Direction::RIGHT;
                     this->keyDirection = Ogre::Vector3(1.0f, 0.0f, 0.0f);
@@ -2878,6 +3106,20 @@ namespace NOWA
                 {
                     this->directionChanged = true;
                     this->walkCount = 0.0f;
+
+                    // A reversal kills the momentum, so the ramp starts over.
+                    this->accelerationTimer = 0.0f;
+                    this->lastReportedSpeed = 0.0f;
+
+                    enqueuePlayerClosure(this->playerController->getDirectionChangedClosure(), "reactOnDirectionChanged", static_cast<int>(this->oldDirection), static_cast<int>(this->direction));
+                }
+
+                // Running into a wall stops the acceleration as well - the player is no
+                // longer making progress, so the ramp must not keep filling up.
+                if (nullptr != this->playerController->getHitGameObjectFront())
+                {
+                    this->accelerationTimer = 0.0f;
+                    this->lastReportedSpeed = 0.0f;
                 }
 
                 if (true == this->directionChanged)
@@ -2973,7 +3215,11 @@ namespace NOWA
             {
                 this->jumpCount += 1;
                 this->canDoubleJump = false;
-                if (this->jumpCount > 2)
+
+                // With xJump the counter must NOT wrap: it keeps rising so every further
+                // press in the air counts as another jump (metroid style). Only the double
+                // jump mode is limited to two.
+                if (false == this->playerController->getXJump() && this->jumpCount > 2)
                 {
                     this->jumpCount = 0;
                 }
@@ -3032,6 +3278,17 @@ namespace NOWA
             this->walkSound->setGain(0.55f);
             this->walkSound->play();
             this->groundedOnce = true;
+
+            // Touchdown: hand the script how long the fall lasted, so it can scale dust,
+            // camera shake or damage by the drop height.
+            enqueuePlayerClosure(this->playerController->getLandClosure(), "reactOnLand", this->fallTimer);
+            this->fallTimer = 0.0f;
+        }
+
+        // Counted while airborne, consumed by the land closure above.
+        if (true == this->inAir)
+        {
+            this->fallTimer += dt;
         }
 
         // Reset groundedOnce once the player has risen above the landing threshold.
@@ -3047,8 +3304,10 @@ namespace NOWA
 
         const bool doNormalJump = this->jumpKeyPressed && false == this->isJumping && false == this->inAir;
         const bool doDoubleJump = this->playerController->getDoubleJump() && this->jumpCount == 2;
+        // xJump overrides double jump: any press while airborne jumps again, without limit.
+        const bool doXJump = this->playerController->getXJump() && this->jumpCount >= 2;
 
-        if (1.0f == this->playerController->getJumpWeight() && (true == doNormalJump || true == doDoubleJump))
+        if (1.0f == this->playerController->getJumpWeight() && (true == doNormalJump || true == doDoubleJump || true == doXJump))
         {
             this->boringTimer = 0.0f;
 
@@ -3070,10 +3329,21 @@ namespace NOWA
                     static_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent())->setJumpSpeed(this->jumpForce * this->playerController->getJumpWeight());
                     static_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent())->jump();
                 }
-                if (this->jumpCount >= 2)
+                // Left alone in xJump mode, see the counter above - resetting it here would
+                // cap the multi jump at two.
+                if (false == this->playerController->getXJump() && this->jumpCount >= 2)
                 {
                     this->jumpCount = 0;
                 }
+
+                // An air jump gets its own animation, so a metroid style multi jump can do a
+                // salto rather than repeating the ground jump.
+                if (true == doDoubleJump || true == doXJump)
+                {
+                    this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_SALTO, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.1f, false);
+                }
+
+                enqueuePlayerClosure(this->playerController->getJumpClosure(), "reactOnJump", static_cast<int>(this->jumpCount));
             }
             else
             {
@@ -3104,7 +3374,6 @@ namespace NOWA
             }
         }
 
-
         // -------------------------------------------------------------------------
         // Velocity decomposition -- preserve vertical (gravity) component, apply
         // horizontal movement in the key direction.
@@ -3122,7 +3391,7 @@ namespace NOWA
             static_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent())->move(0.0f, tempSpeed, heading);
         }
 
-		// -------------------------------------------------------------------------
+        // -------------------------------------------------------------------------
         // Wall separation, expressed as a velocity nudge rather than a raw
         // additive force. A separate additive force fights the moveForce computed
         // below (moveForce = velocityError * mass / timeStep, which targets
@@ -3164,47 +3433,46 @@ namespace NOWA
         this->playerController->getAnimationBlender()->addTime(dt * tempAnimationSpeed / this->playerController->getAnimationBlender()->getLength(), this->playerController->getClassName());
     }
 
-	void WalkingStateJumpNRun::exit(GameObject* player)
-	{
+    void WalkingStateJumpNRun::exit(GameObject* player)
+    {
+    }
 
-	}
+    //---------------------------PathFollowState3D-------------------
 
-	//---------------------------PathFollowState3D-------------------
+    class UpdateCameraBehaviorProcess : public NOWA::Process
+    {
+    public:
+        explicit UpdateCameraBehaviorProcess()
+        {
+        }
 
-	class UpdateCameraBehaviorProcess : public NOWA::Process
-	{
-	public:
-		explicit UpdateCameraBehaviorProcess()
-		{
+    protected:
+        virtual void onInit(void) override
+        {
+            AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
+            AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
 
-		}
-	protected:
-		virtual void onInit(void) override
-		{
-			AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
-			AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
+            this->succeed();
+        }
 
-			this->succeed();
-		}
+        virtual void onUpdate(float dt) override
+        {
+            this->succeed();
+        }
+    };
 
-		virtual void onUpdate(float dt) override
-		{
-			this->succeed();
-		}
-	};
-
-	PathFollowState3D::PathFollowState3D()
-		: playerController(nullptr),
-		animationSpeed(1.0f),
-		boringTimer(5.0f),
-		movingBehavior(nullptr),
-		hasGoal(false),
-		raySceneQuery(nullptr),
-		ogreRecastModule(AppStateManager::getSingletonPtr()->getOgreRecastModule()),
-		canClick(true),
-		mouseX(0),
-		mouseY(0),
-		maxHeightDifference(1.0f),
+    PathFollowState3D::PathFollowState3D() :
+        playerController(nullptr),
+        animationSpeed(1.0f),
+        boringTimer(5.0f),
+        movingBehavior(nullptr),
+        hasGoal(false),
+        raySceneQuery(nullptr),
+        ogreRecastModule(AppStateManager::getSingletonPtr()->getOgreRecastModule()),
+        canClick(true),
+        mouseX(0),
+        mouseY(0),
+        maxHeightDifference(1.0f),
         middleButtonWasDown(false),
         lastPathMouseX(-1),
         lastPathMouseY(-1),
@@ -3214,28 +3482,28 @@ namespace NOWA
         raycastThrottleInterval(0.125f),
         lastKnownClickPosition(Ogre::Vector3::ZERO),
         hasLastKnownClickPosition(false)
-	{
-		/*this->walkSound = OgreALModule::getInstance()->createSound("PlayerWalk1", "Walk.wav");
-		this->walkSound->setGain(0.5f);
-		this->jumpSound = OgreALModule::getInstance()->createSound("PlayerJump1", "Jump1.wav");
-		this->jumpSound->setGain(0.5f);*/
-	}
+    {
+        /*this->walkSound = OgreALModule::getInstance()->createSound("PlayerWalk1", "Walk.wav");
+        this->walkSound->setGain(0.5f);
+        this->jumpSound = OgreALModule::getInstance()->createSound("PlayerJump1", "Jump1.wav");
+        this->jumpSound->setGain(0.5f);*/
+    }
 
-	PathFollowState3D::~PathFollowState3D()
-	{
-		/*if (this->jumpSound)
-		{
-			OgreALModule::getInstance()->deleteSound(this->walkSound);
-			this->walkSound = nullptr;
-		}
-		if (this->jumpSound)
-		{
-			OgreALModule::getInstance()->deleteSound(this->jumpSound);
-			this->jumpSound = nullptr;
-		}*/
-	}
+    PathFollowState3D::~PathFollowState3D()
+    {
+        /*if (this->jumpSound)
+        {
+            OgreALModule::getInstance()->deleteSound(this->walkSound);
+            this->walkSound = nullptr;
+        }
+        if (this->jumpSound)
+        {
+            OgreALModule::getInstance()->deleteSound(this->jumpSound);
+            this->jumpSound = nullptr;
+        }*/
+    }
 
-	void PathFollowState3D::enter(GameObject* player)
+    void PathFollowState3D::enter(GameObject* player)
     {
         this->playerController = NOWA::makeStrongPtr(player->getComponent<PlayerControllerClickToPointComponent>()).get();
 
@@ -3473,9 +3741,8 @@ namespace NOWA
             // pure CPU (shared_ptr cache lookup, no GPU access, no fence). The throttle
             // above limits how often this first-hit stall can occur in autoClick mode.
 
-			Ogre::Camera* affectedCamera = AppStateManager::getSingletonPtr()->getCameraManager()->getCameraForScreenPosition(ms.X.abs, ms.Y.abs, Core::getSingletonPtr()->getOgreRenderWindow());
-            bool success = MathHelper::getInstance()->getRaycastForFrame(ms.X.abs, ms.Y.abs, affectedCamera, Core::getSingletonPtr()->getOgreRenderWindow(), this->raySceneQuery,
-                excludeObjects, clickedPosition);
+            Ogre::Camera* affectedCamera = AppStateManager::getSingletonPtr()->getCameraManager()->getCameraForScreenPosition(ms.X.abs, ms.Y.abs, Core::getSingletonPtr()->getOgreRenderWindow());
+            bool success = MathHelper::getInstance()->getRaycastForFrame(ms.X.abs, ms.Y.abs, affectedCamera, Core::getSingletonPtr()->getOgreRenderWindow(), this->raySceneQuery, excludeObjects, clickedPosition);
 
             if (true == success)
             {
@@ -3487,7 +3754,7 @@ namespace NOWA
                 // http://www.stevefsp.org/projects/rcndoc/prod/classdtNavMeshQuery.html
                 // https://forums.ogre3d.org/viewtopic.php?t=62079
                 // Attention: This line will always find a path, even the user clicked on a non navigable place, so the nearest position to that place is used, which may not be what the user wants for his game
-                 if (this->ogreRecastModule->getOgreRecast()->findNearestPointOnNavmesh(clickedPosition + Ogre::Vector3(0.0f, 0.3f, 0.0f), posOnNavMesh))
+                if (this->ogreRecastModule->getOgreRecast()->findNearestPointOnNavmesh(clickedPosition + Ogre::Vector3(0.0f, 0.3f, 0.0f), posOnNavMesh))
                 {
                     // Check if the result is within an acceptable height range
                     if (std::abs(posOnNavMesh.y - clickedPosition.y) > this->maxHeightDifference)
@@ -3627,12 +3894,12 @@ namespace NOWA
         this->playerController->getAnimationBlender()->addTime(dt * tempAnimationSpeed, this->playerController->getClassName());
     }
 
-	void PathFollowState3D::exit(GameObject* player)
-	{
-		this->playerController->getAnimationBlender()->init(NOWA::AnimationBlenderV2::ANIM_IDLE_1);
-		this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_IDLE_1, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, true);
-		this->boringTimer = 6.0f;
-		this->movingBehavior->removeBehavior(NOWA::KI::MovingBehavior::FOLLOW_PATH);
-	}
+    void PathFollowState3D::exit(GameObject* player)
+    {
+        this->playerController->getAnimationBlender()->init(NOWA::AnimationBlenderV2::ANIM_IDLE_1);
+        this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_IDLE_1, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, true);
+        this->boringTimer = 6.0f;
+        this->movingBehavior->removeBehavior(NOWA::KI::MovingBehavior::FOLLOW_PATH);
+    }
 
 }; // namespace end

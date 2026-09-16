@@ -528,7 +528,7 @@ void LuaWikiPanel::buildEntries(void)
         c += wBr();
         c += wSub("Face a direction / target");
         c += wC("-- Slerp toward a world direction:");
-        c += wC("local q = MathHelper:faceDirectionSlerp(");
+        c += wC("local q = MathHelper:faceDirection(");
         c += wC("    go:getOrientation(), Vector3.NEGATIVE_UNIT_Z,");
         c += wC("    go:getDefaultDirection(), dt, 1200)");
         c += wC("controller:move(0, 0, q:getYaw(true))");
@@ -1697,7 +1697,7 @@ void LuaWikiPanel::buildEntries(void)
         c += wC("    go:getSceneNode(), target:getSceneNode(), go:getDefaultDirection())");
         c += wBr();
         c += wC("-- Smooth slerp toward a world direction (use in update loop):");
-        c += wC("local q = MathHelper:faceDirectionSlerp(");
+        c += wC("local q = MathHelper:faceDirection(");
         c += wC("    go:getOrientation(),     -- current");
         c += wC("    Vector3.NEGATIVE_UNIT_Z, -- target direction");
         c += wC("    go:getDefaultDirection(), dt, 1200)  -- speed");

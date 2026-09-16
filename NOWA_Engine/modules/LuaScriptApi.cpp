@@ -2360,16 +2360,6 @@ namespace NOWA
 		return makeStrongPtr<FadeComponent>(gameObject->getComponent<FadeComponent>()).get();
 	}
 
-	TagPointComponent* getTagPointComponent(GameObject* gameObject, unsigned int occurrenceIndex)
-	{
-		return makeStrongPtr<TagPointComponent>(gameObject->getComponentWithOccurrence<TagPointComponent>(occurrenceIndex)).get();
-	}
-
-	TagPointComponent* getTagPointComponent(GameObject* gameObject)
-	{
-		return makeStrongPtr<TagPointComponent>(gameObject->getComponent<TagPointComponent>()).get();
-	}
-
 	MoveMathFunctionComponent* getMoveMathFunctionComponent(GameObject* gameObject)
 	{
 		return makeStrongPtr<MoveMathFunctionComponent>(gameObject->getComponent<MoveMathFunctionComponent>()).get();
@@ -2383,11 +2373,6 @@ namespace NOWA
 	TagChildNodeComponent* getTagChildNodeComponent(GameObject* gameObject)
 	{
 		return makeStrongPtr<TagChildNodeComponent>(gameObject->getComponent<TagChildNodeComponent>()).get();
-	}
-
-	NodeTrackComponent* getNodeTrackComponent(GameObject* gameObject)
-	{
-		return makeStrongPtr<NodeTrackComponent>(gameObject->getComponent<NodeTrackComponent>()).get();
 	}
 
 	LineComponent* getLineComponent(GameObject* gameObject)
@@ -2429,6 +2414,11 @@ namespace NOWA
 	{
 		return makeStrongPtr<MyGUIWindowComponent>(gameObject->getComponentWithOccurrence<MyGUIWindowComponent>(occurrenceIndex)).get();
 	}
+
+	AiPathFollowComponent* getAiPathFollowComponentFromIndex(GameObject* gameObject, unsigned int occurrenceIndex)
+    {
+        return makeStrongPtr<AiPathFollowComponent>(gameObject->getComponentWithOccurrence<AiPathFollowComponent>(occurrenceIndex)).get();
+    }
 
 	MyGUITextComponent* getMyGUITextComponent(GameObject* gameObject, unsigned int occurrenceIndex)
 	{
@@ -2990,11 +2980,6 @@ namespace NOWA
 		return makeStrongPtr<FadeComponent>(gameObject->getComponentFromName<FadeComponent>(name)).get();
 	}
 
-	TagPointComponent* getTagPointComponentFromName(GameObject* gameObject, const Ogre::String& name)
-	{
-		return makeStrongPtr<TagPointComponent>(gameObject->getComponentFromName<TagPointComponent>(name)).get();
-	}
-
 	MoveMathFunctionComponent* getMoveMathFunctionComponentFromName(GameObject* gameObject, const Ogre::String& name)
 	{
 		return makeStrongPtr<MoveMathFunctionComponent>(gameObject->getComponentFromName<MoveMathFunctionComponent>(name)).get();
@@ -3003,11 +2988,6 @@ namespace NOWA
 	TagChildNodeComponent* getTagChildNodeComponentFromName(GameObject* gameObject, const Ogre::String& name)
 	{
 		return makeStrongPtr<TagChildNodeComponent>(gameObject->getComponentFromName<TagChildNodeComponent>(name)).get();
-	}
-
-	NodeTrackComponent* getNodeTrackComponentFromName(GameObject* gameObject, const Ogre::String& name)
-	{
-		return makeStrongPtr<NodeTrackComponent>(gameObject->getComponentFromName<NodeTrackComponent>(name)).get();
 	}
 
 	LineComponent* getLineComponentFromName(GameObject* gameObject, const Ogre::String& name)
@@ -3379,13 +3359,10 @@ namespace NOWA
 		gameObjectClass.def("getSpawnComponent", (SpawnComponent* (*)(GameObject*, unsigned int))& getSpawnComponent);
 		gameObjectClass.def("getAiLuaComponent", &getAiLuaComponent);
 		gameObjectClass.def("getPhysicsExplosionComponent", &getPhysicsExplosionComponent);
-		gameObjectClass.def("getTagPointComponent", (TagPointComponent * (*)(GameObject*)) & getTagPointComponent);
-		gameObjectClass.def("getTagPointComponentFromIndex", (TagPointComponent * (*)(GameObject*, unsigned int)) & getTagPointComponent);
 		gameObjectClass.def("getMoveMathFunctionComponent", &getMoveMathFunctionComponent);
 
 		gameObjectClass.def("getTagChildNodeComponent", (TagChildNodeComponent * (*)(GameObject*)) & getTagChildNodeComponent);
 		gameObjectClass.def("getTagChildNodeComponentFromIndex", (TagChildNodeComponent * (*)(GameObject*, unsigned int)) & getTagChildNodeComponent);
-		gameObjectClass.def("getNodeTrackComponent", &getNodeTrackComponent);
 		gameObjectClass.def("getLineComponent", &getLineComponent);
 		gameObjectClass.def("getLinesComponent", &getLinesComponent);
 		gameObjectClass.def("getNodeComponent", &getNodeComponent);
@@ -3431,6 +3408,7 @@ namespace NOWA
 		gameObjectClass.def("getAiMoveComponentFromName", &getAiMoveComponentFromName);
 		gameObjectClass.def("getAiMoveRandomlyComponentFromName", &getAiMoveRandomlyComponentFromName);
 		gameObjectClass.def("getAiPathFollowComponentFromName", &getAiPathFollowComponentFromName);
+        gameObjectClass.def("getAiPathFollowComponentFromIndex", &getAiPathFollowComponentFromIndex);
 		gameObjectClass.def("getAiWanderComponentFromName", &getAiWanderComponentFromName);
 		gameObjectClass.def("getAiFlockingComponentFromName", &getAiFlockingComponentFromName);
 		gameObjectClass.def("getAiRecastPathNavigationComponentFromName", &getAiRecastPathNavigationComponentFromName);
@@ -3506,10 +3484,8 @@ namespace NOWA
 		gameObjectClass.def("getSpawnComponentFromName", &getSpawnComponentFromName);
 		gameObjectClass.def("getAiLuaComponentFromName", &getAiLuaComponentFromName);
 		gameObjectClass.def("getPhysicsExplosionComponentFromName", &getPhysicsExplosionComponentFromName);
-		gameObjectClass.def("getTagPointComponentFromName", &getTagPointComponentFromName);
 		gameObjectClass.def("getMoveMathFunctionComponentFromName", &getMoveMathFunctionComponentFromName);
 		gameObjectClass.def("getTagChildNodeComponentFromName", &getTagChildNodeComponentFromName);
-		gameObjectClass.def("getNodeTrackComponentFromName", &getNodeTrackComponentFromName);
 		gameObjectClass.def("getLineComponentFromName", &getLineComponentFromName);
 		gameObjectClass.def("getLinesComponentFromName", &getLinesComponentFromName);
 		gameObjectClass.def("getNodeComponentFromName", &getNodeComponentFromName);
@@ -3666,12 +3642,9 @@ namespace NOWA
 		AddClassToCollection("GameObject", "SpawnComponent getSpawnComponent()", "Gets the spawn component.");
 		AddClassToCollection("GameObject", "AiLuaComponent getAiLuaComponent()", "Gets the ai lua script component. Requirements: A physics active component and a lua script component.");
 		AddClassToCollection("GameObject", "PhysicsExplosionComponent getPhysicsExplosionComponent()", "Gets the physics explosion component.");
-		AddClassToCollection("GameObject", "TagPointComponent getTagPointComponentFromIndex(unsigned int occurrenceIndex)", "Gets the tag point component by the given occurence index, since a game object may have besides other components several tag point components.");
-		AddClassToCollection("GameObject", "TagPointComponent getTagPointComponent()", "Gets the tag point component. This can be used if the game object just has one tag point component.");
 		AddClassToCollection("GameObject", "MoveMathFunctionComponent getMoveMathFunctionComponent()", "Gets the move math function component.");
 		AddClassToCollection("GameObject", "TagChildNodeComponent getTagChildNodeComponent(unsigned int occurrenceIndex)", "Gets the tag child node component by the given occurence index, since a game object may have besides other components several tag child node components.");
 		AddClassToCollection("GameObject", "TagChildNodeComponent getTagChildNodeComponentFromIndex()", "Gets the tag child node component. This can be used if the game object just has one tag child node component.");
-		AddClassToCollection("GameObject", "NodeTrackComponent getNodeTrackComponent()", "Gets the node track component.");
 		AddClassToCollection("GameObject", "LineComponent getLineComponent()", "Gets the line component.");
 		AddClassToCollection("GameObject", "LinesComponent getLinesComponent()", "Gets the lines component.");
 		AddClassToCollection("GameObject", "NodeComponent getNodeComponent()", "Gets the node component.");
@@ -3715,6 +3688,7 @@ namespace NOWA
 		AddClassToCollection("GameObject", "AiMoveComponent getAiMoveComponentFromName(String name)", "Gets the ai move component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "AiMoveRandomlyComponent getAiMoveRandomlyComponentFromName(String name)", "Gets the ai move randomly component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "AiPathFollowComponent getAiPathFollowComponentFromName(String name)", "Gets the ai path follow component. Requirements: A physics active component.");
+		AddClassToCollection("GameObject", "AiPathFollowComponent getAiPathFollowComponentFromIndex(number index)", "Gets the ai path follow component from the given occurence index. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "AiWanderComponent getAiWanderComponentFromName(String name)", "Gets the ai wander component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "AiFlockingComponent getAiFlockingComponentFromName(String name)", "Gets the ai flocking component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "AiRecastPathNavigationComponent getAiRecastPathNavigationComponentFromName(String name)", "Gets the ai recast path navigation component. Requirements: A physics active component.");
@@ -3789,10 +3763,8 @@ namespace NOWA
 		AddClassToCollection("GameObject", "SpawnComponent getSpawnComponentFromName(String name)", "Gets the spawn component.");
 		AddClassToCollection("GameObject", "AiLuaComponent getAiLuaComponentFromName(String name)", "Gets the ai lua script component. Requirements: A physics active component and a lua script component.");
 		AddClassToCollection("GameObject", "PhysicsExplosionComponent getPhysicsExplosionComponentFromName(String name)", "Gets the physics explosion component.");
-		AddClassToCollection("GameObject", "TagPointComponent getTagPointComponentFromName(String name)", "Gets the tag point component.");
 		AddClassToCollection("GameObject", "MoveMathFunctionComponent getMoveMathFunctionComponentFromName(String name)", "Gets the mvoe math function component.");
 		AddClassToCollection("GameObject", "TagChildNodeComponent getTagChildNodeComponentFromName(String nameunsigned int occurrenceIndex)", "Gets the tag child node component by the given occurence index, since a game object may have besides other components several tag child node components.");
-		AddClassToCollection("GameObject", "NodeTrackComponent getNodeTrackComponentFromName(String name)", "Gets the node track component.");
 		AddClassToCollection("GameObject", "LineComponent getLineComponentFromName(String name)", "Gets the line component.");
 		AddClassToCollection("GameObject", "LinesComponent getLinesComponentFromName(String name)", "Gets the lines component.");
 		AddClassToCollection("GameObject", "NodeComponent getNodeComponentFromName(String name)", "Gets the node component.");
@@ -4921,10 +4893,8 @@ namespace NOWA
 		gameObjectControllerClass.def("castSpawnComponent", &GameObjectController::cast<SpawnComponent>);
 		gameObjectControllerClass.def("castAiLuaComponent", &GameObjectController::cast<AiLuaComponent>);
 		gameObjectControllerClass.def("castPhysicsExplosionComponent", &GameObjectController::cast<PhysicsExplosionComponent>);
-		gameObjectControllerClass.def("castTagPointComponent", &GameObjectController::cast<TagPointComponent>);
 		gameObjectControllerClass.def("castMoveMathFunctionComponent", &GameObjectController::cast<MoveMathFunctionComponent>);
 		gameObjectControllerClass.def("castTagChildNodeComponent", &GameObjectController::cast<TagChildNodeComponent>);
-		gameObjectControllerClass.def("castNodeTrackComponent", &GameObjectController::cast<NodeTrackComponent>);
 		gameObjectControllerClass.def("castLineComponent", &GameObjectController::cast<LineComponent>);
 		gameObjectControllerClass.def("castLinesComponent", &GameObjectController::cast<LinesComponent>);
 		gameObjectControllerClass.def("castNodeComponent", &GameObjectController::cast<NodeComponent>);
@@ -5088,10 +5058,8 @@ namespace NOWA
 		AddClassToCollection("GameObjectController", "SpawnComponent castSpawnComponent(SpawnComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "AiLuaComponent castAiLuaComponent(AiLuaComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PhysicsExplosionComponent castPhysicsExplosionComponent(PhysicsExplosionComponent other)", "Casts an incoming type from function for lua auto completion.");
-		AddClassToCollection("GameObjectController", "TagPointComponent castTagPointComponent(TagPointComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "MoveMathFunctionComponent castMoveMathFunctionComponent(MoveMathFunctionComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "TagChildNodeComponent castTagChildNodeComponent(TagChildNodeComponent other)", "Casts an incoming type from function for lua auto completion.");
-		AddClassToCollection("GameObjectController", "NodeTrackComponent castNodeTrackComponent(NodeTrackComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "LineComponent castLineComponent(LineComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "LinesComponent castLinesComponent(LinesComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "NodeComponent castNodeComponent(NodeComponent other)", "Casts an incoming type from function for lua auto completion.");
@@ -5262,6 +5230,8 @@ namespace NOWA
 				value("ANIM_EAT_2", AnimationBlenderV2::ANIM_EAT_2),
 				value("ANIM_PICKUP_1", AnimationBlenderV2::ANIM_PICKUP_1),
 				value("ANIM_PICKUP_2", AnimationBlenderV2::ANIM_PICKUP_2),
+				value("ANIM_FALL", AnimationBlenderV2::ANIM_FALL),
+				value("ANIM_GETUP", AnimationBlenderV2::ANIM_GETUP), 
 				value("ANIM_ATTACK_1", AnimationBlenderV2::ANIM_ATTACK_1),
 				value("ANIM_ATTACK_2", AnimationBlenderV2::ANIM_ATTACK_2),
 				value("ANIM_ATTACK_3", AnimationBlenderV2::ANIM_ATTACK_3),
@@ -5793,47 +5763,6 @@ namespace NOWA
 		AddClassToCollection("PlayerControllerClickToPointComponent", "MovingBehavior getMovingBehavior()", "Gets moving behavior for direct ai manipulation.");
 	}
 
-	void setSourceId(TagPointComponent* instance, const Ogre::String& sourceId)
-	{
-		instance->setSourceId(Ogre::StringConverter::parseUnsignedLong(sourceId));
-	}
-
-	Ogre::String getSourceId(TagPointComponent* instance)
-	{
-		return Ogre::StringConverter::toString(instance->getSourceId());
-	}
-
-	void bindTagPointComponent(lua_State* lua)
-	{
-		module(lua)
-			[
-				class_<TagPointComponent, GameObjectComponent>("TagPointComponent")
-				// .def("getClassName", &TagPointComponent::getClassName)
-				// .def("clone", &TagPointComponent::clone)
-				// .def("getClassId", &TagPointComponent::getClassId)
-			.def("setTagPointName", &TagPointComponent::setTagPointName)
-			.def("getTagPointName", &TagPointComponent::getTagPointName)
-			// .def("setSourceId", &TagPointComponent::setSourceId)
-			// .def("getSourceId", &TagPointComponent::getSourceId)
-			.def("setSourceId", &setSourceId)
-			.def("getSourceId", &getSourceId)
-			.def("setOffsetPosition", &TagPointComponent::setOffsetPosition)
-			.def("getOffsetPosition", &TagPointComponent::getOffsetPosition)
-			.def("setOffsetOrientation", &TagPointComponent::setOffsetOrientation)
-			.def("getOffsetOrientation", &TagPointComponent::getOffsetOrientation)
-			];
-
-		AddClassToCollection("TagPointComponent", "class inherits GameObjectComponent", TagPointComponent::getStaticInfoText());
-		AddClassToCollection("TagPointComponent", "void setTagPointName(String tagName)", "Sets the tag point name the source game object should be attached to.");
-		AddClassToCollection("TagPointComponent", "String getTagPointName()", "Gets the current active tag point name.");
-		AddClassToCollection("TagPointComponent", "void setSourceId(String sourceId)", "Sets source id for the game object that should be attached to this tag point.");
-		AddClassToCollection("TagPointComponent", "String getSourceId()", "Gets the source id for the game object that is attached to this tag point.");
-		AddClassToCollection("TagPointComponent", "void setOffsetPosition(Vector3 offsetPosition)", "Sets an offset position at which the source game object should be attached.");
-		AddClassToCollection("TagPointComponent", "Vector3 getOffsetPosition()", "Gets the offset position at which the source game object is attached.");
-		AddClassToCollection("TagPointComponent", "void setOffsetOrientation(Vector3 offsetPosition)", "Sets an offset orientation at which the source game object should be attached.");
-		AddClassToCollection("TagPointComponent", "Vector3 getOffsetOrientation()", "Gets the offset orientation at which the source game object is attached.");
-	}
-
 	void bindMoveMathFunctionComponent(lua_State* lua)
 	{
 		module(lua)
@@ -5879,64 +5808,6 @@ namespace NOWA
 		AddClassToCollection("TagChildNodeComponent", "void setSourceId(String sourceId)", "Sets source id for the game object that should be added as a child to this components game object.");
 		AddClassToCollection("TagChildNodeComponent", "String getSourceId()", "Gets the source id for the game object that has been added as a child of this components game object.");
 	}
-
-	void setNodeTrackId(NodeTrackComponent* instance, unsigned int index, const Ogre::String& trackId)
-	{
-		instance->setNodeTrackId(index, Ogre::StringConverter::parseUnsignedLong(trackId));
-	}
-
-	Ogre::String getNodeTrackId(NodeTrackComponent* instance, unsigned int index)
-	{
-		return Ogre::StringConverter::toString(instance->getNodeTrackId(index));
-	}
-
-	void bindNodeTrackComponent(lua_State* lua)
-    {
-        module(lua)
-		[
-			class_<NodeTrackComponent, GameObjectComponent>("NodeTrackComponent")
-            // .def("getClassName", &NodeTrackComponent::getClassName)
-            // .def("clone", &NodeTrackComponent::clone)
-            // .def("getClassId", &NodeTrackComponent::getClassId)
-            .def("setActivated", &NodeTrackComponent::setActivated)
-            .def("isActivated", &NodeTrackComponent::isActivated)
-            .def("setNodeTrackCount", &NodeTrackComponent::setNodeTrackCount)
-            .def("getNodeTrackCount", &NodeTrackComponent::getNodeTrackCount)
-            // .def("setNodeTrackId", &NodeTrackComponent::setNodeTrackId)
-            // .def("getNodeTrackId", &NodeTrackComponent::getNodeTrackId)
-            .def("setNodeTrackId", &setNodeTrackId)
-            .def("getNodeTrackId", &getNodeTrackId)
-            .def("setTimePosition", &NodeTrackComponent::setTimePosition)
-            .def("getTimePosition", &NodeTrackComponent::getTimePosition)
-            .def("setInterpolationMode", &NodeTrackComponent::setInterpolationMode)
-            .def("getInterpolationMode", &NodeTrackComponent::getInterpolationMode)
-            .def("setRotationMode", &NodeTrackComponent::setRotationMode)
-            .def("getRotationMode", &NodeTrackComponent::getRotationMode)
-            .def("setRepeat", &NodeTrackComponent::setRepeat)
-            .def("getRepeat", &NodeTrackComponent::getRepeat)
-            .def("reactOnEndOfPathReached", &NodeTrackComponent::reactOnEndOfPathReached)
-		];
-
-        AddClassToCollection("NodeTrackComponent", "class inherits GameObjectComponent", NodeTrackComponent::getStaticInfoText());
-        AddClassToCollection("NodeTrackComponent", "void setActivated(bool activated)", "Sets whether this node track is activated or not.");
-        AddClassToCollection("NodeTrackComponent", "bool isActivated()", "Gets whether this node track is activated or not.");
-        AddClassToCollection("NodeTrackComponent", "void setNodeTrackCount(unsigned int nodeTrackCount)", "Sets the node track count (how many nodes are used for the tracking).");
-        AddClassToCollection("NodeTrackComponent", "number getNodeTrackCount()", "Gets the node track count.");
-        AddClassToCollection("NodeTrackComponent", "void setNodeTrackId(unsigned int index, String id)",
-            "Sets the node track id for the given index in the node track list with @nodeTrackCount elements. Note: The order is controlled by the index, from which node to which node this game object will be tracked.");
-        AddClassToCollection("NodeTrackComponent", "String getNodeTrackId(unsigned int index)", "Gets node track id from the given node track index from list.");
-        AddClassToCollection("NodeTrackComponent", "void setTimePosition(unsigned int index, float timePosition)", "Sets time position in milliseconds after which this game object should be tracked at the node from the given index.");
-        AddClassToCollection("NodeTrackComponent", "float getTimePosition(unsigned int index)", "Gets time position in milliseconds for the node with the given index.");
-        AddClassToCollection("NodeTrackComponent", "void setInterpolationMode(String interpolationMode)", "Sets the curve interpolation mode how the game object will be moved. Possible values are: 'Spline', 'Linear'");
-        AddClassToCollection("NodeTrackComponent", "String getInterpolationMode()", "Gets the curve interpolation mode how the game object is moved. Possible values are: 'Spline', 'Linear'");
-        AddClassToCollection("NodeTrackComponent", "void setRotationMode(String rotationMode)", "Sets the rotation mode how the game object will be rotated during movement. Possible values are: 'Linear', 'Spherical'");
-        AddClassToCollection("NodeTrackComponent", "String getRotationMode(void)", "Gets the rotation mode how the game object is rotated during movement. Possible values are: 'Linear', 'Spherical'");
-        AddClassToCollection("NodeTrackComponent", "void setRepeat(bool repeat)", "Sets whether the path is played over and over again. If disabled, the game object stops at the last node.");
-        AddClassToCollection("NodeTrackComponent", "bool getRepeat()", "Gets whether the path is played over and over again.");
-        AddClassToCollection("NodeTrackComponent", "void reactOnEndOfPathReached(func closureFunction)",
-            "Sets the closure function which is called when the LAST node of the path has been reached. The closure receives the game object as parameter. With 'Repeat' enabled it fires on every completed lap. Calling this again replaces the "
-            "previous closure, so it is safe to call from a function that runs every frame.");
-    }
 
 	void setTargetIdLine(LineComponent* instance, const Ogre::String& targetId)
 	{
@@ -11338,8 +11209,11 @@ namespace NOWA
 			.def("faceTarget", (Ogre::Quaternion(MathHelper::*)(Ogre::SceneNode*, Ogre::SceneNode*, const Ogre::Vector3&))& MathHelper::faceTarget)
 			.def("faceTarget", (Ogre::Quaternion(MathHelper::*)(Ogre::SceneNode*, Ogre::SceneNode*)) & MathHelper::faceTarget)
             .def("faceTargetOnPlanet", &MathHelper::faceTargetOnPlanet)
+            .def("faceDirection", (Ogre::Quaternion (MathHelper::*)(Ogre::SceneNode*, const Ogre::Vector3&))&MathHelper::faceDirection)
+            .def("faceDirection", (Ogre::Quaternion (MathHelper::*)(Ogre::SceneNode*, const Ogre::Vector3&, const Ogre::Vector3&))&MathHelper::faceDirection)
+            .def("faceDirection", (Ogre::Quaternion (MathHelper::*)(const Ogre::Quaternion&, const Ogre::Vector3&, const Ogre::Vector3&))&MathHelper::faceDirection)
+            .def("faceDirectionSlerp", &MathHelper::faceDirectionSlerp)
 			.def("lookAt", &lookAt)
-			.def("faceDirectionSlerp", &MathHelper::faceDirectionSlerp)
 			.def("getAngle", &MathHelper::getAngle)
 			.def("normalizeDegreeAngle", &MathHelper::normalizeDegreeAngle)
 			.def("normalizeRadianAngle", &MathHelper::normalizeRadianAngle)
@@ -11400,8 +11274,23 @@ namespace NOWA
 			"The normal of the two vectors is used in conjunction with the signed angle parameter, to determine whether the angle between the two vectors is negative or positive. "
 			"This function can be use e.g. when using a gizmo or a grabber to rotate objects via mouse in the correct direction.");
 		AddClassToCollection("MathHelper", "Quaternion lookAt(Vector3 unnormalizedDirection)", "Gets the orientation in order to look a the target direction with a fixed axis. Note: The fixed axis y is used so that the result quaternion will not pitch or roll.");
-		AddClassToCollection("MathHelper", "Quaternion faceDirectionSlerp(Quaternion sourceOrientation, Vector3 direction, Vector3 defaultDirection, float dt, float rotationSpeed)", "Gets the orientation slerp steps in order to face towards a direction vector and also uses the default direction of the source.");
 		
+		AddClassToCollection("MathHelper", "Quaternion faceDirection(SceneNode source, Vector3 direction)",
+            "Gets the orientation in order to face the given world space direction, this orientation can be set directly. "
+            "The direction is projected onto the horizontal plane, so a direction with a vertical component yaws the object "
+            "instead of tipping it forwards or backwards. Assumes the mesh's front axis is local Z.");
+        AddClassToCollection("MathHelper", "Quaternion faceDirection(SceneNode source, Vector3 direction, Vector3 localDirectionVector)",
+            "Gets the orientation in order to face the given world space direction, taking the front axis of the source game object "
+            "into account. localDirectionVector is typically GameObject:getDefaultDirection(). Both the direction and the front axis "
+            "are projected onto the horizontal plane, so the result is a pure yaw around world Y.");
+        AddClassToCollection("MathHelper", "Quaternion faceDirection(Quaternion sourceOrientation, Vector3 direction, Vector3 localDirectionVector)",
+            "Same as the SceneNode variant, but takes the current orientation directly instead of reading it from a scene node - "
+            "useful when the orientation comes from somewhere other than a scene node, e.g. a physics body. "
+            "For a curved surface such as a planet use faceTargetOnPlanet instead, which aligns to a given up vector.");
+
+		AddClassToCollection("MathHelper", "Quaternion faceDirectionSlerp(Quaternion sourceOrientation, Vector3 direction, Vector3 localDirectionVector, float dt, float speed)",
+            "Computes the quaternion using slerp for face a direction.");
+
 		AddClassToCollection("MathHelper", "float normalizeDegreeAngle(float degree)", "Normalizes the degree angle, e.g. a value bigger 180 would normally be set to -180, so after normalization even 181 degree are possible.");
 		AddClassToCollection("MathHelper", "float normalizeRadianAngle(float radian)", "Normalizes the radian angle, e.g. a value bigger pi would normally be set to -pi, so after normalization even pi + 0.03 degree are possible.");
 		AddClassToCollection("MathHelper", "bool degreeAngleEquals(float degree0, float degree1)", "Checks whether the given degree angles are equal. Internally the angles are normalized.");
@@ -11848,10 +11737,8 @@ namespace NOWA
 				bindOceanComponent(this->lua);
 				bindGameObjectTitleComponent(this->lua);
 				bindPlayerControllerComponents(this->lua);
-				bindTagPointComponent(this->lua);
 				bindMoveMathFunctionComponent(this->lua);
 				bindTagChildNodeComponent(this->lua);
-				bindNodeTrackComponent(this->lua);
 				bindLineComponent(this->lua);
 				bindOgreNewt(this->lua);
 				bindJointHandlers(this->lua);
