@@ -27,6 +27,7 @@ namespace NOWA
         smoothValue(smoothValue),
         minimumBounds(Ogre::Vector3::ZERO),
         maximumBounds(Ogre::Vector3::ZERO),
+        trackedCameraPosition(Ogre::Vector3::ZERO),
         pDebugLine(nullptr)
     {
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &FollowCamera2D::handleUpdateBounds), EventDataBoundsUpdated::getStaticEventType());
@@ -34,11 +35,18 @@ namespace NOWA
 
     FollowCamera2D::~FollowCamera2D()
     {
+        Ogre::String id = "FollowCamera2D::moveCamera";
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &FollowCamera2D::handleUpdateBounds), EventDataBoundsUpdated::getStaticEventType());
         this->sceneNode = nullptr;
         if (this->raySceneQuery)
         {
-            ENQUEUE_RENDER_COMMAND("FollowCamera2D::~FollowCamera2D", { this->sceneManager->destroyQuery(this->raySceneQuery); });
+            NOWA::GraphicsModule::RenderCommand oceanRdCmd = [this]
+            {
+                this->sceneManager->destroyQuery(this->raySceneQuery);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(oceanRdCmd), "FollowCamera2D::~FollowCamera2D");
         }
     }
 
@@ -46,6 +54,8 @@ namespace NOWA
     {
         BaseCamera::onSetData();
         this->firstTimeMoveValueSet = true;
+        Ogre::String id = "FollowCamera2D::moveCamera";
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
     }
 
     void FollowCamera2D::setOffset(const Ogre::Vector3& offset)
@@ -79,24 +89,52 @@ namespace NOWA
             Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[FollowCamera2D] Error: Cannot set bounds because the camera does not exist yet. Please call first CameraManager->addCameraBehavior(...)!");
             throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[FollowCamera2D] Error: Cannot set bounds because the camera does not exist yet. Please call first CameraManager->addCameraBehavior(...)!\n", "NOWA");
         }
-        // Corner must be calculated here and once, when the camera position is set to its offset to the player
-        const Ogre::Vector3* corners = this->camera->getWorldSpaceCorners();
+        // BUGFIX: this used to be (viewMatrix * corners[4] / 2.5f) / aspectRatio - corners[4] is
+        // the FAR clip plane (Ogre fills getWorldSpaceCorners() with the near plane's four corners
+        // at indices 0-3, then the far plane's four at 4-7), so this value scaled directly with
+        // FarClipDistance (500 in this scene). FarClipDistance is a rendering/culling setting; it
+        // has nothing to do with how wide the camera's view actually is at the 2D PLAY PLANE, which
+        // is the only distance this "half extent" is meant to describe. The "2.5 is exactly the
+        // value" comment was an empirically-found constant that happened to cancel out the far-clip
+        // scaling for whatever FOV/far-clip combination it was tuned against - it does not hold in
+        // general, and did not hold here: back-computing from the logged positions gave
+        // mostRightUp.x =~ 148, LARGER than this level's entire ~111-unit width. That crosses the
+        // two clamp targets in moveCamera() (minimumBounds.x + mostRightUp.x ends up bigger than
+        // maximumBounds.x - mostRightUp.x), and the position then ping-pongs between those two
+        // impossible values depending on which clamp branch fires - exactly the two-value flicker
+        // seen in testing, and fully explained without needing to involve the render thread at all.
+        //
+        // Replaced with the direct, analytic formula for what is actually wanted: half the visible
+        // height at a given distance is distance * tan(fovy / 2); half the visible width is that
+        // times the aspect ratio. The distance that matters is how far the camera actually sits from
+        // the 2D play plane the followed scene node lives on - which is exactly |offset.z|, since
+        // offset is expressed along the camera's own view axis. This depends on nothing but FOVy,
+        // aspect ratio and the offset the designer already set, so it stays correct however FOVy,
+        // aspect ratio or FarClipDistance are configured, with no empirical constant involved.
+        const Ogre::Real distanceToPlayPlane = Ogre::Math::Abs(this->offset.z);
+        const Ogre::Radian halfFovY = this->camera->getFOVy() * 0.5f;
+        const Ogre::Real halfHeight = distanceToPlayPlane * Ogre::Math::Tan(halfFovY);
+        const Ogre::Real halfWidth = halfHeight * this->camera->getAspectRatio();
 
-        /*auto fl = this->camera->getFocalLength();
-        auto fo = this->camera->getFOVy();
-        auto fd = this->camera->getFOVy().valueDegrees();*/
+        this->mostRightUp = Ogre::Vector3(halfWidth, halfHeight, 0.0f);
 
-        // Note: 2.5 is exactly the value! Even when fovy is changed, the value is correct
-        this->mostRightUp = (this->camera->getViewMatrix(true) * corners[4] / 2.5f) / this->camera->getAspectRatio();
-        // this->mostRightUp += this->borderOffset;
-        this->mostRightUp -= Ogre::Vector3(this->borderOffset.z, this->borderOffset.z, 0.0f);
+        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_NORMAL, "[FollowCamera2D] mostRightUp (half-extent at play plane, distance=" + Ogre::StringConverter::toString(distanceToPlayPlane) +
+                                                                           "): " + Ogre::StringConverter::toString(this->mostRightUp));
+
+        // BUGFIX: this subtracted borderOffset.z from BOTH mostRightUp.x and mostRightUp.y,
+        // ignoring borderOffset.x and borderOffset.y entirely. Invisible with the constructor's
+        // default borderOffset (50, 0, 0) - .z is 0, so the line was a no-op - but set any nonzero
+        // borderOffset.x/.y via setBorderOffset() and it had no effect at all, while a nonzero .z
+        // would shrink both axes together instead of the one it presumably names.
+        this->mostRightUp -= Ogre::Vector3(this->borderOffset.x, this->borderOffset.y, 0.0f);
         this->firstTimeValueSet = true;
         this->firstTimeMoveValueSet = true;
     }
 
     void FollowCamera2D::alwaysShowGameObject(bool show, const Ogre::String& category, Ogre::SceneManager* sceneManager)
     {
-        ENQUEUE_RENDER_COMMAND_MULTI("FollowCamera2D::alwaysShowGameObject", _3(show, category, sceneManager), {
+        NOWA::GraphicsModule::RenderCommand oceanRdCmd = [this, show, category, sceneManager]
+        {
             this->showGameObject = show;
             this->category = category;
             this->sceneManager = sceneManager;
@@ -114,7 +152,8 @@ namespace NOWA
                 // hide all game objects that are in front of the player
                 this->raySceneQuery = this->sceneManager->createRayQuery(Ogre::Ray());
             }
-        });
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(oceanRdCmd), "FollowCamera2D::alwaysShowGameObject");
     }
 
     void FollowCamera2D::setSceneNode(Ogre::SceneNode* sceneNode)
@@ -138,84 +177,109 @@ namespace NOWA
         {
             this->lastMoveValue = Ogre::Vector3::ZERO;
 
-            NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, this->sceneNode->_getDerivedPositionUpdated() + this->offset);
+            // Single write, position only, current orientation preserved - see the header comment
+            // on trackedCameraPosition, and the class-wide BUGFIX note below, for why this used to
+            // be two conflicting writes and why orientation must never come from the scene node.
+            const Ogre::Vector3 initialPosition = this->sceneNode->_getDerivedPositionUpdated() + this->offset;
+            GraphicsModule::getInstance()->setCameraTransform(this->camera, initialPosition, this->camera->getOrientation());
 
-            GraphicsModule::getInstance()->setCameraTransform(this->camera, this->sceneNode->_getDerivedPositionUpdated(), this->sceneNode->_getDerivedOrientationUpdated());
+            // BUGFIX: this class used to have no memory of where it had last told the camera to be,
+            // and read this->camera->getPosition() back instead whenever it needed that value. That
+            // read is answered by the RENDER thread's copy of the camera, which lags the LOGIC
+            // thread - where moveCamera() runs - by however many frames the render queue is behind.
+            // trackedCameraPosition is this class's own, immediately-consistent record instead; see
+            // its full explanation further down where it is actually used for the first time.
+            this->trackedCameraPosition = initialPosition;
 
             this->firstTimeMoveValueSet = false;
         }
 
-        const Ogre::Vector3 cameraPosition = this->camera->getPosition();
-
-        // Read directly from the physics body — NOT from the SceneNode.
-        // SceneNode is updated by the render thread one frame later.
-        Ogre::Vector3 playerPosition;
-        if (nullptr != this->physicsBody)
+        // Always use closure functions in update functions to prevent graphical flickering
+        auto closureFunction = [this](Ogre::Real renderDt)
         {
-            playerPosition = this->physicsBody->getPosition();
-        }
-        else
-        {
-            playerPosition = this->sceneNode->getPosition();
-        }
+            const Ogre::Vector3 cameraPosition = this->trackedCameraPosition;
 
-        // Replace all this->sceneNode->getPosition() below with playerPosition
-        Ogre::Vector3 velocity = Ogre::Vector3::ZERO;
-
-        if (playerPosition.x + this->offset.x - this->mostRightUp.x > this->minimumBounds.x && playerPosition.x + this->offset.x + this->mostRightUp.x < this->maximumBounds.x)
-        {
-            velocity.x = playerPosition.x - cameraPosition.x + this->offset.x;
-
-            if (Ogre::Math::RealEqual(velocity.x, 0.0f))
+            // Read directly from the physics body — NOT from the SceneNode.
+            // SceneNode is updated by the render thread one frame later.
+            Ogre::Vector3 playerPosition;
+            if (nullptr != this->physicsBody)
             {
-                velocity.x = 0.0f;
+                playerPosition = this->physicsBody->getPosition();
             }
-            if (Ogre::Math::RealEqual(velocity.y, 0.0f))
+            else
             {
-                velocity.y = 0.0f;
+                playerPosition = this->sceneNode->getPosition();
             }
-            if (Ogre::Math::RealEqual(velocity.z, 0.0f))
+
+            Ogre::Vector3 velocity = Ogre::Vector3::ZERO;
+
+            if (playerPosition.x + this->offset.x - this->mostRightUp.x > this->minimumBounds.x && playerPosition.x + this->offset.x + this->mostRightUp.x < this->maximumBounds.x)
             {
-                velocity.z = 0.0f;
+                velocity.x = playerPosition.x - cameraPosition.x + this->offset.x;
+
+                if (Ogre::Math::RealEqual(velocity.x, 0.0f))
+                {
+                    velocity.x = 0.0f;
+                }
             }
-        }
 
-        if (playerPosition.y + this->offset.y - this->mostRightUp.y > this->minimumBounds.y && playerPosition.y + this->offset.y + this->mostRightUp.y < this->maximumBounds.y)
-        {
-            velocity.y = playerPosition.y - cameraPosition.y + this->offset.y;
-        }
+            if (playerPosition.y + this->offset.y - this->mostRightUp.y > this->minimumBounds.y && playerPosition.y + this->offset.y + this->mostRightUp.y < this->maximumBounds.y)
+            {
+                velocity.y = playerPosition.y - cameraPosition.y + this->offset.y;
+                if (Ogre::Math::RealEqual(velocity.y, 0.0f))
+                {
+                    velocity.y = 0.0f;
+                }
+            }
 
-        velocity.x = NOWA::MathHelper::getInstance()->lowPassFilter(velocity.x, this->lastMoveValue.x, this->smoothValue);
-        velocity.y = NOWA::MathHelper::getInstance()->lowPassFilter(velocity.y, this->lastMoveValue.y, this->smoothValue);
+            velocity.x = NOWA::MathHelper::getInstance()->lowPassFilter(velocity.x, this->lastMoveValue.x, this->smoothValue);
+            velocity.y = NOWA::MathHelper::getInstance()->lowPassFilter(velocity.y, this->lastMoveValue.y, this->smoothValue);
 
-        Ogre::Vector3 newMove = this->camera->getPosition() + (velocity * this->moveCameraWeight);
-        NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, newMove);
+            this->lastMoveValue = velocity;
 
-        this->lastMoveValue = velocity;
+            // BUGFIX: bounds clamping used to be up to FOUR separate updateCameraPosition() calls in
+            // this one function - the main movement write, then an X clamp, then a Y clamp, each of
+            // them queued independently and each computed from a DIFFERENT position snapshot:
+            //   - The main write used `cameraPosition` (this frame's starting point) plus `velocity`.
+            //   - The X clamp reused the SAME `cameraPosition` for the axes it was not correcting -
+            //     meaning if it fired, it reset Y and Z back to where they were BEFORE this frame's
+            //     movement, silently discarding whatever Y motion the main write had just computed.
+            //   - The Y clamp did the same to X, and read this->camera->getPosition().y freshly rather
+            //     than using `cameraPosition.y` at all - a THIRD independent, and possibly differently
+            //     stale, read of the camera's position within the same function call.
+            //   - All four were queued render commands; whichever one the render thread happened to
+            //     apply LAST for a given frame silently won, with no ordering guarantee visible from
+            //     this thread.
+            //
+            // Folded into one vector, adjusted in place, with exactly ONE write issued at the end - a
+            // clamp on one axis can no longer step on a movement just computed for another, and there
+            // is only ever one answer to "where does the camera end up this frame".
+            Ogre::Vector3 finalPosition = cameraPosition + (velocity * this->moveCameraWeight);
 
-        // Bounds clamping — unchanged, uses cameraPosition not sceneNode
-        Ogre::Real cameraPositionX = cameraPosition.x;
-        Ogre::Real mostRightUpX = this->mostRightUp.x;
-        Ogre::Real borderXRight = cameraPositionX + mostRightUpX;
-        Ogre::Real borderXLeft = cameraPositionX - mostRightUpX;
+            if (finalPosition.x + this->mostRightUp.x > this->maximumBounds.x)
+            {
+                finalPosition.x = this->maximumBounds.x - this->mostRightUp.x;
+            }
+            else if (finalPosition.x - this->mostRightUp.x < this->minimumBounds.x)
+            {
+                finalPosition.x = this->minimumBounds.x + this->mostRightUp.x;
+            }
 
-        if (borderXRight > this->maximumBounds.x)
-        {
-            NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, Ogre::Vector3(this->maximumBounds.x - this->mostRightUp.x, cameraPosition.y, cameraPosition.z));
-        }
-        else if (borderXLeft < this->minimumBounds.x)
-        {
-            NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, Ogre::Vector3(this->minimumBounds.x + this->mostRightUp.x, cameraPosition.y, cameraPosition.z));
-        }
+            if (finalPosition.y + this->mostRightUp.y > this->maximumBounds.y)
+            {
+                finalPosition.y = this->maximumBounds.y - this->mostRightUp.y;
+            }
+            else if (finalPosition.y - this->mostRightUp.y < this->minimumBounds.y)
+            {
+                finalPosition.y = this->minimumBounds.y + this->mostRightUp.y;
+            }
 
-        if (this->camera->getPosition().y + this->mostRightUp.y > this->maximumBounds.y)
-        {
-            NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, Ogre::Vector3(cameraPosition.x, this->maximumBounds.y - this->mostRightUp.y, cameraPosition.z));
-        }
-        else if (this->camera->getPosition().y + this->mostRightUp.y < this->minimumBounds.y)
-        {
-            NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, Ogre::Vector3(cameraPosition.x, this->minimumBounds.y + this->mostRightUp.y, cameraPosition.z));
-        }
+            // Even closure is used and we are already on render thread, never the less this interpolation method still must be used to prevent graphical object jitter!
+            GraphicsModule::getInstance()->updateCameraPosition(this->camera, finalPosition);
+            this->trackedCameraPosition = finalPosition;
+        };
+        Ogre::String id = "FollowCamera2D::moveCamera";
+        NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
     }
 
     void FollowCamera2D::rotateCamera(Ogre::Real dt, bool forJoyStick)

@@ -908,7 +908,9 @@ namespace NOWA
         Ogre::Real localVolumeFraction = this->volume->getReal() * 0.01f;
         Ogre::Real globalVolumeFraction = static_cast<Ogre::Real>(globalVolumePercent) * 0.01f;
 
-        return localVolumeFraction * globalVolumeFraction;
+        Ogre::Real resultVolume = localVolumeFraction * globalVolumeFraction;
+
+        return resultVolume;
     }
 
     OgreAL::Sound* SimpleSoundComponent::getSound(void) const

@@ -28,7 +28,7 @@ namespace NOWA
             this->newSelectedGameObjectIds.clear();
             for (auto& kv : this->selectionManager->getSelectedGameObjects())
             {
-                this->newSelectedGameObjectIds.push_back(kv.second.gameObject->getId());
+                this->newSelectedGameObjectIds.push_back(kv.first);
             }
 
             this->selectionManager->clearSelection();
@@ -174,7 +174,6 @@ namespace NOWA
         if (it != this->selectedGameObjects.end())
         {
             // If object is being deleted, do not touch the GameObject pointer here (could already be invalid).
-            // Just notify selection state change and remove from selection map.
             this->queueSelectionEvent(id, false, false);
             this->selectedGameObjects.erase(it);
         }
@@ -633,7 +632,7 @@ namespace NOWA
         unsigned int i = 0;
         for (auto it = this->selectedGameObjects.cbegin(); it != this->selectedGameObjects.cend(); ++it)
         {
-            gameObjectIds[i++] = it->second.gameObject->getId();
+            gameObjectIds[i++] = it->first;
         }
 
         if (gameObjectIds.size() > 0)

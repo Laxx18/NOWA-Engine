@@ -381,6 +381,14 @@ void ResourcesPanelMeshes::loadMeshes(const Ogre::String& filter)
                 parent->add(child);
             }
         }
+        // Add Platform Boundary
+        {
+            if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralPlatformBoundaryComponent"))
+            {
+                child = new MyGUI::TreeControl::Node("Platform Boundary", "Data");
+                parent->add(child);
+            }
+        }
         // Add Platform
         {
             if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralPlatformComponent"))

@@ -2035,18 +2035,49 @@ namespace NOWA
             {
                 this->isIndices32 = (vao->getIndexBuffer()->getIndexType() == Ogre::IndexBufferPacked::IT_32BIT);
             }
+
+            // FIX: the return value used to be discarded. hasPosition tells us whether this
+            // submesh can be read at all - see the skip below.
             this->detectVertexFormat(vao);
+            if (!this->vertexFormat.hasPosition)
+            {
+                // No position data in this submesh (degenerate/unusual case) - nothing we can
+                // extract from it, skip rather than reading garbage.
+                continue;
+            }
 
             const size_t smVS = vOff, smIS = addedI;
+
+            // FIX (root cause of the crash): previously POSITION, NORMAL and TEXTURE_COORDINATES
+            // were requested unconditionally. VertexArrayObject::readRequests() throws
+            // ItemIdentityException ("Cannot find semantic in VertexArrayObject") the instant ANY
+            // requested semantic is missing from the vertex declaration - exactly what happened
+            // for HollowSphere1.mesh, which is missing normals and/or UVs. detectVertexFormat()
+            // just above already knows exactly which semantics actually exist - we now only
+            // request those, and track their resulting index in reqs dynamically instead of the
+            // previous fixed reqs[1]/reqs[2] positions.
             Ogre::VertexArrayObject::ReadRequestsVec reqs;
             reqs.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_POSITION));
-            reqs.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_NORMAL));
-            reqs.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_TEXTURE_COORDINATES));
+
+            int normalReqIndex = -1;
+            int uvReqIndex = -1;
+
+            if (this->vertexFormat.hasNormal)
+            {
+                normalReqIndex = static_cast<int>(reqs.size());
+                reqs.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_NORMAL));
+            }
+            if (this->vertexFormat.hasUV)
+            {
+                uvReqIndex = static_cast<int>(reqs.size());
+                reqs.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_TEXTURE_COORDINATES));
+            }
+
             vao->readRequests(reqs);
             vao->mapAsyncTickets(reqs);
 
             unsigned int smVC = static_cast<unsigned int>(reqs[0].vertexBuffer->getNumElements());
-            bool isQT = (reqs[1].type == Ogre::VET_SHORT4_SNORM);
+            bool isQT = (normalReqIndex >= 0) && (reqs[normalReqIndex].type == Ogre::VET_SHORT4_SNORM);
 
             for (size_t i = 0; i < smVC; ++i)
             {
@@ -2062,44 +2093,67 @@ namespace NOWA
                     this->vertices[gi] = {p[0], p[1], p[2]};
                 }
 
-                if (isQT)
+                if (normalReqIndex >= 0)
                 {
-                    const Ogre::int16* p = reinterpret_cast<const Ogre::int16*>(reqs[1].data);
-                    Ogre::Quaternion q;
-                    q.x = p[0] / 32767.0f;
-                    q.y = p[1] / 32767.0f;
-                    q.z = p[2] / 32767.0f;
-                    q.w = p[3] / 32767.0f;
-                    float r = (q.w < 0) ? -1.0f : 1.0f;
-                    this->normals[gi] = q.xAxis();
-                    this->tangents[gi] = {q.yAxis().x, q.yAxis().y, q.yAxis().z, r};
-                    this->vertexFormat.hasTangent = true;
-                }
-                else if (reqs[1].type == Ogre::VET_HALF4)
-                {
-                    const Ogre::uint16* p = reinterpret_cast<const Ogre::uint16*>(reqs[1].data);
-                    this->normals[gi] = {Ogre::Bitwise::halfToFloat(p[0]), Ogre::Bitwise::halfToFloat(p[1]), Ogre::Bitwise::halfToFloat(p[2])};
+                    if (isQT)
+                    {
+                        const Ogre::int16* p = reinterpret_cast<const Ogre::int16*>(reqs[normalReqIndex].data);
+                        Ogre::Quaternion q;
+                        q.x = p[0] / 32767.0f;
+                        q.y = p[1] / 32767.0f;
+                        q.z = p[2] / 32767.0f;
+                        q.w = p[3] / 32767.0f;
+                        float r = (q.w < 0) ? -1.0f : 1.0f;
+                        this->normals[gi] = q.xAxis();
+                        this->tangents[gi] = {q.yAxis().x, q.yAxis().y, q.yAxis().z, r};
+                        this->vertexFormat.hasTangent = true;
+                    }
+                    else if (reqs[normalReqIndex].type == Ogre::VET_HALF4)
+                    {
+                        const Ogre::uint16* p = reinterpret_cast<const Ogre::uint16*>(reqs[normalReqIndex].data);
+                        this->normals[gi] = {Ogre::Bitwise::halfToFloat(p[0]), Ogre::Bitwise::halfToFloat(p[1]), Ogre::Bitwise::halfToFloat(p[2])};
+                    }
+                    else
+                    {
+                        const float* p = reinterpret_cast<const float*>(reqs[normalReqIndex].data);
+                        this->normals[gi] = {p[0], p[1], p[2]};
+                    }
                 }
                 else
                 {
-                    const float* p = reinterpret_cast<const float*>(reqs[1].data);
-                    this->normals[gi] = {p[0], p[1], p[2]};
+                    // FIX: no normal data in this mesh at all - fall back to a sane default
+                    // instead of leaving this->normals[gi] uninitialized/garbage.
+                    this->normals[gi] = Ogre::Vector3::UNIT_Y;
                 }
 
-                if (reqs[2].type == Ogre::VET_HALF2)
+                if (uvReqIndex >= 0)
                 {
-                    const Ogre::uint16* p = reinterpret_cast<const Ogre::uint16*>(reqs[2].data);
-                    this->uvCoordinates[gi] = {Ogre::Bitwise::halfToFloat(p[0]), Ogre::Bitwise::halfToFloat(p[1])};
+                    if (reqs[uvReqIndex].type == Ogre::VET_HALF2)
+                    {
+                        const Ogre::uint16* p = reinterpret_cast<const Ogre::uint16*>(reqs[uvReqIndex].data);
+                        this->uvCoordinates[gi] = {Ogre::Bitwise::halfToFloat(p[0]), Ogre::Bitwise::halfToFloat(p[1])};
+                    }
+                    else
+                    {
+                        const float* p = reinterpret_cast<const float*>(reqs[uvReqIndex].data);
+                        this->uvCoordinates[gi] = {p[0], p[1]};
+                    }
                 }
                 else
                 {
-                    const float* p = reinterpret_cast<const float*>(reqs[2].data);
-                    this->uvCoordinates[gi] = {p[0], p[1]};
+                    // FIX: no UV data in this mesh at all - fall back to (0, 0).
+                    this->uvCoordinates[gi] = Ogre::Vector2::ZERO;
                 }
 
                 reqs[0].data += reqs[0].vertexBuffer->getBytesPerElement();
-                reqs[1].data += reqs[1].vertexBuffer->getBytesPerElement();
-                reqs[2].data += reqs[2].vertexBuffer->getBytesPerElement();
+                if (normalReqIndex >= 0)
+                {
+                    reqs[normalReqIndex].data += reqs[normalReqIndex].vertexBuffer->getBytesPerElement();
+                }
+                if (uvReqIndex >= 0)
+                {
+                    reqs[uvReqIndex].data += reqs[uvReqIndex].vertexBuffer->getBytesPerElement();
+                }
             }
             vOff += smVC;
             vao->unmapAsyncTickets(reqs);

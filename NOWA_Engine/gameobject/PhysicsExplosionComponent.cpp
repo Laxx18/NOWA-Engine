@@ -1,180 +1,182 @@
 #include "NOWAPrecompiled.h"
 #include "PhysicsExplosionComponent.h"
-#include "utilities/XMLConverter.h"
+#include "LuaScriptComponent.h"
 #include "PhysicsActiveComponent.h"
 #include "PhysicsArtifactComponent.h"
-#include "modules/LuaScriptApi.h"
-#include "LuaScriptComponent.h"
-#include "main/ProcessManager.h"
 #include "main/AppStateManager.h"
+#include "main/ProcessManager.h"
+#include "modules/LuaScriptApi.h"
+#include "utilities/XMLConverter.h"
 
 namespace NOWA
 {
-	using namespace rapidxml;
-	using namespace luabind;
+    using namespace rapidxml;
+    using namespace luabind;
 
-	class BlastProcess : public NOWA::Process
-	{
-	public:
-		explicit BlastProcess(OgreNewt::Body* body, Ogre::Vector3 directionStrength)
-			: body(body),
-			directionStrength(directionStrength)
-		{
-			// Note: here a vector copy because this process is called at a later time
-		}
-	protected:
-		virtual void onInit(void) override
-		{
-			this->succeed();
-			// Add the impulse in the inverted direction
-			// Attention: 1.0f / 60.0f
-			body->addImpulse(directionStrength, body->getPosition(), 1.0f / 60.0f);
-		}
+    class BlastProcess : public NOWA::Process
+    {
+    public:
+        explicit BlastProcess(OgreNewt::Body* body, Ogre::Vector3 directionStrength) : body(body), directionStrength(directionStrength)
+        {
+            // Note: here a vector copy because this process is called at a later time
+        }
 
-		virtual void onUpdate(float dt) override
-		{
-			this->succeed();
-		}
-	private:
-		OgreNewt::Body* body;
-		Ogre::Vector3 directionStrength;
-	};
+    protected:
+        virtual void onInit(void) override
+        {
+            this->succeed();
+            // Add the impulse in the inverted direction
+            // Attention: 1.0f / 60.0f
+            body->addImpulse(directionStrength, body->getPosition(), 1.0f / 60.0f);
+        }
 
-	///////////////////////////////////////////////////////////////////////////////////////////////
-	
-	PhysicsExplosionComponent::PhysicsExplosionComponent()
-		: GameObjectComponent(),
-		categoryIds(GameObjectController::ALL_CATEGORIES_ID),
-		countDownTimer(0.0f),
-		secondsUpdateTimer(0.0f),
-		explosionCallback(nullptr),
-		activated(new Variant(PhysicsExplosionComponent::AttrActivated(), false, this->attributes)),
-		categories(new Variant(PhysicsExplosionComponent::AttrCategories(), "All", this->attributes)),
-		countDown(new Variant(PhysicsExplosionComponent::AttrCountDown(), 3.0f, this->attributes)),
-		radius(new Variant(PhysicsExplosionComponent::AttrRadius(), 10.0f, this->attributes)),
-		strength(new Variant(PhysicsExplosionComponent::AttrStrength(), static_cast<unsigned int>(20000), this->attributes))
-	{
-		this->countDown->setDescription("The count down in seconds. After that time the explosion will take place.");
-		this->radius->setDescription("The radius in which all game objects are affected by the explosion.");
-		this->strength->setDescription("The explosion strength in newton.");
-		this->strength->setDescription("The affected categories. Categories can be combined, e.g. 'All-Player'.");
-	}
+        virtual void onUpdate(float dt) override
+        {
+            this->succeed();
+        }
 
-	PhysicsExplosionComponent::~PhysicsExplosionComponent()
-	{
-		if (this->sphereSceneQuery)
-		{
-			this->gameObjectPtr->getSceneManager()->destroyQuery(this->sphereSceneQuery);
-			this->sphereSceneQuery = nullptr;
-		}
-		if (this->explosionCallback)
-		{
-			delete this->explosionCallback;
-			this->explosionCallback = nullptr;
-		}
+    private:
+        OgreNewt::Body* body;
+        Ogre::Vector3 directionStrength;
+    };
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsExplosionComponent] Destructor physics explosion component for game object: " + this->gameObjectPtr->getName());
-	}
+    ///////////////////////////////////////////////////////////////////////////////////////////////
 
-	bool PhysicsExplosionComponent::init(rapidxml::xml_node<>*& propertyElement)
-	{
-		GameObjectComponent::init(propertyElement);
+    PhysicsExplosionComponent::PhysicsExplosionComponent() :
+        GameObjectComponent(),
+        categoryIds(GameObjectController::ALL_CATEGORIES_ID),
+        countDownTimer(0.0f),
+        secondsUpdateTimer(0.0f),
+        explosionCallback(nullptr),
+        activated(new Variant(PhysicsExplosionComponent::AttrActivated(), false, this->attributes)),
+        categories(new Variant(PhysicsExplosionComponent::AttrCategories(), "All", this->attributes)),
+        countDown(new Variant(PhysicsExplosionComponent::AttrCountDown(), 3.0f, this->attributes)),
+        radius(new Variant(PhysicsExplosionComponent::AttrRadius(), 10.0f, this->attributes)),
+        strength(new Variant(PhysicsExplosionComponent::AttrStrength(), static_cast<unsigned int>(1000), this->attributes))
+    {
+        this->countDown->setDescription("The count down in seconds. After that time the explosion will take place.");
+        this->radius->setDescription("The radius in which all game objects are affected by the explosion.");
+        this->strength->setDescription("The explosion strength in newton.");
+        this->strength->setDescription("The affected categories. Categories can be combined, e.g. 'All-Player'.");
+    }
 
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ExplosionActivate")
-		{
-			this->activated->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ExplosionAffectedCategories")
-		{
-			this->categories->setValue(XMLConverter::getAttrib(propertyElement, "data"));
-			this->categoryIds = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(this->categories->getString());
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ExplosionCountDown")
-		{
-			this->countDown->setValue(XMLConverter::getAttribReal(propertyElement, "data", 5));
-			this->countDownTimer = this->countDown->getReal();
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ExplosionRadius")
-		{
-			this->radius->setValue(XMLConverter::getAttribReal(propertyElement, "data", 10));
-			if (this->radius->getReal() < 1.0f)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SpawnComponent] Warning: Explosion radius cannot be smaller as 1 meter. Resetting to 1.");
-				this->radius->setValue(1.0f);
-			}
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ExplosionStrength")
-		{
-			this->strength->setValue(static_cast<unsigned int>(XMLConverter::getAttribReal(propertyElement, "data", 20000)));
-			propertyElement = propertyElement->next_sibling("property");
-		}
+    PhysicsExplosionComponent::~PhysicsExplosionComponent()
+    {
+        if (this->sphereSceneQuery)
+        {
+            this->gameObjectPtr->getSceneManager()->destroyQuery(this->sphereSceneQuery);
+            this->sphereSceneQuery = nullptr;
+        }
+        if (this->explosionCallback)
+        {
+            delete this->explosionCallback;
+            this->explosionCallback = nullptr;
+        }
 
-		return true;
-	}
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsExplosionComponent] Destructor physics explosion component for game object: " + this->gameObjectPtr->getName());
+    }
 
-	GameObjectCompPtr PhysicsExplosionComponent::clone(GameObjectPtr clonedGameObjectPtr)
-	{
-		PhysicsExplosionCompPtr clonedCompPtr(boost::make_shared<PhysicsExplosionComponent>());
+    bool PhysicsExplosionComponent::init(rapidxml::xml_node<>*& propertyElement)
+    {
+        GameObjectComponent::init(propertyElement);
 
-		
-		clonedCompPtr->setAffectedCategories(this->categories->getString());
-		clonedCompPtr->setActivated(this->activated->getBool());
-		clonedCompPtr->setExplosionCountDownSec(this->countDown->getReal());
-		clonedCompPtr->setExplosionRadius(this->radius->getReal());
-		clonedCompPtr->setExplosionStrengthN(this->strength->getUInt());
-// Check that
-		if (nullptr != this->explosionCallback)
-		{
-			clonedCompPtr->setExplosionCallback(this->explosionCallback->clone());
-		}
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ExplosionActivate")
+        {
+            this->activated->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ExplosionAffectedCategories")
+        {
+            this->categories->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+            this->categoryIds = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(this->categories->getString());
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ExplosionCountDown")
+        {
+            this->countDown->setValue(XMLConverter::getAttribReal(propertyElement, "data", 5));
+            this->countDownTimer = this->countDown->getReal();
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ExplosionRadius")
+        {
+            this->radius->setValue(XMLConverter::getAttribReal(propertyElement, "data", 10));
+            if (this->radius->getReal() < 1.0f)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SpawnComponent] Warning: Explosion radius cannot be smaller as 1 meter. Resetting to 1.");
+                this->radius->setValue(1.0f);
+            }
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ExplosionStrength")
+        {
+            this->strength->setValue(static_cast<unsigned int>(XMLConverter::getAttribReal(propertyElement, "data", 20000)));
+            propertyElement = propertyElement->next_sibling("property");
+        }
 
-		clonedGameObjectPtr->addComponent(clonedCompPtr);
-		clonedCompPtr->setOwner(clonedGameObjectPtr);
-		
-		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
-		return clonedCompPtr;
-	}
+        return true;
+    }
 
-	bool PhysicsExplosionComponent::postInit(void)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsExplosionComponent] Init physics explosion component for game object: " + this->gameObjectPtr->getName());
-		
-		this->sphereSceneQuery = this->gameObjectPtr->getSceneManager()->createSphereQuery(Ogre::Sphere(this->gameObjectPtr->getPosition(), this->radius->getReal()));
-		this->sphereSceneQuery->setQueryMask(GameObjectController::ALL_CATEGORIES_ID);
+    GameObjectCompPtr PhysicsExplosionComponent::clone(GameObjectPtr clonedGameObjectPtr)
+    {
+        PhysicsExplosionCompPtr clonedCompPtr(boost::make_shared<PhysicsExplosionComponent>());
 
-		return true;
-	}
+        clonedCompPtr->setAffectedCategories(this->categories->getString());
+        clonedCompPtr->setActivated(this->activated->getBool());
+        clonedCompPtr->setExplosionCountDownSec(this->countDown->getReal());
+        clonedCompPtr->setExplosionRadius(this->radius->getReal());
+        clonedCompPtr->setExplosionStrengthN(this->strength->getUInt());
+        // Check that
+        if (nullptr != this->explosionCallback)
+        {
+            clonedCompPtr->setExplosionCallback(this->explosionCallback->clone());
+        }
 
-	bool PhysicsExplosionComponent::connect(void)
-	{
-		// Reset timer
-		this->countDownTimer = this->countDown->getReal();
-		this->secondsUpdateTimer = 0.0f;
-		
-		return true;
-	}
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
 
-	bool PhysicsExplosionComponent::disconnect(void)
-	{
-		
-		return true;
-	}
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+        return clonedCompPtr;
+    }
 
-	Ogre::String PhysicsExplosionComponent::getClassName(void) const
-	{
-		return "PhysicsExplosionComponent";
-	}
+    bool PhysicsExplosionComponent::postInit(void)
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsExplosionComponent] Init physics explosion component for game object: " + this->gameObjectPtr->getName());
 
-	Ogre::String PhysicsExplosionComponent::getParentClassName(void) const
-	{
-		return "GameObjectComponent";
-	}
+        this->sphereSceneQuery = this->gameObjectPtr->getSceneManager()->createSphereQuery(Ogre::Sphere(this->gameObjectPtr->getPosition(), this->radius->getReal()));
+        this->sphereSceneQuery->setQueryMask(GameObjectController::ALL_CATEGORIES_ID);
 
-	void PhysicsExplosionComponent::update(Ogre::Real dt, bool notSimulating)
+        return true;
+    }
+
+    bool PhysicsExplosionComponent::connect(void)
+    {
+        // Reset timer
+        this->countDownTimer = this->countDown->getReal();
+        this->secondsUpdateTimer = 0.0f;
+
+        return true;
+    }
+
+    bool PhysicsExplosionComponent::disconnect(void)
+    {
+        this->timerSecondTickClosureFunction = luabind::object();
+        this->explodeClosureFunction = luabind::object();
+        this->explodeAffectedGameObjectClosureFunction = luabind::object();
+
+        return true;
+    }
+
+    Ogre::String PhysicsExplosionComponent::getClassName(void) const
+    {
+        return "PhysicsExplosionComponent";
+    }
+
+    Ogre::String PhysicsExplosionComponent::getParentClassName(void) const
+    {
+        return "GameObjectComponent";
+    }
+
+    void PhysicsExplosionComponent::update(Ogre::Real dt, bool notSimulating)
     {
         if (false == this->activated->getBool() || true == notSimulating)
         {
@@ -197,8 +199,42 @@ namespace NOWA
         // if one second passed, call callbacks to react
         if (this->secondsUpdateTimer >= 1.0f)
         {
+            // Closure set via reactOnTimerSecondTick() takes precedence, same enqueue +
+            // weak_ptr + re-validate pattern as SpawnComponent::reactOnSpawn()'s usage: the
+            // closure can be cleared by disconnect() or the component/game object destroyed
+            // entirely before this command actually runs on the logic thread.
+            if (this->timerSecondTickClosureFunction.is_valid())
+            {
+                NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis]()
+                {
+                    boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                    if (nullptr == strongThis)
+                    {
+                        return;
+                    }
+
+                    if (false == this->timerSecondTickClosureFunction.is_valid())
+                    {
+                        return;
+                    }
+
+                    try
+                    {
+                        luabind::call_function<void>(this->timerSecondTickClosureFunction, this->gameObjectPtr.get());
+                    }
+                    catch (luabind::error& error)
+                    {
+                        luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                        std::stringstream msg;
+                        msg << errorMsg;
+
+                        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsExplosionComponent] Caught error in 'reactOnTimerSecondTick' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                    }
+                };
+                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+            }
             // if a script file is set
-            if (nullptr != luaScript)
+            else if (nullptr != luaScript)
             {
                 NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis]()
                 {
@@ -307,13 +343,50 @@ namespace NOWA
                 NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
             }
 
-            // if a script file is set
-            if (nullptr != luaScript)
+            // The affected object is captured as a SHARED pointer, not a raw one for the
+            // deferred paths below: an explosion is precisely the situation in which game
+            // objects get destroyed, and the command runs one or more frames after this loop.
+            // A raw pointer could be dangling by then. Holding it keeps it alive until Lua has
+            // seen it.
+            if (this->explodeAffectedGameObjectClosureFunction.is_valid())
             {
-                // The affected object is captured as a SHARED pointer, not a raw one: an
-                // explosion is precisely the situation in which game objects get destroyed,
-                // and the command runs one or more frames after this loop. A raw pointer could
-                // be dangling by then. Holding it keeps it alive until Lua has seen it.
+                GameObjectPtr affectedGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(affectedGameObject->getId());
+                if (nullptr == affectedGameObjectPtr)
+                {
+                    continue;
+                }
+
+                NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, affectedGameObjectPtr, distanceToBomb, detonationStrength]()
+                {
+                    boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                    if (nullptr == strongThis)
+                    {
+                        return;
+                    }
+
+                    if (false == this->explodeAffectedGameObjectClosureFunction.is_valid())
+                    {
+                        return;
+                    }
+
+                    try
+                    {
+                        luabind::call_function<void>(this->explodeAffectedGameObjectClosureFunction, this->gameObjectPtr.get(), affectedGameObjectPtr.get(), distanceToBomb, detonationStrength);
+                    }
+                    catch (luabind::error& error)
+                    {
+                        luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                        std::stringstream msg;
+                        msg << errorMsg;
+
+                        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsExplosionComponent] Caught error in 'reactOnExplodeAffectedGameObject' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                    }
+                };
+                NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+            }
+            // if a script file is set
+            else if (nullptr != luaScript)
+            {
                 GameObjectPtr affectedGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(affectedGameObject->getId());
                 if (nullptr == affectedGameObjectPtr)
                 {
@@ -346,7 +419,37 @@ namespace NOWA
             }
         }
 
-        if (nullptr != luaScript)
+        if (this->explodeClosureFunction.is_valid())
+        {
+            NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis]()
+            {
+                boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
+                if (nullptr == strongThis)
+                {
+                    return;
+                }
+
+                if (false == this->explodeClosureFunction.is_valid())
+                {
+                    return;
+                }
+
+                try
+                {
+                    luabind::call_function<void>(this->explodeClosureFunction, this->gameObjectPtr.get());
+                }
+                catch (luabind::error& error)
+                {
+                    luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                    std::stringstream msg;
+                    msg << errorMsg;
+
+                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsExplosionComponent] Caught error in 'reactOnExplode' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                }
+            };
+            NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+        }
+        else if (nullptr != luaScript)
         {
             // call the onExplode callback function with the cloned game object on lua and run the script file
             NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis]()
@@ -381,160 +484,247 @@ namespace NOWA
         this->countDownTimer = 0.0f;
     }
 
-	void PhysicsExplosionComponent::actualizeValue(Variant* attribute)
-	{
-		GameObjectComponent::actualizeValue(attribute);
+    void PhysicsExplosionComponent::actualizeValue(Variant* attribute)
+    {
+        GameObjectComponent::actualizeValue(attribute);
 
-		if (PhysicsExplosionComponent::AttrActivated() == attribute->getName())
-		{
-			this->setActivated(attribute->getBool());
-		}
-		else if (PhysicsExplosionComponent::AttrCategories() == attribute->getName())
-		{
-			this->setAffectedCategories(attribute->getString());
-		}
-		else if (PhysicsExplosionComponent::AttrCountDown() == attribute->getName())
-		{
-			this->setExplosionCountDownSec(attribute->getReal());
-		}
-		else if (PhysicsExplosionComponent::AttrRadius() == attribute->getName())
-		{
-			this->setExplosionRadius(attribute->getReal());
-		}
-		else if (PhysicsExplosionComponent::AttrStrength() == attribute->getName())
-		{
-			this->setExplosionStrengthN(attribute->getUInt());
-		}
-	}
+        if (PhysicsExplosionComponent::AttrActivated() == attribute->getName())
+        {
+            this->setActivated(attribute->getBool());
+        }
+        else if (PhysicsExplosionComponent::AttrCategories() == attribute->getName())
+        {
+            this->setAffectedCategories(attribute->getString());
+        }
+        else if (PhysicsExplosionComponent::AttrCountDown() == attribute->getName())
+        {
+            this->setExplosionCountDownSec(attribute->getReal());
+        }
+        else if (PhysicsExplosionComponent::AttrRadius() == attribute->getName())
+        {
+            this->setExplosionRadius(attribute->getReal());
+        }
+        else if (PhysicsExplosionComponent::AttrStrength() == attribute->getName())
+        {
+            this->setExplosionStrengthN(attribute->getUInt());
+        }
+    }
 
-	void PhysicsExplosionComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
-	{
-		// 2 = int
-		// 6 = real
-		// 7 = string
-		// 8 = vector2
-		// 9 = vector3
-		// 10 = vector4 -> also quaternion
-		// 12 = bool
-		GameObjectComponent::writeXML(propertiesXML, doc);
+    void PhysicsExplosionComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+    {
+        // 2 = int
+        // 6 = real
+        // 7 = string
+        // 8 = vector2
+        // 9 = vector3
+        // 10 = vector4 -> also quaternion
+        // 12 = bool
+        GameObjectComponent::writeXML(propertiesXML, doc);
 
-		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "ExplosionActivate"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
-		propertiesXML->append_node(propertyXML);
-		
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "ExplosionAffectedCategories"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->categories->getString())));
-		propertiesXML->append_node(propertyXML);
+        xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "ExplosionActivate"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "ExplosionCountDown"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->countDown->getReal())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "ExplosionAffectedCategories"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->categories->getString())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "ExplosionRadius"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->radius->getReal())));
-		propertiesXML->append_node(propertyXML);
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "ExplosionCountDown"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->countDown->getReal())));
+        propertiesXML->append_node(propertyXML);
 
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "ExplosionStrength"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->strength->getUInt())));
-		propertiesXML->append_node(propertyXML);
-	}
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "ExplosionRadius"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->radius->getReal())));
+        propertiesXML->append_node(propertyXML);
 
-	void PhysicsExplosionComponent::setActivated(bool activated)
-	{
-		this->activated->setValue(activated);
-		// Reset timer
-		this->countDownTimer = this->countDown->getReal();
-		this->secondsUpdateTimer = 0.0f;
-		// this->reset();
-	}
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "ExplosionStrength"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->strength->getUInt())));
+        propertiesXML->append_node(propertyXML);
+    }
 
-	bool PhysicsExplosionComponent::isActivated(void) const
-	{
-		return this->activated->getBool();
-	}
+    void PhysicsExplosionComponent::setActivated(bool activated)
+    {
+        this->activated->setValue(activated);
+        // Reset timer
+        this->countDownTimer = this->countDown->getReal();
+        this->secondsUpdateTimer = 0.0f;
+        // this->reset();
+    }
 
-	void PhysicsExplosionComponent::setExplosionCountDownSec(Ogre::Real countDown)
-	{
-		this->countDown->setValue(countDown);
-		// Reset timer
-		this->countDownTimer = countDown;
-		this->secondsUpdateTimer = 0.0f;
-	}
+    bool PhysicsExplosionComponent::isActivated(void) const
+    {
+        return this->activated->getBool();
+    }
 
-	Ogre::Real PhysicsExplosionComponent::getExplosionCountDownSec(void) const
-	{
-		return this->countDown->getReal();
-	}
+    void PhysicsExplosionComponent::setExplosionCountDownSec(Ogre::Real countDown)
+    {
+        this->countDown->setValue(countDown);
+        // Reset timer
+        this->countDownTimer = countDown;
+        this->secondsUpdateTimer = 0.0f;
+    }
 
-	void PhysicsExplosionComponent::setExplosionRadius(Ogre::Real radius)
-	{
-		this->radius->setValue(radius);
-	}
+    Ogre::Real PhysicsExplosionComponent::getExplosionCountDownSec(void) const
+    {
+        return this->countDown->getReal();
+    }
 
-	Ogre::Real PhysicsExplosionComponent::getExplosionRadius(void) const
-	{
-		return this->radius->getReal();
-	}
+    void PhysicsExplosionComponent::setExplosionRadius(Ogre::Real radius)
+    {
+        this->radius->setValue(radius);
+    }
 
-	void PhysicsExplosionComponent::setExplosionStrengthN(unsigned int strength)
-	{
-		this->strength->setValue(strength);
-	}
+    Ogre::Real PhysicsExplosionComponent::getExplosionRadius(void) const
+    {
+        return this->radius->getReal();
+    }
 
-	unsigned int PhysicsExplosionComponent::getExplosionStrengthN(void) const
-	{
-		return this->strength->getUInt();
-	}
+    void PhysicsExplosionComponent::setExplosionStrengthN(unsigned int strength)
+    {
+        this->strength->setValue(strength);
+    }
 
-	void PhysicsExplosionComponent::setExplosionCallback(IExplosionCallback* explosionCallback)
-	{
-		this->explosionCallback = explosionCallback;
-	}
+    unsigned int PhysicsExplosionComponent::getExplosionStrengthN(void) const
+    {
+        return this->strength->getUInt();
+    }
 
-	/*void PhysicsExplosionComponent::setScriptFile(const Ogre::String& scriptFile)
-	{
-		this->scriptFile->setValue(scriptFile);
+    void PhysicsExplosionComponent::setExplosionCallback(IExplosionCallback* explosionCallback)
+    {
+        this->explosionCallback = explosionCallback;
+    }
 
-		if (false == scriptFile.empty())
-		{
-			if (nullptr != this->luaScript && this->luaScript->isCompiled() && scriptFile != this->luaScript->getName())
-			{
-				LuaScriptApi::getInstance()->copyScript(this->luaScript->getName(), scriptFile, true);
-				LuaScriptApi::getInstance()->destroyScript(this->luaScript);
-			}
+    void PhysicsExplosionComponent::reactOnTimerSecondTick(luabind::object closureFunction)
+    {
+        this->timerSecondTickClosureFunction = closureFunction;
+    }
 
-			LuaScriptApi::getInstance()->destroyScript(this->luaScript);
-			this->luaScript = LuaScriptApi::getInstance()->createScript(scriptFile + "_" + this->gameObjectPtr->getUniqueName(), scriptFile);
-			this->luaScript->setInterfaceFunctionsTemplate("--function onTimerSecondTick(originGameObject)\n--local soundComponent = originGameObject:getSimpleSoundComponent();"
-				"\n\t--soundComponent:setActivated(true);--soundComponent:connect();\n--end\n\n"
-				"--function onExplode(originGameObject)\n\t--local soundComponent = originGameObject:getSimpleSoundComponent();\n\t--soundComponent:setActivated(true);"
-				"\n\t--soundComponent:connect();\n\t--local particleComponent = originGameObject:getParticleFxComponent();\n\t--particleComponent:setActivated(true);"
-				"\n\t--originGameObject:getSceneNode():setVisible(false, true);\n\t--logMessage([Lua]: gameobject translate: \" ..originGameObject:getName());"
-				"\n\t--originGameObject:getPhysicsActiveComponent() : translate(Vector3(2, 0, 0));\n\t--GameObjectController:deleteGameObject(originGameObject : getId());\n--end\n\n"
-				"--function onExplodeAffectedGameObject(originGameObject, affectedGameObject, distanceToBomb, detonationStrength)\n\t--affectedGameObject:getSceneNode():setVisible(false, true);\n--end");
-			this->luaScript->setScriptFile(scriptFile);
-		}
-	}*/
+    void PhysicsExplosionComponent::reactOnExplode(luabind::object closureFunction)
+    {
+        this->explodeClosureFunction = closureFunction;
+    }
 
-	void PhysicsExplosionComponent::setAffectedCategories(const Ogre::String& categories)
-	{
-		this->categories->setValue(categories);
-		this->categoryIds = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(this->categories->getString());
-	}
+    void PhysicsExplosionComponent::reactOnExplodeAffectedGameObject(luabind::object closureFunction)
+    {
+        this->explodeAffectedGameObjectClosureFunction = closureFunction;
+    }
 
-	Ogre::String PhysicsExplosionComponent::getAffectedCategories(void)
-	{
-		return this->categories->getString();
-	}
+    /*void PhysicsExplosionComponent::setScriptFile(const Ogre::String& scriptFile)
+    {
+        this->scriptFile->setValue(scriptFile);
+
+        if (false == scriptFile.empty())
+        {
+            if (nullptr != this->luaScript && this->luaScript->isCompiled() && scriptFile != this->luaScript->getName())
+            {
+                LuaScriptApi::getInstance()->copyScript(this->luaScript->getName(), scriptFile, true);
+                LuaScriptApi::getInstance()->destroyScript(this->luaScript);
+            }
+
+            LuaScriptApi::getInstance()->destroyScript(this->luaScript);
+            this->luaScript = LuaScriptApi::getInstance()->createScript(scriptFile + "_" + this->gameObjectPtr->getUniqueName(), scriptFile);
+            this->luaScript->setInterfaceFunctionsTemplate("--function onTimerSecondTick(originGameObject)\n--local soundComponent = originGameObject:getSimpleSoundComponent();"
+                "\n\t--soundComponent:setActivated(true);--soundComponent:connect();\n--end\n\n"
+                "--function onExplode(originGameObject)\n\t--local soundComponent = originGameObject:getSimpleSoundComponent();\n\t--soundComponent:setActivated(true);"
+                "\n\t--soundComponent:connect();\n\t--local particleComponent = originGameObject:getParticleFxComponent();\n\t--particleComponent:setActivated(true);"
+                "\n\t--originGameObject:getSceneNode():setVisible(false, true);\n\t--logMessage([Lua]: gameobject translate: \" ..originGameObject:getName());"
+                "\n\t--originGameObject:getPhysicsActiveComponent() : translate(Vector3(2, 0, 0));\n\t--GameObjectController:deleteGameObject(originGameObject : getId());\n--end\n\n"
+                "--function onExplodeAffectedGameObject(originGameObject, affectedGameObject, distanceToBomb, detonationStrength)\n\t--affectedGameObject:getSceneNode():setVisible(false, true);\n--end");
+            this->luaScript->setScriptFile(scriptFile);
+        }
+    }*/
+
+    void PhysicsExplosionComponent::setAffectedCategories(const Ogre::String& categories)
+    {
+        this->categories->setValue(categories);
+        this->categoryIds = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(this->categories->getString());
+    }
+
+    Ogre::String PhysicsExplosionComponent::getAffectedCategories(void)
+    {
+        return this->categories->getString();
+    }
+
+    // Lua registration part
+
+    PhysicsExplosionComponent* getPhysicsExplosionComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+    {
+        return makeStrongPtr<PhysicsExplosionComponent>(gameObject->getComponentWithOccurrence<PhysicsExplosionComponent>(occurrenceIndex)).get();
+    }
+
+    PhysicsExplosionComponent* getPhysicsExplosionComponent(GameObject* gameObject)
+    {
+        return makeStrongPtr<PhysicsExplosionComponent>(gameObject->getComponent<PhysicsExplosionComponent>()).get();
+    }
+
+    PhysicsExplosionComponent* getPhysicsExplosionComponentFromName(GameObject* gameObject, const Ogre::String& name)
+    {
+        return makeStrongPtr<PhysicsExplosionComponent>(gameObject->getComponentFromName<PhysicsExplosionComponent>(name)).get();
+    }
+
+    void PhysicsExplosionComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+    {
+        module(lua)
+        [
+            class_<PhysicsExplosionComponent, GameObjectComponent>("PhysicsExplosionComponent")
+            .def("setActivated", &PhysicsExplosionComponent::setActivated)
+            .def("isActivated", &PhysicsExplosionComponent::isActivated)
+            .def("setAffectedCategories", &PhysicsExplosionComponent::setAffectedCategories)
+            .def("getAffectedCategories", &PhysicsExplosionComponent::getAffectedCategories)
+            .def("setExplosionCountDownSec", &PhysicsExplosionComponent::setExplosionCountDownSec)
+            .def("getExplosionCountDownSec", &PhysicsExplosionComponent::getExplosionCountDownSec)
+            .def("setExplosionRadius", &PhysicsExplosionComponent::setExplosionRadius)
+            .def("getExplosionRadius", &PhysicsExplosionComponent::getExplosionRadius)
+            .def("setExplosionStrengthN", &PhysicsExplosionComponent::setExplosionStrengthN)
+            .def("getExplosionStrengthN", &PhysicsExplosionComponent::getExplosionStrengthN)
+            .def("reactOnTimerSecondTick", &PhysicsExplosionComponent::reactOnTimerSecondTick)
+            .def("reactOnExplode", &PhysicsExplosionComponent::reactOnExplode)
+            .def("reactOnExplodeAffectedGameObject", &PhysicsExplosionComponent::reactOnExplodeAffectedGameObject)
+        ];
+
+        LuaScriptApi::getInstance()->addClassToCollection("PhysicsExplosionComponent", "class inherits GameObjectComponent", PhysicsExplosionComponent::getStaticInfoText());
+        LuaScriptApi::getInstance()->addClassToCollection("PhysicsExplosionComponent", "void setActivated(bool activated)", "Activates the components behaviour, so that explosion will be controller by the explosion timer.");
+        LuaScriptApi::getInstance()->addClassToCollection("PhysicsExplosionComponent", "bool isActivated()", "Gets whether explosion has been started.");
+        LuaScriptApi::getInstance()->addClassToCollection("PhysicsExplosionComponent", "void setAffectedCategories(String categories)",
+            "Sets affected categories. Note: This function can be used e.g. to exclude some game object, even if there were at range when the detonation occurred.");
+        LuaScriptApi::getInstance()->addClassToCollection("PhysicsExplosionComponent", "String getAffectedCategories()", "Gets the affected categories.");
+        LuaScriptApi::getInstance()->addClassToCollection("PhysicsExplosionComponent", "void setExplosionCountDownSec(float countDown)", "Sets the explosion timer in seconds. The timer starts to count down, when the component is activated.");
+        LuaScriptApi::getInstance()->addClassToCollection("PhysicsExplosionComponent", "float getExplosionCountDownSec()", "Gets the spawn interval in seconds.");
+        LuaScriptApi::getInstance()->addClassToCollection("PhysicsExplosionComponent", "void setExplosionRadius(float radius)", "Sets the explosion radius in meters.");
+        LuaScriptApi::getInstance()->addClassToCollection("PhysicsExplosionComponent", "float getExplosionRadius()", "Gets the explosion radius in meters.");
+        LuaScriptApi::getInstance()->addClassToCollection("PhysicsExplosionComponent", "void setExplosionStrengthN(float strengthN)",
+            "Sets the explosion strength in newton. Note: The given explosion strength is a maximal value. The far away an affected game object is away from the explosion center the weaker the detonation.");
+        LuaScriptApi::getInstance()->addClassToCollection("PhysicsExplosionComponent", "float getExplosionStrengthN()", "Gets the explosion strength in newton.");
+        LuaScriptApi::getInstance()->addClassToCollection("PhysicsExplosionComponent", "void reactOnTimerSecondTick(func closureFunction)",
+            "Sets a lua closure function to react each second while the explosion countdown is running. Takes precedence over a set script file's 'onTimerSecondTick' or a C++ IExplosionCallback, if set.");
+        LuaScriptApi::getInstance()->addClassToCollection("PhysicsExplosionComponent", "void reactOnExplode(func closureFunction)",
+            "Sets a lua closure function to react when the explosion is triggered after the countdown has elapsed. Takes precedence over a set script file's 'onExplode' or a C++ IExplosionCallback, if set.");
+        LuaScriptApi::getInstance()->addClassToCollection("PhysicsExplosionComponent", "void reactOnExplodeAffectedGameObject(func closureFunction)",
+            "Sets a lua closure function to react for each game object affected by the explosion. Provides the affected game object, its distance from the explosion center in meters, and the calculated detonation strength. Takes precedence over a "
+            "set script file's 'onExplodeAffectedGameObject' or a C++ IExplosionCallback, if set.");
+
+        gameObjectClass.def("getPhysicsExplosionComponentFromName", &getPhysicsExplosionComponentFromName);
+        gameObjectClass.def("getPhysicsExplosionComponent", (PhysicsExplosionComponent * (*)(GameObject*)) & getPhysicsExplosionComponent);
+        // If its desired to create several of this components for one game object
+        gameObjectClass.def("getPhysicsExplosionComponentFromIndex", (PhysicsExplosionComponent * (*)(GameObject*, unsigned int)) & getPhysicsExplosionComponent);
+
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "PhysicsExplosionComponent getPhysicsExplosionComponentFromIndex(unsigned int occurrenceIndex)",
+            "Gets the component by the given occurence index, since a game object may this component maybe several times.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "PhysicsExplosionComponent getPhysicsExplosionComponent()", "Gets the component. This can be used if the game object this component just once.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "PhysicsExplosionComponent getPhysicsExplosionComponentFromName(String name)", "Gets the component from name.");
+
+        gameObjectControllerClass.def("castPhysicsExplosionComponent", &GameObjectController::cast<PhysicsExplosionComponent>);
+        LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "PhysicsExplosionComponent castPhysicsExplosionComponent(PhysicsExplosionComponent other)", "Casts an incoming type from function for lua auto completion.");
+    }
 
 }; // namespace end

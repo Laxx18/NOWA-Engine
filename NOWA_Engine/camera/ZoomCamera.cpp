@@ -30,10 +30,15 @@ namespace NOWA
 
     ZoomCamera::~ZoomCamera()
     {
+        Ogre::String id = "ZoomCamera::zoomCamera";
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
     }
 
     void ZoomCamera::onSetData(void)
     {
+        Ogre::String id = "ZoomCamera::zoomCamera";
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
         BaseCamera::onSetData();
         this->firstTimeValueSet = true;
 
@@ -188,7 +193,7 @@ namespace NOWA
             this->camera->setOrthoWindowWidth(MathHelper::getInstance()->smoothDamp(this->camera->getOrthoWindowWidth(), requiredSize, this->zoomSpeed, dampTime));
         };
         Ogre::String id = "ZoomCamera::zoomCamera";
-        NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
+        NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
     }
 
     void ZoomCamera::moveCamera(Ogre::Real dt)

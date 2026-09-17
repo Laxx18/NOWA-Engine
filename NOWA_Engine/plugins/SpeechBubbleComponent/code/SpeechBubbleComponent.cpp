@@ -927,10 +927,14 @@ namespace NOWA
                     // The bubble is a flat quad that must stay readable from behind.
                     macroblock.mCullMode = Ogre::CULL_NONE;
                     // AlwaysPresent, same treatment as MovableText::_updateHlmsMacroblock():
-                    // draw without depth testing/writing so the bubble body is never occluded
-                    // by scene geometry, matching the text sitting on top of it.
+                    // draw without depth testing AND without depth writing, so the bubble body is
+                    // never occluded by scene geometry, matching the text sitting on top of it.
+                    //
+                    // Both flags have to go off together. With depth writing left on, the bubble
+                    // stamps its own real depth - the one BEHIND the wall - into the depth buffer,
+                    // and everything drawn afterwards tests against that value.
                     macroblock.mDepthCheck = !this->alwaysPresent->getBool();
-                    macroblock.mDepthWrite = this->alwaysPresent->getBool();
+                    macroblock.mDepthWrite = !this->alwaysPresent->getBool();
                     bubbleOwnDatablock->setMacroblock(macroblock);
                 }
             }
@@ -1968,12 +1972,20 @@ namespace NOWA
                 Ogre::HlmsDatablock* bubbleOwnDatablock = Ogre::Root::getSingletonPtr()->getHlmsManager()->getDatablockNoDefault(this->bubbleDatablockName);
                 if (nullptr != bubbleOwnDatablock)
                 {
-                    Ogre::HlmsMacroblock macroblock;
+                    // COPY the macroblock the datablock currently has instead of default
+                    // constructing a fresh one. A fresh HlmsMacroblock carries Ogre's defaults, so
+                    // every setting createSpeechBubble() made would be silently reverted here - most
+                    // visibly mCullMode, which falls back from CULL_NONE to CULL_CLOCKWISE and makes
+                    // the bubble vanish when seen from behind.
+                    Ogre::HlmsMacroblock macroblock = *bubbleOwnDatablock->getMacroblock();
                     macroblock.mCullMode = Ogre::CULL_NONE;
-                    macroblock.mDepthCheck = !alwaysPresent;
                     macroblock.mDepthBiasConstant = 1.0f;
                     macroblock.mDepthBiasSlopeScale = 1.0f;
-                    macroblock.mDepthWrite = alwaysPresent;
+                    // Both flags off together, see createSpeechBubble(): depth writing while not
+                    // testing stamps the bubble's real depth - the one behind the scene geometry -
+                    // into the depth buffer.
+                    macroblock.mDepthCheck = !alwaysPresent;
+                    macroblock.mDepthWrite = !alwaysPresent;
                     bubbleOwnDatablock->setMacroblock(macroblock);
                 }
             }
@@ -2178,55 +2190,52 @@ namespace NOWA
 
     void SpeechBubbleComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
     {
-        module(lua)
-        [
-            class_<SpeechBubbleComponent, GameObjectComponent>("SpeechBubbleComponent")
-            .def("setActivated", &SpeechBubbleComponent::setActivated)
-            .def("isActivated", &SpeechBubbleComponent::isActivated)
-            .def("setRunSpeech", &SpeechBubbleComponent::setRunSpeech)
-            .def("getRunSpeech", &SpeechBubbleComponent::getRunSpeech)
-            .def("setCaption", (void (SpeechBubbleComponent::*)(const Ogre::String&))&SpeechBubbleComponent::setCaption)
-            .def("getCaption", (Ogre::String (SpeechBubbleComponent::*)(void) const) & SpeechBubbleComponent::getCaption)
-            .def("setCaptionCount", &SpeechBubbleComponent::setCaptionCount)
-            .def("getCaptionCount", &SpeechBubbleComponent::getCaptionCount)
-            .def("setCaptionAt", (void (SpeechBubbleComponent::*)(unsigned int, const Ogre::String&))&SpeechBubbleComponent::setCaption)
-            .def("getCaptionAt", (Ogre::String (SpeechBubbleComponent::*)(unsigned int) const) & SpeechBubbleComponent::getCaption)
-            .def("setSpeechDurationAt", (void (SpeechBubbleComponent::*)(unsigned int, Ogre::Real))&SpeechBubbleComponent::setSpeechDuration)
-            .def("getSpeechDurationAt", (Ogre::Real (SpeechBubbleComponent::*)(unsigned int) const) & SpeechBubbleComponent::getSpeechDuration)
-            .def("restartSequence", &SpeechBubbleComponent::restartSequence)
-            .def("getCurrentCaptionIndex", &SpeechBubbleComponent::getCurrentCaptionIndex)
-            .def("setSpeechDuration", (void (SpeechBubbleComponent::*)(Ogre::Real))&SpeechBubbleComponent::setSpeechDuration)
-            .def("getSpeechDuration", (Ogre::Real (SpeechBubbleComponent::*)(void) const) & SpeechBubbleComponent::getSpeechDuration)
-            .def("setRunSpeechSound", &SpeechBubbleComponent::setRunSpeechSound)
-            .def("getRunSpeechSound", &SpeechBubbleComponent::getRunSpeechSound)
-            .def("setKeepCaption", &SpeechBubbleComponent::setKeepCaption)
-            .def("getKeepCaption", &SpeechBubbleComponent::getKeepCaption)
-            .def("setXOffsetStart", &SpeechBubbleComponent::setXOffsetStart)
-            .def("getXOffsetStart", &SpeechBubbleComponent::getXOffsetStart)
-            .def("setFontName", &SpeechBubbleComponent::setFontName)
-            .def("getFontName", &SpeechBubbleComponent::getFontName)
-            .def("setCharHeight", &SpeechBubbleComponent::setCharHeight)
-            .def("getCharHeight", &SpeechBubbleComponent::getCharHeight)
-            .def("setTextColor", &SpeechBubbleComponent::setTextColor)
-            .def("getTextColor", &SpeechBubbleComponent::getTextColor)
-            .def("setBubbleColor", &SpeechBubbleComponent::setBubbleColor)
-            .def("getBubbleColor", &SpeechBubbleComponent::getBubbleColor)
-            .def("setOffsetPosition", &SpeechBubbleComponent::setOffsetPosition)
-            .def("getOffsetPosition", &SpeechBubbleComponent::getOffsetPosition)
-            .def("setMaxTextWidth", &SpeechBubbleComponent::setMaxTextWidth)
-            .def("getMaxTextWidth", &SpeechBubbleComponent::getMaxTextWidth)
-            .def("setOrientationTargetId", &SpeechBubbleComponent::setOrientationTargetId)
-            .def("getOrientationTargetId", &SpeechBubbleComponent::getOrientationTargetId)
-            .def("setOffsetOrientation", &SpeechBubbleComponent::setOffsetOrientation)
-            .def("getOffsetOrientation", &SpeechBubbleComponent::getOffsetOrientation)
-            .def("setPadding", &SpeechBubbleComponent::setPadding)
-            .def("getPadding", &SpeechBubbleComponent::getPadding)
-            .def("setCornerRadius", &SpeechBubbleComponent::setCornerRadius)
-            .def("getCornerRadius", &SpeechBubbleComponent::getCornerRadius)
-            .def("setAlwaysPresent", &SpeechBubbleComponent::setAlwaysPresent)
-            .def("getAlwaysPresent", &SpeechBubbleComponent::getAlwaysPresent)
-            .def("reactOnSpeechDone", &SpeechBubbleComponent::reactOnSpeechDone)
-        ];
+        module(lua)[class_<SpeechBubbleComponent, GameObjectComponent>("SpeechBubbleComponent")
+                .def("setActivated", &SpeechBubbleComponent::setActivated)
+                .def("isActivated", &SpeechBubbleComponent::isActivated)
+                .def("setRunSpeech", &SpeechBubbleComponent::setRunSpeech)
+                .def("getRunSpeech", &SpeechBubbleComponent::getRunSpeech)
+                .def("setCaption", (void (SpeechBubbleComponent::*)(const Ogre::String&))&SpeechBubbleComponent::setCaption)
+                .def("getCaption", (Ogre::String (SpeechBubbleComponent::*)(void) const) & SpeechBubbleComponent::getCaption)
+                .def("setCaptionCount", &SpeechBubbleComponent::setCaptionCount)
+                .def("getCaptionCount", &SpeechBubbleComponent::getCaptionCount)
+                .def("setCaptionAt", (void (SpeechBubbleComponent::*)(unsigned int, const Ogre::String&))&SpeechBubbleComponent::setCaption)
+                .def("getCaptionAt", (Ogre::String (SpeechBubbleComponent::*)(unsigned int) const) & SpeechBubbleComponent::getCaption)
+                .def("setSpeechDurationAt", (void (SpeechBubbleComponent::*)(unsigned int, Ogre::Real))&SpeechBubbleComponent::setSpeechDuration)
+                .def("getSpeechDurationAt", (Ogre::Real (SpeechBubbleComponent::*)(unsigned int) const) & SpeechBubbleComponent::getSpeechDuration)
+                .def("restartSequence", &SpeechBubbleComponent::restartSequence)
+                .def("getCurrentCaptionIndex", &SpeechBubbleComponent::getCurrentCaptionIndex)
+                .def("setSpeechDuration", (void (SpeechBubbleComponent::*)(Ogre::Real))&SpeechBubbleComponent::setSpeechDuration)
+                .def("getSpeechDuration", (Ogre::Real (SpeechBubbleComponent::*)(void) const) & SpeechBubbleComponent::getSpeechDuration)
+                .def("setRunSpeechSound", &SpeechBubbleComponent::setRunSpeechSound)
+                .def("getRunSpeechSound", &SpeechBubbleComponent::getRunSpeechSound)
+                .def("setKeepCaption", &SpeechBubbleComponent::setKeepCaption)
+                .def("getKeepCaption", &SpeechBubbleComponent::getKeepCaption)
+                .def("setXOffsetStart", &SpeechBubbleComponent::setXOffsetStart)
+                .def("getXOffsetStart", &SpeechBubbleComponent::getXOffsetStart)
+                .def("setFontName", &SpeechBubbleComponent::setFontName)
+                .def("getFontName", &SpeechBubbleComponent::getFontName)
+                .def("setCharHeight", &SpeechBubbleComponent::setCharHeight)
+                .def("getCharHeight", &SpeechBubbleComponent::getCharHeight)
+                .def("setTextColor", &SpeechBubbleComponent::setTextColor)
+                .def("getTextColor", &SpeechBubbleComponent::getTextColor)
+                .def("setBubbleColor", &SpeechBubbleComponent::setBubbleColor)
+                .def("getBubbleColor", &SpeechBubbleComponent::getBubbleColor)
+                .def("setOffsetPosition", &SpeechBubbleComponent::setOffsetPosition)
+                .def("getOffsetPosition", &SpeechBubbleComponent::getOffsetPosition)
+                .def("setMaxTextWidth", &SpeechBubbleComponent::setMaxTextWidth)
+                .def("getMaxTextWidth", &SpeechBubbleComponent::getMaxTextWidth)
+                .def("setOrientationTargetId", &SpeechBubbleComponent::setOrientationTargetId)
+                .def("getOrientationTargetId", &SpeechBubbleComponent::getOrientationTargetId)
+                .def("setOffsetOrientation", &SpeechBubbleComponent::setOffsetOrientation)
+                .def("getOffsetOrientation", &SpeechBubbleComponent::getOffsetOrientation)
+                .def("setPadding", &SpeechBubbleComponent::setPadding)
+                .def("getPadding", &SpeechBubbleComponent::getPadding)
+                .def("setCornerRadius", &SpeechBubbleComponent::setCornerRadius)
+                .def("getCornerRadius", &SpeechBubbleComponent::getCornerRadius)
+                .def("setAlwaysPresent", &SpeechBubbleComponent::setAlwaysPresent)
+                .def("getAlwaysPresent", &SpeechBubbleComponent::getAlwaysPresent)
+                .def("reactOnSpeechDone", &SpeechBubbleComponent::reactOnSpeechDone)];
 
         LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "class inherits GameObjectComponent", SpeechBubbleComponent::getStaticInfoText());
         LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setActivated(bool activated)", "Sets whether this component should be activated or not.");

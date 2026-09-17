@@ -1,10 +1,10 @@
 #include "NOWAPrecompiled.h"
 #include "PropertiesPanel.h"
+#include "GuiEvents.h"
+#include "MyGUIHelper.h"
+#include "gameobject/JointComponents.h"
 #include "main/EventManager.h"
 #include "main/ProcessManager.h"
-#include "GuiEvents.h"
-#include "gameobject/JointComponents.h"
-#include "MyGUIHelper.h"
 
 #include "utilities/Interpolator.h"
 
@@ -13,43 +13,45 @@
 
 namespace
 {
-	std::string removeHashesExceptForColor(const std::string& text)
-	{
-		std::string result;
-		size_t len = text.length();
-		size_t i = 0;
+    std::string removeHashesExceptForColor(const std::string& text)
+    {
+        std::string result;
+        size_t len = text.length();
+        size_t i = 0;
 
-		while (i < len)
-		{
-			if (text[i] == '#' && i + 7 <= len)
-			{
-				// Check if the next 6 characters after '#' form a valid color code
-				std::string potentialColor = text.substr(i, 7);
-				std::regex colorPattern("#[0-9A-Fa-f]{6}");
+        while (i < len)
+        {
+            if (text[i] == '#' && i + 7 <= len)
+            {
+                // Check if the next 6 characters after '#' form a valid color code
+                std::string potentialColor = text.substr(i, 7);
+                std::regex colorPattern("#[0-9A-Fa-f]{6}");
 
-				if (std::regex_match(potentialColor, colorPattern))
-				{
-					// If it's a valid color, copy the next 7 characters (the color)
-					result += potentialColor;
-					i += 7;  // Skip past the color code
-				}
-				else
-				{
-					// It's not a color, so ignore the '#'
-					i++;
-				}
-			}
-			else
-			{
-				// If it's not a '#' or not followed by a valid color code, copy the character
-				if (text[i] != '#')
-					result += text[i];
-				i++;
-			}
-		}
+                if (std::regex_match(potentialColor, colorPattern))
+                {
+                    // If it's a valid color, copy the next 7 characters (the color)
+                    result += potentialColor;
+                    i += 7; // Skip past the color code
+                }
+                else
+                {
+                    // It's not a color, so ignore the '#'
+                    i++;
+                }
+            }
+            else
+            {
+                // If it's not a '#' or not followed by a valid color code, copy the character
+                if (text[i] != '#')
+                {
+                    result += text[i];
+                }
+                i++;
+            }
+        }
 
-		return result;
-	}
+        return result;
+    }
 }
 
 bool PropertiesPanel::bShowProperties = true;
@@ -57,141 +59,135 @@ bool PropertiesPanel::bShowProperties = true;
 class SetScrollPositionProcess : public NOWA::Process
 {
 public:
-	explicit SetScrollPositionProcess(PropertiesPanelView* propertiesPanelView, int scrollPosition)
-		: propertiesPanelView(propertiesPanelView),
-		scrollPosition(scrollPosition)
-	{
+    explicit SetScrollPositionProcess(PropertiesPanelView* propertiesPanelView, int scrollPosition) : propertiesPanelView(propertiesPanelView), scrollPosition(scrollPosition)
+    {
+    }
 
-	}
 protected:
-	virtual void onInit(void) override
-	{
-		this->succeed();
-		// this->propertiesPanelView1->getScrollView()->setVRange(scrollPosition);
-			// vScrollBar->setScrollPosition(MyGUIHelper::getInstance()->getScrollPosition());
+    virtual void onInit(void) override
+    {
+        this->succeed();
+        // this->propertiesPanelView1->getScrollView()->setVRange(scrollPosition);
+        // vScrollBar->setScrollPosition(MyGUIHelper::getInstance()->getScrollPosition());
 
-		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             this->propertiesPanelView->getScrollView()->setViewOffset(MyGUI::IntPoint(this->propertiesPanelView->getScrollView()->getViewOffset().left, this->scrollPosition));
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "SetScrollPositionProcess::onInit");
-	}
+    }
 
-	virtual void onUpdate(float dt) override
-	{
-		this->succeed();
-	}
+    virtual void onUpdate(float dt) override
+    {
+        this->succeed();
+    }
+
 private:
-	PropertiesPanelView* propertiesPanelView;
-	int scrollPosition;
+    PropertiesPanelView* propertiesPanelView;
+    int scrollPosition;
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-ImageData::ImageData()
-	: resourceImage(nullptr),
-	imageBack(nullptr)
+ImageData::ImageData() : resourceImage(nullptr), imageBack(nullptr)
 {
-
 }
 
 ImageData::~ImageData()
 {
-
 }
 
 void ImageData::setResourceName(const Ogre::String& resourceName)
 {
-	this->resourceName = resourceName;
+    this->resourceName = resourceName;
 
-	if (nullptr == this->resourceImage)
-	{
-		bool foundCorrectType = false;
+    if (nullptr == this->resourceImage)
+    {
+        bool foundCorrectType = false;
 
-		MyGUI::ResourceManager& manager = MyGUI::ResourceManager::getInstance();
-		MyGUI::IResource* resourceImageSet = manager.getByName(resourceName, false);
-		if (nullptr != resourceImageSet)
-		{
-			this->resourceImage = resourceImageSet->castType<MyGUI::ResourceImageSet>();
-			foundCorrectType = true;
-		}
+        MyGUI::ResourceManager& manager = MyGUI::ResourceManager::getInstance();
+        MyGUI::IResource* resourceImageSet = manager.getByName(resourceName, false);
+        if (nullptr != resourceImageSet)
+        {
+            this->resourceImage = resourceImageSet->castType<MyGUI::ResourceImageSet>();
+            foundCorrectType = true;
+        }
 
-		if (false == foundCorrectType)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ImageData] ERROR: Could not add resource: "
-				+ resourceName + ", because it cannot be found, or the XML container is wrong. Check your resource location name XML");
-		}
+        if (false == foundCorrectType)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ImageData] ERROR: Could not add resource: " + resourceName + ", because it cannot be found, or the XML container is wrong. Check your resource location name XML");
+        }
         if (nullptr != this->imageItem && true == foundCorrectType)
-		{
-			// this->imageItem->setImageTexture(this->resourceName);
-			this->imageItem->setItemResourcePtr(this->resourceImage);
-			this->imageItem->setItemGroup("States");
-			this->imageItem->setItemName("None");
-			this->imageItem->setVisible(true);
-		}
-	}
+        {
+            // this->imageItem->setImageTexture(this->resourceName);
+            this->imageItem->setItemResourcePtr(this->resourceImage);
+            this->imageItem->setItemGroup("States");
+            this->imageItem->setItemName("None");
+            this->imageItem->setVisible(true);
+        }
+    }
 }
 
 bool ImageData::isEmpty() const
 {
-	return this->imageItem == 0;
+    return this->imageItem == 0;
 }
 
 void ImageData::setImageBoxBack(MyGUI::ImageBox* imageBack)
 {
-	this->imageBack = imageBack;
+    this->imageBack = imageBack;
 }
 
 void ImageData::setImageBoxItem(MyGUI::ImageBox* imageItem)
 {
-	this->imageItem = imageItem;
+    this->imageItem = imageItem;
 }
 
 MyGUI::ResourceImageSetPtr ImageData::getResourceImagePtr(void) const
 {
-	return this->resourceImage;
+    return this->resourceImage;
 }
 
 MyGUI::ImageBox* ImageData::getImageBoxBack(void) const
 {
-	return this->imageBack;
+    return this->imageBack;
 }
 
 MyGUI::ImageBox* ImageData::getImageBoxItem(void) const
 {
-	return this->imageItem;
+    return this->imageItem;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-PropertiesPanel::PropertiesPanel(const MyGUI::FloatCoord& coords)
-	: BaseLayout("PropertiesPanelView.layout"),
-	editorManager(nullptr),
-	propertiesPanelView1(nullptr),
-	propertiesPanelView2(nullptr),
-	propertiesPanelDirector(nullptr),
-	propertiesPanelInfo(nullptr)
+PropertiesPanel::PropertiesPanel(const MyGUI::FloatCoord& coords) :
+    BaseLayout("PropertiesPanelView.layout"),
+    editorManager(nullptr),
+    propertiesPanelView1(nullptr),
+    propertiesPanelView2(nullptr),
+    propertiesPanelDirector(nullptr),
+    propertiesPanelInfo(nullptr)
 {
-	this->mMainWidget->setRealCoord(coords);
-	assignBase(this->propertiesPanelView1, "properties1ScrollView");
-	assignBase(this->propertiesPanelView2, "properties2ScrollView");
+    this->mMainWidget->setRealCoord(coords);
+    assignBase(this->propertiesPanelView1, "properties1ScrollView");
+    assignBase(this->propertiesPanelView2, "properties2ScrollView");
 
-	// Test
-	// MyGUI::TabControl* tabControl = MyGUIHelper::getInstance()->findParentWidget<MyGUI::TabControl>(this->propertiesPanelView1->getScrollView(), "propertiesTab");
-	// MyGUI::TabItem* tabItem = tabControl->addItem("Script1.lua");
+    // Test
+    // MyGUI::TabControl* tabControl = MyGUIHelper::getInstance()->findParentWidget<MyGUI::TabControl>(this->propertiesPanelView1->getScrollView(), "propertiesTab");
+    // MyGUI::TabItem* tabItem = tabControl->addItem("Script1.lua");
 
-	this->openSaveFileDialog = new OpenSaveFileDialogExtended();
+    this->openSaveFileDialog = new OpenSaveFileDialogExtended();
 
-	// MyGUI::Gui::getInstance().eventFrameStart += MyGUI::newDelegate(this, &PropertiesPanel::notifyFrameStart);
-	// this->propertiesPanelView1->getMainWidget()->eventMouseWheel += MyGUI::newDelegate(this, &PropertiesPanel::onMouseWheel);
-	// this->propertiesPanelView1->getScrollView()->eventMouseDrag += MyGUI::newDelegate(this, &PropertiesPanel::onMouseRelease);
+    // MyGUI::Gui::getInstance().eventFrameStart += MyGUI::newDelegate(this, &PropertiesPanel::notifyFrameStart);
+    // this->propertiesPanelView1->getMainWidget()->eventMouseWheel += MyGUI::newDelegate(this, &PropertiesPanel::onMouseWheel);
+    // this->propertiesPanelView1->getScrollView()->eventMouseDrag += MyGUI::newDelegate(this, &PropertiesPanel::onMouseRelease);
 
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PropertiesPanel::handleRefreshPropertiesPanel), NOWA::EventDataRefreshGui::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PropertiesPanel::handleRefreshPropertiesPanel), NOWA::EventDataRefreshGui::getStaticEventType());
 }
 
 void PropertiesPanel::setEditorManager(NOWA::EditorManager* editorManager)
 {
-	this->editorManager = editorManager;
+    this->editorManager = editorManager;
 }
 
 void PropertiesPanel::destroyContent(void)
@@ -228,20 +224,20 @@ void PropertiesPanel::clearProperties(void)
 
 void PropertiesPanel::setVisible(bool show)
 {
-	this->mMainWidget->setVisible(show);
+    this->mMainWidget->setVisible(show);
 }
 
 void PropertiesPanel::onMouseWheel(MyGUI::Widget* sender, int rel)
 {
-	// MyGUIHelper::getInstance()->setScrollPosition(this->propertiesPanelView1->getScrollView()->getViewOffset().top);
+    // MyGUIHelper::getInstance()->setScrollPosition(this->propertiesPanelView1->getScrollView()->getViewOffset().top);
 }
 
 void PropertiesPanel::onMouseRelease(MyGUI::Widget* sender, int left, int top, MyGUI::MouseButton id)
 {
-	if (MyGUI::MouseButton::Left == id)
-	{
-		// MyGUIHelper::getInstance()->setScrollPosition(this->propertiesPanelView1->getScrollView()->getViewOffset().top);
-	}
+    if (MyGUI::MouseButton::Left == id)
+    {
+        // MyGUIHelper::getInstance()->setScrollPosition(this->propertiesPanelView1->getScrollView()->getViewOffset().top);
+    }
 }
 
 void PropertiesPanel::showProperties(unsigned int componentIndex)
@@ -515,6 +511,29 @@ void PropertiesPanel::handleRefreshPropertiesPanel(NOWA::EventDataPtr eventData)
 {
     NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
     {
+        // Attention: this guard used to be missing, which broke every modal dialog opened
+        // from the properties panel.
+        //
+        // showProperties() calls clearProperties() -> removeAllItems(), which destroys every
+        // PropertiesPanelDynamic item, and PropertiesPanelDynamic::shutdown() deletes its
+        // openSaveFileDialog member. So a refresh arriving while the file dialog is up takes
+        // the dialog down with it - the dialog is created, shown, and immediately destroyed,
+        // with no exception and nothing suspicious in the debugger.
+        //
+        // The colour dialog appeared to be unaffected only because it lives in the
+        // ColourPanelManager singleton rather than in the panel item, so it survives the
+        // rebuild. Both dialogs set the flag to false before opening (see
+        // PropertiesPanelComponent::buttonHit and PropertiesPanelGameObject::buttonHit);
+        // PropertiesPanelComponent::notifyEndDialog sets it back to true when the dialog is
+        // accepted.
+        //
+        // getShowPropertiesFlag() is self-resetting: it returns the current value and sets
+        // the flag back to true, so it must be queried exactly once per refresh.
+        if (false == PropertiesPanel::getShowPropertiesFlag())
+        {
+            return;
+        }
+
         this->showProperties();
     };
     NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "PropertiesPanel::handleRefreshPropertiesPanel");
@@ -522,37 +541,33 @@ void PropertiesPanel::handleRefreshPropertiesPanel(NOWA::EventDataPtr eventData)
 
 PropertiesPanelDynamic* PropertiesPanel::getPropertiesPanelItem(size_t index)
 {
-	if (0 == this->propertiesPanelView1->getItemCount())
-	{
-		return nullptr;
-	}
-	if (index >= this->propertiesPanelView1->getItemCount())
-	{
-		return nullptr;
-	}
-	return dynamic_cast<PropertiesPanelDynamic*>(this->propertiesPanelView1->getItem(index));
+    if (0 == this->propertiesPanelView1->getItemCount())
+    {
+        return nullptr;
+    }
+    if (index >= this->propertiesPanelView1->getItemCount())
+    {
+        return nullptr;
+    }
+    return dynamic_cast<PropertiesPanelDynamic*>(this->propertiesPanelView1->getItem(index));
 }
 
 void PropertiesPanel::setShowPropertiesFlag(bool bShowProperties)
 {
-	PropertiesPanel::bShowProperties = bShowProperties;
+    PropertiesPanel::bShowProperties = bShowProperties;
 }
 
 bool PropertiesPanel::getShowPropertiesFlag(void)
 {
-	bool tempShowProperties = PropertiesPanel::bShowProperties;
-	PropertiesPanel::bShowProperties = true;
-	return tempShowProperties;
+    bool tempShowProperties = PropertiesPanel::bShowProperties;
+    PropertiesPanel::bShowProperties = true;
+    return tempShowProperties;
 }
-
 
 /////////////////////////////////////////////////////////////////////////////
 
-PropertiesPanelInfo::PropertiesPanelInfo()
-	: BasePanelViewItem("PropertiesPanelInfo.layout"),
-	heightCurrent(8) // Need space for property info
+PropertiesPanelInfo::PropertiesPanelInfo() : BasePanelViewItem("PropertiesPanelInfo.layout"), heightCurrent(8) // Need space for property info
 {
-
 }
 
 void PropertiesPanelInfo::initialise()
@@ -576,26 +591,30 @@ void PropertiesPanelInfo::initialise()
 
 void PropertiesPanelInfo::shutdown()
 {
-	// Threadsafe from the outside
-	// Move the vectors for render thread cleanup
-	auto textItems = std::move(this->itemsText);
-	auto editItems = std::move(this->itemsEdit);
+    // Threadsafe from the outside
+    // Move the vectors for render thread cleanup
+    auto textItems = std::move(this->itemsText);
+    auto editItems = std::move(this->itemsEdit);
 
-	// Ensure main thread doesn't touch them anymore
-	this->itemsText.clear();
-	this->itemsEdit.clear();
+    // Ensure main thread doesn't touch them anymore
+    this->itemsText.clear();
+    this->itemsEdit.clear();
 
-	for (auto* widget : textItems)
-	{
-		if (widget)
-			MyGUI::Gui::getInstance().destroyWidget(widget);
-	}
+    for (auto* widget : textItems)
+    {
+        if (widget)
+        {
+            MyGUI::Gui::getInstance().destroyWidget(widget);
+        }
+    }
 
-	for (auto* widget : editItems)
-	{
-		if (widget)
-			MyGUI::Gui::getInstance().destroyWidget(widget);
-	}
+    for (auto* widget : editItems)
+    {
+        if (widget)
+        {
+            MyGUI::Gui::getInstance().destroyWidget(widget);
+        }
+    }
 }
 
 void PropertiesPanelInfo::setInfo(const Ogre::String& info)
@@ -679,7 +698,7 @@ void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
 
                 this->heightCurrent += heightStep;
 
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, item->getMesh()->getName() + "List all animations:");
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, item->getMesh()->getName() + "List all animations:");
 
                 unsigned int i = 0;
                 // list all animations
@@ -703,7 +722,7 @@ void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
                     this->heightCurrent += heightStep;
                     i++;
 
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationBlenderV2] Animation name: '" + anim.getName().getFriendlyText() + "' length: " + Ogre::StringConverter::toString(anim.getDuration()) + " seconds");
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationBlenderV2] Animation name: '" + anim.getName().getFriendlyText() + "' length: " + Ogre::StringConverter::toString(anim.getDuration()) + " seconds");
                 }
 
                 MyGUI::Widget* separator = mWidgetClient->createWidget<MyGUI::Widget>("Separator3", MyGUI::IntCoord(keyLeft, this->heightCurrent, static_cast<int>(mWidgetClient->getWidth()), height), MyGUI::Align::HStretch | MyGUI::Align::Top);
@@ -722,7 +741,7 @@ void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
                 this->itemsText.push_back(keyTextBox);
                 this->heightCurrent += heightStep;
 
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, item->getMesh()->getName()  + "List all bones:");
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, item->getMesh()->getName() + "List all bones:");
 
                 unsigned short numBones = skeleton->getNumBones();
                 for (unsigned short iBone = 0; iBone < numBones; iBone++)
@@ -751,8 +770,8 @@ void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
                         if (true == unique)
                         {
                             boneNames.emplace_back(bone->getName());
-                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "-> Bone name: '" + bone->getName() + "' position: " + Ogre::StringConverter::toString(bone->getPosition()) 
-								+ " orientation: " + Ogre::StringConverter::toString(bone->getOrientation()));
+                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                                "-> Bone name: '" + bone->getName() + "' position: " + Ogre::StringConverter::toString(bone->getPosition()) + " orientation: " + Ogre::StringConverter::toString(bone->getOrientation()));
                         }
                     }
                     else
@@ -910,42 +929,42 @@ void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-PropertiesPanelDynamic::PropertiesPanelDynamic(const std::vector<NOWA::GameObject*>& gameObjects, const Ogre::String& name)
-	: BasePanelViewItem(""),
-	editorManager(nullptr),
-	gameObjects(gameObjects),
-	gameObject(gameObjects[0]),
-	name(name),
-	heightCurrent(0),
-	propertiesPanelInfo(nullptr)
+PropertiesPanelDynamic::PropertiesPanelDynamic(const std::vector<NOWA::GameObject*>& gameObjects, const Ogre::String& name) :
+    BasePanelViewItem(""),
+    editorManager(nullptr),
+    gameObjects(gameObjects),
+    gameObject(gameObjects[0]),
+    name(name),
+    heightCurrent(0),
+    propertiesPanelInfo(nullptr)
 {
-	this->openSaveFileDialog = new OpenSaveFileDialogExtended();
+    this->openSaveFileDialog = new OpenSaveFileDialogExtended();
 }
 
 PropertiesPanelDynamic::~PropertiesPanelDynamic()
 {
-	auto openSaveFileDialogPtr = this->openSaveFileDialog;
-	this->openSaveFileDialog = nullptr;
+    auto openSaveFileDialogPtr = this->openSaveFileDialog;
+    this->openSaveFileDialog = nullptr;
 
-	if (openSaveFileDialogPtr)
-	{
-		// ATTENTION: Queue in destructor
+    if (openSaveFileDialogPtr)
+    {
+        // ATTENTION: Queue in destructor
         NOWA::GraphicsModule::RenderCommand renderCommand = [this, openSaveFileDialogPtr]()
         {
             delete openSaveFileDialogPtr;
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PropertiesPanelDynamic::~PropertiesPanelDynamic");
-	}
+    }
 }
 
 void PropertiesPanelDynamic::setEditorManager(NOWA::EditorManager* editorManager)
 {
-	this->editorManager = editorManager;
+    this->editorManager = editorManager;
 }
 
 void PropertiesPanelDynamic::setPropertiesPanelInfo(PropertiesPanelInfo* propertiesPanelInfo)
 {
-	this->propertiesPanelInfo = propertiesPanelInfo;
+    this->propertiesPanelInfo = propertiesPanelInfo;
 }
 
 void PropertiesPanelDynamic::initialise()
@@ -961,57 +980,58 @@ void PropertiesPanelDynamic::initialise()
 
 void PropertiesPanelDynamic::shutdown()
 {
-	// Threadsafe from the outside
-	// this->itemsText.clear();
+    // Threadsafe from the outside
+    // this->itemsText.clear();
 
-	// Move the vectors for render thread cleanup
-	auto textItems = std::move(this->itemsText);
+    // Move the vectors for render thread cleanup
+    auto textItems = std::move(this->itemsText);
 
-	// Ensure main thread doesn't touch them anymore
-	this->itemsText.clear();
+    // Ensure main thread doesn't touch them anymore
+    this->itemsText.clear();
 
-	for (auto* widget : textItems)
-	{
-		if (widget)
-			MyGUI::Gui::getInstance().destroyWidget(widget);
-	}
+    for (auto* widget : textItems)
+    {
+        if (widget)
+        {
+            MyGUI::Gui::getInstance().destroyWidget(widget);
+        }
+    }
 
-	for (size_t i = 0; i < this->itemsEdit.size(); ++i)
-	{
-		auto widget = this->itemsEdit[i];
-		MyGUI::ItemBox* itemBox = widget->castType<MyGUI::ItemBox>(false);
+    for (size_t i = 0; i < this->itemsEdit.size(); ++i)
+    {
+        auto widget = this->itemsEdit[i];
+        MyGUI::ItemBox* itemBox = widget->castType<MyGUI::ItemBox>(false);
 
-		if (itemBox)
-		{
-			size_t count = itemBox->getItemCount();
-			for (size_t pos = 0; pos < count; ++pos)
-			{
-				MyGUI::Widget* childWidget = itemBox->getWidgetByIndex(pos);
-				if (childWidget)
-				{
-					ImageData** data = childWidget->getUserData<ImageData*>(false);
-					if (data)
-					{
-						auto toDelete = *data;
-						delete toDelete;
-					}
-				}
-			}
-		}
-	}
+        if (itemBox)
+        {
+            size_t count = itemBox->getItemCount();
+            for (size_t pos = 0; pos < count; ++pos)
+            {
+                MyGUI::Widget* childWidget = itemBox->getWidgetByIndex(pos);
+                if (childWidget)
+                {
+                    ImageData** data = childWidget->getUserData<ImageData*>(false);
+                    if (data)
+                    {
+                        auto toDelete = *data;
+                        delete toDelete;
+                    }
+                }
+            }
+        }
+    }
 
-	this->itemsEdit.clear();
-	this->gameObject = nullptr;
+    this->itemsEdit.clear();
+    this->gameObject = nullptr;
 
-	if (this->openSaveFileDialog)
-	{
-		auto toDelete = this->openSaveFileDialog;
-		this->openSaveFileDialog = nullptr;
+    if (this->openSaveFileDialog)
+    {
+        auto toDelete = this->openSaveFileDialog;
+        this->openSaveFileDialog = nullptr;
 
-		delete toDelete;
-	}
+        delete toDelete;
+    }
 }
-
 
 void PropertiesPanelDynamic::setVisibleCount(unsigned int count)
 {
@@ -1040,758 +1060,750 @@ void PropertiesPanelDynamic::setVisibleCount(unsigned int count)
 
 void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant* attribute, bool allValuesSame)
 {
-	if (false == attribute->isVisible())
-	{
-		return;
-	}
+    if (false == attribute->isVisible())
+    {
+        return;
+    }
 
-	const int height = 26;
-	const int heightStep = 28;
-	const int widthStep = 3;
+    const int height = 26;
+    const int heightStep = 28;
+    const int widthStep = 3;
 
-	const int keyLeft = 1;
-	const int keyWidth = static_cast<int>(mWidgetClient->getWidth() * 0.8f);
-	const int valueLeft = static_cast<int>(mWidgetClient->getWidth() * 0.8f + widthStep);
-	const int valueWidth = static_cast<int>(mWidgetClient->getWidth() * 0.3f);
+    const int keyLeft = 1;
+    const int keyWidth = static_cast<int>(mWidgetClient->getWidth() * 0.8f);
+    const int valueLeft = static_cast<int>(mWidgetClient->getWidth() * 0.8f + widthStep);
+    const int valueWidth = static_cast<int>(mWidgetClient->getWidth() * 0.3f);
 
-	// Add label when required
-	if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionLabel()))
-	{
-		MyGUI::TextBox* label = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
-		label->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-		label->setCaption(attribute->getDescription());
+    // Add label when required
+    if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionLabel()))
+    {
+        MyGUI::TextBox* label = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
+        label->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+        label->setCaption(attribute->getDescription());
 
-		this->itemsEdit.push_back(label);
-		this->heightCurrent += heightStep;
-	}
+        this->itemsEdit.push_back(label);
+        this->heightCurrent += heightStep;
+    }
 
-	// Set the key of the property
-	MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
-	keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-	keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
-	keyTextBox->setCaption(name);
-	keyTextBox->setNeedToolTip(true);
-	keyTextBox->setUserString("tooltip", attribute->getDescription());
-	keyTextBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+    // Set the key of the property
+    MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
+    keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+    keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+    keyTextBox->setCaption(name);
+    keyTextBox->setNeedToolTip(true);
+    keyTextBox->setUserString("tooltip", attribute->getDescription());
+    keyTextBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 
-	size_t found = attribute->getName().find("Id");
-	if (found != Ogre::String::npos)
-	{
-		// Set tooltip with connected game object for the id
-		auto connectedGameObject = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(attribute->getULong());
-		if (nullptr != connectedGameObject)
-		{
-			keyTextBox->setUserString("tooltip", "GameObject: '" + connectedGameObject->getName() + "'");
-		}
-	}
+    size_t found = attribute->getName().find("Id");
+    if (found != Ogre::String::npos)
+    {
+        // Set tooltip with connected game object for the id
+        auto connectedGameObject = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(attribute->getULong());
+        if (nullptr != connectedGameObject)
+        {
+            keyTextBox->setUserString("tooltip", "GameObject: '" + connectedGameObject->getName() + "'");
+        }
+    }
 
-	this->itemsText.push_back(keyTextBox);
+    this->itemsText.push_back(keyTextBox);
 
-	switch (attribute->getType())
-	{
-	case NOWA::Variant::VAR_BOOL:
-	{
-		MyGUI::Button* checkBox = mWidgetClient->createWidget<MyGUI::Button>("CheckBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
-		// checkBox->setCaption(Ogre::StringConverter::toString(attribute->getInt()));
-		checkBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-		checkBox->setColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-		checkBox->setUserData(MyGUI::Any(attribute));
-		// Store also if all values are the same
-		checkBox->setStateCheck(attribute->getBool());
-		checkBox->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::buttonHit);
-		checkBox->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-		checkBox->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
-		checkBox->setNeedKeyFocus(true);
-		checkBox->setNeedMouseFocus(true);
-		checkBox->_setRootKeyFocus(true);
-		checkBox->_setRootMouseFocus(true);
+    switch (attribute->getType())
+    {
+    case NOWA::Variant::VAR_BOOL:
+    {
+        MyGUI::Button* checkBox = mWidgetClient->createWidget<MyGUI::Button>("CheckBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
+        // checkBox->setCaption(Ogre::StringConverter::toString(attribute->getInt()));
+        checkBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+        checkBox->setColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+        checkBox->setUserData(MyGUI::Any(attribute));
+        // Store also if all values are the same
+        checkBox->setStateCheck(attribute->getBool());
+        checkBox->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::buttonHit);
+        checkBox->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
+        checkBox->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
+        checkBox->setNeedKeyFocus(true);
+        checkBox->setNeedMouseFocus(true);
+        checkBox->_setRootKeyFocus(true);
+        checkBox->_setRootMouseFocus(true);
 
-		if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
-		{
-			checkBox->setEnabled(false);
-		}
+        if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+        {
+            checkBox->setEnabled(false);
+        }
 
-		this->itemsEdit.push_back(checkBox);
-		break;
-	}
-	case NOWA::Variant::VAR_INT:
-	{
-		if (false == attribute->hasConstraints())
-		{
-			MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
-			if (true == allValuesSame)
-			{
-				edit->setOnlyText(Ogre::StringConverter::toString(attribute->getInt()));
-			}
-			else
-			{
-				edit->setOnlyText("0");
-			}
-			edit->setInvertSelected(false);
-			edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-			edit->setEditReadOnly(attribute->isReadOnly());
-			edit->setMouseHitThreshold(6, 6, 3, 3);
-			// Really important to set the name of the property for the edit box, in order to identify later when a value has been changed, what to do
-			// Store also if all values are the same
-			edit->setUserData(MyGUI::Any(attribute));
-			edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
-			edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-			edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
-			edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
-			edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
-			edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
-			edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
-			edit->setNeedKeyFocus(true);
-			edit->setNeedMouseFocus(true);
-			edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
+        this->itemsEdit.push_back(checkBox);
+        break;
+    }
+    case NOWA::Variant::VAR_INT:
+    {
+        if (false == attribute->hasConstraints())
+        {
+            MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
+            if (true == allValuesSame)
+            {
+                edit->setOnlyText(Ogre::StringConverter::toString(attribute->getInt()));
+            }
+            else
+            {
+                edit->setOnlyText("0");
+            }
+            edit->setInvertSelected(false);
+            edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+            edit->setEditReadOnly(attribute->isReadOnly());
+            edit->setMouseHitThreshold(6, 6, 3, 3);
+            // Really important to set the name of the property for the edit box, in order to identify later when a value has been changed, what to do
+            // Store also if all values are the same
+            edit->setUserData(MyGUI::Any(attribute));
+            edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
+            edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
+            edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+            edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
+            edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
+            edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+            edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
+            edit->setNeedKeyFocus(true);
+            edit->setNeedMouseFocus(true);
+            edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
 
-			if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
-			{
-				edit->setEnabled(false);
-			}
+            if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+            {
+                edit->setEnabled(false);
+            }
 
-			this->itemsEdit.push_back(edit);
-		}
-		else
-		{
-			this->createIntSlider(valueWidth, valueLeft, height, name, attribute);
-		}
-		break;
-	}
-	case NOWA::Variant::VAR_UINT:
-	{
-		if (false == attribute->hasConstraints())
-		{
-			MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
-			if (true == allValuesSame)
-			{
-				edit->setOnlyText(Ogre::StringConverter::toString(attribute->getUInt()));
-			}
-			else
-			{
-				edit->setOnlyText("0");
-			}
-			edit->setEditReadOnly(attribute->isReadOnly());
-			edit->setMouseHitThreshold(6, 6, 3, 3);
-			if (NOWA::GameObject::AttrCategoryId() == attribute->getName() || NOWA::GameObject::AttrRenderCategoryId() == attribute->getName())
-			{
-				edit->setEditReadOnly(true);
-			}
-			edit->setInvertSelected(false);
-			edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-			edit->setUserData(MyGUI::Any(attribute));
-			edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
-			edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-			edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
-			edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
-			edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
-			edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
-			edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
-			edit->setNeedKeyFocus(true);
-			edit->setNeedMouseFocus(true);
-			edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
+            this->itemsEdit.push_back(edit);
+        }
+        else
+        {
+            this->createIntSlider(valueWidth, valueLeft, height, name, attribute);
+        }
+        break;
+    }
+    case NOWA::Variant::VAR_UINT:
+    {
+        if (false == attribute->hasConstraints())
+        {
+            MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
+            if (true == allValuesSame)
+            {
+                edit->setOnlyText(Ogre::StringConverter::toString(attribute->getUInt()));
+            }
+            else
+            {
+                edit->setOnlyText("0");
+            }
+            edit->setEditReadOnly(attribute->isReadOnly());
+            edit->setMouseHitThreshold(6, 6, 3, 3);
+            if (NOWA::GameObject::AttrCategoryId() == attribute->getName() || NOWA::GameObject::AttrRenderCategoryId() == attribute->getName())
+            {
+                edit->setEditReadOnly(true);
+            }
+            edit->setInvertSelected(false);
+            edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+            edit->setUserData(MyGUI::Any(attribute));
+            edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
+            edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
+            edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+            edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
+            edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
+            edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+            edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
+            edit->setNeedKeyFocus(true);
+            edit->setNeedMouseFocus(true);
+            edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
 
-			if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
-			{
-				edit->setEnabled(false);
-			}
+            if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+            {
+                edit->setEnabled(false);
+            }
 
-			this->itemsEdit.push_back(edit);
-		}
-		else
-		{
-			this->createIntSlider(valueWidth, valueLeft, height, name, attribute);
-		}
-		break;
-	}
-	case NOWA::Variant::VAR_ULONG:
-	{
-		if (false == attribute->hasConstraints())
-		{
-			MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
-			if (true == allValuesSame)
-			{
-				edit->setOnlyText(Ogre::StringConverter::toString(attribute->getULong()));
-			}
-			else
-			{
-				edit->setOnlyText("0");
-			}
-			edit->setEditReadOnly(attribute->isReadOnly());
-			edit->setMouseHitThreshold(6, 6, 3, 3);
-			edit->setInvertSelected(false);
-			edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-			edit->setUserData(MyGUI::Any(attribute));
-			edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
-			edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-			edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
-			edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
-			edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
-			edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
-			edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
-			edit->setNeedKeyFocus(true);
-			edit->setNeedMouseFocus(true);
-			edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
+            this->itemsEdit.push_back(edit);
+        }
+        else
+        {
+            this->createIntSlider(valueWidth, valueLeft, height, name, attribute);
+        }
+        break;
+    }
+    case NOWA::Variant::VAR_ULONG:
+    {
+        if (false == attribute->hasConstraints())
+        {
+            MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
+            if (true == allValuesSame)
+            {
+                edit->setOnlyText(Ogre::StringConverter::toString(attribute->getULong()));
+            }
+            else
+            {
+                edit->setOnlyText("0");
+            }
+            edit->setEditReadOnly(attribute->isReadOnly());
+            edit->setMouseHitThreshold(6, 6, 3, 3);
+            edit->setInvertSelected(false);
+            edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+            edit->setUserData(MyGUI::Any(attribute));
+            edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
+            edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
+            edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+            edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
+            edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
+            edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+            edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
+            edit->setNeedKeyFocus(true);
+            edit->setNeedMouseFocus(true);
+            edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
 
-			if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
-			{
-				edit->setEnabled(false);
-			}
+            if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+            {
+                edit->setEnabled(false);
+            }
 
-			this->itemsEdit.push_back(edit);
-		}
-		else
-		{
-			this->createIntSlider(valueWidth, valueLeft, height, name, attribute);
-		}
-		break;
-	}
-	case NOWA::Variant::VAR_REAL:
-	{
-		if (false == attribute->hasConstraints())
-		{
-			MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
-			if (true == allValuesSame)
-			{
-				attribute->setValue(NOWA::MathHelper::getInstance()->round(attribute->getReal(), 5));
-				edit->setOnlyText(Ogre::StringConverter::toString(attribute->getReal()));
-			}
-			else
-			{
-				edit->setOnlyText("0");
-			}
-			edit->setInvertSelected(false);
-			edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-			edit->setEditReadOnly(attribute->isReadOnly());
-			edit->setMouseHitThreshold(6, 6, 3, 3);
-			edit->setUserData(MyGUI::Any(attribute));
-			edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
-			edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-			edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
-			edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
-			edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
-			edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
-			edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
-			edit->setNeedKeyFocus(true);
-			edit->setNeedMouseFocus(true);
-			edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
+            this->itemsEdit.push_back(edit);
+        }
+        else
+        {
+            this->createIntSlider(valueWidth, valueLeft, height, name, attribute);
+        }
+        break;
+    }
+    case NOWA::Variant::VAR_REAL:
+    {
+        if (false == attribute->hasConstraints())
+        {
+            MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
+            if (true == allValuesSame)
+            {
+                attribute->setValue(NOWA::MathHelper::getInstance()->round(attribute->getReal(), 5));
+                edit->setOnlyText(Ogre::StringConverter::toString(attribute->getReal()));
+            }
+            else
+            {
+                edit->setOnlyText("0");
+            }
+            edit->setInvertSelected(false);
+            edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+            edit->setEditReadOnly(attribute->isReadOnly());
+            edit->setMouseHitThreshold(6, 6, 3, 3);
+            edit->setUserData(MyGUI::Any(attribute));
+            edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
+            edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
+            edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+            edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
+            edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
+            edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+            edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
+            edit->setNeedKeyFocus(true);
+            edit->setNeedMouseFocus(true);
+            edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
 
-			if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
-			{
-				edit->setEnabled(false);
-			}
+            if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+            {
+                edit->setEnabled(false);
+            }
 
-			this->itemsEdit.push_back(edit);
-		}
-		else
-		{
-			this->createRealSlider(valueWidth, valueLeft, height, name, attribute);
-		}
-		break;
-	}
-	case NOWA::Variant::VAR_VEC2:
-	{
-		MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
-		if (true == allValuesSame)
-		{
-			attribute->setValue(NOWA::MathHelper::getInstance()->round(attribute->getVector2(), 5));
-			edit->setOnlyText(Ogre::StringConverter::toString(attribute->getVector2()));
-		}
-		else
-		{
-			edit->setOnlyText("0 0");
-		}
-		edit->setInvertSelected(false);
-		edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-		edit->setEditReadOnly(attribute->isReadOnly());
-		edit->setMouseHitThreshold(6, 6, 3, 3);
-		// edit->setTextAlign(MyGUI::Align::Left);
-		edit->setUserData(MyGUI::Any(attribute));
-		edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
-		edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-		edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
-		edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
-		edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
-		edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
-		edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
-		edit->setNeedKeyFocus(true);
-		edit->setNeedMouseFocus(true);
-		edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
+            this->itemsEdit.push_back(edit);
+        }
+        else
+        {
+            this->createRealSlider(valueWidth, valueLeft, height, name, attribute);
+        }
+        break;
+    }
+    case NOWA::Variant::VAR_VEC2:
+    {
+        MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
+        if (true == allValuesSame)
+        {
+            attribute->setValue(NOWA::MathHelper::getInstance()->round(attribute->getVector2(), 5));
+            edit->setOnlyText(Ogre::StringConverter::toString(attribute->getVector2()));
+        }
+        else
+        {
+            edit->setOnlyText("0 0");
+        }
+        edit->setInvertSelected(false);
+        edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+        edit->setEditReadOnly(attribute->isReadOnly());
+        edit->setMouseHitThreshold(6, 6, 3, 3);
+        // edit->setTextAlign(MyGUI::Align::Left);
+        edit->setUserData(MyGUI::Any(attribute));
+        edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
+        edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
+        edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+        edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
+        edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
+        edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+        edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
+        edit->setNeedKeyFocus(true);
+        edit->setNeedMouseFocus(true);
+        edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
 
-		if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
-		{
-			edit->setEnabled(false);
-		}
+        if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+        {
+            edit->setEnabled(false);
+        }
 
-		this->itemsEdit.push_back(edit);
-		break;
-	}
-	case NOWA::Variant::VAR_VEC3:
-	{
-		MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
-		if (true == allValuesSame)
-		{
-			// Round values up to 4 digits, so later when mouseLostFocus event is fired and the user just moved away from edit box so that the check between the attribute value and the
-			// edit box value is the same and nothing is done
-			attribute->setValue(NOWA::MathHelper::getInstance()->round(attribute->getVector3(), 5));
-			edit->setOnlyText(Ogre::StringConverter::toString(attribute->getVector3()));
-		}
-		else
-		{
-			edit->setOnlyText("0 0 0");
-		}
-		edit->setInvertSelected(false);
-		edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-		edit->setEditReadOnly(attribute->isReadOnly());
-		edit->setMouseHitThreshold(6, 6, 3, 3);
-		edit->setUserData(MyGUI::Any(attribute));
-		edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
-		edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-		edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
-		edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
-		edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
-		edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
-		edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
-		edit->setNeedKeyFocus(true);
-		edit->setNeedMouseFocus(true);
-		edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
+        this->itemsEdit.push_back(edit);
+        break;
+    }
+    case NOWA::Variant::VAR_VEC3:
+    {
+        MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
+        if (true == allValuesSame)
+        {
+            // Round values up to 4 digits, so later when mouseLostFocus event is fired and the user just moved away from edit box so that the check between the attribute value and the
+            // edit box value is the same and nothing is done
+            attribute->setValue(NOWA::MathHelper::getInstance()->round(attribute->getVector3(), 5));
+            edit->setOnlyText(Ogre::StringConverter::toString(attribute->getVector3()));
+        }
+        else
+        {
+            edit->setOnlyText("0 0 0");
+        }
+        edit->setInvertSelected(false);
+        edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+        edit->setEditReadOnly(attribute->isReadOnly());
+        edit->setMouseHitThreshold(6, 6, 3, 3);
+        edit->setUserData(MyGUI::Any(attribute));
+        edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
+        edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
+        edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+        edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
+        edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
+        edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+        edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
+        edit->setNeedKeyFocus(true);
+        edit->setNeedMouseFocus(true);
+        edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
 
-		if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
-		{
-			edit->setEnabled(false);
-		}
+        if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+        {
+            edit->setEnabled(false);
+        }
 
-		this->itemsEdit.push_back(edit);
+        this->itemsEdit.push_back(edit);
 
-		if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionColorDialog()))
-		{
-			MyGUI::Button* button = mWidgetClient->createWidget<MyGUI::Button>(MyGUI::WidgetStyle::Overlapped, "Button", MyGUI::IntCoord(valueLeft - 25, heightCurrent + 1, 20, 20), MyGUI::Align::Default, "Main", name + "button");
-			button->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
-			button->setCaption("..");
-			button->setUserData(MyGUI::Any(attribute));
-			button->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::buttonHit);
-			this->itemsEdit.push_back(button);
-		}
-		break;
-	}
-	case NOWA::Variant::VAR_VEC4:
-	{
-		MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
-		if (true == allValuesSame)
-		{
-			attribute->setValue(NOWA::MathHelper::getInstance()->round(attribute->getVector4(), 5));
-			edit->setOnlyText(Ogre::StringConverter::toString(attribute->getVector4()));
-		}
-		else
-		{
-			edit->setOnlyText("0 0 0 0");
-		}
-		edit->setInvertSelected(false);
-		edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-		edit->setEditReadOnly(attribute->isReadOnly());
-		edit->setMouseHitThreshold(6, 6, 3, 3);
-		// edit->setTextAlign(MyGUI::Align::Left);
-		edit->setUserData(MyGUI::Any(attribute));
-		edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
-		edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-		edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
-		edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
-		edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
-		edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
-		edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
-		edit->setNeedKeyFocus(true);
-		edit->setNeedMouseFocus(true);
-		edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
+        if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionColorDialog()))
+        {
+            MyGUI::Button* button = mWidgetClient->createWidget<MyGUI::Button>(MyGUI::WidgetStyle::Overlapped, "Button", MyGUI::IntCoord(valueLeft - 25, heightCurrent + 1, 20, 20), MyGUI::Align::Default, "Main", name + "button");
+            button->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
+            button->setCaption("..");
+            button->setUserData(MyGUI::Any(attribute));
+            button->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::buttonHit);
+            this->itemsEdit.push_back(button);
+        }
+        break;
+    }
+    case NOWA::Variant::VAR_VEC4:
+    {
+        MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
+        if (true == allValuesSame)
+        {
+            attribute->setValue(NOWA::MathHelper::getInstance()->round(attribute->getVector4(), 5));
+            edit->setOnlyText(Ogre::StringConverter::toString(attribute->getVector4()));
+        }
+        else
+        {
+            edit->setOnlyText("0 0 0 0");
+        }
+        edit->setInvertSelected(false);
+        edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+        edit->setEditReadOnly(attribute->isReadOnly());
+        edit->setMouseHitThreshold(6, 6, 3, 3);
+        // edit->setTextAlign(MyGUI::Align::Left);
+        edit->setUserData(MyGUI::Any(attribute));
+        edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
+        edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
+        edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+        edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
+        edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
+        edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+        edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
+        edit->setNeedKeyFocus(true);
+        edit->setNeedMouseFocus(true);
+        edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
 
-		if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
-		{
-			edit->setEnabled(false);
-		}
+        if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+        {
+            edit->setEnabled(false);
+        }
 
-		this->itemsEdit.push_back(edit);
+        this->itemsEdit.push_back(edit);
 
-		if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionColorDialog()))
-		{
-			MyGUI::Button* button = mWidgetClient->createWidget<MyGUI::Button>(MyGUI::WidgetStyle::Overlapped, "Button", MyGUI::IntCoord(valueLeft - 25, heightCurrent + 1, 20, 20), MyGUI::Align::Default, "Main", name + "button");
-			button->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
-			button->setCaption("..");
-			button->setUserData(MyGUI::Any(attribute));
-			button->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::buttonHit);
-			this->itemsEdit.push_back(button);
-		}
-		break;
-	}
-	case NOWA::Variant::VAR_LIST:
-	{
-		if (false == attribute->hasUserDataKey(NOWA::GameObject::AttrActionImage()))
-		{
-			// Check if autocomplete is enabled
-			bool useAutoComplete = attribute->hasUserDataKey(NOWA::GameObject::AttrActionAutoComplete());
+        if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionColorDialog()))
+        {
+            MyGUI::Button* button = mWidgetClient->createWidget<MyGUI::Button>(MyGUI::WidgetStyle::Overlapped, "Button", MyGUI::IntCoord(valueLeft - 25, heightCurrent + 1, 20, 20), MyGUI::Align::Default, "Main", name + "button");
+            button->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
+            button->setCaption("..");
+            button->setUserData(MyGUI::Any(attribute));
+            button->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::buttonHit);
+            this->itemsEdit.push_back(button);
+        }
+        break;
+    }
+    case NOWA::Variant::VAR_LIST:
+    {
+        if (false == attribute->hasUserDataKey(NOWA::GameObject::AttrActionImage()))
+        {
+            // Check if autocomplete is enabled
+            bool useAutoComplete = attribute->hasUserDataKey(NOWA::GameObject::AttrActionAutoComplete());
 
-			if (true == useAutoComplete)
-			{
-				// Create search EditBox for filtering
-				MyGUI::EditBox* searchEdit = mWidgetClient->createWidget<MyGUI::EditBox>(
-					"EditBox",
-					MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 15, height),
-					MyGUI::Align::HStretch | MyGUI::Align::Top,
-					name + "_search"
-				);
-				searchEdit->setInvertSelected(false);
-				searchEdit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-				searchEdit->setMouseHitThreshold(6, 6, 3, 3);
-				searchEdit->setEditStatic(false);
-				searchEdit->setUserData(MyGUI::Any(attribute));
-				searchEdit->setNeedKeyFocus(true);
-				searchEdit->setNeedMouseFocus(true);
+            if (true == useAutoComplete)
+            {
+                // Create search EditBox for filtering
+                MyGUI::EditBox* searchEdit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 15, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name + "_search");
+                searchEdit->setInvertSelected(false);
+                searchEdit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+                searchEdit->setMouseHitThreshold(6, 6, 3, 3);
+                searchEdit->setEditStatic(false);
+                searchEdit->setUserData(MyGUI::Any(attribute));
+                searchEdit->setNeedKeyFocus(true);
+                searchEdit->setNeedMouseFocus(true);
 
-				// Link to the combo box
-				searchEdit->setUserString("linkedComboName", name + "_combo");
+                // Link to the combo box
+                searchEdit->setUserString("linkedComboName", name + "_combo");
 
-				// Connect events
-				searchEdit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onAutoCompleteTextChange);
-				searchEdit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onAutoCompleteKeyPressed);
-				searchEdit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
+                // Connect events
+                searchEdit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onAutoCompleteTextChange);
+                searchEdit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onAutoCompleteKeyPressed);
+                searchEdit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
 
-				if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
-				{
-					searchEdit->setEnabled(false);
-				}
+                if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+                {
+                    searchEdit->setEnabled(false);
+                }
 
-				this->itemsEdit.push_back(searchEdit);
+                this->itemsEdit.push_back(searchEdit);
 
-				this->heightCurrent += heightStep;
+                this->heightCurrent += heightStep;
 
-				// Create ComboBox for showing filtered results (acts as dropdown)
-                MyGUI::ComboBox* comboBox = mWidgetClient->createWidget<MyGUI::ComboBox>("ComboBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 15, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name + "_combo");        
-				comboBox->setTextColour(MyGUIHelper::getInstance()->getTextSelectColour());
-				comboBox->setMouseHitThreshold(6, 6, 3, 3);
-				comboBox->setUserData(MyGUI::Any(attribute));
-				comboBox->setNeedKeyFocus(true);
-				comboBox->setNeedMouseFocus(true);
-				comboBox->setEditReadOnly(true);
+                // Create ComboBox for showing filtered results (acts as dropdown)
+                MyGUI::ComboBox* comboBox = mWidgetClient->createWidget<MyGUI::ComboBox>("ComboBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 15, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name + "_combo");
+                comboBox->setTextColour(MyGUIHelper::getInstance()->getTextSelectColour());
+                comboBox->setMouseHitThreshold(6, 6, 3, 3);
+                comboBox->setUserData(MyGUI::Any(attribute));
+                comboBox->setNeedKeyFocus(true);
+                comboBox->setNeedMouseFocus(true);
+                comboBox->setEditReadOnly(true);
 
-				comboBox->setUserString("linkedSearchName", name + "_search");
+                comboBox->setUserString("linkedSearchName", name + "_search");
 
-				// Populate with all items
-				for (unsigned int i = 0; i < static_cast<unsigned int>(attribute->getList().size()); i++)
-				{
-					comboBox->addItem(attribute->getList()[i]);
-				}
+                // Populate with all items
+                for (unsigned int i = 0; i < static_cast<unsigned int>(attribute->getList().size()); i++)
+                {
+                    comboBox->addItem(attribute->getList()[i]);
+                }
 
-				// Set current selected value
-				comboBox->setOnlyText(attribute->getListSelectedValue());
+                // Set current selected value
+                comboBox->setOnlyText(attribute->getListSelectedValue());
 
-				// Connect combo events
-				comboBox->eventComboChangePosition += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onAutoCompleteComboChangePosition);
+                // Connect combo events
+                comboBox->eventComboChangePosition += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onAutoCompleteComboChangePosition);
                 comboBox->eventComboAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onAutoCompleteComboSelectAccept);
-				comboBox->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
-				comboBox->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-				comboBox->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onAutoCompleteComboMousePressed);
+                comboBox->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
+                comboBox->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
+                comboBox->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onAutoCompleteComboMousePressed);
 
-				if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
-				{
-					comboBox->setEnabled(false);
-				}
+                if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+                {
+                    comboBox->setEnabled(false);
+                }
 
-				this->itemsEdit.push_back(comboBox);
+                this->itemsEdit.push_back(comboBox);
 
-				this->heightCurrent += heightStep;
-			}
-			else
-			{
-				// Original ComboBox code for non-autocomplete lists
-				MyGUI::ComboBox* comboBox = mWidgetClient->createWidget<MyGUI::ComboBox>("ComboBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 15, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
-				comboBox->setTextColour(MyGUIHelper::getInstance()->getTextSelectColour());
-				comboBox->setMouseHitThreshold(6, 6, 3, 3);
+                this->heightCurrent += heightStep;
+            }
+            else
+            {
+                // Original ComboBox code for non-autocomplete lists
+                MyGUI::ComboBox* comboBox = mWidgetClient->createWidget<MyGUI::ComboBox>("ComboBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 15, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
+                comboBox->setTextColour(MyGUIHelper::getInstance()->getTextSelectColour());
+                comboBox->setMouseHitThreshold(6, 6, 3, 3);
 
-				if (attribute->getName() == NOWA::GameObject::AttrCategory())
-				{
-					if (this->gameObjects.size() > 1)
-					{
-						comboBox->setEditStatic(false);
-					}
+                if (attribute->getName() == NOWA::GameObject::AttrCategory())
+                {
+                    if (this->gameObjects.size() > 1)
+                    {
+                        comboBox->setEditStatic(false);
+                    }
 
-					// Set all available categories + ability to add a new category
-					std::vector<Ogre::String> allCategories = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getAllCategoriesSoFar();
-					if (allCategories.size() > 0)
-					{
-						for (const auto& category : allCategories)
-						{
-							comboBox->addItem(category);
-						}
-					}
-					this->heightCurrent += heightStep;
+                    // Set all available categories + ability to add a new category
+                    std::vector<Ogre::String> allCategories = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getAllCategoriesSoFar();
+                    if (allCategories.size() > 0)
+                    {
+                        for (const auto& category : allCategories)
+                        {
+                            comboBox->addItem(category);
+                        }
+                    }
+                    this->heightCurrent += heightStep;
 
-					MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
-					keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-					keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
-					keyTextBox->setCaption("New Category:");
-					this->itemsText.push_back(keyTextBox);
+                    MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
+                    keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+                    keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+                    keyTextBox->setCaption("New Category:");
+                    this->itemsText.push_back(keyTextBox);
 
-					MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
-					edit->setInvertSelected(false);
-					edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-					edit->setMouseHitThreshold(6, 6, 3, 3);
-					edit->setUserData(MyGUI::Any(attribute));
-					edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
-					edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-					edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
-					edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
-					edit->setNeedKeyFocus(true);
-					edit->setNeedMouseFocus(true);
+                    MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
+                    edit->setInvertSelected(false);
+                    edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+                    edit->setMouseHitThreshold(6, 6, 3, 3);
+                    edit->setUserData(MyGUI::Any(attribute));
+                    edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
+                    edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
+                    edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+                    edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
+                    edit->setNeedKeyFocus(true);
+                    edit->setNeedMouseFocus(true);
 
-					if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
-					{
-						edit->setEnabled(false);
-					}
+                    if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+                    {
+                        edit->setEnabled(false);
+                    }
 
-					this->itemsEdit.push_back(edit);
-				}
-				else if (attribute->getName() == NOWA::GameObject::AttrRenderCategory())
-				{
-					if (this->gameObjects.size() > 1)
-					{
-						comboBox->setEditStatic(false);
-					}
+                    this->itemsEdit.push_back(edit);
+                }
+                else if (attribute->getName() == NOWA::GameObject::AttrRenderCategory())
+                {
+                    if (this->gameObjects.size() > 1)
+                    {
+                        comboBox->setEditStatic(false);
+                    }
 
-					// Set all available categories + ability to add a new render category
-					std::vector<Ogre::String> allRenderCategories = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getAllRenderCategoriesSoFar();
-					if (allRenderCategories.size() > 0)
-					{
-						for (const auto& renderCategory : allRenderCategories)
-						{
-							comboBox->addItem(renderCategory);
-						}
-					}
-					this->heightCurrent += heightStep;
+                    // Set all available categories + ability to add a new render category
+                    std::vector<Ogre::String> allRenderCategories = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getAllRenderCategoriesSoFar();
+                    if (allRenderCategories.size() > 0)
+                    {
+                        for (const auto& renderCategory : allRenderCategories)
+                        {
+                            comboBox->addItem(renderCategory);
+                        }
+                    }
+                    this->heightCurrent += heightStep;
 
-					MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
-					keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-					keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
-					keyTextBox->setCaption("New Render Category:");
-					this->itemsText.push_back(keyTextBox);
+                    MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
+                    keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+                    keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+                    keyTextBox->setCaption("New Render Category:");
+                    this->itemsText.push_back(keyTextBox);
 
-					MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
-					edit->setInvertSelected(false);
-					edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-					edit->setMouseHitThreshold(6, 6, 3, 3);
-					edit->setUserData(MyGUI::Any(attribute));
-					edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
-					edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-					edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
-					edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
-					edit->setNeedKeyFocus(true);
-					edit->setNeedMouseFocus(true);
+                    MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
+                    edit->setInvertSelected(false);
+                    edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+                    edit->setMouseHitThreshold(6, 6, 3, 3);
+                    edit->setUserData(MyGUI::Any(attribute));
+                    edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
+                    edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
+                    edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+                    edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
+                    edit->setNeedKeyFocus(true);
+                    edit->setNeedMouseFocus(true);
 
-					if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
-					{
-						edit->setEnabled(false);
-					}
+                    if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+                    {
+                        edit->setEnabled(false);
+                    }
 
-					this->itemsEdit.push_back(edit);
-				}
-				else
-				{
-					for (unsigned int i = 0; i < static_cast<unsigned int>(attribute->getList().size()); i++)
-					{
-						comboBox->addItem(attribute->getList()[i]);
-					}
-				}
+                    this->itemsEdit.push_back(edit);
+                }
+                else
+                {
+                    for (unsigned int i = 0; i < static_cast<unsigned int>(attribute->getList().size()); i++)
+                    {
+                        comboBox->addItem(attribute->getList()[i]);
+                    }
+                }
 
-				comboBox->setOnlyText(attribute->getListSelectedValue());
+                comboBox->setOnlyText(attribute->getListSelectedValue());
 
-				comboBox->setEditReadOnly(true);
-				comboBox->setUserData(MyGUI::Any(attribute));
-				comboBox->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
-				comboBox->eventComboChangePosition += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyComboChangedPosition);
-				comboBox->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-				comboBox->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
-				comboBox->setNeedKeyFocus(true);
-				comboBox->setNeedMouseFocus(true);
+                comboBox->setEditReadOnly(true);
+                comboBox->setUserData(MyGUI::Any(attribute));
+                comboBox->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
+                comboBox->eventComboChangePosition += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyComboChangedPosition);
+                comboBox->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
+                comboBox->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
+                comboBox->setNeedKeyFocus(true);
+                comboBox->setNeedMouseFocus(true);
 
-				if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
-				{
-					comboBox->setEnabled(false);
-				}
+                if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+                {
+                    comboBox->setEnabled(false);
+                }
 
-				this->itemsEdit.push_back(comboBox);
-			}
-		}
-		else
-		{
-			MyGUI::ItemBox* itemBox = mWidgetClient->createWidget<MyGUI::ItemBox>("ItemBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 20, 700), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
-			itemBox->requestCoordItem = MyGUI::newDelegate(this, &PropertiesPanelDynamic::requestCoordItem);
-			itemBox->requestCreateWidgetItem = MyGUI::newDelegate(this, &PropertiesPanelDynamic::requestCreateWidgetItem);
-			itemBox->requestDrawItem = MyGUI::newDelegate(this, &PropertiesPanelDynamic::requestDrawItem);
-			itemBox->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
-			itemBox->setNeedKeyFocus(true);
-			itemBox->setNeedMouseFocus(true);
+                this->itemsEdit.push_back(comboBox);
+            }
+        }
+        else
+        {
+            MyGUI::ItemBox* itemBox = mWidgetClient->createWidget<MyGUI::ItemBox>("ItemBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 20, 700), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
+            itemBox->requestCoordItem = MyGUI::newDelegate(this, &PropertiesPanelDynamic::requestCoordItem);
+            itemBox->requestCreateWidgetItem = MyGUI::newDelegate(this, &PropertiesPanelDynamic::requestCreateWidgetItem);
+            itemBox->requestDrawItem = MyGUI::newDelegate(this, &PropertiesPanelDynamic::requestDrawItem);
+            itemBox->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
+            itemBox->setNeedKeyFocus(true);
+            itemBox->setNeedMouseFocus(true);
 
-			this->heightCurrent += 700;
+            this->heightCurrent += 700;
 
-			itemBox->setUserData(MyGUI::Any(attribute));
+            itemBox->setUserData(MyGUI::Any(attribute));
 
-			for (unsigned int i = 0; i < static_cast<unsigned int>(attribute->getList().size()); i++)
-			{
-				auto item = attribute->getList().at(i);
-				if (false == item.empty())
-				{
-					itemBox->addItem(item);
-				}
-			}
-			this->itemsEdit.push_back(itemBox);
-		}
-		break;
-	}
-	default:
-	{
-		// String
-		MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
-		edit->setInvertSelected(false);
-		edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-		edit->setMouseHitThreshold(6, 6, 3, 3);
+            for (unsigned int i = 0; i < static_cast<unsigned int>(attribute->getList().size()); i++)
+            {
+                auto item = attribute->getList().at(i);
+                if (false == item.empty())
+                {
+                    itemBox->addItem(item);
+                }
+            }
+            this->itemsEdit.push_back(itemBox);
+        }
+        break;
+    }
+    default:
+    {
+        // String
+        MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
+        edit->setInvertSelected(false);
+        edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+        edit->setMouseHitThreshold(6, 6, 3, 3);
 
-		if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
-		{
-			edit->setEnabled(false);
-		}
+        if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+        {
+            edit->setEnabled(false);
+        }
 
-		if (true == allValuesSame)
-		{
-			edit->setOnlyText(attribute->getString());
-			// Move the cursor to the beginning (index 0)
-			edit->setTextCursor(0);
-		}
-		else
-		{
-			edit->setOnlyText("-several-");
-		}
-		// If its the name attribute of game object and several are selected, set read only
-		if (this->gameObjects.size() > 1)
-		{
-			if (NOWA::GameObject::AttrName() == attribute->getName())
-			{
-				edit->setEditReadOnly(true);
-			}
-		}
+        if (true == allValuesSame)
+        {
+            edit->setOnlyText(attribute->getString());
+            // Move the cursor to the beginning (index 0)
+            edit->setTextCursor(0);
+        }
+        else
+        {
+            edit->setOnlyText("-several-");
+        }
+        // If its the name attribute of game object and several are selected, set read only
+        if (this->gameObjects.size() > 1)
+        {
+            if (NOWA::GameObject::AttrName() == attribute->getName())
+            {
+                edit->setEditReadOnly(true);
+            }
+        }
 
-		if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionMultiLine()))
-		{
-			edit->setEditMultiLine(true);
-			edit->setTextAlign(MyGUI::Align::Left | MyGUI::Align::Top);
-			edit->setVisibleVScroll(true);
-			edit->setVisibleHScroll(true);
-			edit->showHScroll(true);
-			edit->showVScroll(true);
-			edit->setEditWordWrap(true);
-			/*
-			Hmm, and what you expected wit this?.. VScroll is not designed to be parent widget. You need to create two separate widgets (Edit and Vscroll near it) and add event handler for eventScrollChangePosition and scroll your text with it. You also can use mouse wheel in Edit :)
-			aclysma wrote:
-			1) The HScroll does not seem to affect the edit box. I tried with the HScroll on the outside and inside of the edit box.
-			Why it should affect? It's two separate widgets.
-			aclysma wrote:
-			2) Auto-scroll. I am assuming I need to check that the edit box cursor index equals the length of text in the edit box. If this is true and I add more text, then I need to put the cursor at the end or somehow tell the scrollbar to scroll the full way down. I haven't looked too much into this as #1 has me stuck for now :)
-			Well, we have such functionality for List, we'll add Scroll to Edit, but later.
-			*/
-			edit->setSize(edit->getWidth(), heightStep * 5);
-			this->heightCurrent += (heightStep * 4);
-		}
+        if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionMultiLine()))
+        {
+            edit->setEditMultiLine(true);
+            edit->setTextAlign(MyGUI::Align::Left | MyGUI::Align::Top);
+            edit->setVisibleVScroll(true);
+            edit->setVisibleHScroll(true);
+            edit->showHScroll(true);
+            edit->showVScroll(true);
+            edit->setEditWordWrap(true);
+            /*
+            Hmm, and what you expected wit this?.. VScroll is not designed to be parent widget. You need to create two separate widgets (Edit and Vscroll near it) and add event handler for eventScrollChangePosition and scroll your text with it. You
+            also can use mouse wheel in Edit :) aclysma wrote: 1) The HScroll does not seem to affect the edit box. I tried with the HScroll on the outside and inside of the edit box. Why it should affect? It's two separate widgets. aclysma wrote: 2)
+            Auto-scroll. I am assuming I need to check that the edit box cursor index equals the length of text in the edit box. If this is true and I add more text, then I need to put the cursor at the end or somehow tell the scrollbar to scroll the
+            full way down. I haven't looked too much into this as #1 has me stuck for now :) Well, we have such functionality for List, we'll add Scroll to Edit, but later.
+            */
+            edit->setSize(edit->getWidth(), heightStep * 5);
+            this->heightCurrent += (heightStep * 4);
+        }
 
-		edit->setUserData(MyGUI::Any(attribute));
-		edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
-		edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-		edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
-		edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
-		edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
-		edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
-		edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
+        edit->setUserData(MyGUI::Any(attribute));
+        edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
+        edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
+        edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+        edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
+        edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
+        edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+        edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
 
-		edit->setNeedKeyFocus(true);
-		edit->setNeedMouseFocus(true);
-		edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
+        edit->setNeedKeyFocus(true);
+        edit->setNeedMouseFocus(true);
+        edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
 
-		// edit->setMaxTextLength(15);
-		this->itemsEdit.push_back(edit);
+        // edit->setMaxTextLength(15);
+        this->itemsEdit.push_back(edit);
 
-		if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionFileOpenDialog()))
-		{
-			MyGUI::Button* button = mWidgetClient->createWidget<MyGUI::Button>(MyGUI::WidgetStyle::Overlapped, "Button", MyGUI::IntCoord(valueLeft - 25, heightCurrent + 1, 20, 20), MyGUI::Align::Default, "Main", name + "button");
-			button->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
-			button->setCaption("..");
-			button->setUserData(MyGUI::Any(attribute));
-			button->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::buttonHit);
-			this->itemsEdit.push_back(button);
-		}
-		else if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionGenerateLuaFunction()))
-		{
-			MyGUI::Button* button = mWidgetClient->createWidget<MyGUI::Button>(MyGUI::WidgetStyle::Overlapped, "Button", MyGUI::IntCoord(valueLeft - 25, heightCurrent + 1, 20, 20), MyGUI::Align::Default, "Main", name + "button");
-			button->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
-			button->setDepth(0);
-			button->setCaption("G");
-			button->setUserData(MyGUI::Any(attribute));
-			button->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::buttonHit);
-			this->itemsEdit.push_back(button);
-		}
-		else if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionLuaScript()))
-		{
-			MyGUI::Button* button = mWidgetClient->createWidget<MyGUI::Button>(MyGUI::WidgetStyle::Overlapped, "Button", MyGUI::IntCoord(valueLeft - 25, heightCurrent + 1, 20, 20), MyGUI::Align::Default, "Main", name + "button");
-			button->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
-			button->setCaption("L");
-			button->setUserData(MyGUI::Any(attribute));
-			button->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::buttonHit);
-			this->itemsEdit.push_back(button);
-		}
+        if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionFileOpenDialog()))
+        {
+            MyGUI::Button* button = mWidgetClient->createWidget<MyGUI::Button>(MyGUI::WidgetStyle::Overlapped, "Button", MyGUI::IntCoord(valueLeft - 25, heightCurrent + 1, 20, 20), MyGUI::Align::Default, "Main", name + "button");
+            button->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
+            button->setCaption("..");
+            button->setUserData(MyGUI::Any(attribute));
+            button->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::buttonHit);
+            this->itemsEdit.push_back(button);
+        }
+        else if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionGenerateLuaFunction()))
+        {
+            MyGUI::Button* button = mWidgetClient->createWidget<MyGUI::Button>(MyGUI::WidgetStyle::Overlapped, "Button", MyGUI::IntCoord(valueLeft - 25, heightCurrent + 1, 20, 20), MyGUI::Align::Default, "Main", name + "button");
+            button->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
+            button->setDepth(0);
+            button->setCaption("G");
+            button->setUserData(MyGUI::Any(attribute));
+            button->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::buttonHit);
+            this->itemsEdit.push_back(button);
+        }
+        else if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionLuaScript()))
+        {
+            MyGUI::Button* button = mWidgetClient->createWidget<MyGUI::Button>(MyGUI::WidgetStyle::Overlapped, "Button", MyGUI::IntCoord(valueLeft - 25, heightCurrent + 1, 20, 20), MyGUI::Align::Default, "Main", name + "button");
+            button->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
+            button->setCaption("L");
+            button->setUserData(MyGUI::Any(attribute));
+            button->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::buttonHit);
+            this->itemsEdit.push_back(button);
+        }
 
-		if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionExec()))
-		{
-			MyGUI::Button* button = mWidgetClient->createWidget<MyGUI::Button>(MyGUI::WidgetStyle::Overlapped, "Button", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 15, height), 
-				MyGUI::Align::HStretch | MyGUI::Align::Top, "Main", name + "_exec");
+        if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionExec()))
+        {
+            MyGUI::Button* button =
+                mWidgetClient->createWidget<MyGUI::Button>(MyGUI::WidgetStyle::Overlapped, "Button", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 15, height), MyGUI::Align::HStretch | MyGUI::Align::Top, "Main", name + "_exec");
 
-			button->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
-			button->setCaption(attribute->getString());
-			button->setUserData(MyGUI::Any(attribute));
-			button->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onExecButtonHit);
+            button->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
+            button->setCaption(attribute->getString());
+            button->setUserData(MyGUI::Any(attribute));
+            button->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onExecButtonHit);
 
-			this->itemsEdit.push_back(button);
+            this->itemsEdit.push_back(button);
 
-			this->heightCurrent += heightStep;
-			mPanelCell->setClientHeight(heightCurrent);
+            this->heightCurrent += heightStep;
+            mPanelCell->setClientHeight(heightCurrent);
 
-			return;
-		}
-		break;
-	}
-	}
+            return;
+        }
+        break;
+    }
+    }
 
-	if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionSeparator()))
-	{
-		this->heightCurrent += heightStep;
-		this->itemsEdit.push_back(this->addSeparator());
-		this->heightCurrent += heightStep / 2;
-	}
+    if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionSeparator()))
+    {
+        this->heightCurrent += heightStep;
+        this->itemsEdit.push_back(this->addSeparator());
+        this->heightCurrent += heightStep / 2;
+    }
 
-	this->heightCurrent += heightStep;
-	mPanelCell->setClientHeight(heightCurrent);
+    this->heightCurrent += heightStep;
+    mPanelCell->setClientHeight(heightCurrent);
 }
 
 void PropertiesPanelDynamic::createRealSlider(const int& valueWidth, const int& valueLeft, const int& height, const Ogre::String& name, NOWA::Variant*& attribute)
 {
-	// If constraints, create slider and edit box
-	int sliderWidth = valueWidth + 20;
-	MyGUI::ScrollBar* slider = mWidgetClient->createWidget<MyGUI::ScrollBar>("SliderH", MyGUI::IntCoord(valueLeft, heightCurrent + 1, sliderWidth, height - 4), MyGUI::Align::Left | MyGUI::Align::Top, "slider" + name);
-	// slider->setScrollPage(1);
-	// slider->setScrollWheelPage(1);
-	slider->setMoveToClick(true);
+    // If constraints, create slider and edit box
+    int sliderWidth = valueWidth + 20;
+    MyGUI::ScrollBar* slider = mWidgetClient->createWidget<MyGUI::ScrollBar>("SliderH", MyGUI::IntCoord(valueLeft, heightCurrent + 1, sliderWidth, height - 4), MyGUI::Align::Left | MyGUI::Align::Top, "slider" + name);
+    // slider->setScrollPage(1);
+    // slider->setScrollWheelPage(1);
+    slider->setMoveToClick(true);
 
-	if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
-	{
-		slider->setEnabled(false);
-	}
+    if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+    {
+        slider->setEnabled(false);
+    }
 
-	Ogre::Real currentValue = attribute->getReal();
-	Ogre::Real lowBorder = attribute->getConstraints().first;
-	Ogre::Real highBorder = attribute->getConstraints().second;
+    Ogre::Real currentValue = attribute->getReal();
+    Ogre::Real lowBorder = attribute->getConstraints().first;
+    Ogre::Real highBorder = attribute->getConstraints().second;
 
 #if 0
 
@@ -1819,131 +1831,130 @@ void PropertiesPanelDynamic::createRealSlider(const int& valueWidth, const int& 
 	slider->eventMouseButtonReleased += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifySliderMouseRelease);
 	// slider->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 #else
-	// Ensure min is less than max
-	if (lowBorder > highBorder)
-	{
-		std::swap(lowBorder, highBorder);
-	}
+    // Ensure min is less than max
+    if (lowBorder > highBorder)
+    {
+        std::swap(lowBorder, highBorder);
+    }
 
-	// Interpolate current value to an integer within the slider range
-	// Calculate the range based on the min and max values
-	const float valueRange = highBorder - lowBorder;
-	const size_t range = 1000; // Precision of the slider
+    // Interpolate current value to an integer within the slider range
+    // Calculate the range based on the min and max values
+    const float valueRange = highBorder - lowBorder;
+    const size_t range = 1000; // Precision of the slider
 
-	// Interpolate current value to an integer within the slider range
-	const size_t interpolatedValue = static_cast<size_t>((currentValue - lowBorder) / valueRange * range);
+    // Interpolate current value to an integer within the slider range
+    const size_t interpolatedValue = static_cast<size_t>((currentValue - lowBorder) / valueRange * range);
 
-	// Set the slider's properties
-	slider->setScrollRange(range + 1); // Set the range of the slider
-	slider->setScrollPosition(interpolatedValue); // Set initial position
-	slider->setTrackSize(10);
+    // Set the slider's properties
+    slider->setScrollRange(range + 1);            // Set the range of the slider
+    slider->setScrollPosition(interpolatedValue); // Set initial position
+    slider->setTrackSize(10);
 
-	// Set the slider event listener to handle changes
-	slider->eventScrollChangePosition += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyScrollChangePosition);
-	slider->eventMouseButtonReleased += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifySliderMouseRelease);
+    // Set the slider event listener to handle changes
+    slider->eventScrollChangePosition += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyScrollChangePosition);
+    slider->eventMouseButtonReleased += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifySliderMouseRelease);
 #endif
 
-	MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft + sliderWidth + 5, heightCurrent, valueWidth * 0.3f, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
-	edit->setInvertSelected(false);
-	edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-	edit->setMouseHitThreshold(6, 6, 3, 3);
-	edit->setOnlyText(Ogre::StringConverter::toString(attribute->getReal()));
-	edit->setUserData(MyGUI::Any(attribute));
-	edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
-	edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-	// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
-	edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
-	edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
-	edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+    MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft + sliderWidth + 5, heightCurrent, valueWidth * 0.3f, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
+    edit->setInvertSelected(false);
+    edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+    edit->setMouseHitThreshold(6, 6, 3, 3);
+    edit->setOnlyText(Ogre::StringConverter::toString(attribute->getReal()));
+    edit->setUserData(MyGUI::Any(attribute));
+    edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
+    edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
+    // edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+    edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
+    edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
+    edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 
-	// Pair the edit to the scrollbar and vice versa
-	slider->setUserData(edit);
-	edit->setUserString("slider" + name, "slider" + name);
+    // Pair the edit to the scrollbar and vice versa
+    slider->setUserData(edit);
+    edit->setUserString("slider" + name, "slider" + name);
 
-	this->itemsEdit.push_back(slider);
-	this->itemsEdit.push_back(edit);
+    this->itemsEdit.push_back(slider);
+    this->itemsEdit.push_back(edit);
 }
 
 void PropertiesPanelDynamic::createIntSlider(const int& valueWidth, const int& valueLeft, const int& height, const Ogre::String& name, NOWA::Variant*& attribute)
 {
-	// If constraints, create slider and edit box
-	int sliderWidth = valueWidth + 20;
-	MyGUI::ScrollBar* slider = mWidgetClient->createWidget<MyGUI::ScrollBar>("SliderH", MyGUI::IntCoord(valueLeft, heightCurrent + 1, sliderWidth, height - 4), MyGUI::Align::Left | MyGUI::Align::Top, "slider" + name);
-	// slider->setScrollPage(1);
-	// slider->setScrollWheelPage(1);
-	slider->setMoveToClick(true);
+    // If constraints, create slider and edit box
+    int sliderWidth = valueWidth + 20;
+    MyGUI::ScrollBar* slider = mWidgetClient->createWidget<MyGUI::ScrollBar>("SliderH", MyGUI::IntCoord(valueLeft, heightCurrent + 1, sliderWidth, height - 4), MyGUI::Align::Left | MyGUI::Align::Top, "slider" + name);
+    // slider->setScrollPage(1);
+    // slider->setScrollWheelPage(1);
+    slider->setMoveToClick(true);
 
-	if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
-	{
-		slider->setEnabled(false);
-	}
-	
-	Ogre::Real currentValue = attribute->getReal();
-	Ogre::Real lowBorder = attribute->getConstraints().first;
-	Ogre::Real highBorder = attribute->getConstraints().second;
+    if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+    {
+        slider->setEnabled(false);
+    }
 
-	// Ensure min is less than max
-	if (lowBorder > highBorder)
-	{
-		std::swap(lowBorder, highBorder);
-	}
+    Ogre::Real currentValue = attribute->getReal();
+    Ogre::Real lowBorder = attribute->getConstraints().first;
+    Ogre::Real highBorder = attribute->getConstraints().second;
 
-	// Calculate the range for the slider
-	const size_t range = static_cast<size_t>(highBorder - lowBorder);
+    // Ensure min is less than max
+    if (lowBorder > highBorder)
+    {
+        std::swap(lowBorder, highBorder);
+    }
 
-	// Calculate the current position within the range
-	const size_t currentPosition = static_cast<size_t>(currentValue - lowBorder);
-	// Set the slider's properties
-	slider->setScrollRange(range + 1); // Range is inclusive, so add 1
-	slider->setScrollPosition(currentPosition);
-	slider->setTrackSize(10);
-	slider->eventScrollChangePosition += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyScrollChangePosition);
-	slider->eventMouseButtonReleased += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifySliderMouseRelease);
+    // Calculate the range for the slider
+    const size_t range = static_cast<size_t>(highBorder - lowBorder);
 
-	MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft + sliderWidth + 5, heightCurrent, valueWidth * 0.3f, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
-	edit->setInvertSelected(false);
-	edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-	edit->setMouseHitThreshold(6, 6, 3, 3);
-	edit->setOnlyText(Ogre::StringConverter::toString(attribute->getReal()));
-	edit->setUserData(MyGUI::Any(attribute));
-	edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
-	edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-	// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
-	edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
-	edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
+    // Calculate the current position within the range
+    const size_t currentPosition = static_cast<size_t>(currentValue - lowBorder);
+    // Set the slider's properties
+    slider->setScrollRange(range + 1); // Range is inclusive, so add 1
+    slider->setScrollPosition(currentPosition);
+    slider->setTrackSize(10);
+    slider->eventScrollChangePosition += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyScrollChangePosition);
+    slider->eventMouseButtonReleased += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifySliderMouseRelease);
 
+    MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft + sliderWidth + 5, heightCurrent, valueWidth * 0.3f, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
+    edit->setInvertSelected(false);
+    edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+    edit->setMouseHitThreshold(6, 6, 3, 3);
+    edit->setOnlyText(Ogre::StringConverter::toString(attribute->getReal()));
+    edit->setUserData(MyGUI::Any(attribute));
+    edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
+    edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
+    // edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+    edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
+    edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
 
-	edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+    edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 
-	// Pair the edit to the scrollbar and vice versa
-	slider->setUserData(edit);
-	edit->setUserString("slider" + name, "slider" + name);
+    // Pair the edit to the scrollbar and vice versa
+    slider->setUserData(edit);
+    edit->setUserString("slider" + name, "slider" + name);
 
-	this->itemsEdit.push_back(slider);
-	this->itemsEdit.push_back(edit);
+    this->itemsEdit.push_back(slider);
+    this->itemsEdit.push_back(edit);
 }
 
 void PropertiesPanelDynamic::requestCoordItem(MyGUI::ItemBox* sender, MyGUI::IntCoord& coord, bool drag)
 {
-	coord.set(0, 0, 68, 68);
+    coord.set(0, 0, 68, 68);
 }
 
 void PropertiesPanelDynamic::requestCreateWidgetItem(MyGUI::ItemBox* sender, MyGUI::Widget* item)
 {
-	ImageData* imageData = new ImageData();
+    ImageData* imageData = new ImageData();
 
-	MyGUI::ImageBox* imageBoxItem = item->createWidget<MyGUI::ImageBox>("ImageBox", MyGUI::IntCoord(2, 2, 64, 64 /*item->getWidth(), item->getHeight()*/), MyGUI::Align::Stretch);
-	// Layer: Main, so that it will be selectable because its above the image box item
-	MyGUI::ImageBox* imageBoxBack = item->createWidget<MyGUI::ImageBox>(MyGUI::WidgetStyle::Child, "ImageBox", MyGUI::IntCoord(0, 0, 68, 68 /*item->getWidth(), item->getHeight()*/), MyGUI::Align::Stretch, "Main");
+    MyGUI::ImageBox* imageBoxItem = item->createWidget<MyGUI::ImageBox>("ImageBox", MyGUI::IntCoord(2, 2, 64, 64 /*item->getWidth(), item->getHeight()*/), MyGUI::Align::Stretch);
+    // Layer: Main, so that it will be selectable because its above the image box item
+    MyGUI::ImageBox* imageBoxBack = item->createWidget<MyGUI::ImageBox>(MyGUI::WidgetStyle::Child, "ImageBox", MyGUI::IntCoord(0, 0, 68, 68 /*item->getWidth(), item->getHeight()*/), MyGUI::Align::Stretch, "Main");
 
-	imageBoxItem->setAlpha(0.95f);
-	// imageBoxBack->setAlpha(0.9f);
-	imageData->setImageBoxBack(imageBoxBack);
-	imageData->setImageBoxItem(imageBoxItem);
+    imageBoxItem->setAlpha(0.95f);
+    // imageBoxBack->setAlpha(0.9f);
+    imageData->setImageBoxBack(imageBoxBack);
+    imageData->setImageBoxItem(imageBoxItem);
 
-	imageBoxBack->setNeedMouseFocus(false);
-	imageBoxItem->setNeedMouseFocus(false);
-	item->setUserData(imageData);
+    imageBoxBack->setNeedMouseFocus(false);
+    imageBoxItem->setNeedMouseFocus(false);
+    item->setUserData(imageData);
 }
 
 void PropertiesPanelDynamic::requestDrawItem(MyGUI::ItemBox* sender, MyGUI::Widget* item, const MyGUI::IBDrawItemInfo& info)
@@ -2007,65 +2018,65 @@ void PropertiesPanelDynamic::requestDrawItem(MyGUI::ItemBox* sender, MyGUI::Widg
 
 void PropertiesPanelDynamic::setFocus(MyGUI::Widget* sender, MyGUI::Widget* oldWidget)
 {
-	this->showDescription(sender);
+    this->showDescription(sender);
 
-	MyGUI::EditBox* editBox = sender->castType<MyGUI::EditBox>(false);
-	if (nullptr != editBox)
-	{
-		Ogre::String name = editBox->getName();
-		if (true == NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(OIS::KC_LMENU))
-		{
-			NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>(false);
-			if (attribute != nullptr)
-			{
-				auto connectedGameObject = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId((*attribute)->getULong());
-				if (nullptr != connectedGameObject)
-				{
-					editBox->setUserString("tooltip", connectedGameObject->getName());
-				}
-				MyGUIHelper::getInstance()->setDataForPairing(editBox, *attribute);
-			}
-		}
-	}
+    MyGUI::EditBox* editBox = sender->castType<MyGUI::EditBox>(false);
+    if (nullptr != editBox)
+    {
+        Ogre::String name = editBox->getName();
+        if (true == NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(OIS::KC_LMENU))
+        {
+            NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>(false);
+            if (attribute != nullptr)
+            {
+                auto connectedGameObject = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId((*attribute)->getULong());
+                if (nullptr != connectedGameObject)
+                {
+                    editBox->setUserString("tooltip", connectedGameObject->getName());
+                }
+                MyGUIHelper::getInstance()->setDataForPairing(editBox, *attribute);
+            }
+        }
+    }
 }
 
 void PropertiesPanelDynamic::mouseLostFocus(MyGUI::Widget* sender, MyGUI::Widget* oldWidget)
 {
-	// Does not work correctly
-	/*MyGUI::EditBox* editBox = static_cast<MyGUI::EditBox*>(sender);
-	if (nullptr != editBox)
-	{
-		Ogre::String adapted = sender->getUserString("Adapted");
-		if ("true" == adapted)
-		{
-			this->notifyEditSelectAccept(editBox);
-			sender->setUserString("Adapted", "false");
-		}
-		editBox->setTextSelection(0, 0);
-	}*/
+    // Does not work correctly
+    /*MyGUI::EditBox* editBox = static_cast<MyGUI::EditBox*>(sender);
+    if (nullptr != editBox)
+    {
+        Ogre::String adapted = sender->getUserString("Adapted");
+        if ("true" == adapted)
+        {
+            this->notifyEditSelectAccept(editBox);
+            sender->setUserString("Adapted", "false");
+        }
+        editBox->setTextSelection(0, 0);
+    }*/
 }
 
 void PropertiesPanelDynamic::mouseRootChangeFocus(MyGUI::Widget* sender, bool bFocus)
 {
-	// When leaving an edit widget it loses the focus, so store the value
-	if (false == bFocus)
-	{
-		MyGUI::EditBox* editBox = sender->castType<MyGUI::EditBox>(false);
-		if (nullptr != editBox)
-		{
-			Ogre::String adapted = sender->getUserString("Adapted");
-			if ("true" == adapted)
-			{
-				this->notifyEditSelectAccept(editBox);
-				sender->setUserString("Adapted", "false");
-			}
-		}
-	}
+    // When leaving an edit widget it loses the focus, so store the value
+    if (false == bFocus)
+    {
+        MyGUI::EditBox* editBox = sender->castType<MyGUI::EditBox>(false);
+        if (nullptr != editBox)
+        {
+            Ogre::String adapted = sender->getUserString("Adapted");
+            if ("true" == adapted)
+            {
+                this->notifyEditSelectAccept(editBox);
+                sender->setUserString("Adapted", "false");
+            }
+        }
+    }
 }
 
 void PropertiesPanelDynamic::onKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode code, MyGUI::Char c)
 {
-	// Causes Schmaddel, as soon as Shift is pressed + Char
+    // Causes Schmaddel, as soon as Shift is pressed + Char
 #if 0
 	MyGUI::EditBox* editBox = sender->castType<MyGUI::EditBox>(false);
 	if (nullptr != editBox)
@@ -2085,21 +2096,21 @@ void PropertiesPanelDynamic::onKeyButtonPressed(MyGUI::Widget* sender, MyGUI::Ke
 		}
 	}
 #endif
-	
-	if (GetAsyncKeyState(VK_LCONTROL) && code == MyGUI::KeyCode::V)
-	{
-		MyGUI::EditBox* editBox = sender->castType<MyGUI::EditBox>(false);
-		if (nullptr != editBox)
-		{
+
+    if (GetAsyncKeyState(VK_LCONTROL) && code == MyGUI::KeyCode::V)
+    {
+        MyGUI::EditBox* editBox = sender->castType<MyGUI::EditBox>(false);
+        if (nullptr != editBox)
+        {
             // Focus reset first — widget is guaranteed alive here
             MyGUIHelper::getInstance()->adaptFocus(sender, MyGUI::KeyCode::Return, this->itemsEdit);
             // Value acceptance second — may trigger panel rebuild
             this->notifyEditSelectAccept(editBox);
-		}
-	}
-	// Adds new line if shift + enter is pressed
-	else if (MyGUI::InputManager::getInstance().isShiftPressed() && code == MyGUI::KeyCode::Return)
-	{
+        }
+    }
+    // Adds new line if shift + enter is pressed
+    else if (MyGUI::InputManager::getInstance().isShiftPressed() && code == MyGUI::KeyCode::Return)
+    {
         NOWA::GraphicsModule::RenderCommand renderCommand = [this, sender]()
         {
             MyGUI::EditBox* editBox = sender->castType<MyGUI::EditBox>(false);
@@ -2116,86 +2127,86 @@ void PropertiesPanelDynamic::onKeyButtonPressed(MyGUI::Widget* sender, MyGUI::Ke
             }
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PropertiesPanelDynamic::onKeyButtonPressed");
-	}
-	else
-	{
-		MyGUIHelper::getInstance()->adaptFocus(sender, code, this->itemsEdit);
-	}
+    }
+    else
+    {
+        MyGUIHelper::getInstance()->adaptFocus(sender, code, this->itemsEdit);
+    }
 }
 
 void PropertiesPanelDynamic::editTextChange(MyGUI::Widget* sender)
 {
-	sender->setUserString("Adapted", "true");
+    sender->setUserString("Adapted", "true");
 
-	// If user is entering something, do not move camera, if the user entered something like asdf
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.0f);
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.0f);
+    // If user is entering something, do not move camera, if the user entered something like asdf
+    NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.0f);
+    NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.0f);
 }
 
 void PropertiesPanelDynamic::onMouseDoubleClick(MyGUI::Widget* sender)
 {
-	if (nullptr != sender->getParent())
-	{
-		MyGUI::EditBox* editBox = sender->getParent()->castType<MyGUI::EditBox>(false);
-		if (nullptr != editBox)
-		{
+    if (nullptr != sender->getParent())
+    {
+        MyGUI::EditBox* editBox = sender->getParent()->castType<MyGUI::EditBox>(false);
+        if (nullptr != editBox)
+        {
             NOWA::GraphicsModule::RenderCommand renderCommand = [this, editBox]()
             {
                 editBox->setTextSelection(0, editBox->getCaption().size());
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PropertiesPanelDynamic::onMouseDoubleClick");
-		}
-	}
+        }
+    }
 }
 
 void PropertiesPanelDynamic::onMouseClick(MyGUI::Widget* sender, int left, int top, MyGUI::MouseButton id)
 {
-	// this->showDescription(sender);
-	// Resets text selection of other edit boxes if focus to a current one is set.
-	MyGUIHelper::getInstance()->resetTextSelection(sender, this->itemsEdit);
+    // this->showDescription(sender);
+    // Resets text selection of other edit boxes if focus to a current one is set.
+    MyGUIHelper::getInstance()->resetTextSelection(sender, this->itemsEdit);
 }
 
 void PropertiesPanelDynamic::showDescription(MyGUI::Widget* sender)
 {
-	// Send the text box change to the game object and internally actualize the data
-	NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>(false);
-	if (attribute != nullptr)
-	{
-		this->propertiesPanelInfo->setInfo((*attribute)->getDescription());
-	}
-	else
-	{
-		Ogre::String description = sender->getUserString("Description");
-		this->propertiesPanelInfo->setInfo(description);
-	}
+    // Send the text box change to the game object and internally actualize the data
+    NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>(false);
+    if (attribute != nullptr)
+    {
+        this->propertiesPanelInfo->setInfo((*attribute)->getDescription());
+    }
+    else
+    {
+        Ogre::String description = sender->getUserString("Description");
+        this->propertiesPanelInfo->setInfo(description);
+    }
 }
 
 MyGUI::ComboBox* PropertiesPanelDynamic::getLinkedComboBox(MyGUI::EditBox* searchEdit)
 {
-	Ogre::String comboName = searchEdit->getUserString("linkedComboName");
-	if (false == comboName.empty())
-	{
-		MyGUI::Widget* widget = mWidgetClient->findWidget(comboName);
-		if (nullptr != widget)
-		{
-			return widget->castType<MyGUI::ComboBox>(false);
-		}
-	}
-	return nullptr;
+    Ogre::String comboName = searchEdit->getUserString("linkedComboName");
+    if (false == comboName.empty())
+    {
+        MyGUI::Widget* widget = mWidgetClient->findWidget(comboName);
+        if (nullptr != widget)
+        {
+            return widget->castType<MyGUI::ComboBox>(false);
+        }
+    }
+    return nullptr;
 }
 
 MyGUI::EditBox* PropertiesPanelDynamic::getLinkedSearchEdit(MyGUI::ComboBox* comboBox)
 {
-	Ogre::String searchName = comboBox->getUserString("linkedSearchName");
-	if (false == searchName.empty())
-	{
-		MyGUI::Widget* widget = mWidgetClient->findWidget(searchName);
-		if (nullptr != widget)
-		{
-			return widget->castType<MyGUI::EditBox>(false);
-		}
-	}
-	return nullptr;
+    Ogre::String searchName = comboBox->getUserString("linkedSearchName");
+    if (false == searchName.empty())
+    {
+        MyGUI::Widget* widget = mWidgetClient->findWidget(searchName);
+        if (nullptr != widget)
+        {
+            return widget->castType<MyGUI::EditBox>(false);
+        }
+    }
+    return nullptr;
 }
 
 void PropertiesPanelDynamic::onAutoCompleteComboMousePressed(MyGUI::Widget* sender, int left, int top, MyGUI::MouseButton id)
@@ -2253,132 +2264,131 @@ void PropertiesPanelDynamic::onAutoCompleteComboSelectAccept(MyGUI::ComboBox* se
 
 size_t PropertiesPanelDynamic::findIndexByText(MyGUI::ComboBox* comboBox, const Ogre::String& text)
 {
-	if (nullptr == comboBox)
-	{
-		return MyGUI::ITEM_NONE;
-	}
+    if (nullptr == comboBox)
+    {
+        return MyGUI::ITEM_NONE;
+    }
 
-	for (size_t i = 0; i < comboBox->getItemCount(); i++)
-	{
-		if (comboBox->getItemNameAt(i) == text)
-		{
-			return i;
-		}
-	}
+    for (size_t i = 0; i < comboBox->getItemCount(); i++)
+    {
+        if (comboBox->getItemNameAt(i) == text)
+        {
+            return i;
+        }
+    }
 
-	return MyGUI::ITEM_NONE;
+    return MyGUI::ITEM_NONE;
 }
 
 void PropertiesPanelDynamic::syncComboSelectionFromVariant(MyGUI::ComboBox* comboBox)
 {
-	if (nullptr == comboBox)
-	{
-		return;
-	}
+    if (nullptr == comboBox)
+    {
+        return;
+    }
 
-	NOWA::Variant** attribute = comboBox->getUserData<NOWA::Variant*>(false);
-	if (nullptr == attribute)
-	{
-		return;
-	}
+    NOWA::Variant** attribute = comboBox->getUserData<NOWA::Variant*>(false);
+    if (nullptr == attribute)
+    {
+        return;
+    }
 
-	const Ogre::String selectedValue = (*attribute)->getListSelectedValue();
-	if (true == selectedValue.empty())
-	{
-		return;
-	}
+    const Ogre::String selectedValue = (*attribute)->getListSelectedValue();
+    if (true == selectedValue.empty())
+    {
+        return;
+    }
 
-	size_t idx = comboBox->findItemIndexWith(selectedValue);
-	if (MyGUI::ITEM_NONE != idx)
-	{
-		comboBox->setIndexSelected(idx);
-		comboBox->setOnlyText(selectedValue);
-	}
+    size_t idx = comboBox->findItemIndexWith(selectedValue);
+    if (MyGUI::ITEM_NONE != idx)
+    {
+        comboBox->setIndexSelected(idx);
+        comboBox->setOnlyText(selectedValue);
+    }
 }
-
 
 void PropertiesPanelDynamic::scrollComboToSelected(MyGUI::ComboBox* comboBox)
 {
-	if (nullptr == comboBox)
-	{
-		return;
-	}
+    if (nullptr == comboBox)
+    {
+        return;
+    }
 
-	size_t index = comboBox->getIndexSelected();
-	if (MyGUI::ITEM_NONE == index)
-	{
-		return;
-	}
+    size_t index = comboBox->getIndexSelected();
+    if (MyGUI::ITEM_NONE == index)
+    {
+        return;
+    }
 
-	// MyGUI ComboBox internally uses a ListBox for the drop list.
-	// In most MyGUI versions this exists:
-	MyGUI::ListBox* list = comboBox->getList();
-	if (nullptr != list)
-	{
-		list->beginToItemAt(index);
-	}
+    // MyGUI ComboBox internally uses a ListBox for the drop list.
+    // In most MyGUI versions this exists:
+    MyGUI::ListBox* list = comboBox->getList();
+    if (nullptr != list)
+    {
+        list->beginToItemAt(index);
+    }
 }
 
 void PropertiesPanelDynamic::filterAutoCompleteCombo(MyGUI::EditBox* searchEdit, MyGUI::ComboBox* comboBox, const Ogre::String& filter)
 {
-	if (nullptr == comboBox)
-	{
-		return;
-	}
+    if (nullptr == comboBox)
+    {
+        return;
+    }
 
-	// Get the attribute to access original list
-	NOWA::Variant** attribute = searchEdit->getUserData<NOWA::Variant*>(false);
-	if (nullptr == attribute)
-	{
-		return;
-	}
+    // Get the attribute to access original list
+    NOWA::Variant** attribute = searchEdit->getUserData<NOWA::Variant*>(false);
+    if (nullptr == attribute)
+    {
+        return;
+    }
 
-	// Clear the combo
-	comboBox->removeAllItems();
+    // Clear the combo
+    comboBox->removeAllItems();
 
-	const std::vector<Ogre::String>& originalList = (*attribute)->getList();
+    const std::vector<Ogre::String>& originalList = (*attribute)->getList();
 
-	if (true == filter.empty())
-	{
-		// Show all items if filter is empty
-		for (const auto& item : originalList)
-		{
-			comboBox->addItem(item);
-		}
-	}
-	else
-	{
-		// Use AutoCompleteSearch for fuzzy matching
-		this->autoCompleteSearch.reset();
+    if (true == filter.empty())
+    {
+        // Show all items if filter is empty
+        for (const auto& item : originalList)
+        {
+            comboBox->addItem(item);
+        }
+    }
+    else
+    {
+        // Use AutoCompleteSearch for fuzzy matching
+        this->autoCompleteSearch.reset();
 
-		for (const auto& item : originalList)
-		{
-			this->autoCompleteSearch.addSearchText(item);
-		}
+        for (const auto& item : originalList)
+        {
+            this->autoCompleteSearch.addSearchText(item);
+        }
 
-		auto matchedResults = this->autoCompleteSearch.findMatchedItemWithInText(filter);
+        auto matchedResults = this->autoCompleteSearch.findMatchedItemWithInText(filter);
 
-		for (size_t i = 0; i < matchedResults.getResults().size(); i++)
-		{
-			Ogre::String matchedItem = matchedResults.getResults()[i].getMatchedItemText();
-			comboBox->addItem(matchedItem);
-		}
-	}
+        for (size_t i = 0; i < matchedResults.getResults().size(); i++)
+        {
+            Ogre::String matchedItem = matchedResults.getResults()[i].getMatchedItemText();
+            comboBox->addItem(matchedItem);
+        }
+    }
 
-	// If this call is NOT an internal rebuild, we are filtering due to user input.
-	// In that case, select the first entry so ArrowDown/Enter works immediately.
-	//if (false == this->autoCompleteInternalUpdate)
-	//{
-	//	if (comboBox->getItemCount() > 0)
-	//	{
-	//		comboBox->setIndexSelected(0);
+    // If this call is NOT an internal rebuild, we are filtering due to user input.
+    // In that case, select the first entry so ArrowDown/Enter works immediately.
+    // if (false == this->autoCompleteInternalUpdate)
+    //{
+    //	if (comboBox->getItemCount() > 0)
+    //	{
+    //		comboBox->setIndexSelected(0);
 
-	//		// Optional: only do this if you want the combo text to change while typing
-	//		// comboBox->setOnlyText(comboBox->getItemNameAt(0));
-	//	}
-	//}
+    //		// Optional: only do this if you want the combo text to change while typing
+    //		// comboBox->setOnlyText(comboBox->getItemNameAt(0));
+    //	}
+    //}
 
-	if (false == this->autoCompleteInternalUpdate)
+    if (false == this->autoCompleteInternalUpdate)
     {
         if (comboBox->getItemCount() > 0)
         {
@@ -2389,77 +2399,77 @@ void PropertiesPanelDynamic::filterAutoCompleteCombo(MyGUI::EditBox* searchEdit,
 
 void PropertiesPanelDynamic::onAutoCompleteTextChange(MyGUI::EditBox* sender)
 {
-	MyGUI::ComboBox* comboBox = this->getLinkedComboBox(sender);
-	if (nullptr == comboBox)
-	{
-		return;
-	}
+    MyGUI::ComboBox* comboBox = this->getLinkedComboBox(sender);
+    if (nullptr == comboBox)
+    {
+        return;
+    }
 
-	Ogre::String filter = sender->getOnlyText();
+    Ogre::String filter = sender->getOnlyText();
 
-	this->autoCompleteInternalUpdate = false;
+    this->autoCompleteInternalUpdate = false;
 
-	this->filterAutoCompleteCombo(sender, comboBox, filter);
+    this->filterAutoCompleteCombo(sender, comboBox, filter);
 
-	comboBox->setAutoHideList(false);
-	comboBox->showList();
-	comboBox->beginToItemSelected();
+    comboBox->setAutoHideList(false);
+    comboBox->showList();
+    comboBox->beginToItemSelected();
 
-	// Keep typing focus on the edit box
-	MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(sender);
+    // Keep typing focus on the edit box
+    MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(sender);
 
-	// Keep caret at the end (otherwise it may jump)
-	sender->setTextCursor(sender->getTextLength());
+    // Keep caret at the end (otherwise it may jump)
+    sender->setTextCursor(sender->getTextLength());
 }
 
 void PropertiesPanelDynamic::onAutoCompleteKeyPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char ch)
 {
-	MyGUI::EditBox* searchEdit = sender->castType<MyGUI::EditBox>(false);
-	if (nullptr == searchEdit)
-	{
-		this->onKeyButtonPressed(sender, key, ch);
-		return;
-	}
+    MyGUI::EditBox* searchEdit = sender->castType<MyGUI::EditBox>(false);
+    if (nullptr == searchEdit)
+    {
+        this->onKeyButtonPressed(sender, key, ch);
+        return;
+    }
 
-	MyGUI::ComboBox* comboBox = this->getLinkedComboBox(searchEdit);
+    MyGUI::ComboBox* comboBox = this->getLinkedComboBox(searchEdit);
 
-	if (key == MyGUI::KeyCode::ArrowDown)
-	{
-		if (nullptr != comboBox)
-		{
-			// Move selection down in combo
-			size_t currentIndex = comboBox->getIndexSelected();
-			size_t itemCount = comboBox->getItemCount();
+    if (key == MyGUI::KeyCode::ArrowDown)
+    {
+        if (nullptr != comboBox)
+        {
+            // Move selection down in combo
+            size_t currentIndex = comboBox->getIndexSelected();
+            size_t itemCount = comboBox->getItemCount();
 
-			if (currentIndex == MyGUI::ITEM_NONE)
-			{
-				if (itemCount > 0)
-				{
-					comboBox->setIndexSelected(0);
-					comboBox->setOnlyText(comboBox->getItemNameAt(0));
-				}
-			}
-			else if (currentIndex < itemCount - 1)
-			{
-				comboBox->setIndexSelected(currentIndex + 1);
-				comboBox->setOnlyText(comboBox->getItemNameAt(currentIndex + 1));
-			}
-		}
-	}
-	else if (key == MyGUI::KeyCode::ArrowUp)
-	{
-		if (nullptr != comboBox)
-		{
-			// Move selection up in combo
-			size_t currentIndex = comboBox->getIndexSelected();
+            if (currentIndex == MyGUI::ITEM_NONE)
+            {
+                if (itemCount > 0)
+                {
+                    comboBox->setIndexSelected(0);
+                    comboBox->setOnlyText(comboBox->getItemNameAt(0));
+                }
+            }
+            else if (currentIndex < itemCount - 1)
+            {
+                comboBox->setIndexSelected(currentIndex + 1);
+                comboBox->setOnlyText(comboBox->getItemNameAt(currentIndex + 1));
+            }
+        }
+    }
+    else if (key == MyGUI::KeyCode::ArrowUp)
+    {
+        if (nullptr != comboBox)
+        {
+            // Move selection up in combo
+            size_t currentIndex = comboBox->getIndexSelected();
 
-			if (currentIndex != MyGUI::ITEM_NONE && currentIndex > 0)
-			{
-				comboBox->setIndexSelected(currentIndex - 1);
-				comboBox->setOnlyText(comboBox->getItemNameAt(currentIndex - 1));
-			}
-		}
-	}
+            if (currentIndex != MyGUI::ITEM_NONE && currentIndex > 0)
+            {
+                comboBox->setIndexSelected(currentIndex - 1);
+                comboBox->setOnlyText(comboBox->getItemNameAt(currentIndex - 1));
+            }
+        }
+    }
     else if (key == MyGUI::KeyCode::Return || key == MyGUI::KeyCode::NumpadEnter)
     {
         if (nullptr != comboBox)
@@ -2482,56 +2492,56 @@ void PropertiesPanelDynamic::onAutoCompleteKeyPressed(MyGUI::Widget* sender, MyG
             }
         }
     }
-	else if (key == MyGUI::KeyCode::Escape)
-	{
-		searchEdit->setOnlyText("");
+    else if (key == MyGUI::KeyCode::Escape)
+    {
+        searchEdit->setOnlyText("");
 
-		if (nullptr != comboBox)
-		{
-			this->filterAutoCompleteCombo(searchEdit, comboBox, "");
+        if (nullptr != comboBox)
+        {
+            this->filterAutoCompleteCombo(searchEdit, comboBox, "");
 
-			comboBox->hideList();
-			comboBox->setAutoHideList(true);
+            comboBox->hideList();
+            comboBox->setAutoHideList(true);
 
-			NOWA::Variant** attribute = searchEdit->getUserData<NOWA::Variant*>(false);
-			if (nullptr != attribute)
-			{
-				comboBox->setOnlyText((*attribute)->getListSelectedValue());
-			}
-		}
-	}
-	else
-	{
-		// For other keys, call regular handler
-		this->onKeyButtonPressed(sender, key, ch);
-	}
+            NOWA::Variant** attribute = searchEdit->getUserData<NOWA::Variant*>(false);
+            if (nullptr != attribute)
+            {
+                comboBox->setOnlyText((*attribute)->getListSelectedValue());
+            }
+        }
+    }
+    else
+    {
+        // For other keys, call regular handler
+        this->onKeyButtonPressed(sender, key, ch);
+    }
 }
 
 void PropertiesPanelDynamic::onAutoCompleteComboChangePosition(MyGUI::ComboBox* sender, size_t index)
 {
-	if (MyGUI::ITEM_NONE == index)
-	{
-		return;
-	}
+    if (MyGUI::ITEM_NONE == index)
+    {
+        return;
+    }
 
-	// Apply selection
-	this->notifyComboChangedPosition(sender, index);
+    // Apply selection
+    this->notifyComboChangedPosition(sender, index);
 
-	// Close dropdown (because typing disabled autohide)
-	sender->hideList();
-	sender->setAutoHideList(true);
+    // Close dropdown (because typing disabled autohide)
+    sender->hideList();
+    sender->setAutoHideList(true);
 
-	// Optional: clear filter text if you want
-	MyGUI::EditBox* searchEdit = this->getLinkedSearchEdit(sender);
-	if (nullptr != searchEdit)
-	{
-		this->autoCompleteInternalUpdate = true;
-		searchEdit->setOnlyText("");
-		this->autoCompleteInternalUpdate = false;
+    // Optional: clear filter text if you want
+    MyGUI::EditBox* searchEdit = this->getLinkedSearchEdit(sender);
+    if (nullptr != searchEdit)
+    {
+        this->autoCompleteInternalUpdate = true;
+        searchEdit->setOnlyText("");
+        this->autoCompleteInternalUpdate = false;
 
-		MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(searchEdit);
-		searchEdit->setTextCursor(searchEdit->getTextLength());
-	}
+        MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(searchEdit);
+        searchEdit->setTextCursor(searchEdit->getTextLength());
+    }
 }
 
 void PropertiesPanelComponent::onAutoCompleteComboSelectAccept(MyGUI::ComboBox* sender, size_t index)
@@ -2596,44 +2606,44 @@ void PropertiesPanelComponent::onAutoCompleteComboSelectAccept(MyGUI::ComboBox* 
 
 void PropertiesPanelDynamic::onExecButtonHit(MyGUI::Widget* sender)
 {
-	MyGUI::Button* button = sender->castType<MyGUI::Button>(false);
-	if (nullptr == button)
-	{
-		return;
-	}
+    MyGUI::Button* button = sender->castType<MyGUI::Button>(false);
+    if (nullptr == button)
+    {
+        return;
+    }
 
-	NOWA::Variant** attribute = button->getUserData<NOWA::Variant*>(false);
-	if (nullptr == attribute)
-	{
-		return;
-	}
+    NOWA::Variant** attribute = button->getUserData<NOWA::Variant*>(false);
+    if (nullptr == attribute)
+    {
+        return;
+    }
 
-	Ogre::String execId = (*attribute)->getUserDataValue(NOWA::GameObject::AttrActionExecId());
-	if (true == execId.empty())
-	{
-		return;
-	}
+    Ogre::String execId = (*attribute)->getUserDataValue(NOWA::GameObject::AttrActionExecId());
+    if (true == execId.empty())
+    {
+        return;
+    }
 
-	this->notifyExecAction((*attribute), execId);
+    this->notifyExecAction((*attribute), execId);
 }
 
 void PropertiesPanelDynamic::notifyExecAction(NOWA::Variant* attribute, const Ogre::String& execId)
 {
-	// Base do nothing
+    // Base do nothing
 }
 
 MyGUI::Widget* PropertiesPanelDynamic::addSeparator(void)
 {
-	const int height = 4;
-	const int widthStep = 3;
+    const int height = 4;
+    const int widthStep = 3;
 
-	const int left = widthStep;
-	const int width = static_cast<int>(mWidgetClient->getWidth());
+    const int left = widthStep;
+    const int width = static_cast<int>(mWidgetClient->getWidth());
 
-	// Set the key of the property
-	MyGUI::Widget* separator = mWidgetClient->createWidget<MyGUI::Widget>("Separator3", MyGUI::IntCoord(left, this->heightCurrent, width, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
+    // Set the key of the property
+    MyGUI::Widget* separator = mWidgetClient->createWidget<MyGUI::Widget>("Separator3", MyGUI::IntCoord(left, this->heightCurrent, width, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
 
-	return separator;
+    return separator;
 }
 
 void PropertiesPanelDynamic::notifyColourCancel(MyGUI::ColourPanel* sender)
@@ -2648,201 +2658,195 @@ void PropertiesPanelDynamic::notifyColourCancel(MyGUI::ColourPanel* sender)
 
 bool PropertiesPanelDynamic::showFileOpenDialog(const Ogre::String& action, const Ogre::String& fileMask, Ogre::String& resourceGroupName)
 {
-	if (true == resourceGroupName.empty())
-	{
-		// See: [Models] in NOWA_Design.cfg
-		resourceGroupName = "Models";
-	}
+    // Threadsafe from the outside
 
-	Ogre::String targetFolder;
-
-	try
-	{
-		Ogre::ResourceGroupManager::LocationList resLocationsList = Ogre::ResourceGroupManager::getSingleton().getResourceLocationList(resourceGroupName);
-		Ogre::ResourceGroupManager::LocationList::const_iterator it = resLocationsList.cbegin();
-		Ogre::ResourceGroupManager::LocationList::const_iterator itEnd = resLocationsList.cend();
-
-		for (; it != itEnd; ++it)
-		{
-			targetFolder = (*it)->archive->getName();
-			if (Ogre::String::npos != targetFolder.find(resourceGroupName))
-			{
-				break;
-			}
-		}
-	}
-	catch (const Ogre::FileNotFoundException&)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ImageData] ERROR: Could not open file dialog because the resource name: '" + resourceGroupName + "' does not exist!");
-		return false;
-	}
-	catch (...)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ImageData] ERROR: Could not open file dialog because the resource name: '" + resourceGroupName + "' does not exist!");
-		return false;
-	}
-
-	NOWA::GraphicsModule::RenderCommand renderCommand = [this, targetFolder, action, fileMask]()
+    if (true == resourceGroupName.empty())
     {
-        // Set the target folder specified in scene resource group
-        this->openSaveFileDialog->setCurrentFolder(targetFolder);
-        // this->openSaveFileDialog->setRecentFolders(RecentFilesManager::getInstance().getRecentFolders());
+        // See: [Models] in NOWA_Design.cfg
+        resourceGroupName = "Models";
+    }
 
-        this->openSaveFileDialog->setDialogInfo(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{OpenFile}"), MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Open}"),
-            MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{UpFolder}"), false);
+    Ogre::String targetFolder;
 
-        this->openSaveFileDialog->setMode(action);
-        this->openSaveFileDialog->setFileMask(fileMask);
-        this->openSaveFileDialog->setFileName("");
-        this->openSaveFileDialog->doModal();
-        MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->openSaveFileDialog->getMainWidget());
-        MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->openSaveFileDialog->getMainWidget());
+    try
+    {
+        Ogre::ResourceGroupManager::LocationList resLocationsList = Ogre::ResourceGroupManager::getSingleton().getResourceLocationList(resourceGroupName);
+        Ogre::ResourceGroupManager::LocationList::const_iterator it = resLocationsList.cbegin();
+        Ogre::ResourceGroupManager::LocationList::const_iterator itEnd = resLocationsList.cend();
 
-        // If user is in dialog prevent camera movement (asdf)
-        NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.0f);
-        NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.0f);
-    };
-    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "PropertiesPanelDynamic::showFileOpenDialog");
+        for (; it != itEnd; ++it)
+        {
+            targetFolder = (*it)->archive->getName();
+            if (Ogre::String::npos != targetFolder.find(resourceGroupName))
+            {
+                break;
+            }
+        }
+    }
+    catch (const Ogre::FileNotFoundException&)
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ImageData] ERROR: Could not open file dialog because the resource name: '" + resourceGroupName + "' does not exist!");
+        return false;
+    }
+    catch (...)
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ImageData] ERROR: Could not open file dialog because the resource name: '" + resourceGroupName + "' does not exist!");
+        return false;
+    }
 
-	return true;
+    // Set the target folder specified in scene resource group
+    this->openSaveFileDialog->setCurrentFolder(targetFolder);
+    // this->openSaveFileDialog->setRecentFolders(RecentFilesManager::getInstance().getRecentFolders());
+
+    this->openSaveFileDialog->setDialogInfo(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{OpenFile}"), MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Open}"), MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{UpFolder}"),
+        false);
+
+    this->openSaveFileDialog->setMode(action);
+    this->openSaveFileDialog->setFileMask(fileMask);
+    this->openSaveFileDialog->setFileName("");
+    this->openSaveFileDialog->doModal();
+    MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->openSaveFileDialog->getMainWidget());
+    MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->openSaveFileDialog->getMainWidget());
+
+    // If user is in dialog prevent camera movement (asdf)
+    NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.0f);
+    NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.0f);
+
+    return true;
 }
 
 //////////////////////////////////////////////////////////////////////////////////
 
-PropertiesPanelGameObject::PropertiesPanelGameObject(const std::vector<NOWA::GameObject*>& gameObjects, const Ogre::String& name)
-	: PropertiesPanelDynamic(gameObjects, name),
-	listComponentsButton(nullptr)
+PropertiesPanelGameObject::PropertiesPanelGameObject(const std::vector<NOWA::GameObject*>& gameObjects, const Ogre::String& name) : PropertiesPanelDynamic(gameObjects, name), listComponentsButton(nullptr)
 {
-
 }
 
 PropertiesPanelGameObject::~PropertiesPanelGameObject()
 {
-
 }
 
 void PropertiesPanelGameObject::initialise()
 {
-	PropertiesPanelDynamic::initialise();
+    PropertiesPanelDynamic::initialise();
 
-	mPanelCell->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+    mPanelCell->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 
-	// Add component button to list available components
-	this->listComponentsButton = mPanelCell->getMainWidget()->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(10, 5, 22, 22), MyGUI::Align::Left | MyGUI::Align::Top, "listComponentsButton");
-	this->listComponentsButton->setCaption("C");
-	this->listComponentsButton->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
-	this->listComponentsButton->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelGameObject::notifyMouseAddComponentClick);
-	this->listComponentsButton->eventMouseSetFocus += MyGUI::newDelegate(static_cast<PropertiesPanelDynamic*>(this), &PropertiesPanelDynamic::setFocus);
-	this->listComponentsButton->setUserString("Description", "Show components");
-	this->itemsEdit.push_back(this->listComponentsButton);
+    // Add component button to list available components
+    this->listComponentsButton = mPanelCell->getMainWidget()->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(10, 5, 22, 22), MyGUI::Align::Left | MyGUI::Align::Top, "listComponentsButton");
+    this->listComponentsButton->setCaption("C");
+    this->listComponentsButton->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
+    this->listComponentsButton->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelGameObject::notifyMouseAddComponentClick);
+    this->listComponentsButton->eventMouseSetFocus += MyGUI::newDelegate(static_cast<PropertiesPanelDynamic*>(this), &PropertiesPanelDynamic::setFocus);
+    this->listComponentsButton->setUserString("Description", "Show components");
+    this->itemsEdit.push_back(this->listComponentsButton);
 
-	//this->maxNumComponentsForPage = 30;
-	//// + 1 because of the fraction, e.g. 77, = 2 + 1 pages (+ 1) for the remaining 11 components
-	//unsigned short maxPages = NOWA::GameObjectFactory::getInstance()->getComponentFactory()->getRegisteredNames().size() / maxNumComponentsForPage + 1;
-	//this->componentsPopupMenus.resize(maxPages);
+    // this->maxNumComponentsForPage = 30;
+    //// + 1 because of the fraction, e.g. 77, = 2 + 1 pages (+ 1) for the remaining 11 components
+    // unsigned short maxPages = NOWA::GameObjectFactory::getInstance()->getComponentFactory()->getRegisteredNames().size() / maxNumComponentsForPage + 1;
+    // this->componentsPopupMenus.resize(maxPages);
 
-	//// The other ones are created on the fly, because they need to be referenced by an already created menu item
-	//this->componentsPopupMenus[0] = mPanelCell->getMainWidget()->createWidget<MyGUI::PopupMenu>(MyGUI::WidgetStyle::Popup, "PopupMenu",
-	//	/*this->listComponentsButton->getAbsoluteCoord() +*/ MyGUI::IntCoord(15, 38, 0, 0), MyGUI::Align::Default, "Popup", "componentsPopupMenu" + Ogre::StringConverter::toString(0));
-	//this->componentsPopupMenus[0]->setRealPosition(0.52f, 0.1f);
-	//this->componentsPopupMenus[0]->hideMenu();
+    //// The other ones are created on the fly, because they need to be referenced by an already created menu item
+    // this->componentsPopupMenus[0] = mPanelCell->getMainWidget()->createWidget<MyGUI::PopupMenu>(MyGUI::WidgetStyle::Popup, "PopupMenu",
+    //	/*this->listComponentsButton->getAbsoluteCoord() +*/ MyGUI::IntCoord(15, 38, 0, 0), MyGUI::Align::Default, "Popup", "componentsPopupMenu" + Ogre::StringConverter::toString(0));
+    // this->componentsPopupMenus[0]->setRealPosition(0.52f, 0.1f);
+    // this->componentsPopupMenus[0]->hideMenu();
 }
 
 void PropertiesPanelGameObject::notifyMouseAddComponentClick(MyGUI::Widget* sender)
 {
-	if (this->listComponentsButton == sender)
-	{
-		// Sent when a component panel with all components should be shown
-		boost::shared_ptr<EventDataShowComponentsPanel> eventDataShowComponentsPanel(new EventDataShowComponentsPanel());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataShowComponentsPanel);
-	}
+    if (this->listComponentsButton == sender)
+    {
+        // Sent when a component panel with all components should be shown
+        boost::shared_ptr<EventDataShowComponentsPanel> eventDataShowComponentsPanel(new EventDataShowComponentsPanel());
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataShowComponentsPanel);
+    }
 }
 
 void PropertiesPanelGameObject::addComponent(MyGUI::MenuItem* menuItem)
 {
-	Ogre::String componentName = menuItem->getCaption();
+    Ogre::String componentName = menuItem->getCaption();
 
-	// This should be handled via editormanager due to undo/redo functionality
-	// GameObjectPtr is required, so get it from game object. Note: Only game object was available because of selection result, which never may be shared_ptr! because of reference count mess when
-	// Ogre would hold those shared ptrs in user any
+    // This should be handled via editormanager due to undo/redo functionality
+    // GameObjectPtr is required, so get it from game object. Note: Only game object was available because of selection result, which never may be shared_ptr! because of reference count mess when
+    // Ogre would hold those shared ptrs in user any
 
-	std::vector<unsigned long> gameObjectIds(this->gameObjects.size());
-	size_t i = 0;
-	// Do not delete directly via selection manager, because when internally deleted, an event is sent out to selection manager to remove from map
-	for (size_t i = 0; i < this->gameObjects.size(); i++)
-	{
-		gameObjectIds[i] = this->gameObjects[i]->getId();
-	}
-	if (0 == gameObjectIds.size())
-	{
-		return;
-	}
+    std::vector<unsigned long> gameObjectIds(this->gameObjects.size());
+    size_t i = 0;
+    // Do not delete directly via selection manager, because when internally deleted, an event is sent out to selection manager to remove from map
+    for (size_t i = 0; i < this->gameObjects.size(); i++)
+    {
+        gameObjectIds[i] = this->gameObjects[i]->getId();
+    }
+    if (0 == gameObjectIds.size())
+    {
+        return;
+    }
 
-	this->editorManager->addComponent(gameObjectIds, componentName, true);
+    this->editorManager->addComponent(gameObjectIds, componentName, true);
 
-	// Sent when a property has changed, so that the properties panel can be refreshed with new values
-	boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+    // Sent when a property has changed, so that the properties panel can be refreshed with new values
+    boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 }
 
 void PropertiesPanelGameObject::setNewAttributeValue(MyGUI::EditBox* sender, NOWA::Variant* attribute)
 {
-	// Ogre::LogManager::getSingletonPtr()->logMessage("notifyEditSelectAccept: " + sender->getOnlyText());
+    // Ogre::LogManager::getSingletonPtr()->logMessage("notifyEditSelectAccept: " + sender->getOnlyText());
 
-	switch (attribute->getType())
-	{
-		case NOWA::Variant::VAR_INT:
-		{
-			attribute->setValue(Ogre::StringConverter::parseInt(sender->getOnlyText()));
+    switch (attribute->getType())
+    {
+    case NOWA::Variant::VAR_INT:
+    {
+        attribute->setValue(Ogre::StringConverter::parseInt(sender->getOnlyText()));
 
-			sender->setOnlyText(attribute->getString());
-			break;
-		}
-		case NOWA::Variant::VAR_UINT:
-		{
-			attribute->setValue(Ogre::StringConverter::parseUnsignedInt(sender->getOnlyText()));
-			sender->setOnlyText(attribute->getString());
-			break;
-		}
-		case NOWA::Variant::VAR_ULONG:
-		{
-			attribute->setValue(Ogre::StringConverter::parseUnsignedLong(sender->getOnlyText()));
-			sender->setOnlyText(attribute->getString());
-			break;
-		}
-		case NOWA::Variant::VAR_REAL:
-		{
-			attribute->setValue(Ogre::StringConverter::parseReal(sender->getOnlyText()));
-			sender->setOnlyText(attribute->getString());
-			break;
-		}
-		case NOWA::Variant::VAR_VEC2:
-		{
-			attribute->setValue(Ogre::StringConverter::parseVector2(sender->getOnlyText()));
-			sender->setOnlyText(attribute->getString());
-			break;
-		}
-		case NOWA::Variant::VAR_VEC3:
-		{
-			attribute->setValue(Ogre::StringConverter::parseVector3(sender->getOnlyText()));
-			sender->setOnlyText(attribute->getString());
-			break;
-		}
-		case NOWA::Variant::VAR_VEC4:
-		{
-			attribute->setValue(Ogre::StringConverter::parseVector4(sender->getOnlyText()));
-			sender->setOnlyText(attribute->getString());
-			break;
-		}
-		case NOWA::Variant::VAR_STRING:
-		{
-			attribute->setValue(sender->getOnlyText());
-			sender->setOnlyText(attribute->getString());
-			break;
-		}
-	}
+        sender->setOnlyText(attribute->getString());
+        break;
+    }
+    case NOWA::Variant::VAR_UINT:
+    {
+        attribute->setValue(Ogre::StringConverter::parseUnsignedInt(sender->getOnlyText()));
+        sender->setOnlyText(attribute->getString());
+        break;
+    }
+    case NOWA::Variant::VAR_ULONG:
+    {
+        attribute->setValue(Ogre::StringConverter::parseUnsignedLong(sender->getOnlyText()));
+        sender->setOnlyText(attribute->getString());
+        break;
+    }
+    case NOWA::Variant::VAR_REAL:
+    {
+        attribute->setValue(Ogre::StringConverter::parseReal(sender->getOnlyText()));
+        sender->setOnlyText(attribute->getString());
+        break;
+    }
+    case NOWA::Variant::VAR_VEC2:
+    {
+        attribute->setValue(Ogre::StringConverter::parseVector2(sender->getOnlyText()));
+        sender->setOnlyText(attribute->getString());
+        break;
+    }
+    case NOWA::Variant::VAR_VEC3:
+    {
+        attribute->setValue(Ogre::StringConverter::parseVector3(sender->getOnlyText()));
+        sender->setOnlyText(attribute->getString());
+        break;
+    }
+    case NOWA::Variant::VAR_VEC4:
+    {
+        attribute->setValue(Ogre::StringConverter::parseVector4(sender->getOnlyText()));
+        sender->setOnlyText(attribute->getString());
+        break;
+    }
+    case NOWA::Variant::VAR_STRING:
+    {
+        attribute->setValue(sender->getOnlyText());
+        sender->setOnlyText(attribute->getString());
+        break;
+    }
+    }
 
-	MyGUIHelper::getInstance()->showAcceptedImage(Ogre::Vector2(sender->getAbsolutePosition().left, sender->getAbsolutePosition().top), Ogre::Vector2(10.0f, 10.0f), 1.0f);
+    MyGUIHelper::getInstance()->showAcceptedImage(Ogre::Vector2(sender->getAbsolutePosition().left, sender->getAbsolutePosition().top), Ogre::Vector2(10.0f, 10.0f), 1.0f);
 }
 
 // -----------------------------------------------------------------------------
@@ -3146,13 +3150,14 @@ void PropertiesPanelGameObject::buttonHit(MyGUI::Widget* sender)
                 MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->openSaveFileDialog->getMainWidget());
                 MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->openSaveFileDialog->getMainWidget());
 
-				Ogre::String fileType = "*";
+                Ogre::String fileType = "*";
                 if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionFileType()))
                 {
                     fileType = (*attribute)->getUserDataValue(NOWA::GameObject::AttrActionFileType());
                 }
 
                 this->showFileOpenDialog("FileOpen", "*." + fileType, resourceGroupName);
+                return;
             }
             else
             {
@@ -3260,22 +3265,21 @@ void PropertiesPanelGameObject::notifyColourAccept(MyGUI::ColourPanel* sender)
 
 void PropertiesPanelGameObject::notifyEndDialog(tools::Dialog* sender, bool result)
 {
-
 }
 
 void PropertiesPanelGameObject::notifyScrollChangePosition(MyGUI::ScrollBar* sender, size_t position)
 {
-	MyGUI::ScrollBar* scrollBar = sender->castType<MyGUI::ScrollBar>(false);
-	if (nullptr != scrollBar)
-	{
+    MyGUI::ScrollBar* scrollBar = sender->castType<MyGUI::ScrollBar>(false);
+    if (nullptr != scrollBar)
+    {
 
-		// TODO: implement when necessary
-	}
+        // TODO: implement when necessary
+    }
 }
 
 void PropertiesPanelGameObject::notifySliderMouseRelease(MyGUI::Widget* sender, int x, int y, MyGUI::MouseButton button)
 {
-	// TODO: implement when necessary
+    // TODO: implement when necessary
 }
 
 void PropertiesPanelGameObject::notifySetItemBoxData(MyGUI::ItemBox* sender, const Ogre::String& resourceName)
@@ -3304,151 +3308,150 @@ void PropertiesPanelGameObject::notifySetItemBoxData(MyGUI::ItemBox* sender, con
 
 ///////////////////////////////////////////////////////////////////////////////
 
-PropertiesPanelComponent::PropertiesPanelComponent(const std::vector<NOWA::GameObject*>& gameObjects,
-	const std::vector<NOWA::GameObjectComponent*>& gameObjectComponents, const Ogre::String& name)
-	: PropertiesPanelDynamic(gameObjects, name),
-	gameObjectComponents(gameObjectComponents),
-	appendComponentButton(nullptr),
-	deleteComponentButton(nullptr),
-	debugDataComponentButton(nullptr),
-	moveUpComponentButton(nullptr),
-	moveDownComponentButton(nullptr)
+PropertiesPanelComponent::PropertiesPanelComponent(const std::vector<NOWA::GameObject*>& gameObjects, const std::vector<NOWA::GameObjectComponent*>& gameObjectComponents, const Ogre::String& name) :
+    PropertiesPanelDynamic(gameObjects, name),
+    gameObjectComponents(gameObjectComponents),
+    appendComponentButton(nullptr),
+    deleteComponentButton(nullptr),
+    debugDataComponentButton(nullptr),
+    moveUpComponentButton(nullptr),
+    moveDownComponentButton(nullptr)
 {
-
 }
 
 PropertiesPanelComponent::~PropertiesPanelComponent()
 {
-
 }
 
 void PropertiesPanelComponent::initialise()
 {
-	PropertiesPanelDynamic::initialise();
-	mPanelCell->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+    PropertiesPanelDynamic::initialise();
+    mPanelCell->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 
-	this->appendComponentButton = mPanelCell->getMainWidget()->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(4, 5, 22, 22), MyGUI::Align::Left | MyGUI::Align::Top, "addComponentsButton");
-	this->appendComponentButton->setCaption("C");
-	this->appendComponentButton->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
-	this->appendComponentButton->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelComponent::buttonHit);
-	this->appendComponentButton->eventMouseSetFocus += MyGUI::newDelegate(static_cast<PropertiesPanelDynamic*>(this), &PropertiesPanelDynamic::setFocus);
-	this->appendComponentButton->setUserString("Description", "Append component");
-	this->itemsEdit.push_back(this->appendComponentButton);
+    this->appendComponentButton = mPanelCell->getMainWidget()->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(4, 5, 22, 22), MyGUI::Align::Left | MyGUI::Align::Top, "addComponentsButton");
+    this->appendComponentButton->setCaption("C");
+    this->appendComponentButton->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
+    this->appendComponentButton->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelComponent::buttonHit);
+    this->appendComponentButton->eventMouseSetFocus += MyGUI::newDelegate(static_cast<PropertiesPanelDynamic*>(this), &PropertiesPanelDynamic::setFocus);
+    this->appendComponentButton->setUserString("Description", "Append component");
+    this->itemsEdit.push_back(this->appendComponentButton);
 
-	this->deleteComponentButton = mPanelCell->getMainWidget()->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(29, 5, 22, 22), MyGUI::Align::Left | MyGUI::Align::Top, "deleteComponentsButton");
-	this->deleteComponentButton->setCaption("X");
-	this->deleteComponentButton->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
-	this->deleteComponentButton->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelComponent::buttonHit);
-	this->deleteComponentButton->eventMouseSetFocus += MyGUI::newDelegate(static_cast<PropertiesPanelDynamic*>(this), &PropertiesPanelDynamic::setFocus);
-	this->deleteComponentButton->setUserString("Description", "Delete component");
-	this->itemsEdit.push_back(this->deleteComponentButton);
+    this->deleteComponentButton = mPanelCell->getMainWidget()->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(29, 5, 22, 22), MyGUI::Align::Left | MyGUI::Align::Top, "deleteComponentsButton");
+    this->deleteComponentButton->setCaption("X");
+    this->deleteComponentButton->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
+    this->deleteComponentButton->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelComponent::buttonHit);
+    this->deleteComponentButton->eventMouseSetFocus += MyGUI::newDelegate(static_cast<PropertiesPanelDynamic*>(this), &PropertiesPanelDynamic::setFocus);
+    this->deleteComponentButton->setUserString("Description", "Delete component");
+    this->itemsEdit.push_back(this->deleteComponentButton);
 
-	this->debugDataComponentButton = mPanelCell->getMainWidget()->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(54, 5, 22, 22), MyGUI::Align::Left | MyGUI::Align::Top, "debugComponentsButton");
-	this->debugDataComponentButton->setCaption("D");
-	this->debugDataComponentButton->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
-	this->debugDataComponentButton->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelComponent::buttonHit);
-	this->debugDataComponentButton->eventMouseSetFocus += MyGUI::newDelegate(static_cast<PropertiesPanelDynamic*>(this), &PropertiesPanelDynamic::setFocus);
-	this->debugDataComponentButton->setUserString("Description", "Show debug data");
-	if (false == this->gameObjectComponents.empty())
-		this->debugDataComponentButton->setStateCheck(this->gameObjectComponents[0]->getShowDebugData());
-	this->itemsEdit.push_back(this->debugDataComponentButton);
+    this->debugDataComponentButton = mPanelCell->getMainWidget()->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(54, 5, 22, 22), MyGUI::Align::Left | MyGUI::Align::Top, "debugComponentsButton");
+    this->debugDataComponentButton->setCaption("D");
+    this->debugDataComponentButton->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
+    this->debugDataComponentButton->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelComponent::buttonHit);
+    this->debugDataComponentButton->eventMouseSetFocus += MyGUI::newDelegate(static_cast<PropertiesPanelDynamic*>(this), &PropertiesPanelDynamic::setFocus);
+    this->debugDataComponentButton->setUserString("Description", "Show debug data");
+    if (false == this->gameObjectComponents.empty())
+    {
+        this->debugDataComponentButton->setStateCheck(this->gameObjectComponents[0]->getShowDebugData());
+    }
+    this->itemsEdit.push_back(this->debugDataComponentButton);
 
-	this->moveUpComponentButton = mPanelCell->getMainWidget()->createWidget<MyGUI::Button>("ButtonUpSkin", MyGUI::IntCoord(79, 7, 16, 16), MyGUI::Align::Left | MyGUI::Align::Top, "upComponentsButton");
-	this->moveUpComponentButton->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
-	this->moveUpComponentButton->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelComponent::buttonHit);
-	this->moveUpComponentButton->eventMouseSetFocus += MyGUI::newDelegate(static_cast<PropertiesPanelDynamic*>(this), &PropertiesPanelDynamic::setFocus);
-	this->moveUpComponentButton->setUserString("Description", "Move component up");
-	this->itemsEdit.push_back(this->moveUpComponentButton);
+    this->moveUpComponentButton = mPanelCell->getMainWidget()->createWidget<MyGUI::Button>("ButtonUpSkin", MyGUI::IntCoord(79, 7, 16, 16), MyGUI::Align::Left | MyGUI::Align::Top, "upComponentsButton");
+    this->moveUpComponentButton->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
+    this->moveUpComponentButton->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelComponent::buttonHit);
+    this->moveUpComponentButton->eventMouseSetFocus += MyGUI::newDelegate(static_cast<PropertiesPanelDynamic*>(this), &PropertiesPanelDynamic::setFocus);
+    this->moveUpComponentButton->setUserString("Description", "Move component up");
+    this->itemsEdit.push_back(this->moveUpComponentButton);
 
-	this->moveDownComponentButton = mPanelCell->getMainWidget()->createWidget<MyGUI::Button>("ButtonDownSkin", MyGUI::IntCoord(100, 7, 16, 16), MyGUI::Align::Left | MyGUI::Align::Top, "downComponentsButton");
-	this->moveDownComponentButton->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
-	this->moveDownComponentButton->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelComponent::buttonHit);
-	this->moveDownComponentButton->eventMouseSetFocus += MyGUI::newDelegate(static_cast<PropertiesPanelDynamic*>(this), &PropertiesPanelDynamic::setFocus);
-	this->moveDownComponentButton->setUserString("Description", "Move component down");
-	this->itemsEdit.push_back(this->moveDownComponentButton);
+    this->moveDownComponentButton = mPanelCell->getMainWidget()->createWidget<MyGUI::Button>("ButtonDownSkin", MyGUI::IntCoord(100, 7, 16, 16), MyGUI::Align::Left | MyGUI::Align::Top, "downComponentsButton");
+    this->moveDownComponentButton->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
+    this->moveDownComponentButton->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelComponent::buttonHit);
+    this->moveDownComponentButton->eventMouseSetFocus += MyGUI::newDelegate(static_cast<PropertiesPanelDynamic*>(this), &PropertiesPanelDynamic::setFocus);
+    this->moveDownComponentButton->setUserString("Description", "Move component down");
+    this->itemsEdit.push_back(this->moveDownComponentButton);
 }
 
 void PropertiesPanelComponent::setNewAttributeValue(MyGUI::EditBox* sender, NOWA::Variant* attribute)
 {
-	// Ogre::LogManager::getSingletonPtr()->logMessage("notifyEditSelectAccept: " + sender->getOnlyText());
+    // Ogre::LogManager::getSingletonPtr()->logMessage("notifyEditSelectAccept: " + sender->getOnlyText());
 
-	switch (attribute->getType())
-	{
-		case NOWA::Variant::VAR_INT:
-		{
-			attribute->setValue(Ogre::StringConverter::parseInt(sender->getOnlyText()));
-			sender->setOnlyText(attribute->getString());
-			break;
-		}
-		case NOWA::Variant::VAR_UINT:
-		{
-			attribute->setValue(Ogre::StringConverter::parseUnsignedInt(sender->getOnlyText()));
-			sender->setOnlyText(attribute->getString());
-			break;
-		}
-		case NOWA::Variant::VAR_ULONG:
-		{
-			attribute->setValue(Ogre::StringConverter::parseUnsignedLong(sender->getOnlyText()));
-			sender->setOnlyText(attribute->getString());
-			break;
-		}
-		case NOWA::Variant::VAR_REAL:
-		{
-			attribute->setValue(Ogre::StringConverter::parseReal(sender->getOnlyText()));
-			// Only set formatted number, if not an e number, because else it will not be accepted and set to 0
-			size_t found = attribute->getString().find("e");
-			if (Ogre::String::npos == found)
-			{
-				sender->setOnlyText(attribute->getString());
-			}
-			break;
-		}
-		case NOWA::Variant::VAR_VEC2:
-		{
-			attribute->setValue(Ogre::StringConverter::parseVector2(sender->getOnlyText()));
-			// Only set formatted number, if not an e number, because else it will not be accepted and set to 0
-			size_t found = attribute->getString().find("e");
-			if (Ogre::String::npos == found)
-			{
-				sender->setOnlyText(attribute->getString());
-			}
-			break;
-		}
-		case NOWA::Variant::VAR_VEC3:
-		{
-			attribute->setValue(Ogre::StringConverter::parseVector3(sender->getOnlyText()));
-			// Only set formatted number, if not an e number, because else it will not be accepted and set to 0
-			size_t found = attribute->getString().find("e");
-			if (Ogre::String::npos == found)
-			{
-				sender->setOnlyText(attribute->getString());
-			}
-			break;
-		}
-		case NOWA::Variant::VAR_VEC4:
-		{
-			attribute->setValue(Ogre::StringConverter::parseVector4(sender->getOnlyText()));
-			// Only set formatted number, if not an e number, because else it will not be accepted and set to 0
-			size_t found = attribute->getString().find("e");
-			if (Ogre::String::npos == found)
-			{
-				sender->setOnlyText(attribute->getString());
-			}
-			break;
-		}
-		default:
-		{
-			// Remove all hashes (but not if its a color), because its an internal code character for MyGUI
-			Ogre::String text = sender->getOnlyText();
-			// text.erase(std::remove(text.begin(), text.end(), '#'), text.end());
-			text = removeHashesExceptForColor(text);
-			attribute->setValue(text);
-			sender->setOnlyText(attribute->getString());
-			break;
-		}
-	}
+    switch (attribute->getType())
+    {
+    case NOWA::Variant::VAR_INT:
+    {
+        attribute->setValue(Ogre::StringConverter::parseInt(sender->getOnlyText()));
+        sender->setOnlyText(attribute->getString());
+        break;
+    }
+    case NOWA::Variant::VAR_UINT:
+    {
+        attribute->setValue(Ogre::StringConverter::parseUnsignedInt(sender->getOnlyText()));
+        sender->setOnlyText(attribute->getString());
+        break;
+    }
+    case NOWA::Variant::VAR_ULONG:
+    {
+        attribute->setValue(Ogre::StringConverter::parseUnsignedLong(sender->getOnlyText()));
+        sender->setOnlyText(attribute->getString());
+        break;
+    }
+    case NOWA::Variant::VAR_REAL:
+    {
+        attribute->setValue(Ogre::StringConverter::parseReal(sender->getOnlyText()));
+        // Only set formatted number, if not an e number, because else it will not be accepted and set to 0
+        size_t found = attribute->getString().find("e");
+        if (Ogre::String::npos == found)
+        {
+            sender->setOnlyText(attribute->getString());
+        }
+        break;
+    }
+    case NOWA::Variant::VAR_VEC2:
+    {
+        attribute->setValue(Ogre::StringConverter::parseVector2(sender->getOnlyText()));
+        // Only set formatted number, if not an e number, because else it will not be accepted and set to 0
+        size_t found = attribute->getString().find("e");
+        if (Ogre::String::npos == found)
+        {
+            sender->setOnlyText(attribute->getString());
+        }
+        break;
+    }
+    case NOWA::Variant::VAR_VEC3:
+    {
+        attribute->setValue(Ogre::StringConverter::parseVector3(sender->getOnlyText()));
+        // Only set formatted number, if not an e number, because else it will not be accepted and set to 0
+        size_t found = attribute->getString().find("e");
+        if (Ogre::String::npos == found)
+        {
+            sender->setOnlyText(attribute->getString());
+        }
+        break;
+    }
+    case NOWA::Variant::VAR_VEC4:
+    {
+        attribute->setValue(Ogre::StringConverter::parseVector4(sender->getOnlyText()));
+        // Only set formatted number, if not an e number, because else it will not be accepted and set to 0
+        size_t found = attribute->getString().find("e");
+        if (Ogre::String::npos == found)
+        {
+            sender->setOnlyText(attribute->getString());
+        }
+        break;
+    }
+    default:
+    {
+        // Remove all hashes (but not if its a color), because its an internal code character for MyGUI
+        Ogre::String text = sender->getOnlyText();
+        // text.erase(std::remove(text.begin(), text.end(), '#'), text.end());
+        text = removeHashesExceptForColor(text);
+        attribute->setValue(text);
+        sender->setOnlyText(attribute->getString());
+        break;
+    }
+    }
 
-	MyGUIHelper::getInstance()->showAcceptedImage(Ogre::Vector2(sender->getAbsolutePosition().left, sender->getAbsolutePosition().top), Ogre::Vector2(10.0f, 10.0f), 1.0f);
+    MyGUIHelper::getInstance()->showAcceptedImage(Ogre::Vector2(sender->getAbsolutePosition().left, sender->getAbsolutePosition().top), Ogre::Vector2(10.0f, 10.0f), 1.0f);
 }
 
 // -----------------------------------------------------------------------------
@@ -3591,42 +3594,42 @@ void PropertiesPanelComponent::notifyEditSelectAccept(MyGUI::EditBox* sender)
 
 void PropertiesPanelComponent::notifyScrollChangePosition(MyGUI::ScrollBar* sender, size_t position)
 {
-	MyGUI::ScrollBar* scrollBar = sender->castType<MyGUI::ScrollBar>(false);
-	if (nullptr != scrollBar)
-	{
-		MyGUI::EditBox** editPair = sender->getUserData<MyGUI::EditBox*>(false);
-		if (nullptr != editPair)
-		{
-			// Send the text box change to the game object and internally actualize the data
-			NOWA::Variant** attribute = (*editPair)->getUserData<NOWA::Variant*>(false);
-			Ogre::Real value = 0.0f;
-			if (NOWA::Variant::VAR_REAL == (*attribute)->getType())
-			{
-				value = (*attribute)->getConstraints().first + static_cast<float>(position) * ((*attribute)->getConstraints().second - (*attribute)->getConstraints().first) / 1000.0f;
-			}
-			else
-			{
-				value = position + (*attribute)->getConstraints().first;
-			}
+    MyGUI::ScrollBar* scrollBar = sender->castType<MyGUI::ScrollBar>(false);
+    if (nullptr != scrollBar)
+    {
+        MyGUI::EditBox** editPair = sender->getUserData<MyGUI::EditBox*>(false);
+        if (nullptr != editPair)
+        {
+            // Send the text box change to the game object and internally actualize the data
+            NOWA::Variant** attribute = (*editPair)->getUserData<NOWA::Variant*>(false);
+            Ogre::Real value = 0.0f;
+            if (NOWA::Variant::VAR_REAL == (*attribute)->getType())
+            {
+                value = (*attribute)->getConstraints().first + static_cast<float>(position) * ((*attribute)->getConstraints().second - (*attribute)->getConstraints().first) / 1000.0f;
+            }
+            else
+            {
+                value = position + (*attribute)->getConstraints().first;
+            }
 
-			NOWA::GraphicsModule::RenderCommand renderCommand = [this, editPair, value]()
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this, editPair, value]()
             {
                 (*editPair)->setOnlyText(Ogre::StringConverter::toString(value));
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PropertiesPanelComponent::notifyScrollChangePosition");
 
-			if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionForceSet()))
-			{
-				// Do nothing but jump over the next condition, so that the value will be reset, even its the same value
-			}
-			else
-			{
-				// Only proceed if a value changed
-				if (Ogre::Math::RealEqual((*attribute)->getReal(), value))
-				{
-					return;
-				}
-			}
+            if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionForceSet()))
+            {
+                // Do nothing but jump over the next condition, so that the value will be reset, even its the same value
+            }
+            else
+            {
+                // Only proceed if a value changed
+                if (Ogre::Math::RealEqual((*attribute)->getReal(), value))
+                {
+                    return;
+                }
+            }
 #if 0
 			// TODO: For undo Redo, is called to often! Just set those values on edit box! when final value is set via slider!
 			if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
@@ -3657,8 +3660,8 @@ void PropertiesPanelComponent::notifyScrollChangePosition(MyGUI::ScrollBar* send
 				}
 			}
 #endif
-		}
-	}
+        }
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -3754,31 +3757,31 @@ void PropertiesPanelComponent::notifySetItemBoxData(MyGUI::ItemBox* sender, cons
 
 void PropertiesPanelComponent::notifyExecAction(NOWA::Variant* attribute, const Ogre::String& execId)
 {
-	if (true == execId.empty())
-	{
-		return;
-	}
+    if (true == execId.empty())
+    {
+        return;
+    }
 
-	if (false == attribute->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
-	{
-		this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, attribute->getName());
-	}
+    if (false == attribute->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+    {
+        this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, attribute->getName());
+    }
 
-	for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
-	{
-		this->gameObjectComponents[i]->executeAction(execId, attribute);
-	}
+    for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
+    {
+        this->gameObjectComponents[i]->executeAction(execId, attribute);
+    }
 
-	if (false == attribute->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
-	{
-		this->editorManager->snapshotNewGameObjectComponentAttribute(attribute);
+    if (false == attribute->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+    {
+        this->editorManager->snapshotNewGameObjectComponentAttribute(attribute);
 
-		if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
-		{
-			boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
-		}
-	}
+        if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
+        {
+            boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+        }
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -3825,6 +3828,12 @@ void PropertiesPanelComponent::buttonHit(MyGUI::Widget* sender)
             MyGUI::InputManager::getInstancePtr()->addWidgetModal(ColourPanelManager::getInstance()->getColourPanel()->getWidget());
             ColourPanelManager::getInstance()->getColourPanel()->eventColourAccept = MyGUI::newDelegate(this, &PropertiesPanelComponent::notifyColourAccept);
             ColourPanelManager::getInstance()->getColourPanel()->eventColourCancel = MyGUI::newDelegate((PropertiesPanelDynamic*)this, &PropertiesPanelDynamic::notifyColourCancel);
+
+            // Attention: a modal dialog is open now. The refresh block at the end of this
+            // lambda would queue EventDataRefreshGui, which rebuilds the properties panel
+            // and takes the dialog down with it. The refresh has to happen when the dialog
+            // is accepted or cancelled, not here.
+            return;
         }
         // FileOpenDialog
         else if (true == hasAttribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionFileOpenDialog()))
@@ -3835,19 +3844,27 @@ void PropertiesPanelComponent::buttonHit(MyGUI::Widget* sender)
             if (true == resourceGroupName.empty())
             {
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ImageData] ERROR: Could not open file dialog because the resource name is empty!");
+                delete variantCopy;
                 return;
             }
             this->openSaveFileDialog->getMainWidget()->setUserData(MyGUI::Any(variantCopy));
-            MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->openSaveFileDialog->getMainWidget());
-            MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->openSaveFileDialog->getMainWidget());
 
-			Ogre::String fileType = "*";
+            Ogre::String fileType = "*";
             if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionFileType()))
             {
                 fileType = (*attribute)->getUserDataValue(NOWA::GameObject::AttrActionFileType());
             }
 
             this->showFileOpenDialog("FileOpen", "*." + fileType, resourceGroupName);
+
+            // Attention: focus is set AFTER doModal(). Before it, the dialog's main widget is
+            // still invisible, and MyGUI drops mouse/key focus for invisible widgets, so the
+            // two calls had no effect and the dialog opened without keyboard focus.
+            MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->openSaveFileDialog->getMainWidget());
+            MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->openSaveFileDialog->getMainWidget());
+
+            // Attention: see the ColorDialog branch - no refresh while a modal dialog is up.
+            return;
         }
         // LuaScript
         else if (nullptr != attribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionLuaScript()))
@@ -4110,55 +4127,55 @@ void PropertiesPanelComponent::notifyColourAccept(MyGUI::ColourPanel* sender)
 
 void PropertiesPanelComponent::notifyEndDialog(tools::Dialog* sender, bool result)
 {
-	NOWA::GraphicsModule::RenderCommand renderCommand = [this, sender, result]()
-	{
-		if (true == result)
-		{
-			PropertiesPanel::setShowPropertiesFlag(true);
-			if (this->openSaveFileDialog->getMode() == "FileOpen")
-			{
-				MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->openSaveFileDialog->getMainWidget());
-				MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->openSaveFileDialog->getMainWidget());
-				NOWA::Variant** copiedAttribute = sender->getMainWidget()->getUserData<NOWA::Variant*>();
-				Ogre::String tempFileName = this->openSaveFileDialog->getFileName();
-				(*copiedAttribute)->setValue(tempFileName);
-				(*copiedAttribute)->addUserData("PathToFolder", this->openSaveFileDialog->getCurrentFolder());
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, sender, result]()
+    {
+        if (true == result)
+        {
+            PropertiesPanel::setShowPropertiesFlag(true);
+            if (this->openSaveFileDialog->getMode() == "FileOpen")
+            {
+                MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->openSaveFileDialog->getMainWidget());
+                MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->openSaveFileDialog->getMainWidget());
+                NOWA::Variant** copiedAttribute = sender->getMainWidget()->getUserData<NOWA::Variant*>();
+                Ogre::String tempFileName = this->openSaveFileDialog->getFileName();
+                (*copiedAttribute)->setValue(tempFileName);
+                (*copiedAttribute)->addUserData("PathToFolder", this->openSaveFileDialog->getCurrentFolder());
 
-				if (false == (*copiedAttribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
-				{
-					// Snapshot the old attribute name
-					this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, (*copiedAttribute)->getName());
-				}
+                if (false == (*copiedAttribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+                {
+                    // Snapshot the old attribute name
+                    this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, (*copiedAttribute)->getName());
+                }
 
-				for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
-				{
-					auto currentAttribute = this->gameObjectComponents[i]->getAttribute((*copiedAttribute)->getName());
-					currentAttribute->copyUserData(*copiedAttribute);
-					this->gameObjectComponents[i]->actualizeValue(*copiedAttribute);
-				}
+                for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
+                {
+                    auto currentAttribute = this->gameObjectComponents[i]->getAttribute((*copiedAttribute)->getName());
+                    currentAttribute->copyUserData(*copiedAttribute);
+                    this->gameObjectComponents[i]->actualizeValue(*copiedAttribute);
+                }
 
-				if (false == (*copiedAttribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
-				{
-					// Snapshot the new attribute
-					this->editorManager->snapshotNewGameObjectComponentAttribute(*copiedAttribute);
-				}
-				// Delete the copied attribute
-				delete (*copiedAttribute);
+                if (false == (*copiedAttribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+                {
+                    // Snapshot the new attribute
+                    this->editorManager->snapshotNewGameObjectComponentAttribute(*copiedAttribute);
+                }
+                // Delete the copied attribute
+                delete (*copiedAttribute);
 
-				// Sent when a property has changed, so that the properties panel can be refreshed with new values
-				boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
-			}
-		}
-		if (nullptr != this->openSaveFileDialog)
-		{
-			this->openSaveFileDialog->endModal();
-			MyGUI::InputManager::getInstancePtr()->_resetMouseFocusWidget();
-			MyGUI::InputManager::getInstancePtr()->resetKeyFocusWidget();
-			// Lets the camera move again
-			NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
-			NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
-		}
-	};
-	NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PropertiesPanelComponent::notifyEndDialog");
+                // Sent when a property has changed, so that the properties panel can be refreshed with new values
+                boost::shared_ptr<NOWA::EventDataRefreshGui> eventDataRefreshPropertiesPanel(new NOWA::EventDataRefreshGui());
+                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+            }
+        }
+        if (nullptr != this->openSaveFileDialog)
+        {
+            this->openSaveFileDialog->endModal();
+            MyGUI::InputManager::getInstancePtr()->_resetMouseFocusWidget();
+            MyGUI::InputManager::getInstancePtr()->resetKeyFocusWidget();
+            // Lets the camera move again
+            NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
+            NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
+        }
+    };
+    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PropertiesPanelComponent::notifyEndDialog");
 }

@@ -1455,27 +1455,27 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
     }
     else if (this->selectUndoButton == sender)
     {
+        this->editorManager->getSelectionManager()->selectionUndo();
+
         NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             // Show properties
             this->propertiesPanel->showProperties();
             this->resourcesPanel->refresh();
         };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit15");
-
-        this->editorManager->getSelectionManager()->selectionUndo();
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit15");
     }
     else if (this->selectRedoButton == sender)
     {
+        this->editorManager->getSelectionManager()->selectionRedo();
+
         NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             // Show properties
             this->propertiesPanel->showProperties();
             this->resourcesPanel->refresh();
         };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::buttonHit16");
-
-        this->editorManager->getSelectionManager()->selectionRedo();
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::buttonHit16");
     }
     else if (this->cameraSpeedUpButton == sender)
     {
@@ -2809,7 +2809,7 @@ bool DesignState::mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID i
                         {
                             this->propertiesPanel->showProperties();
                         };
-                        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::mouseRelease_showProperties");
+                        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::mouseRelease_showProperties");
                     }
                     // Attention: To early here, better, when everything is loaded
                     /*if (-1 != MyGUIHelper::getInstance()->getScrollPosition())

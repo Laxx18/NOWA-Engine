@@ -9,7 +9,10 @@ namespace NOWA
     using namespace rapidxml;
     using namespace luabind;
 
-    PhysicsArtifactComponent::PhysicsArtifactComponent() : PhysicsComponent(), collisionMode(COLLISION_TREE), serialize(new Variant(PhysicsArtifactComponent::AttrSerialize(), false, this->attributes))
+    PhysicsArtifactComponent::PhysicsArtifactComponent()
+        : PhysicsComponent(),
+        collisionMode(COLLISION_TREE),
+        serialize(new Variant(PhysicsArtifactComponent::AttrSerialize(), false, this->attributes))
     {
         this->collisionType->setVisible(false);
         this->mass->setValue(10000.0f);

@@ -8698,14 +8698,6 @@ return {
 				returns = "(AiLuaComponent)",
 				valuetype = "AiLuaComponent"
 			},
-			getPhysicsExplosionComponent =
-			{
-				type = "function",
-				description = "Gets the physics explosion component.",
-				args = "()",
-				returns = "(PhysicsExplosionComponent)",
-				valuetype = "PhysicsExplosionComponent"
-			},
 			getMoveMathFunctionComponent =
 			{
 				type = "function",
@@ -9081,6 +9073,14 @@ return {
 				args = "(number index)",
 				returns = "(AiPathFollowComponent)",
 				valuetype = "AiPathFollowComponent"
+			},
+			getFadeComponentFromIndex =
+			{
+				type = "function",
+				description = "Gets the fade component from the given occurence index.",
+				args = "(number index)",
+				returns = "(FadeComponent)",
+				valuetype = "FadeComponent"
 			},
 			getAiWanderComponentFromName =
 			{
@@ -9641,14 +9641,6 @@ return {
 				args = "(string name)",
 				returns = "(AiLuaComponent)",
 				valuetype = "AiLuaComponent"
-			},
-			getPhysicsExplosionComponentFromName =
-			{
-				type = "function",
-				description = "Gets the physics explosion component.",
-				args = "(string name)",
-				returns = "(PhysicsExplosionComponent)",
-				valuetype = "PhysicsExplosionComponent"
 			},
 			getMoveMathFunctionComponentFromName =
 			{
@@ -10866,6 +10858,30 @@ return {
 				returns = "(PhysicsActiveVehicleComponentV2)",
 				valuetype = "PhysicsActiveVehicleComponentV2"
 			},
+			getPhysicsExplosionComponentFromIndex =
+			{
+				type = "function",
+				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
+				args = "(number occurrenceIndex)",
+				returns = "(PhysicsExplosionComponent)",
+				valuetype = "PhysicsExplosionComponent"
+			},
+			getPhysicsExplosionComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(PhysicsExplosionComponent)",
+				valuetype = "PhysicsExplosionComponent"
+			},
+			getPhysicsExplosionComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(PhysicsExplosionComponent)",
+				valuetype = "PhysicsExplosionComponent"
+			},
 			getPhysicsRagDollComponentV22 =
 			{
 				type = "function",
@@ -11073,6 +11089,30 @@ return {
 				args = "()",
 				returns = "(ProceduralPlanetComponent)",
 				valuetype = "ProceduralPlanetComponent"
+			},
+			getProceduralPlatformBoundaryComponent =
+			{
+				type = "function",
+				description = "Gets the component. Use this if the game object has this component only once.",
+				args = "()",
+				returns = "(ProceduralPlatformBoundaryComponent)",
+				valuetype = "ProceduralPlatformBoundaryComponent"
+			},
+			getProceduralPlatformBoundaryComponent2 =
+			{
+				type = "function",
+				description = "Gets the component by the given occurrence index, since a game object may have this component several times.",
+				args = "(number occurrenceIndex)",
+				returns = "(ProceduralPlatformBoundaryComponent)",
+				valuetype = "ProceduralPlatformBoundaryComponent"
+			},
+			getProceduralPlatformBoundaryComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component by its custom name.",
+				args = "(string name)",
+				returns = "(ProceduralPlatformBoundaryComponent)",
+				valuetype = "ProceduralPlatformBoundaryComponent"
 			},
 			getProceduralPlatformComponent =
 			{
@@ -12578,14 +12618,6 @@ return {
 				returns = "(AiLuaComponent)",
 				valuetype = "AiLuaComponent"
 			},
-			castPhysicsExplosionComponent =
-			{
-				type = "function",
-				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(PhysicsExplosionComponent other)",
-				returns = "(PhysicsExplosionComponent)",
-				valuetype = "PhysicsExplosionComponent"
-			},
 			castMoveMathFunctionComponent =
 			{
 				type = "function",
@@ -13218,6 +13250,14 @@ return {
 				returns = "(PhysicsActiveVehicleComponentV2)",
 				valuetype = "PhysicsActiveVehicleComponentV2"
 			},
+			castPhysicsExplosionComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(PhysicsExplosionComponent other)",
+				returns = "(PhysicsExplosionComponent)",
+				valuetype = "PhysicsExplosionComponent"
+			},
 			castPhysicsRagDollComponentV2 =
 			{
 				type = "function",
@@ -13289,6 +13329,14 @@ return {
 				args = "(ProceduralMazeComponent other)",
 				returns = "(ProceduralMazeComponent)",
 				valuetype = "ProceduralMazeComponent"
+			},
+			castProceduralPlatformBoundaryComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(ProceduralPlatformBoundaryComponent other)",
+				returns = "(ProceduralPlatformBoundaryComponent)",
+				valuetype = "ProceduralPlatformBoundaryComponent"
 			},
 			castProceduralPlatformComponent =
 			{
@@ -24046,6 +24094,22 @@ return {
 				returns = "(boolean)",
 				valuetype = "boolean"
 			},
+			setAutoOrientation =
+			{
+				type = "method",
+				description = "Sets whether the travelling game object should be rotated to face the direction it is currently moving in, instead of keeping its own fixed orientation for the whole path. At each waypoint it faces the NEXT waypoint; the final waypoint keeps facing the direction of the last leg. The existing 'Rotation Mode' property still controls how smoothly the turns are blended. Takes effect on the next (re-)build - typical usage from Lua is setAutoOrientation(true) followed by setActivated(true).",
+				args = "(boolean autoOrientation)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getAutoOrientation =
+			{
+				type = "function",
+				description = "Gets whether the travelling game object is rotated to face its direction of travel.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
 			reactOnEndOfPathReached =
 			{
 				type = "method",
@@ -26854,6 +26918,30 @@ return {
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
+			},
+			reactOnTimerSecondTick =
+			{
+				type = "method",
+				description = "Sets a lua closure function to react each second while the explosion countdown is running. Takes precedence over a set script file's 'onTimerSecondTick' or a C++ IExplosionCallback, if set.",
+				args = "(func closureFunction)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			reactOnExplode =
+			{
+				type = "method",
+				description = "Sets a lua closure function to react when the explosion is triggered after the countdown has elapsed. Takes precedence over a set script file's 'onExplode' or a C++ IExplosionCallback, if set.",
+				args = "(func closureFunction)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			reactOnExplodeAffectedGameObject =
+			{
+				type = "method",
+				description = "Sets a lua closure function to react for each game object affected by the explosion. Provides the affected game object, its distance from the explosion center in meters, and the calculated detonation strength. Takes precedence over a set script file's 'onExplodeAffectedGameObject' or a C++ IExplosionCallback, if set.",
+				args = "(func closureFunction)",
+				returns = "(nil)",
+				valuetype = "nil"
 			}
 		}
 	},
@@ -29755,6 +29843,143 @@ return {
 				args = "()",
 				returns = "(nil)",
 				valuetype = "nil"
+			}
+		}
+	},
+	ProceduralPlatformBoundaryComponent =
+	{
+		type = "class",
+		description = "Usage: Creates a fixed-size rectangular level boundary for 2.5D jump'n'run levels - floor, ceiling and two side walls, sized in exact meters so levels can be chained and shown on a minimap.  SIZE: - 'Boundary Width', 'Boundary Height' and 'Boundary Depth' are the level's outer dimensions in meters.   Defaults are 100 x 20 x 10. - 'Wall Thickness' is how solid floor, ceiling and walls are. It does not change the outer size. - Changing any of these regenerates the whole boundary from scratch. There is no mouse-driven editing:   every dimension is typed in, so the numbers on the minimap are exactly the numbers in the level.  DOORWAYS (Segment Mode): - Set 'Edit Mode' to 'Segment' to start cutting doorways. - Left-click anywhere on the boundary to select the one-meter cell under the cursor. The selection snaps to   the meter grid automatically and is drawn as an outline. - Press X to remove the selected cell, creating a gap. Works anywhere: in a side wall for a level exit,   in the ceiling for a shaft, in the floor for a pit. - Press SHIFT+X on a removed cell to put it back. - Removing several neighbouring cells widens a doorway; the geometry is merged, so a three-meter gap is one   opening rather than three. - Every removal and restore is a normal undo step (CTRL+Z).  MATERIALS: - 'Surface Datablock' is used for the faces pointing into the level - what the player sees and walks on. - 'Ground Datablock' is used for the outer shell and for the cut faces of a doorway. - 'Surface UV Tiling' and 'Ground UV Tiling' scale the textures in meters.  COLLISION: - Add a PhysicsArtifactComponent to the same game object and the boundary is rebuilt as a collision hull   automatically whenever its geometry changes.  LUA API: - getProceduralPlatformBoundaryComponent() on a GameObject returns this component. - setBoundaryWidth(w), setBoundaryHeight(h), setBoundaryDepth(d) set the size in meters. - removeCell(side, index) / restoreCell(side, index) cut or close a doorway; side is 0=floor, 1=ceiling,   2=left, 3=right. - clearAllCells() restores every removed cell. ",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setBoundaryWidth =
+			{
+				type = "method",
+				description = "Sets the level length in meters. Regenerates the whole boundary.",
+				args = "(number width)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBoundaryWidth =
+			{
+				type = "function",
+				description = "Gets the level length in meters.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setBoundaryHeight =
+			{
+				type = "method",
+				description = "Sets the level height in meters. Regenerates the whole boundary.",
+				args = "(number height)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBoundaryHeight =
+			{
+				type = "function",
+				description = "Gets the level height in meters.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setBoundaryDepth =
+			{
+				type = "method",
+				description = "Sets the level depth in meters. Regenerates the whole boundary.",
+				args = "(number depth)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBoundaryDepth =
+			{
+				type = "function",
+				description = "Gets the level depth in meters.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWallThickness =
+			{
+				type = "method",
+				description = "Sets how solid floor, ceiling and walls are, in meters.",
+				args = "(number thickness)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWallThickness =
+			{
+				type = "function",
+				description = "Gets the wall thickness in meters.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setSurfaceDatablock =
+			{
+				type = "method",
+				description = "Sets the datablock for the faces pointing into the level.",
+				args = "(string datablock)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSurfaceDatablock =
+			{
+				type = "function",
+				description = "Gets the inner faces datablock.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setGroundDatablock =
+			{
+				type = "method",
+				description = "Sets the datablock for the outer shell and doorway cut faces.",
+				args = "(string datablock)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getGroundDatablock =
+			{
+				type = "function",
+				description = "Gets the outer shell datablock.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			removeCell =
+			{
+				type = "method",
+				description = "Cuts a one-meter doorway cell. side: 0 = floor, 1 = ceiling, 2 = left wall, 3 = right wall. index counts in meters from the origin. Example: boundaryComp:removeCell(3, 5) -- opening in the right wall, 5 meters up",
+				args = "(number side, number index)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			restoreCell =
+			{
+				type = "method",
+				description = "Closes a previously cut doorway cell again.",
+				args = "(number side, number index)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			clearAllCells =
+			{
+				type = "method",
+				description = "Closes every doorway, making the boundary solid again.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRemovedCellCount =
+			{
+				type = "function",
+				description = "Gets how many cells are currently cut away.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
 			}
 		}
 	},

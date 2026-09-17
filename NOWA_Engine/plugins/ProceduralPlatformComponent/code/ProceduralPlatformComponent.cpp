@@ -72,7 +72,7 @@ namespace NOWA
         name("ProceduralPlatformComponent"),
         activated(new Variant(ProceduralPlatformComponent::AttrActivated(), true, this->attributes)),
         platformDepth(new Variant(ProceduralPlatformComponent::AttrPlatformDepth(), 10.0f, this->attributes)),
-        platformHeight(new Variant(ProceduralPlatformComponent::AttrPlatformHeight(), 2.0f, this->attributes)),
+        platformHeight(new Variant(ProceduralPlatformComponent::AttrPlatformHeight(), 1.0f, this->attributes)),
         platformStyle(new Variant(ProceduralPlatformComponent::AttrPlatformStyle(), {"Grass", "Wood", "Stone", "Ice", "Metal"}, this->attributes)),
         snapToGrid(new Variant(ProceduralPlatformComponent::AttrSnapToGrid(), false, this->attributes)),
         gridSize(new Variant(ProceduralPlatformComponent::AttrGridSize(), 1.0f, this->attributes)),
@@ -91,7 +91,7 @@ namespace NOWA
         curveSubdivisions(new Variant(ProceduralPlatformComponent::AttrCurveSubdivisions(), 10, this->attributes)),
         surfaceDatablock(new Variant(ProceduralPlatformComponent::AttrSurfaceDatablock(), "grass_clean", this->attributes)),
         groundDatablock(new Variant(ProceduralPlatformComponent::AttrGroundDatablock(), "rockClif_D", this->attributes)),
-        surfaceUVTiling(new Variant(ProceduralPlatformComponent::AttrSurfaceUVTiling(), Ogre::Vector2(1.0f, 1.0f), this->attributes)),
+        surfaceUVTiling(new Variant(ProceduralPlatformComponent::AttrSurfaceUVTiling(), Ogre::Vector2(1.0f, 5.0f), this->attributes)),
         groundUVTiling(new Variant(ProceduralPlatformComponent::AttrGroundUVTiling(), Ogre::Vector2(1.0f, 1.0f), this->attributes)),
         editMode(new Variant(ProceduralPlatformComponent::AttrEditMode(), std::vector<Ogre::String>{"Object", "Segment"}, this->attributes)),
         convertToMesh(new Variant(ProceduralPlatformComponent::AttrConvertToMesh(), Ogre::String("Convert to Mesh"), this->attributes)),
@@ -590,10 +590,6 @@ namespace NOWA
         }
     }
 
-    void ProceduralPlatformComponent::onOtherComponentAdded(unsigned int index)
-    {
-    }
-
     void ProceduralPlatformComponent::update(Ogre::Real dt, bool notSimulating)
     {
     }
@@ -909,7 +905,9 @@ namespace NOWA
             //
             // Each segment is now tested against a plane at its OWN drawn depth, so the
             // comparison happens in the plane the user is actually looking at.
-            const Ogre::Real radius = this->platformDepth->getReal() * 1.5f;
+            // Keep segment picking independent from the platform's depth. The overlay and
+            // the hit test must describe the same small editing area.
+            const Ogre::Real radius = 1.0f;
             this->selectedSegmentIndex = this->findNearestSegmentOnScreen(screenX, screenY, radius);
 
             this->scheduleSegmentOverlayUpdate();
@@ -1031,7 +1029,9 @@ namespace NOWA
 
             if (false == snappedToOtherPlatform)
             {
-                const Ogre::Real sr = this->platformDepth->getReal() * 0.6f;
+                // Snapping is an editor affordance, not a function of the rendered slab
+                // depth. A fixed radius keeps the target predictable for every size.
+                const Ogre::Real sr = 1.0f;
                 this->detectSnapToOwnPlatform(hitPosition, sr);
                 previewPos = this->isSnapToOwnPlatform ? this->snapToPlatformPoint : hitPosition;
                 this->pendingCrossNetworkSnap = false;
@@ -1311,6 +1311,10 @@ namespace NOWA
     void ProceduralPlatformComponent::startPlatformPlacement(const Ogre::Vector3& worldPosition)
     {
         Ogre::Vector3 startPos = this->snapToGrid->getBool() ? this->snapToGridFunc(worldPosition) : worldPosition;
+        // Newly drawn platforms always start on the editor's fixed depth lane.
+        // Do not inherit the raycast plane's z value; doing so caused a later
+        // switch to Segment mode to restore the old depth.
+        startPos.z = -10.0f;
 
         PlatformControlPoint startPoint;
         startPoint.position = startPos;
@@ -7227,7 +7231,7 @@ namespace NOWA
         // unlike ProceduralRoadComponent's ground-plane circle (pushed up in Y), platform's
         // "plane" already IS x/height, so the push is along Z instead.
         const Ogre::Vector3 centre = this->snapToPlatformPoint;
-        const Ogre::Real r = this->platformDepth->getReal() * 0.6f;
+        const Ogre::Real r = 1.0f;
         const int segs = 16;
         const Ogre::Real pushZ = 0.1f;
 
@@ -7846,9 +7850,9 @@ namespace NOWA
 
     void ProceduralPlatformComponent::updateModificationState(void)
     {
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralPlatformComponent] updateModificationState: activated=" + Ogre::StringConverter::toString(this->activated->getBool()) +
+        /*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralPlatformComponent] updateModificationState: activated=" + Ogre::StringConverter::toString(this->activated->getBool()) +
                                                                                " meshModifyMode=" + Ogre::StringConverter::toString(this->isEditorMeshModifyMode) + " selected=" + Ogre::StringConverter::toString(this->isSelected) +
-                                                                               " editMode=" + this->editMode->getListSelectedValue());
+                                                                               " editMode=" + this->editMode->getListSelectedValue());*/
 
         // isEditFocusOwner is the fourth condition, and it is what lets a SIBLING component on
         // the same GameObject take over editing - see claimEditFocus. Not owning editing means

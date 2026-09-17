@@ -216,11 +216,6 @@ namespace NOWA
         virtual void onOtherComponentRemoved(unsigned int index) override;
 
         /**
-         * @see		GameObjectComponent::onOtherComponentAdded
-         */
-        virtual void onOtherComponentAdded(unsigned int index) override;
-
-        /**
          * @see		GameObjectComponent::clone
          */
         virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;

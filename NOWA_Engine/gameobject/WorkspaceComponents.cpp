@@ -4452,7 +4452,10 @@ namespace NOWA
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    WorkspaceBackgroundComponent::WorkspaceBackgroundComponent() : WorkspaceBaseComponent(), hardwareGammaEnabled(new Variant(WorkspaceBackgroundComponent::AttrHardwareGammaEnabled(), true, this->attributes)), activeLayerCount(0)
+    WorkspaceBackgroundComponent::WorkspaceBackgroundComponent()
+        : WorkspaceBaseComponent(),
+        hardwareGammaEnabled(new Variant(WorkspaceBackgroundComponent::AttrHardwareGammaEnabled(), true, this->attributes)),
+        activeLayerCount(0)
     {
         for (size_t i = 0; i < 9; i++)
         {
@@ -5204,10 +5207,21 @@ namespace NOWA
             return;
         }
 
-        if (this->passBackground)
+        if (nullptr != this->passBackground)
         {
             auto closureFunction = [this, index, speedX](Ogre::Real renderDt)
             {
+                // Attention: the pass may have been destroyed since this closure was registered.
+                // removeWorkspace() sets passBackground to nullptr, but a tracked closure keeps
+                // running until it is explicitly removed - which happens when the simulation is
+                // stopped: disconnect -> handleSwitchCamera -> setActivatedFlag(false) ->
+                // removeWorkspace(). Checking at registration time is not enough, the check has
+                // to be here, on every execution.
+                if (nullptr == this->passBackground)
+                {
+                    return;
+                }
+
                 // "speedsX" is a single "float9" named constant (9 raw floats), NOT a true
                 // GLSL array that Ogre would split into individually addressable
                 // "speedsX[0]".."speedsX[8]" constants. setNamedConstant() also has no
@@ -5218,7 +5232,8 @@ namespace NOWA
                 this->speedsXValues[index] = speedX;
                 this->passBackground->getFragmentProgramParameters()->setNamedConstant("speedsX", this->speedsXValues, 9, 1);
             };
-            Ogre::String closureId = this->gameObjectPtr->getName() + this->getClassName() + "::setBackgroundScrollSpeedX" + Ogre::StringConverter::toString(index);
+
+            const Ogre::String closureId = this->gameObjectPtr->getName() + this->getClassName() + "::setBackgroundScrollSpeedX" + Ogre::StringConverter::toString(index);
             NOWA::GraphicsModule::getInstance()->updateTrackedClosure(closureId, closureFunction, false);
         }
     }
@@ -5231,14 +5246,33 @@ namespace NOWA
             return;
         }
 
-        if (this->passBackground)
+        if (nullptr != this->passBackground)
         {
             auto closureFunction = [this, index, speedY](Ogre::Real renderDt)
             {
+                // Attention: the pass may have been destroyed since this closure was registered.
+                // removeWorkspace() sets passBackground to nullptr, but a tracked closure keeps
+                // running until it is explicitly removed - which happens when the simulation is
+                // stopped: disconnect -> handleSwitchCamera -> setActivatedFlag(false) ->
+                // removeWorkspace(). Checking at registration time is not enough, the check has
+                // to be here, on every execution.
+                if (nullptr == this->passBackground)
+                {
+                    return;
+                }
+
+                // "speedsX" is a single "float9" named constant (9 raw floats), NOT a true
+                // GLSL array that Ogre would split into individually addressable
+                // "speedsX[0]".."speedsX[8]" constants. setNamedConstant() also has no
+                // offset parameter, so we can't target just one slot directly. We keep our
+                // own local copy of all 9 values, update this instance's slot, and push the
+                // WHOLE array back every time -- exactly like layerEnabled already does in
+                // changeBackground().
                 this->speedsYValues[index] = speedY;
                 this->passBackground->getFragmentProgramParameters()->setNamedConstant("speedsY", this->speedsYValues, 9, 1);
             };
-            Ogre::String closureId = this->gameObjectPtr->getName() + this->getClassName() + "::setBackgroundScrollSpeedY" + Ogre::StringConverter::toString(index);
+
+            const Ogre::String closureId = this->gameObjectPtr->getName() + this->getClassName() + "::setBackgroundScrollSpeedY" + Ogre::StringConverter::toString(index);
             NOWA::GraphicsModule::getInstance()->updateTrackedClosure(closureId, closureFunction, false);
         }
     }

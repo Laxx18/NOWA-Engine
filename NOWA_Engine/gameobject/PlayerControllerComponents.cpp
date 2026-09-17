@@ -1259,6 +1259,7 @@ namespace NOWA
     PlayerControllerJumpNRunComponent::PlayerControllerJumpNRunComponent() :
         PlayerControllerComponent(),
         stateMachine(nullptr),
+        animationsCount(14),
         jumpForce(new Variant(PlayerControllerJumpNRunComponent::AttrJumpForce(), 15.0f, this->attributes)),
         doubleJump(new Variant(PlayerControllerJumpNRunComponent::AttrDoubleJump(), false, this->attributes)),
         runAfterWalkTime(new Variant(PlayerControllerJumpNRunComponent::AttrRunAfterWalkTime(), 0.0f, this->attributes)),

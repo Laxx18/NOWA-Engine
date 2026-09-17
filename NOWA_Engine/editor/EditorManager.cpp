@@ -1392,6 +1392,74 @@ namespace NOWA
         unsigned long gameObjectId;
     };
 
+    class BoundaryModifyUndoCommand : public ICommand
+    {
+    public:
+        BoundaryModifyUndoCommand(const std::vector<unsigned char>& oldBoundaryData, const std::vector<unsigned char>& newBoundaryData, unsigned long gameObjectId, bool isAdditional = false) :
+            oldBoundaryData(oldBoundaryData),
+            newBoundaryData(newBoundaryData),
+            gameObjectId(gameObjectId)
+        {
+            this->isAdditional = isAdditional;
+        }
+
+        virtual void undo(void) override
+        {
+            GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->gameObjectId);
+
+            if (nullptr == gameObjectPtr)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[BoundaryModifyUndoCommand] undo: GameObject not found (ID: " + Ogre::StringConverter::toString(this->gameObjectId) + ")");
+                return;
+            }
+
+            // Resolved through PlatformComponentBase on purpose: ProceduralPlatformBoundaryComponent
+            // lives in a plugin and its concrete type is not visible here. setPlatformData is exactly
+            // the data-level interface that base class exists to provide.
+            auto platformComponentBase = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PlatformComponentBase>());
+
+            if (nullptr == platformComponentBase)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[BoundaryModifyUndoCommand] undo: PlatformComponentBase not found");
+                return;
+            }
+
+            platformComponentBase->setPlatformData(this->oldBoundaryData);
+
+            boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
+        }
+
+        virtual void redo(void) override
+        {
+            GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->gameObjectId);
+
+            if (nullptr == gameObjectPtr)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[BoundaryModifyUndoCommand] redo: GameObject not found (ID: " + Ogre::StringConverter::toString(this->gameObjectId) + ")");
+                return;
+            }
+
+            auto platformComponentBase = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PlatformComponentBase>());
+
+            if (nullptr == platformComponentBase)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[BoundaryModifyUndoCommand] redo: PlatformComponentBase not found");
+                return;
+            }
+
+            platformComponentBase->setPlatformData(this->newBoundaryData);
+
+            boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGeometryModified);
+        }
+
+    private:
+        std::vector<unsigned char> oldBoundaryData;
+        std::vector<unsigned char> newBoundaryData;
+        unsigned long gameObjectId;
+    };
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     class WallModifyUndoCommand : public ICommand
@@ -1614,6 +1682,7 @@ namespace NOWA
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &EditorManager::handleTerraPaintEnd), EventDataTerraPaintEnd::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &EditorManager::handleRoadModifyEnd), EventDataRoadModifyEnd::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &EditorManager::handlePlatformModifyEnd), EventDataPlatformModifyEnd::getStaticEventType());
+        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &EditorManager::handleBoundaryModifyEnd), EventDataBoundaryModifyEnd::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &EditorManager::handleWallModifyEnd), EventDataWallModifyEnd::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &EditorManager::handleMeshEditModifyEnd), EventDataMeshEditModifyEnd::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &EditorManager::handlePlanetTerraModifyEnd), EventDataPlanetTerraModifyEnd::getStaticEventType());
@@ -1756,6 +1825,7 @@ namespace NOWA
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &EditorManager::handleTerraPaintEnd), EventDataTerraPaintEnd::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &EditorManager::handleRoadModifyEnd), EventDataRoadModifyEnd::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &EditorManager::handlePlatformModifyEnd), EventDataPlatformModifyEnd::getStaticEventType());
+        AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &EditorManager::handleBoundaryModifyEnd), EventDataBoundaryModifyEnd::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &EditorManager::handleWallModifyEnd), EventDataWallModifyEnd::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &EditorManager::handleMeshEditModifyEnd), EventDataMeshEditModifyEnd::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &EditorManager::handlePlanetTerraModifyEnd), EventDataPlanetTerraModifyEnd::getStaticEventType());
@@ -4159,6 +4229,10 @@ namespace NOWA
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[EditorManager] Simulation started");
 
+        // First activate any camera transform. Developer may change it e.g. in lua script on his desire
+        NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
+        NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
+
         this->isInSimulation = true;
 
         this->selectionManager->clearSelection();
@@ -4362,6 +4436,11 @@ namespace NOWA
         this->sceneManipulationCommandModule.pushCommand(std::make_shared<PlatformModifyUndoCommand>(oldPlatformData, newPlatformData, gameObjectId, isAdditionalUndo));
     }
 
+    void EditorManager::snapshotBoundaryData(const std::vector<unsigned char>& oldBoundaryData, const std::vector<unsigned char>& newBoundaryData, unsigned long gameObjectId, bool isAdditionalUndo)
+    {
+        this->sceneManipulationCommandModule.pushCommand(std::make_shared<BoundaryModifyUndoCommand>(oldBoundaryData, newBoundaryData, gameObjectId, isAdditionalUndo));
+    }
+
     void EditorManager::snapshotWallData(const std::vector<unsigned char>& oldWallData, const std::vector<unsigned char>& newWallData, unsigned long gameObjectId, bool isAdditionalUndo)
     {
         this->sceneManipulationCommandModule.pushCommand(std::make_shared<WallModifyUndoCommand>(oldWallData, newWallData, gameObjectId, isAdditionalUndo));
@@ -4427,6 +4506,22 @@ namespace NOWA
             if (nullptr != platformComponentBase)
             {
                 this->snapshotPlatformData(castEventData->getOldPlatformData(), castEventData->getNewPlatformData(), castEventData->getGameObjectId(), false);
+            }
+        }
+    }
+
+    void EditorManager::handleBoundaryModifyEnd(EventDataPtr eventData)
+    {
+        boost::shared_ptr<EventDataBoundaryModifyEnd> castEventData = boost::static_pointer_cast<NOWA::EventDataBoundaryModifyEnd>(eventData);
+
+        GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(castEventData->getGameObjectId());
+
+        if (nullptr != gameObjectPtr)
+        {
+            auto platformComponentBase = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PlatformComponentBase>());
+            if (nullptr != platformComponentBase)
+            {
+                this->snapshotBoundaryData(castEventData->getOldBoundaryData(), castEventData->getNewBoundaryData(), castEventData->getGameObjectId(), false);
             }
         }
     }

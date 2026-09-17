@@ -153,15 +153,9 @@ end
 
 MainGameObject["WorkTimePoint"] = function(timePointSec)
     lax:getAnimationSequenceComponent():setActivated(true);
-    log("--->WorkTimePoint: " .. toString(timePointSec));
 end
 
 MainGameObject["GoToTimePoint"] = function(timePointSec)
-    log("--->GoToTimePoint: " .. toString(timePointSec));
-
-    -- Everything that must happen ONLY ONCE goes in here. Without this guard emma got a
-    -- fresh blend5(ANIM_WALK_NORTH) on every call, so the cross fade restarted every frame
-    -- and never completed - and reactOnPathGoalReached was re-registered just as often.
     lax:getAnimationSequenceComponent():setActivated(false);
     animationBlenderLax:blend5(AnimationBlender.ANIM_IDLE_1, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
 
@@ -183,14 +177,12 @@ MainGameObject["GoToTimePoint"] = function(timePointSec)
 end
 
 MainGameObject["DarkTimePoint"] = function(timePointSec)
-    log("--->DarkTimePoint: " .. toString(timePointSec));
     atmosphereComonent:setTimeMultiplicator(0.5);
      mainGameObject:getSimpleSoundComponentFromIndex(0):setActivated(false);
      cameraComponent:getOwner():getHdrEffectComponent():setEffectName("Neon Night");
 end
 
 MainGameObject["SleepTimePoint"] = function(timePointSec)
-    log("--->SleepTimePoint: " .. toString(timePointSec));
     lax:getPhysicsActiveComponent():setConstraintDirection(Vector3.ZERO);
     lax:getPhysicsComponent():setPosition(Vector3(-11.2204, 1.33183, -14.744));
     lax:getPhysicsComponent():setOrientation(MathHelper:degreesToQuat(Vector3(-85, 90, 0)));
@@ -204,13 +196,11 @@ MainGameObject["SleepTimePoint"] = function(timePointSec)
 end
 
 MainGameObject["CameraDriveTimePoint"] = function(timePointSec)
-    log("--->CameraDriveTimePoint: " .. toString(timePointSec));
     atmosphereComonent:setTimeMultiplicator(0.0001);
     cameraComponent:getOwner():getNodeTrackComponent():setActivated(true);
 end
 
 MainGameObject["LuiziusTimePoint"] = function(timePointSec)
-     log("--->LuiziusTimePoint: " .. toString(timePointSec));
     luizius:getNodeTrackComponentFromName("AppearNodeTrack"):setActivated(true);
     luizius:getSimpleSoundComponent():setActivated(true);
 end
@@ -250,13 +240,10 @@ MainGameObject["CastSleepSpellTimePoint"] = function(timePointSec)
 end
 
 MainGameObject["BreakDoorTimePoint"] = function(timePointSec)
-     log("--->BreakDoorTimePoint: " .. toString(timePointSec));
      animationBlenderLuizius:blend5(AnimationBlender.ANIM_CAST_SPELL_2, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
 end
 
 MainGameObject["BreakInTimePoint"] = function(timePointSec)
-    log("--->BreakInTimePoint: " .. toString(timePointSec));
-
     luizius:getNodeTrackComponentFromName("BreakInNodeTrack"):setActivated(true);
     animationBlenderLuizius:blend5(AnimationBlender.ANIM_IDLE_2, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
 
@@ -293,7 +280,7 @@ MainGameObject["LaxGetUpTimePoint"] = function(timePointSec)
           -- Set bat to hand
           local handPosition = lax:getTagPointComponent():getBonePosition("Boy 1 R Hand");
           local handOrientation = lax:getTagPointComponent():getBoneOrientation("Boy 1 R Hand");
-          bat:getSceneNode():setPosition(Vector3(handPosition.x, handPosition.y, handPosition.z + 0.4));
+          bat:getSceneNode():setPosition(Vector3(handPosition.x, handPosition.y - 0.2, handPosition.z));
           bat:getSceneNode():setOrientation(handOrientation);
           
           lax:getTagPointComponent():setSourceId("1371565728");

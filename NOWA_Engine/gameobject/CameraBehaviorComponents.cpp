@@ -1626,8 +1626,8 @@ namespace NOWA
     CameraBehaviorFollow2DComponent::CameraBehaviorFollow2DComponent() :
         CameraBehaviorComponent(),
         smoothValue(new Variant(CameraBehaviorFollow2DComponent::AttrSmoothValue(), 0.6f, this->attributes)),
-        offsetPosition(new Variant(CameraBehaviorFollow2DComponent::AttrOffsetPosition(), Ogre::Vector3(0.0f, 1.0f, -5.0f), this->attributes)),
-        borderOffset(new Variant(CameraBehaviorFollow2DComponent::AttrBorderOffset(), Ogre::Vector3(50.0f, 0.0f, 0.0f), this->attributes))
+        offsetPosition(new Variant(CameraBehaviorFollow2DComponent::AttrOffsetPosition(), Ogre::Vector3(0.0f, 1.0f, 5.0f), this->attributes)),
+        borderOffset(new Variant(CameraBehaviorFollow2DComponent::AttrBorderOffset(), Ogre::Vector3(0.0f, 0.0f, 0.0f), this->attributes))
     {
     }
 

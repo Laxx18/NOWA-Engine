@@ -155,6 +155,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralPlatformComponent
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MorphAnimationComponent", "MorphAnimationComponent\MorphAnimationComponent.vcxproj", "{036FBB89-6757-4420-8C8B-962FE3B46FF0}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralPlatformBoundaryComponent", "ProceduralPlatformBoundaryComponent\ProceduralPlatformBoundaryComponent.vcxproj", "{F6615B63-BDA3-40F7-8285-E3E97FF9A9F2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -425,6 +427,10 @@ Global
 		{036FBB89-6757-4420-8C8B-962FE3B46FF0}.Debug|x64.Build.0 = Debug|x64
 		{036FBB89-6757-4420-8C8B-962FE3B46FF0}.Release|x64.ActiveCfg = Release|x64
 		{036FBB89-6757-4420-8C8B-962FE3B46FF0}.Release|x64.Build.0 = Release|x64
+		{F6615B63-BDA3-40F7-8285-E3E97FF9A9F2}.Debug|x64.ActiveCfg = Debug|x64
+		{F6615B63-BDA3-40F7-8285-E3E97FF9A9F2}.Debug|x64.Build.0 = Debug|x64
+		{F6615B63-BDA3-40F7-8285-E3E97FF9A9F2}.Release|x64.ActiveCfg = Release|x64
+		{F6615B63-BDA3-40F7-8285-E3E97FF9A9F2}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

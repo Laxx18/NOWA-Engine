@@ -220,6 +220,38 @@ namespace NOWA
         bool getReverse(void) const;
 
         /**
+         * @brief Sets whether the travelling game object should be rotated to face the
+         *        direction it is currently moving in, instead of keeping its own fixed
+         *        orientation for the whole path.
+         * @param[in] autoOrientation The auto orientation flag to set
+         * @note	Takes effect on the NEXT (re-)build of the animation, exactly like
+         *			setReverse() - a plain data setter, not an immediate rebuild. The usual
+         *			usage from Lua is setAutoOrientation(true) followed by
+         *			setActivated(true).
+         *
+         *			At each waypoint the object is rotated to face the NEXT waypoint; the
+         *			final waypoint keeps facing the direction of the last leg, since there
+         *			is nothing further ahead to look toward. The existing 'Rotation Mode'
+         *			property (Linear/Spherical) still governs how smoothly Ogre turns the
+         *			object between these facing directions - this flag only decides WHAT
+         *			each keyframe's own facing direction is, not how the turns are blended.
+         *
+         *			Assumes the travelling object's own local -Z axis is "forward" - the
+         *			same convention Ogre::Camera itself uses by default, which matters here
+         *			since this component's main use case (see the class description) is
+         *			driving a camera. A non-camera mesh authored to face a different local
+         *			axis will need that axis adjusted at the one place this is computed.
+         */
+        void setAutoOrientation(bool autoOrientation);
+
+        /**
+         * @brief Gets whether the travelling game object is rotated to face its direction
+         *        of travel.
+         * @return autoOrientation The auto orientation flag to get
+         */
+        bool getAutoOrientation(void) const;
+
+        /**
          * @brief Lua closure function which gets called when the LAST node of the path has
          *        been reached. With 'Repeat' enabled it fires on every completed lap.
          * @param[in] closureFunction The closure function to set. Calling this again
@@ -260,6 +292,10 @@ namespace NOWA
         {
             return "Reverse";
         }
+        static const Ogre::String AttrAutoOrientation(void)
+        {
+            return "AutoOrientation";
+        }
 
     private:
         void buildAndActivateAnimation(void);
@@ -287,6 +323,7 @@ namespace NOWA
         Variant* rotationMode;
         Variant* repeat;
         Variant* reverse;
+        Variant* autoOrientation;
         luabind::object endOfPathClosureFunction;
         // Edge latch: "animation has finished" is a STATE that stays true for every
         // following frame, so without this the closure would fire once per frame for as

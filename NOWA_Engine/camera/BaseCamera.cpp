@@ -198,7 +198,7 @@ namespace NOWA
                 }
             };
             Ogre::String id = "BaseCamera::moveCamera";
-            NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
+            NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
         }
         if (true == this->firstTimeMoveValueSet)
         {

@@ -6,79 +6,93 @@
 
 namespace NOWA
 {
-	
-	class EXPORTED FollowCamera2D : public BaseCamera
-	{
-	public:
-		FollowCamera2D(unsigned int id, Ogre::SceneNode* sceneNode, const Ogre::Vector3& offsetPosition, Ogre::Real smoothValue = 0.0f);
 
-		virtual ~FollowCamera2D();
+    class EXPORTED FollowCamera2D : public BaseCamera
+    {
+    public:
+        FollowCamera2D(unsigned int id, Ogre::SceneNode* sceneNode, const Ogre::Vector3& offsetPosition, Ogre::Real smoothValue = 0.0f);
 
-		virtual void moveCamera(Ogre::Real dt);
+        virtual ~FollowCamera2D();
 
-		virtual void rotateCamera(Ogre::Real dt, bool forJoyStick = false);
+        virtual void moveCamera(Ogre::Real dt);
 
-		virtual Ogre::Vector3 getPosition(void);
+        virtual void rotateCamera(Ogre::Real dt, bool forJoyStick = false);
 
-		virtual Ogre::Quaternion getOrientation(void);
+        virtual Ogre::Vector3 getPosition(void);
 
-		virtual Ogre::String getBehaviorType(void) 
-		{
-			return "FOLLOW_CAMERA_" + Ogre::StringConverter::toString(this->id);
-		}
+        virtual Ogre::Quaternion getOrientation(void);
 
-		static Ogre::String BehaviorType(void)
-		{
-			return "FOLLOW_CAMERA";
-		}
+        virtual Ogre::String getBehaviorType(void)
+        {
+            return "FOLLOW_CAMERA_" + Ogre::StringConverter::toString(this->id);
+        }
 
-		/**
-		* @brief		Sets the offset for the camera to the player
-		* @param[in]	offset	The offset vector to set
-		* @Note			Alone this offset is sufficient to set the camera always correctly when a level gets loaded.
-		*				That is, the camera position depends on the position of the target scene node.
-		*/
-		void setOffset(const Ogre::Vector3& offsetPosition);
+        static Ogre::String BehaviorType(void)
+        {
+            return "FOLLOW_CAMERA";
+        }
 
-		/**
-		* @brief		Sets the border offset, at which the camera will no more move
-		* @param[in]	borderOffset	The border offset vector to set
-		*/
-		void setBorderOffset(const Ogre::Vector3& borderOffset);
+        /**
+         * @brief		Sets the offset for the camera to the player
+         * @param[in]	offset	The offset vector to set
+         * @Note			Alone this offset is sufficient to set the camera always correctly when a level gets loaded.
+         *				That is, the camera position depends on the position of the target scene node.
+         */
+        void setOffset(const Ogre::Vector3& offsetPosition);
 
-		void setBounds(const Ogre::Vector3& minimumBounds, const Ogre::Vector3& maximumBounds);
+        /**
+         * @brief		Sets the border offset, at which the camera will no more move
+         * @param[in]	borderOffset	The border offset vector to set
+         */
+        void setBorderOffset(const Ogre::Vector3& borderOffset);
 
-		void alwaysShowGameObject(bool show, const Ogre::String& category, Ogre::SceneManager* sceneManager);
+        void setBounds(const Ogre::Vector3& minimumBounds, const Ogre::Vector3& maximumBounds);
 
-		void setSceneNode(Ogre::SceneNode* sceneNode);
-	protected:
-		
-		virtual void onSetData(void);
-	private:
-		void handleUpdateBounds(NOWA::EventDataPtr eventData);
-	protected:
-		Ogre::SceneManager* sceneManager;
-		bool firstTimeValueSet;
-		Ogre::Vector3 lastMoveValue;
-		bool firstTimeMoveValueSet;
-		Ogre::Real smoothValue;
-		Ogre::Vector3 offset;
-		Ogre::Vector3 borderOffset;
-		Ogre::Vector3 minimumBounds;
-		Ogre::Vector3 maximumBounds;
+        void alwaysShowGameObject(bool show, const Ogre::String& category, Ogre::SceneManager* sceneManager);
 
-		bool showGameObject;
-		Ogre::RaySceneQuery* raySceneQuery;
-		Ogre::String category;
-		Ogre::SceneNode* hiddenSceneNode;
-		Ogre::Real fadeValue;
-		bool fadingFinished;
-		Ogre::Vector3 mostRightUp;
+        void setSceneNode(Ogre::SceneNode* sceneNode);
 
-		Ogre::ManualObject* pDebugLine;
-		Ogre::SceneNode* sceneNode;
-	};
+    protected:
+        virtual void onSetData(void);
 
-}; //namespace end
+    private:
+        void handleUpdateBounds(NOWA::EventDataPtr eventData);
+
+    protected:
+        Ogre::SceneManager* sceneManager;
+        bool firstTimeValueSet;
+        Ogre::Vector3 lastMoveValue;
+        bool firstTimeMoveValueSet;
+        Ogre::Real smoothValue;
+        Ogre::Vector3 offset;
+        Ogre::Vector3 borderOffset;
+        Ogre::Vector3 minimumBounds;
+        Ogre::Vector3 maximumBounds;
+
+        // This class's OWN record of the position it last told the camera to move to - NOT a readback
+        // from the Ogre::Camera object. moveCamera() runs on the logic thread and issues its updates
+        // through GraphicsModule, which applies them on the RENDER thread one or more frames later.
+        // Reading this->camera->getPosition() back on the very next logic tick therefore does not
+        // return what was just requested - it returns whatever the render thread last actually
+        // applied, which can lag behind by an arbitrary number of frames depending on queue depth.
+        // Using that stale value as the reference point for computing the NEXT correction removed the
+        // one thing a feedback loop needs to converge: a reference that actually reflects what was
+        // last commanded. See moveCamera() for the full explanation and the divergent-oscillation
+        // symptom this caused in testing.
+        Ogre::Vector3 trackedCameraPosition;
+
+        bool showGameObject;
+        Ogre::RaySceneQuery* raySceneQuery;
+        Ogre::String category;
+        Ogre::SceneNode* hiddenSceneNode;
+        Ogre::Real fadeValue;
+        bool fadingFinished;
+        Ogre::Vector3 mostRightUp;
+
+        Ogre::ManualObject* pDebugLine;
+        Ogre::SceneNode* sceneNode;
+    };
+
+}; // namespace end
 
 #endif

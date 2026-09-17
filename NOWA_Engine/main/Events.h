@@ -2352,6 +2352,64 @@ namespace NOWA
     };
 
 	//---------------------------------------------------------------------------------------------------------------------
+    // EventDataBoundaryModifyEnd - This event is sent out if modifying a procedural platform boundary has ended
+    //---------------------------------------------------------------------------------------------------------------------
+    class EXPORTED EventDataBoundaryModifyEnd : public BaseEventData
+    {
+    public:
+        EventDataBoundaryModifyEnd(void)
+        {
+        }
+
+        explicit EventDataBoundaryModifyEnd(const std::vector<unsigned char>& oldBoundaryData, const std::vector<unsigned char>& newBoundaryData, unsigned long gameObjectId) :
+            oldBoundaryData(oldBoundaryData),
+            newBoundaryData(newBoundaryData),
+            gameObjectId(gameObjectId)
+        {
+        }
+
+        static EventType getStaticEventType(void)
+        {
+            return 0xb0d41e77;
+        }
+
+        virtual const EventType getEventType(void) const
+        {
+            return 0xb0d41e77;
+        }
+
+        virtual EventDataPtr copy(void) const
+        {
+            return EventDataPtr(new EventDataBoundaryModifyEnd(this->oldBoundaryData, this->newBoundaryData, this->gameObjectId));
+        }
+
+        virtual const char* getName(void) const
+        {
+            return "EventDataBoundaryModifyEnd";
+        }
+
+        std::vector<unsigned char> getOldBoundaryData(void) const
+        {
+            return this->oldBoundaryData;
+        }
+
+        std::vector<unsigned char> getNewBoundaryData(void) const
+        {
+            return this->newBoundaryData;
+        }
+
+        unsigned long getGameObjectId(void) const
+        {
+            return this->gameObjectId;
+        }
+
+    private:
+        std::vector<unsigned char> oldBoundaryData;
+        std::vector<unsigned char> newBoundaryData;
+        unsigned long gameObjectId;
+    };
+
+	//---------------------------------------------------------------------------------------------------------------------
 	// EventDataWallModifyEnd - This event is sent out if modifying wall has ended
 	//---------------------------------------------------------------------------------------------------------------------
 	class EXPORTED EventDataWallModifyEnd : public BaseEventData

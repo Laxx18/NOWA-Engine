@@ -32,6 +32,8 @@ namespace NOWA
 
         this->reverse = new Variant(NodeTrackComponent::AttrReverse(), false, this->attributes);
 
+        this->autoOrientation = new Variant(NodeTrackComponent::AttrAutoOrientation(), false, this->attributes);
+
         this->nodeTrackCount = new Variant(NodeTrackComponent::AttrNodeTrackCount(), 0, this->attributes);
 
         // Since when node track count is changed, the whole properties must be refreshed, so that new field may come for node tracks
@@ -75,6 +77,16 @@ namespace NOWA
             // to front. Same reasoning as loading "Activated" via setValue() instead of
             // setActivated() above.
             this->reverse->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AutoOrientation")
+        {
+            // Direct setValue(), same reasoning as Reverse just above: this is a plain data
+            // load, not a live edit - setAutoOrientation() has no side effect of its own to
+            // avoid here (unlike setReverse(), it never reorders anything), but going
+            // through the real setter would be inconsistent with how every other flag on
+            // this component is loaded.
+            this->autoOrientation->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
             propertyElement = propertyElement->next_sibling("property");
         }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "NodeTrackCount")
@@ -145,6 +157,8 @@ namespace NOWA
         // here would detect a change on the freshly constructed clone (default false) and
         // flip that already-correct order a second time.
         clonedCompPtr->reverse->setValue(this->reverse->getBool());
+
+        clonedCompPtr->setAutoOrientation(this->autoOrientation->getBool());
 
         clonedGameObjectPtr->addComponent(clonedCompPtr);
         clonedCompPtr->setOwner(clonedGameObjectPtr);
@@ -345,17 +359,121 @@ namespace NOWA
             // position reference, never with a deliberate rotation in mind).
             const Ogre::Quaternion travellingObjectOrientation = this->gameObjectPtr->getSceneNode()->getOrientation();
 
+            // ── AutoOrientation ──────────────────────────────────────────────
+            // Precomputes one rotation PER KEYFRAME that will actually be created below,
+            // gathered in the exact same order and with the exact same skip rules (missing
+            // game object / missing NodeComponent) as the two keyframe-creation blocks
+            // further down - so orientationKeyFrameRotations[i] always corresponds to the
+            // i-th keyframe actually created, without having to re-resolve anything twice.
+            //
+            // Precomputing first, THEN creating keyframes, is what lets keyframe i look
+            // toward keyframe i+1's position: that position is not known yet at the point
+            // keyframe i itself gets created in the loop below.
+            std::vector<Ogre::Vector3> orientationKeyFramePositions;
+            std::vector<Ogre::Quaternion> orientationKeyFrameRotations;
+
+            if (true == this->autoOrientation->getBool())
+            {
+                if (this->timePositions[0]->getReal() > 0.0001f)
+                {
+                    orientationKeyFramePositions.push_back(this->gameObjectPtr->getSceneNode()->getPosition());
+                }
+
+                for (size_t i = 0; i < this->nodeTrackIds.size(); i++)
+                {
+                    GameObjectPtr orientationWaypointGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->nodeTrackIds[i]->getULong());
+                    if (nullptr == orientationWaypointGameObjectPtr)
+                    {
+                        continue;
+                    }
+
+                    auto orientationNodeCompPtr = NOWA::makeStrongPtr(orientationWaypointGameObjectPtr->getComponent<NodeComponent>());
+                    if (nullptr == orientationNodeCompPtr)
+                    {
+                        continue;
+                    }
+
+                    orientationKeyFramePositions.push_back(orientationNodeCompPtr->getPosition());
+                }
+            }
+
+            if (false == orientationKeyFramePositions.empty())
+            {
+                orientationKeyFrameRotations.resize(orientationKeyFramePositions.size(), travellingObjectOrientation);
+
+                // The axis this component treats as "forward" when auto-orienting. Ogre's
+                // own camera convention looks down local -Z by default, which matters here
+                // because this component's first-class use case (see the class description)
+                // is driving an actual Ogre::Camera (this->camera above). If a non-camera
+                // mesh is authored facing a different local axis, this is the one place to
+                // change.
+                const Ogre::Vector3 forwardAxis = this->gameObjectPtr->getDefaultDirection();
+
+                // Starting fallback direction, used only if even the FIRST segment turns out
+                // to be zero-length (two waypoints at the same spot) - keeps the object at
+                // whatever it was already facing rather than producing an undefined rotation.
+                Ogre::Vector3 lastValidDirection = travellingObjectOrientation * forwardAxis;
+
+                for (size_t i = 0; i < orientationKeyFramePositions.size(); i++)
+                {
+                    Ogre::Vector3 direction;
+                    if (i + 1 < orientationKeyFramePositions.size())
+                    {
+                        direction = orientationKeyFramePositions[i + 1] - orientationKeyFramePositions[i];
+                    }
+                    else if (i > 0)
+                    {
+                        // Last keyframe: nothing ahead to look toward - keep facing the
+                        // direction of the final leg instead of snapping to an undefined
+                        // orientation.
+                        direction = orientationKeyFramePositions[i] - orientationKeyFramePositions[i - 1];
+                    }
+                    else
+                    {
+                        // Only one keyframe total - nothing to derive a direction from at all.
+                        direction = lastValidDirection;
+                    }
+
+                    if (direction.squaredLength() > 0.0001f)
+                    {
+                        direction.normalise();
+                        lastValidDirection = direction;
+                    }
+                    else
+                    {
+                        // Zero-length segment (two waypoints at the same spot, or a
+                        // synthetic start keyframe sitting exactly on the first waypoint) -
+                        // no direction can be derived from it, so keep facing whatever
+                        // direction was last valid.
+                        direction = lastValidDirection;
+                    }
+
+                    // Note: if a path doubles straight back on itself, direction ends up
+                    // exactly opposite forwardAxis (a 180 degree turn), for which Ogre's
+                    // getRotationTo() has to pick an arbitrary perpendicular roll axis since
+                    // infinitely many are equally valid - a real, unavoidable ambiguity of a
+                    // true reversal, not a bug in this computation.
+                    orientationKeyFrameRotations[i] = forwardAxis.getRotationTo(direction);
+                }
+            }
+
             // Only add a synthetic "current position" start keyframe when there
             // is an actual gap before the first configured waypoint - if the
             // first waypoint is already at time 0, IT is the t=0 keyframe;
             // adding another one at the exact same time would create two
             // competing keyframes at the same instant.
+            // Indexes orientationKeyFrameRotations in lockstep with the keyframes actually
+            // created below - both loops resolve waypoints with the identical skip rules, in
+            // the identical order, so this always lines up.
+            size_t orientationIndex = 0;
+
             if (this->timePositions[0]->getReal() > 0.0001f)
             {
                 Ogre::v1::TransformKeyFrame* startKeyFrame = this->animationTrack->createNodeKeyFrame(0.0f);
                 startKeyFrame->setTranslate(this->gameObjectPtr->getSceneNode()->getPosition());
-                startKeyFrame->setRotation(travellingObjectOrientation);
+                startKeyFrame->setRotation(true == this->autoOrientation->getBool() && orientationIndex < orientationKeyFrameRotations.size() ? orientationKeyFrameRotations[orientationIndex] : travellingObjectOrientation);
                 startKeyFrame->setScale(travellingObjectScale);
+                orientationIndex++;
             }
 
             for (size_t i = 0; i < this->nodeTrackIds.size(); i++)
@@ -379,8 +497,9 @@ namespace NOWA
 
                 Ogre::v1::TransformKeyFrame* transformKeyFrame = this->animationTrack->createNodeKeyFrame(this->timePositions[i]->getReal());
                 transformKeyFrame->setTranslate(nodeCompPtr->getPosition());
-                transformKeyFrame->setRotation(travellingObjectOrientation);
+                transformKeyFrame->setRotation(true == this->autoOrientation->getBool() && orientationIndex < orientationKeyFrameRotations.size() ? orientationKeyFrameRotations[orientationIndex] : travellingObjectOrientation);
                 transformKeyFrame->setScale(travellingObjectScale);
+                orientationIndex++;
             }
 
             // A rebuilt animation starts over, so the end of path latch has to as well -
@@ -610,6 +729,10 @@ namespace NOWA
         {
             this->setRotationMode(attribute->getListSelectedValue());
         }
+        else if (NodeTrackComponent::AttrAutoOrientation() == attribute->getName())
+        {
+            this->setAutoOrientation(attribute->getBool());
+        }
         else if (NodeTrackComponent::AttrRepeat() == attribute->getName())
         {
             this->setRepeat(attribute->getBool());
@@ -673,6 +796,12 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
         propertyXML->append_attribute(doc.allocate_attribute("name", "Reverse"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->reverse->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AutoOrientation"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->autoOrientation->getBool())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(node_element, "property");
@@ -983,6 +1112,19 @@ namespace NOWA
         return this->reverse->getBool();
     }
 
+    void NodeTrackComponent::setAutoOrientation(bool autoOrientation)
+    {
+        // Plain data setter, same convention as setReverse(): takes effect on the next
+        // (re-)build. Nothing to reorder or patch live here - the actual keyframe rotations
+        // it affects only get computed inside buildAndActivateAnimation().
+        this->autoOrientation->setValue(autoOrientation);
+    }
+
+    bool NodeTrackComponent::getAutoOrientation(void) const
+    {
+        return this->autoOrientation->getBool();
+    }
+
     Ogre::v1::Animation* NodeTrackComponent::getAnimation(void) const
     {
         return this->animation;
@@ -1028,27 +1170,26 @@ namespace NOWA
 
     void NodeTrackComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
     {
-        luabind::module(lua)
-        [
-            luabind::class_<NodeTrackComponent, GameObjectComponent>("NodeTrackComponent")
-            .def("setActivated", &NodeTrackComponent::setActivated)
-            .def("isActivated", &NodeTrackComponent::isActivated)
-            .def("setNodeTrackCount", &NodeTrackComponent::setNodeTrackCount)
-            .def("getNodeTrackCount", &NodeTrackComponent::getNodeTrackCount)
-            .def("setNodeTrackId", &setNodeTrackIdForLua)
-            .def("getNodeTrackId", &getNodeTrackIdForLua)
-            .def("setTimePosition", &NodeTrackComponent::setTimePosition)
-            .def("getTimePosition", &NodeTrackComponent::getTimePosition)
-            .def("setInterpolationMode", &NodeTrackComponent::setInterpolationMode)
-            .def("getInterpolationMode", &NodeTrackComponent::getInterpolationMode)
-            .def("setRotationMode", &NodeTrackComponent::setRotationMode)
-            .def("getRotationMode", &NodeTrackComponent::getRotationMode)
-            .def("setRepeat", &NodeTrackComponent::setRepeat)
-            .def("getRepeat", &NodeTrackComponent::getRepeat)
-            .def("setReverse", &NodeTrackComponent::setReverse)
-            .def("getReverse", &NodeTrackComponent::getReverse)
-            .def("reactOnEndOfPathReached", &NodeTrackComponent::reactOnEndOfPathReached)
-        ];
+        luabind::module(lua)[luabind::class_<NodeTrackComponent, GameObjectComponent>("NodeTrackComponent")
+                .def("setActivated", &NodeTrackComponent::setActivated)
+                .def("isActivated", &NodeTrackComponent::isActivated)
+                .def("setNodeTrackCount", &NodeTrackComponent::setNodeTrackCount)
+                .def("getNodeTrackCount", &NodeTrackComponent::getNodeTrackCount)
+                .def("setNodeTrackId", &setNodeTrackIdForLua)
+                .def("getNodeTrackId", &getNodeTrackIdForLua)
+                .def("setTimePosition", &NodeTrackComponent::setTimePosition)
+                .def("getTimePosition", &NodeTrackComponent::getTimePosition)
+                .def("setInterpolationMode", &NodeTrackComponent::setInterpolationMode)
+                .def("getInterpolationMode", &NodeTrackComponent::getInterpolationMode)
+                .def("setRotationMode", &NodeTrackComponent::setRotationMode)
+                .def("getRotationMode", &NodeTrackComponent::getRotationMode)
+                .def("setRepeat", &NodeTrackComponent::setRepeat)
+                .def("getRepeat", &NodeTrackComponent::getRepeat)
+                .def("setReverse", &NodeTrackComponent::setReverse)
+                .def("getReverse", &NodeTrackComponent::getReverse)
+                .def("setAutoOrientation", &NodeTrackComponent::setAutoOrientation)
+                .def("getAutoOrientation", &NodeTrackComponent::getAutoOrientation)
+                .def("reactOnEndOfPathReached", &NodeTrackComponent::reactOnEndOfPathReached)];
 
         LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "class inherits GameObjectComponent", NodeTrackComponent::getStaticInfoText());
         LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "void setActivated(bool activated)", "Sets whether this node track is activated or not.");
@@ -1074,14 +1215,19 @@ namespace NOWA
             "TimePosition of each index is left untouched, so the already authored pacing (how long each leg takes) is kept, just walked in the opposite direction. Typical usage from Lua: setReverse(true) followed by setActivated(true), "
             "which then (re-)builds the animation from the now reordered ids.");
         LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "bool getReverse()", "Gets whether the waypoint order is currently reversed.");
+        LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "void setAutoOrientation(bool autoOrientation)",
+            "Sets whether the travelling game object should be rotated to face the direction it is currently moving in, instead of keeping its own fixed orientation for the whole path. At each waypoint it faces the NEXT waypoint; the final "
+            "waypoint keeps facing the direction of the last leg. The existing 'Rotation Mode' property still controls how smoothly the turns are blended. Takes effect on the next (re-)build - typical usage from Lua is "
+            "setAutoOrientation(true) followed by setActivated(true).");
+        LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "bool getAutoOrientation()", "Gets whether the travelling game object is rotated to face its direction of travel.");
         LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "void reactOnEndOfPathReached(func closureFunction)",
             "Sets the closure function which is called when the LAST node of the path has been reached. The closure receives the game object as parameter. With 'Repeat' enabled it fires on every completed lap. Calling this again replaces the "
             "previous closure, so it is safe to call from a function that runs every frame.");
 
         gameObjectClass.def("getNodeTrackComponentFromName", &getNodeTrackComponentFromName);
-        gameObjectClass.def("getNodeTrackComponent", (NodeTrackComponent * (*)(GameObject*)) &getNodeTrackComponent);
+        gameObjectClass.def("getNodeTrackComponent", (NodeTrackComponent * (*)(GameObject*)) & getNodeTrackComponent);
         // If its desired to create several of this components for one game object
-        gameObjectClass.def("getNodeTrackComponent2", (NodeTrackComponent * (*)(GameObject*, unsigned int)) &getNodeTrackComponent);
+        gameObjectClass.def("getNodeTrackComponent2", (NodeTrackComponent * (*)(GameObject*, unsigned int)) & getNodeTrackComponent);
 
         LuaScriptApi::getInstance()->addClassToCollection("GameObject", "NodeTrackComponent getNodeTrackComponent2(unsigned int occurrenceIndex)",
             "Gets the component by the given occurence index, since a game object may have this component several times.");

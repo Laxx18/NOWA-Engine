@@ -6,6 +6,8 @@
 #include "LoadMenuState.h"
 #include "ConfigurationState.h"
 #include "PrehistoryState.h"
+#include "Level1SectorState.h"
+#include "EvilMagicState.h"
 #include "GameState.h"
 #include "main/Core.h"
 #include "modules/GraphicsModule.h"
@@ -79,6 +81,8 @@ void MainApplication::startSimulation(const Ogre::String& graphicsConfigName)
 	// LoadMenuState::create(NOWA::AppStateManager::getSingletonPtr(), "LoadMenuState", "LoadMenuState");
 	// SaveMenuState::create(NOWA::AppStateManager::getSingletonPtr(), "SaveMenuState", "SaveMenuState");
 	PrehistoryState::create(NOWA::AppStateManager::getSingletonPtr(), "PrehistoryState", "PrehistoryState");
+	Level1SectorState::create(NOWA::AppStateManager::getSingletonPtr(), "Level1SectorState", "Level1SectorState");
+	EvilMagicState::create(NOWA::AppStateManager::getSingletonPtr(), "EvilMagicState", "EvilMagicState");
 	// GameState::create(NOWA::AppStateManager::getSingletonPtr(), "GameState", "GameState");
 
 	// Lets start with the Game

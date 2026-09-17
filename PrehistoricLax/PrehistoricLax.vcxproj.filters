@@ -33,6 +33,15 @@
     <ClCompile Include="code\MenuState.cpp">
       <Filter>code</Filter>
     </ClCompile>
+    <ClCompile Include="code\EvilMagicState.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
+    <ClCompile Include="code\PrehistoryState.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
+    <ClCompile Include="code\Level1SectorState.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="code\MainApplication.h">
@@ -57,6 +66,15 @@
       <Filter>code</Filter>
     </ClInclude>
     <ClInclude Include="code\MenuState.h">
+      <Filter>code</Filter>
+    </ClInclude>
+    <ClInclude Include="code\EvilMagicState.h">
+      <Filter>code</Filter>
+    </ClInclude>
+    <ClInclude Include="code\PrehistoryState.h">
+      <Filter>code</Filter>
+    </ClInclude>
+    <ClInclude Include="code\Level1SectorState.h">
       <Filter>code</Filter>
     </ClInclude>
   </ItemGroup>

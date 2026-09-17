@@ -6,7 +6,7 @@
 		<ambient>
 			<ambientLightUpperHemisphere r="0.0115992" g="0.0372741" b="0.0886436"/>
 			<ambientLightLowerHemisphere r="0.0138097" g="0.0164896" b="0.0180719" a="1"/>
-			<hemisphereDir x="0.00891825" y="0.965927" z="-0.258663"/>
+			<hemisphereDir x="6.70552e-08" y="0.707107" z="0.707107"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -29,11 +29,11 @@
 			<maxLightDistance value="100"/>
 		</lightFoward>
 		<mainParameter>
-			<ignoreGlobalScene value="false"/>
+			<ignoreGlobalScene value="true"/>
 			<renderDistance distance="100"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-20.2177 -4.80309 -22.6618" mostRightFarPosition="148.529 137.244 157.524"/>
+		<bounds mostLeftNearPosition="-20.2177 -4.80309 -22.6618" mostRightFarPosition="148.914 137.728 158.008"/>
 	</environment>
 	<OgreNewt solverModel="4" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -41,8 +41,8 @@
 	</OgreNewt>
 	<nodes>
 		<node name="MainCamera" id="4010617415">
-			<position x="-0.641258" y="3.22891" z="-7.46585"/>
-			<rotation qw="0.995221" qx="-0.0959791" qy="-0.0165351" qz="0.00701236"/>
+			<position x="-5.12672" y="3.16517" z="-7.62438"/>
+			<rotation qw="0.994945" qx="-0.098604" qy="-0.018276" qz="0.00532502"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -108,8 +108,8 @@
 			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
-			<position x="148.118" y="136.783" z="157.03"/>
-			<rotation qw="0.8447" qx="-0.489977" qy="0.100367" qz="0.19061"/>
+			<position x="148.529" y="137.244" z="157.524"/>
+			<rotation qw="0.909588" qx="-0.376764" qy="0.0670508" qz="0.161875"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -1039,7 +1039,7 @@
 					<property type="7" name="Caption0" data="What was that?"/>
 					<property type="6" name="SpeechDuration0" data="2"/>
 					<property type="12" name="RunSpeech" data="true"/>
-					<property type="6" name="SpeechDuration" data="4"/>
+					<property type="6" name="SpeechDuration" data="2"/>
 					<property type="12" name="RunSpeechSound" data="false"/>
 					<property type="12" name="KeepCaption" data="false"/>
 					<property type="6" name="XOffsetStart" data="-0.5"/>
@@ -1053,7 +1053,7 @@
 					<property type="9" name="OffsetOrientation" data="0 0 0"/>
 					<property type="6" name="Padding" data="0.35"/>
 					<property type="6" name="CornerRadius" data="0.35"/>
-					<property type="12" name="AlwaysPresent" data="false"/>
+					<property type="12" name="AlwaysPresent" data="true"/>
 					<property type="7" name="ComponentAiPathFollowComponent" data="AiPathFollowComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -1620,7 +1620,7 @@
 		</node>
 		<node name="Double_bed_0" id="3328545227">
 			<position x="-12.3476" y="1.28" z="-14.6881"/>
-			<rotation qw="0.642788" qx="0" qy="0.766045" qz="0"/>
+			<rotation qw="0.642788" qx="0" qy="0.766044" qz="0"/>
 			<scale x="0.7" y="0.7" z="0.7"/>
 			<item name="Double_bed_0" meshFile="Double_bed.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="Double_Bed"/>
@@ -1667,7 +1667,7 @@
 		</node>
 		<node name="Bedside_0" id="2509448584">
 			<position x="-12.5424" y="0.854038" z="-15.6846"/>
-			<rotation qw="0.642788" qx="0" qy="0.766045" qz="0"/>
+			<rotation qw="0.642788" qx="0" qy="0.766044" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Bedside_0" meshFile="Bedside.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="Bedside"/>
@@ -1697,7 +1697,7 @@
 		</node>
 		<node name="Vaso_Etrusco_01_0" id="1526863547">
 			<position x="-12.4962" y="1.40309" z="-15.6838"/>
-			<rotation qw="0.642788" qx="0" qy="0.766045" qz="0"/>
+			<rotation qw="0.642788" qx="0" qy="0.766044" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Vaso_Etrusco_01_0" meshFile="Vaso_Etrusco_01.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="Vaso_Etrusco_01"/>
@@ -1727,7 +1727,7 @@
 		</node>
 		<node name="CastleLantern_0" id="3289022220">
 			<position x="-8.15575" y="3.76187" z="-15.1114"/>
-			<rotation qw="0.642788" qx="0" qy="0.766045" qz="0"/>
+			<rotation qw="0.642788" qx="0" qy="0.766044" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="CastleLantern_0" meshFile="CastleLantern.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="CastleRoofColor"/>
@@ -2282,7 +2282,7 @@
 		</node>
 		<node name="Pillar_05_125_0" id="4219269507">
 			<position x="23.4117" y="4.59286" z="-15.456"/>
-			<rotation qw="0.642788" qx="0" qy="-0.766045" qz="0"/>
+			<rotation qw="0.642788" qx="0" qy="-0.766044" qz="0"/>
 			<scale x="0.5" y="0.2" z="0.5"/>
 			<item name="Pillar_05_125_0" meshFile="Pillar_05_125.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="M_MasterMaterial"/>
@@ -2312,7 +2312,7 @@
 		</node>
 		<node name="HollowSphere1_0" id="2453649545">
 			<position x="23.4951" y="5.24017" z="-15.3981"/>
-			<rotation qw="0.642788" qx="0" qy="-0.766045" qz="0"/>
+			<rotation qw="0.642788" qx="0" qy="-0.766044" qz="0"/>
 			<scale x="0.03" y="0.03" z="0.03"/>
 			<item name="HollowSphere1_0" meshFile="HollowSphere1.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="HollowSphere"/>
@@ -2990,7 +2990,7 @@
 		</node>
 		<node name="SpellBall" id="3373463240">
 			<position x="40.7409" y="9.32863" z="-15.8143"/>
-			<rotation qw="0.642788" qx="0" qy="-0.766045" qz="0"/>
+			<rotation qw="0.642788" qx="0" qy="-0.766044" qz="0"/>
 			<scale x="0.01" y="0.01" z="0.01"/>
 			<item name="SpellBall" meshFile="HollowSphere1.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="HollowSphere"/>
@@ -3086,7 +3086,7 @@
 		</node>
 		<node name="SpellBall_2" id="4057956805">
 			<position x="40.7409" y="9.32863" z="-15.8143"/>
-			<rotation qw="0.642788" qx="0" qy="-0.766045" qz="0"/>
+			<rotation qw="0.642788" qx="0" qy="-0.766044" qz="0"/>
 			<scale x="0.01" y="0.01" z="0.01"/>
 			<item name="SpellBall_2" meshFile="HollowSphere1.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="HollowSphere"/>

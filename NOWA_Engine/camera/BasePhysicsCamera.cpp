@@ -27,6 +27,9 @@ namespace NOWA
 
 	void BasePhysicsCamera::onSetData(void)
 	{
+        Ogre::String id = "BasePhysicsCamera::rotateCamera";
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 		this->firstTimeValueSet = true;
 		Ogre::Vector3 resultPosition = this->camera->getPosition();
 		Ogre::Quaternion resultOrientation = this->camera->getOrientation();
@@ -77,6 +80,9 @@ namespace NOWA
 
 	void BasePhysicsCamera::onClearData(void)
 	{
+        Ogre::String id = "BasePhysicsCamera::rotateCamera";
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 		NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {
             if (this->cameraNode->getAttachedObjectIterator().hasMoreElements())
@@ -184,7 +190,7 @@ namespace NOWA
 			this->cameraNode->rotate(Ogre::Quaternion(Ogre::Degree(rotationValue.y), Ogre::Vector3::UNIT_X), Ogre::Node::TS_LOCAL);
 		};
 		Ogre::String id = "BasePhysicsCamera::rotateCamera";
-		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
+		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 
 		this->lastValue = rotationValue;
 	}
