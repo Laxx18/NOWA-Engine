@@ -306,6 +306,14 @@ MainGameObject["LaxFollow2TimePoint"] = function(timePointSec)
     animationBlenderLax:blend5(AnimationBlender.ANIM_RUN, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
 end
 
+MainGameObject["LaxFollow2EndTimePoint"] = function(timePointSec)
+    mainGameObject:getFadeComponentFromIndex(1):setActivated(true);
+    mainGameObject:getFadeComponentFromIndex(1):reactOnFadeCompleted(function() 
+         log("--> change to Level1SectorState");
+         AppStateManager:changeAppState("Level1SectorState");
+    end);
+end
+
 MainGameObject["update"] = function(dt)
    if (true == laxShouldTurn) then
         local toEmma = emma:getPosition() - lax:getPosition();

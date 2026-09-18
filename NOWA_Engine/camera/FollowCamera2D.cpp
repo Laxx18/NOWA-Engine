@@ -9,6 +9,44 @@
 
 namespace NOWA
 {
+    namespace
+    {
+        // Attention: the closure id MUST be unique per instance. It used to be the constant
+        // string "FollowCamera2D::moveCamera", shared by every FollowCamera2D that ever exists.
+        // Two instances then fight over the same slot: registering in one overwrites the other,
+        // and the destructor of one removes the closure belonging to the other. That is exactly
+        // what happens on a stop/start cycle, where the old behavior is deleted while a new one
+        // is already being created. The instance address is unique for as long as the object
+        // lives, which is precisely the lifetime the closure has to match.
+        Ogre::String buildMoveCameraClosureId(const FollowCamera2D* instance)
+        {
+            return "FollowCamera2D::moveCamera_" + Ogre::StringConverter::toString(reinterpret_cast<size_t>(instance));
+        }
+
+        // Attention: removeTrackedClosure() is ASYNCHRONOUS when called from the logic thread.
+        // It only posts a removal command which the render thread processes at its next safe
+        // point. CameraManager::removeCameraBehavior() does
+        //
+        //     cameraBehavior->onClearData();
+        //     delete cameraBehavior;
+        //
+        // with nothing in between, so the render thread can still execute the closure - and
+        // therefore dereference 'this' - after the object has already been freed. That is the
+        // crash: it disappears as soon as the closure is not registered at all.
+        //
+        // Routing the removal through enqueueAndWait puts us ON the render thread, where
+        // removeTrackedClosure() takes its direct path, and blocks until the closure is
+        // provably gone. Only then may the object be destroyed.
+        void removeMoveCameraClosureBlocking(const Ogre::String& closureId)
+        {
+            NOWA::GraphicsModule::RenderCommand removeCommand = [closureId]()
+            {
+                NOWA::GraphicsModule::getInstance()->removeTrackedClosure(closureId);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(removeCommand), "FollowCamera2D::removeMoveCameraClosure");
+        }
+    }
+
     FollowCamera2D::FollowCamera2D(unsigned int id, Ogre::SceneNode* sceneNode, const Ogre::Vector3& offsetPosition, Ogre::Real smoothValue) :
         BaseCamera(id, 0, 0, smoothValue),
         sceneNode(sceneNode),
@@ -35,8 +73,9 @@ namespace NOWA
 
     FollowCamera2D::~FollowCamera2D()
     {
-        Ogre::String id = "FollowCamera2D::moveCamera";
-        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+        // Attention: this must be the FIRST statement and it must block. Everything below
+        // starts tearing the object down, and the closure captures 'this'.
+        removeMoveCameraClosureBlocking(buildMoveCameraClosureId(this));
 
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &FollowCamera2D::handleUpdateBounds), EventDataBoundsUpdated::getStaticEventType());
         this->sceneNode = nullptr;
@@ -54,8 +93,20 @@ namespace NOWA
     {
         BaseCamera::onSetData();
         this->firstTimeMoveValueSet = true;
-        Ogre::String id = "FollowCamera2D::moveCamera";
-        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
+        // Drop any closure left over from a previous activation before moveCamera() registers
+        // a fresh one, so the two can never overlap.
+        removeMoveCameraClosureBlocking(buildMoveCameraClosureId(this));
+    }
+
+    void FollowCamera2D::onClearData(void)
+    {
+        BaseCamera::onClearData();
+
+        // Attention: CameraManager::removeCameraBehavior() calls this immediately before
+        // 'delete cameraBehavior'. The removal therefore has to be finished when we return,
+        // not merely queued - see removeMoveCameraClosureBlocking().
+        removeMoveCameraClosureBlocking(buildMoveCameraClosureId(this));
     }
 
     void FollowCamera2D::setOffset(const Ogre::Vector3& offset)
@@ -118,8 +169,8 @@ namespace NOWA
 
         this->mostRightUp = Ogre::Vector3(halfWidth, halfHeight, 0.0f);
 
-        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_NORMAL, "[FollowCamera2D] mostRightUp (half-extent at play plane, distance=" + Ogre::StringConverter::toString(distanceToPlayPlane) +
-                                                                           "): " + Ogre::StringConverter::toString(this->mostRightUp));
+        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_NORMAL,
+            "[FollowCamera2D] mostRightUp (half-extent at play plane, distance=" + Ogre::StringConverter::toString(distanceToPlayPlane) + "): " + Ogre::StringConverter::toString(this->mostRightUp));
 
         // BUGFIX: this subtracted borderOffset.z from BOTH mostRightUp.x and mostRightUp.y,
         // ignoring borderOffset.x and borderOffset.y entirely. Invisible with the constructor's
@@ -173,6 +224,15 @@ namespace NOWA
             return;
         }
 
+        // Attention: the camera can be gone while this behavior object is still alive.
+        // CameraComponent::setActivatedFlag(false) calls CameraManager::removeCamera(), and
+        // WorkspaceBaseComponent::removeWorkspace() runs in the same render command. Writing
+        // through a dead camera below would be a use-after-free.
+        if (nullptr == this->camera)
+        {
+            return;
+        }
+
         if (true == this->firstTimeMoveValueSet)
         {
             this->lastMoveValue = Ogre::Vector3::ZERO;
@@ -194,22 +254,30 @@ namespace NOWA
             this->firstTimeMoveValueSet = false;
         }
 
-        // Always use closure functions in update functions to prevent graphical flickering
-        auto closureFunction = [this](Ogre::Real renderDt)
+        // Read directly from the physics body — NOT from the SceneNode.
+        // SceneNode is updated by the render thread one frame later.
+        Ogre::Vector3 playerPosition;
+        if (nullptr != this->physicsBody)
         {
-            const Ogre::Vector3 cameraPosition = this->trackedCameraPosition;
+            playerPosition = this->physicsBody->getPosition();
+        }
+        else
+        {
+            playerPosition = this->sceneNode->getPosition();
+        }
 
-            // Read directly from the physics body — NOT from the SceneNode.
-            // SceneNode is updated by the render thread one frame later.
-            Ogre::Vector3 playerPosition;
-            if (nullptr != this->physicsBody)
+        // Always use closure functions in update functions to prevent graphical flickering
+        auto closureFunction = [this, playerPosition](Ogre::Real renderDt)
+        {
+            // Attention: a persistent closure keeps running on the render thread until it is
+            // explicitly removed. The camera may be destroyed in between - re-check on every
+            // execution, not just when the closure is registered.
+            if (nullptr == this->camera)
             {
-                playerPosition = this->physicsBody->getPosition();
+                return;
             }
-            else
-            {
-                playerPosition = this->sceneNode->getPosition();
-            }
+
+            const Ogre::Vector3 cameraPosition = this->trackedCameraPosition;
 
             Ogre::Vector3 velocity = Ogre::Vector3::ZERO;
 
@@ -278,8 +346,8 @@ namespace NOWA
             GraphicsModule::getInstance()->updateCameraPosition(this->camera, finalPosition);
             this->trackedCameraPosition = finalPosition;
         };
-        Ogre::String id = "FollowCamera2D::moveCamera";
-        NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
+
+        NOWA::GraphicsModule::getInstance()->updateTrackedClosure(buildMoveCameraClosureId(this), closureFunction);
     }
 
     void FollowCamera2D::rotateCamera(Ogre::Real dt, bool forJoyStick)

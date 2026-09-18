@@ -55,6 +55,8 @@ namespace NOWA
     protected:
         virtual void onSetData(void);
 
+        virtual void onClearData(void) override;
+
     private:
         void handleUpdateBounds(NOWA::EventDataPtr eventData);
 

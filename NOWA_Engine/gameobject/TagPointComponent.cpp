@@ -467,20 +467,26 @@ namespace NOWA
     {
         // The Ogre::TagPoint (v2) is a SceneNode child of a Bone, so Ogre-Next
         // updates its derived world transform automatically every frame.
-        // We only need to push that transform into the physics body here.
         if (nullptr == this->tagPointV2 || nullptr == this->sourcePhysicsActiveComponent)
         {
             return;
+        }
+
+        const Ogre::Vector3 tagPointWorldPosition = this->tagPointV2->_getDerivedPosition();
+        const Ogre::Quaternion tagPointWorldOrientation = this->tagPointV2->_getDerivedOrientation();
+
+        Ogre::SceneNode* sourceSceneNode = this->gameObjectPtr->getSceneNode();
+        if (nullptr != sourceSceneNode)
+        {
+            NOWA::GraphicsModule::getInstance()->updateNodeTransform(sourceSceneNode, tagPointWorldPosition, tagPointWorldOrientation);
         }
 
         auto sourcePhysicsActiveKinematicComponent = dynamic_cast<PhysicsActiveKinematicComponent*>(this->sourcePhysicsActiveComponent);
         if (nullptr != sourcePhysicsActiveKinematicComponent)
         {
             // Directly drive the kinematic body to follow the TagPoint world transform
-            sourcePhysicsActiveKinematicComponent->setOrientation(this->tagPointV2->_getDerivedOrientation());
-            sourcePhysicsActiveKinematicComponent->setPosition(this->tagPointV2->_getDerivedPosition());
-            // Use joint kinematic approach (if jointKinematicComponent exists)
-            // This would need to be set up similar to v1 approach if needed
+            sourcePhysicsActiveKinematicComponent->setOrientation(tagPointWorldOrientation);
+            sourcePhysicsActiveKinematicComponent->setPosition(tagPointWorldPosition);
         }
         else
         {
@@ -489,7 +495,7 @@ namespace NOWA
             auto jointKinematicCompPtr = NOWA::makeStrongPtr(this->sourcePhysicsActiveComponent->getOwner()->getComponent<JointKinematicComponent>());
             if (nullptr != jointKinematicCompPtr)
             {
-                jointKinematicCompPtr->setTargetPositionRotation(this->tagPointV2->_getDerivedPosition(), this->tagPointV2->_getDerivedOrientation());
+                jointKinematicCompPtr->setTargetPositionRotation(tagPointWorldPosition, tagPointWorldOrientation);
             }
         }
     }

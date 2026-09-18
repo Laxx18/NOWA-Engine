@@ -78,8 +78,8 @@ namespace NOWA
         gridSize(new Variant(ProceduralPlatformComponent::AttrGridSize(), 1.0f, this->attributes)),
         smoothingFactor(new Variant(ProceduralPlatformComponent::AttrSmoothingFactor(), 0.5f, this->attributes)),
         useGrass(new Variant(ProceduralPlatformComponent::AttrUseGrass(), false, this->attributes)),
-        grassMaterialName(new Variant(ProceduralPlatformComponent::AttrGrassMaterialName(), Ogre::String("SwayingGrass1Material"), this->attributes)),
-        grassDensity(new Variant(ProceduralPlatformComponent::AttrGrassDensity(), 8.0f, this->attributes)),
+        grassMaterialName(new Variant(ProceduralPlatformComponent::AttrGrassMaterialName(), Ogre::String("SwayingGrass16Material"), this->attributes)),
+        grassDensity(new Variant(ProceduralPlatformComponent::AttrGrassDensity(), 20.0f, this->attributes)),
         grassBladeWidth(new Variant(ProceduralPlatformComponent::AttrGrassBladeWidth(), 0.15f, this->attributes)),
         grassBladeHeight(new Variant(ProceduralPlatformComponent::AttrGrassBladeHeight(), 0.5f, this->attributes)),
         useTrees(new Variant(ProceduralPlatformComponent::AttrUseTrees(), false, this->attributes)),
@@ -271,7 +271,7 @@ namespace NOWA
         }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralPlatformComponent::AttrGrassMaterialName())
         {
-            this->grassMaterialName->setValue(XMLConverter::getAttrib(propertyElement, "data", "SwayingGrass1Material"));
+            this->grassMaterialName->setValue(XMLConverter::getAttrib(propertyElement, "data", "SwayingGrass16Material"));
             propertyElement = propertyElement->next_sibling("property");
         }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralPlatformComponent::AttrGrassDensity())

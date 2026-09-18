@@ -86,7 +86,7 @@ MainGameObject["ReleaseCreaturesTimePoint"] = function(timePointSec)
 end
 
 MainGameObject["FadeOutTimePoint"] = function(timePointSec)
-    mainGameObject:getFadeComponent():setActivated(true);
+    mainGameObject:getFadeComponentFromIndex(1):setActivated(true);
 end
 
 --MainGameObject["update"] = function(dt)

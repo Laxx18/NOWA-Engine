@@ -217,7 +217,7 @@ namespace NOWA
          * @return		true if no AppState transition or scene load is currently
          *				in progress, false otherwise.
          */
-        bool isSafeToDispatchEvents(void) const;
+        bool isSafeToDispatchEvents(void);
 	public:
 		/*
 		* @brief	Gets whether this application has been shut down

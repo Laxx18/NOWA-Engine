@@ -6,7 +6,7 @@
 		<ambient>
 			<ambientLightUpperHemisphere r="0.0115992" g="0.0372741" b="0.0886436"/>
 			<ambientLightLowerHemisphere r="0.0138097" g="0.0164896" b="0.0180719" a="1"/>
-			<hemisphereDir x="6.70552e-08" y="0.707107" z="0.707107"/>
+			<hemisphereDir x="7.45058e-09" y="0.707107" z="0.707107"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -33,7 +33,7 @@
 			<renderDistance distance="100"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-20.2177 -4.80309 -22.6618" mostRightFarPosition="148.914 137.728 158.008"/>
+		<bounds mostLeftNearPosition="-20.2177 -4.80309 -22.6618" mostRightFarPosition="55.0715 19.0851 -11.6553"/>
 	</environment>
 	<OgreNewt solverModel="4" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -41,7 +41,7 @@
 	</OgreNewt>
 	<nodes>
 		<node name="MainCamera" id="4010617415">
-			<position x="-5.12672" y="3.16517" z="-7.62438"/>
+			<position x="-5.58052" y="3.15872" z="-7.64042"/>
 			<rotation qw="0.994945" qx="-0.098604" qy="-0.018276" qz="0.00532502"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="Camera.mesh" castShadows="false" visible="false">
@@ -72,8 +72,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="-5.12672 3.16517 -7.62438"/>
-					<property type="9" name="CameraOrientation" data="-11.3041 -2.1868 0.829747"/>
+					<property type="9" name="CameraPosition" data="-1.83786 4.39627 -3.85893"/>
+					<property type="9" name="CameraOrientation" data="-10.4598 -0.631441 0.826499"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -108,7 +108,7 @@
 			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
-			<position x="148.529" y="137.244" z="157.524"/>
+			<position x="55.0715" y="19.0851" z="-11.6553"/>
 			<rotation qw="0.909588" qx="-0.376764" qy="0.0670508" qz="0.161875"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
@@ -265,7 +265,7 @@
 					<property type="6" name="Duration12" data="5"/>
 					<property type="2" name="RepeatCount12" data="0"/>
 					<property type="7" name="TimePointStartEventName12" data="LaxFollow2TimePoint"/>
-					<property type="7" name="TimePointEndEventName12" data=""/>
+					<property type="7" name="TimePointEndEventName12" data="LaxFollow2EndTimePoint"/>
 					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -303,6 +303,22 @@
 					<property type="12" name="RelativeToListener" data="false"/>
 					<property type="12" name="PlayWhenInMotion" data="false"/>
 					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
+					<property type="7" name="ComponentFadeComponent" data="FadeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="FadeMode" data="FadeIn"/>
+					<property type="6" name="Duration" data="2"/>
+					<property type="7" name="EaseFunction" data="easeInSine"/>
+					<property type="7" name="ComponentFadeComponent" data="FadeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="FadeMode" data="FadeOut"/>
+					<property type="6" name="Duration" data="2"/>
+					<property type="7" name="EaseFunction" data="easeOutSine"/>
 				</userData>
 			</item>
 		</node>
@@ -761,7 +777,7 @@
 			</item>
 		</node>
 		<node name="GameCamera" id="3648394280">
-			<position x="-1.92532" y="2.85846" z="-7.99024"/>
+			<position x="-2.48759" y="2.85846" z="-7.99024"/>
 			<rotation qw="0.997564" qx="-0.0697565" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="Camera.mesh" castShadows="false" visible="true">
@@ -792,7 +808,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="false"/>
-					<property type="9" name="CameraPosition" data="-1.92532 2.85846 -7.99024"/>
+					<property type="9" name="CameraPosition" data="-2.48759 2.85846 -7.99024"/>
 					<property type="9" name="CameraOrientation" data="-8 0 0"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
@@ -927,6 +943,7 @@
 					<property type="7" name="RotationMode" data="Linear"/>
 					<property type="12" name="Repeat" data="false"/>
 					<property type="12" name="Reverse" data="false"/>
+					<property type="12" name="AutoOrientation" data="false"/>
 					<property type="2" name="NodeTrackCount" data="3"/>
 					<property type="2" name="NodeTrackId0" data="4098492667"/>
 					<property type="6" name="TimePosition0" data="1"/>
@@ -2588,6 +2605,7 @@
 					<property type="7" name="RotationMode" data="Linear"/>
 					<property type="12" name="Repeat" data="false"/>
 					<property type="12" name="Reverse" data="false"/>
+					<property type="12" name="AutoOrientation" data="false"/>
 					<property type="2" name="NodeTrackCount" data="1"/>
 					<property type="2" name="NodeTrackId0" data="1033750382"/>
 					<property type="6" name="TimePosition0" data="1"/>
@@ -2600,6 +2618,7 @@
 					<property type="7" name="RotationMode" data="Linear"/>
 					<property type="12" name="Repeat" data="false"/>
 					<property type="12" name="Reverse" data="false"/>
+					<property type="12" name="AutoOrientation" data="false"/>
 					<property type="2" name="NodeTrackCount" data="4"/>
 					<property type="2" name="NodeTrackId0" data="740929867"/>
 					<property type="6" name="TimePosition0" data="1"/>
@@ -2618,6 +2637,7 @@
 					<property type="7" name="RotationMode" data="Linear"/>
 					<property type="12" name="Repeat" data="false"/>
 					<property type="12" name="Reverse" data="false"/>
+					<property type="12" name="AutoOrientation" data="false"/>
 					<property type="2" name="NodeTrackCount" data="3"/>
 					<property type="2" name="NodeTrackId0" data="1700938876"/>
 					<property type="6" name="TimePosition0" data="2"/>
@@ -3041,6 +3061,7 @@
 					<property type="7" name="RotationMode" data="Linear"/>
 					<property type="12" name="Repeat" data="false"/>
 					<property type="12" name="Reverse" data="false"/>
+					<property type="12" name="AutoOrientation" data="false"/>
 					<property type="2" name="NodeTrackCount" data="2"/>
 					<property type="2" name="NodeTrackId0" data="649336421"/>
 					<property type="6" name="TimePosition0" data="0.5"/>
@@ -3137,6 +3158,7 @@
 					<property type="7" name="RotationMode" data="Linear"/>
 					<property type="12" name="Repeat" data="false"/>
 					<property type="12" name="Reverse" data="false"/>
+					<property type="12" name="AutoOrientation" data="false"/>
 					<property type="2" name="NodeTrackCount" data="2"/>
 					<property type="2" name="NodeTrackId0" data="740929867"/>
 					<property type="6" name="TimePosition0" data="0.5"/>
@@ -3216,7 +3238,7 @@
 			</item>
 		</node>
 		<node name="Node_11" id="4091535324">
-			<position x="-0.554774" y="3.52231" z="-7.96637"/>
+			<position x="-1.86967" y="3.52231" z="-7.96637"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Node_11" meshFile="Node.mesh" castShadows="true" visible="true">

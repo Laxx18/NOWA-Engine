@@ -112,11 +112,26 @@ namespace NOWA
         return msSingleton;
     }
 
-    bool AppStateManager::isSafeToDispatchEvents(void) const
+    bool AppStateManager::isSafeToDispatchEvents(void)
     {
         if (true == this->bStall.load())
         {
             return false;
+        }
+
+        if (true == this->activeStateStack.empty())
+        {
+            return false;
+        }
+
+        auto gameObjectController = this->getGameObjectController(this->activeStateStack.back()->getName());
+
+        if (nullptr != gameObjectController)
+        {
+            if (true == gameObjectController->getIsDestroying())
+            {
+                return false;
+            }
         }
 
         GameProgressModule* gameProgressModule = this->getActiveGameProgressModuleSafe();

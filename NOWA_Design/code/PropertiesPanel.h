@@ -218,7 +218,7 @@ public:
 	bool showFileOpenDialog(const Ogre::String& action, const Ogre::String& fileMask, Ogre::String& resourceGroupName);
 
 	void setVisibleCount(unsigned int count);
-	void addProperty(const Ogre::String& name, NOWA::Variant* attribute, bool allValuesSame);
+	void addProperty(NOWA::GameObject* gameObject, const Ogre::String& name, NOWA::Variant* attribute, bool allValuesSame);
 
 	void createRealSlider(const int& valueWidth, const int& valueLeft, const int& height, const Ogre::String& name, NOWA::Variant*& attribute);
 

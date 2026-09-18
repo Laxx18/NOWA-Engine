@@ -397,6 +397,22 @@ void ResourcesPanelMeshes::loadMeshes(const Ogre::String& filter)
                 parent->add(child);
             }
         }
+        // Add Platform Thorn
+        {
+            if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralThornComponent"))
+            {
+                child = new MyGUI::TreeControl::Node("Platform Thorn", "Data");
+                parent->add(child);
+            }
+        }
+        // Add Platform Block
+        {
+            if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralBlockComponent"))
+            {
+                child = new MyGUI::TreeControl::Node("Platform Block", "Data");
+                parent->add(child);
+            }
+        }
 		// Add Geometry
 		{
 			if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralGeometryComponent"))

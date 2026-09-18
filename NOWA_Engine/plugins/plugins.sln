@@ -157,6 +157,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MorphAnimationComponent", "
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralPlatformBoundaryComponent", "ProceduralPlatformBoundaryComponent\ProceduralPlatformBoundaryComponent.vcxproj", "{F6615B63-BDA3-40F7-8285-E3E97FF9A9F2}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralThornComponent", "ProceduralThornComponent\ProceduralThornComponent.vcxproj", "{F327C360-E543-4677-9C2B-55A51A019A2D}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralBlockComponent", "ProceduralBlockComponent\ProceduralBlockComponent.vcxproj", "{B0DE59A5-212F-499C-8FF7-D8A196B2DF76}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -431,6 +435,14 @@ Global
 		{F6615B63-BDA3-40F7-8285-E3E97FF9A9F2}.Debug|x64.Build.0 = Debug|x64
 		{F6615B63-BDA3-40F7-8285-E3E97FF9A9F2}.Release|x64.ActiveCfg = Release|x64
 		{F6615B63-BDA3-40F7-8285-E3E97FF9A9F2}.Release|x64.Build.0 = Release|x64
+		{F327C360-E543-4677-9C2B-55A51A019A2D}.Debug|x64.ActiveCfg = Debug|x64
+		{F327C360-E543-4677-9C2B-55A51A019A2D}.Debug|x64.Build.0 = Debug|x64
+		{F327C360-E543-4677-9C2B-55A51A019A2D}.Release|x64.ActiveCfg = Release|x64
+		{F327C360-E543-4677-9C2B-55A51A019A2D}.Release|x64.Build.0 = Release|x64
+		{B0DE59A5-212F-499C-8FF7-D8A196B2DF76}.Debug|x64.ActiveCfg = Debug|x64
+		{B0DE59A5-212F-499C-8FF7-D8A196B2DF76}.Debug|x64.Build.0 = Debug|x64
+		{B0DE59A5-212F-499C-8FF7-D8A196B2DF76}.Release|x64.ActiveCfg = Release|x64
+		{B0DE59A5-212F-499C-8FF7-D8A196B2DF76}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

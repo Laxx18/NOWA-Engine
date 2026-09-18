@@ -6,7 +6,7 @@
 		<ambient>
 			<ambientLightUpperHemisphere r="0.3" g="0.5" b="0.7"/>
 			<ambientLightLowerHemisphere r="0.6" g="0.45" b="0.3" a="1"/>
-			<hemisphereDir x="0.57735" y="0.57735" z="0.57735"/>
+			<hemisphereDir x="0.57735" y="0.577351" z="0.57735"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -33,7 +33,7 @@
 			<renderDistance distance="100"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-47.1506 -1.48127 -23.6879" mostRightFarPosition="50.2191 77.6536 92.6713"/>
+		<bounds mostLeftNearPosition="-47.1506 -1.48127 -23.6879" mostRightFarPosition="38.6689 20.4567 -2.90003"/>
 	</environment>
 	<OgreNewt solverModel="4" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -41,8 +41,8 @@
 	</OgreNewt>
 	<nodes>
 		<node name="SunLight" id="1479238507">
-			<position x="49.8009" y="77.1458" z="92.1635"/>
-			<rotation qw="0.880476" qx="-0.364705" qy="0.279848" qz="-0.115916"/>
+			<position x="50.2191" y="77.6536" z="92.6713"/>
+			<rotation qw="0.88088" qx="-0.362811" qy="0.280632" qz="-0.116896"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -85,7 +85,7 @@
 		</node>
 		<node name="MainCamera" id="4010617415">
 			<position x="1.71445" y="13.084" z="6.72517"/>
-			<rotation qw="0.982981" qx="-0.15666" qy="0.0956166" qz="0.00801334"/>
+			<rotation qw="0.983235" qx="-0.156534" qy="0.0933033" qz="0.0064136"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -783,11 +783,11 @@
 					<property type="12" name="KeepCaption" data="false"/>
 					<property type="6" name="XOffsetStart" data="-0.5"/>
 					<property type="7" name="FontName" data="BlueHighway"/>
-					<property type="6" name="CharHeight" data="0.5"/>
+					<property type="6" name="CharHeight" data="1"/>
 					<property type="10" name="TextColor" data="0 0 0 1"/>
 					<property type="10" name="BubbleColor" data="1 1 1 1"/>
 					<property type="9" name="OffsetPosition" data="0 1 1"/>
-					<property type="6" name="MaxTextWidth" data="6"/>
+					<property type="6" name="MaxTextWidth" data="12"/>
 					<property type="2" name="OrientationTargetId" data="3544939565"/>
 					<property type="9" name="OffsetOrientation" data="0 0 0"/>
 					<property type="6" name="Padding" data="0.35"/>
@@ -891,7 +891,7 @@
 		</node>
 		<node name="CastleTower2_6" id="1012945813">
 			<position x="-29.7804" y="8.66408" z="-10"/>
-			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="CastleTower2_6" meshFile="CastleTower2.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="CastleWallColor"/>
@@ -8102,7 +8102,7 @@
 		</node>
 		<node name="CastlePlatform2_1" id="2050455712">
 			<position x="-32.1943" y="0.873782" z="-10.598"/>
-			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="2"/>
 			<item name="CastlePlatform2_1" meshFile="CastlePlatform2.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="CastleWallColor"/>
@@ -8162,7 +8162,7 @@
 		</node>
 		<node name="CastlePlatform3_2" id="2113455022">
 			<position x="-26.651" y="1.04689" z="-10"/>
-			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="2"/>
 			<item name="CastlePlatform3_2" meshFile="CastlePlatform3.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="CastleWallColor"/>

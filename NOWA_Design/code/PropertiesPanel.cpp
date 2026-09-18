@@ -298,7 +298,7 @@ void PropertiesPanel::showProperties(std::vector<NOWA::GameObject*> gameObjects,
         {
             for (auto it = attributes.begin(); it != attributes.end(); ++it)
             {
-                gameObjectPropertiesPanel->addProperty(it->first, it->second, true);
+                gameObjectPropertiesPanel->addProperty(gameObjects[0] , it->first, it->second, true);
             }
         }
         else
@@ -333,11 +333,11 @@ void PropertiesPanel::showProperties(std::vector<NOWA::GameObject*> gameObjects,
                 if (found != sameValues.cend())
                 {
                     // last param is whether the property has the same value for all selected game objects
-                    gameObjectPropertiesPanel->addProperty(it->first, it->second, found->second);
+                    gameObjectPropertiesPanel->addProperty(gameObjects[0], it->first, it->second, found->second);
                 }
                 else
                 {
-                    gameObjectPropertiesPanel->addProperty(it->first, it->second, false);
+                    gameObjectPropertiesPanel->addProperty(gameObjects[0], it->first, it->second, false);
                 }
             }
         }
@@ -463,18 +463,18 @@ void PropertiesPanel::showProperties(std::vector<NOWA::GameObject*> gameObjects,
                 // Nothing to validate, just one game object, so add default way
                 if (0 == sameValues.size())
                 {
-                    componentPropertiesPanel->addProperty(it->first, it->second, true);
+                    componentPropertiesPanel->addProperty(gameObjects[0], it->first, it->second, true);
                 }
                 else
                 {
                     if (found2 != sameValues.cend())
                     {
                         // last param is whether the property has the same value for all selected game objects
-                        componentPropertiesPanel->addProperty(it->first, it->second, found2->second);
+                        componentPropertiesPanel->addProperty(gameObjects[0], it->first, it->second, found2->second);
                     }
                     else
                     {
-                        componentPropertiesPanel->addProperty(it->first, it->second, false);
+                        componentPropertiesPanel->addProperty(gameObjects[0], it->first, it->second, false);
                     }
                 }
             }
@@ -628,8 +628,25 @@ void PropertiesPanelInfo::setInfo(const Ogre::String& info)
 
 void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
 {
-    NOWA::GraphicsModule::RenderCommand renderCommand = [this, gameObject]()
+    if (nullptr == gameObject)
     {
+        return;
+    }
+
+    const unsigned long gameObjectId = gameObject->getId();
+
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, gameObjectId]()
+    {
+        // Frisch auflösen auf dem Renderthread: der zur Enqueue-Zeit gecachte Rohzeiger
+        // koennte inzwischen ungueltig sein (z. B. weil ein Szenenwechsel dazwischen kam).
+        NOWA::GameObjectPtr gameObjectPtr = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(gameObjectId);
+        if (nullptr == gameObjectPtr)
+        {
+            // GameObject existiert nicht mehr (Szene gewechselt / geloescht) - sauber abbrechen.
+            return;
+        }
+
+        NOWA::GameObject* gameObject = gameObjectPtr.get();
         const int height = 26;
         const int heightStep = 28;
         const int widthStep = 3;
@@ -1058,7 +1075,7 @@ void PropertiesPanelDynamic::setVisibleCount(unsigned int count)
     NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PropertiesPanelDynamic::setVisibleCount");
 }
 
-void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant* attribute, bool allValuesSame)
+void PropertiesPanelDynamic::addProperty(NOWA::GameObject* gameObject, const Ogre::String& name, NOWA::Variant* attribute, bool allValuesSame)
 {
     if (false == attribute->isVisible())
     {
@@ -1351,10 +1368,31 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
         MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
         if (true == allValuesSame)
         {
-            // Round values up to 4 digits, so later when mouseLostFocus event is fired and the user just moved away from edit box so that the check between the attribute value and the
-            // edit box value is the same and nothing is done
-            attribute->setValue(NOWA::MathHelper::getInstance()->round(attribute->getVector3(), 5));
-            edit->setOnlyText(Ogre::StringConverter::toString(attribute->getVector3()));
+            if (attribute->getName() == NOWA::GameObject::AttrPosition())
+            {
+                Ogre::Vector3 position = NOWA::MathHelper::getInstance()->round(gameObject->getSceneNode()->_getDerivedPositionUpdated(), 5);
+                attribute->setValue(position);
+                edit->setOnlyText(Ogre::StringConverter::toString(position));
+            }
+            else if (attribute->getName() == NOWA::GameObject::AttrOrientation())
+            {
+                Ogre::Vector3 orientationDegrees = NOWA::MathHelper::getInstance()->quatToDegreesRounded(gameObject->getSceneNode()->_getDerivedOrientationUpdated());
+                attribute->setValue(orientationDegrees);
+                edit->setOnlyText(Ogre::StringConverter::toString(orientationDegrees));
+            }
+            else if (attribute->getName() == NOWA::GameObject::AttrScale())
+            {
+                Ogre::Vector3 scale = NOWA::MathHelper::getInstance()->round(gameObject->getSceneNode()->_getDerivedScale(), 5);
+                attribute->setValue(scale);
+                edit->setOnlyText(Ogre::StringConverter::toString(scale));
+            }
+            else
+            {
+                // Round values up to 4 digits, so later when mouseLostFocus event is fired and the user just moved away from edit box so that the check between the attribute value and the
+                // edit box value is the same and nothing is done
+                attribute->setValue(NOWA::MathHelper::getInstance()->round(attribute->getVector3(), 5));
+                edit->setOnlyText(Ogre::StringConverter::toString(attribute->getVector3()));
+            }
         }
         else
         {
@@ -3265,6 +3303,8 @@ void PropertiesPanelGameObject::notifyColourAccept(MyGUI::ColourPanel* sender)
 
 void PropertiesPanelGameObject::notifyEndDialog(tools::Dialog* sender, bool result)
 {
+    int brems = 0;
+    brems = 1;
 }
 
 void PropertiesPanelGameObject::notifyScrollChangePosition(MyGUI::ScrollBar* sender, size_t position)

@@ -43,8 +43,12 @@ namespace NOWA
     {
         if (nullptr != this->baseCamera)
         {
-            delete this->baseCamera;
+            // baseCamera ist nur ein Beobachter-Pointer, Owner ist CameraManager (cameraDataMap).
+            // Nie direkt "delete" - sonst bleibt in CameraManager ein dangling Eintrag zurueck,
+            // der bei einem spaeteren removeCameraBehavior()-Aufruf zu einem Double Free fuehrt.
+            AppStateManager::getSingletonPtr()->getCameraManager()->removeCameraBehavior(this->activeCamera, this->baseCamera->getBehaviorType());
             this->baseCamera = nullptr;
+            this->activeCamera = nullptr;
         }
     }
 
@@ -103,7 +107,8 @@ namespace NOWA
 
         if (nullptr != this->baseCamera)
         {
-            AppStateManager::getSingletonPtr()->getCameraManager()->removeCameraBehavior(this->baseCamera->getBehaviorType());
+            this->baseCamera->setPhysicsBody(nullptr);
+            AppStateManager::getSingletonPtr()->getCameraManager()->removeCameraBehavior(this->baseCamera->getCamera(), this->baseCamera->getBehaviorType());
             this->baseCamera = nullptr;
             this->activeCamera = nullptr;
         }
@@ -217,6 +222,8 @@ namespace NOWA
             {
                 if (nullptr != this->baseCamera)
                 {
+                    this->baseCamera->setPhysicsBody(nullptr);
+
                     NOWA::GraphicsModule::RenderCommand oceanRdCmd = [this]
                     {
                         this->baseCamera->getCamera()->setPosition(this->baseCamera->getCamera()->getParentSceneNode()->convertWorldToLocalPositionUpdated(this->oldPosition));
@@ -224,7 +231,7 @@ namespace NOWA
                     };
                     NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(oceanRdCmd), "CameraBehaviorComponent::setActivated");
 
-                    AppStateManager::getSingletonPtr()->getCameraManager()->removeCameraBehavior(this->baseCamera->getBehaviorType());
+                    AppStateManager::getSingletonPtr()->getCameraManager()->removeCameraBehavior(this->baseCamera->getCamera(), this->baseCamera->getBehaviorType());
                     this->baseCamera = nullptr;
                 }
             }

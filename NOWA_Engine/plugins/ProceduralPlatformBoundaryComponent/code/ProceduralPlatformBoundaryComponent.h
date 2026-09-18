@@ -282,7 +282,7 @@ namespace NOWA
             desc.displayName = "Platform Boundary";
             desc.meshToDisplay = "Node.mesh";
             desc.needsMeshItem = false;
-            desc.enterMeshModifyMode = true;
+            desc.enterMeshModifyMode = false;
             desc.autoComponents = {"ProceduralPlatformBoundaryComponent"};
             desc.guardWithPluginCheck = true;
             return desc;

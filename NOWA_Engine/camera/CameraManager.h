@@ -55,9 +55,10 @@ namespace NOWA
 
 		/**
 		* @brief		Removes the camera behavior from the given key string
+		* @param[in]	camera				The camera to check.
 		* @param[in]	cameraBehaviorKey	The camera behavior key to remove
 		*/
-		void removeCameraBehavior(const Ogre::String& cameraBehaviorKey);
+		void removeCameraBehavior(Ogre::Camera* camera, const Ogre::String& cameraBehaviorKey);
 
 		void setActiveCameraBehavior(Ogre::Camera* camera, const Ogre::String& behaviorType);
 

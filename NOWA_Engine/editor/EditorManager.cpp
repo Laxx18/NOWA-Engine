@@ -1984,11 +1984,10 @@ namespace NOWA
                 // Due to threading necessary to call one last time if click happend, so the the go gets correct position.
                 this->applyPlaceMovableTransform();
 
+                this->rotateFactor = 0.0f;
+
                 // Create GameObject etc. and push to undo stack
                 this->sceneManipulationCommandModule.pushCommand(std::make_shared<AddGameObjectUndoCommand>(this->sceneManager, this->tempPlaceMovableNode, meshData, this->currentPlaceType, this->currentDescriptorId, this));
-                // Sent event that scene has been modified
-                boost::shared_ptr<NOWA::EventDataSceneModified> eventDataSceneModified(new NOWA::EventDataSceneModified());
-                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneModified);
 
                 NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
                 {
@@ -2016,10 +2015,6 @@ namespace NOWA
                     }
 
                     this->sceneManipulationCommandModule.pushCommand(std::make_shared<CloneGameObjectGroupUndoCommand>(this, tempGameObjectGroup));
-
-                    // Sent event that scene has been modified
-                    boost::shared_ptr<NOWA::EventDataSceneModified> eventDataSceneModified(new NOWA::EventDataSceneModified());
-                    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneModified);
 
                     // Regenerate categories
                     boost::shared_ptr<EventDataGenerateCategories> eventDataGenerateCategories(new EventDataGenerateCategories());

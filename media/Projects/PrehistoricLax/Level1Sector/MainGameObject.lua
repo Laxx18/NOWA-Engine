@@ -52,6 +52,10 @@ MainGameObject["connect"] = function(gameObject)
     
     luizius:getNodeTrackComponent():reactOnEndOfPathReached(function()
         mainGameObject:getFadeComponentFromIndex(1):setActivated(true);
+        
+        mainGameObject:getFadeComponentFromIndex(1):reactOnFadeCompleted(function() 
+             AppStateManager:changeAppState("EvilMagicState");
+        end);
     end);
     
      --mainGameObject:getFadeComponent():setActivated(false);

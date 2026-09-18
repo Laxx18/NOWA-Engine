@@ -11042,6 +11042,30 @@ return {
 				returns = "(PlanetTerraComponent)",
 				valuetype = "PlanetTerraComponent"
 			},
+			getProceduralBlockComponent =
+			{
+				type = "function",
+				description = "Gets the component. Use this if the game object has this component only once.",
+				args = "()",
+				returns = "(ProceduralBlockComponent)",
+				valuetype = "ProceduralBlockComponent"
+			},
+			getProceduralBlockComponent2 =
+			{
+				type = "function",
+				description = "Gets the component by the given occurrence index, since a game object may have this component several times.",
+				args = "(number occurrenceIndex)",
+				returns = "(ProceduralBlockComponent)",
+				valuetype = "ProceduralBlockComponent"
+			},
+			getProceduralBlockComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component by its custom name.",
+				args = "(string name)",
+				returns = "(ProceduralBlockComponent)",
+				valuetype = "ProceduralBlockComponent"
+			},
 			getProceduralGeometryComponent =
 			{
 				type = "function",
@@ -11177,6 +11201,30 @@ return {
 				args = "(string name)",
 				returns = "(ProceduralTerrainCreationComponent)",
 				valuetype = "ProceduralTerrainCreationComponent"
+			},
+			getProceduralThornComponent =
+			{
+				type = "function",
+				description = "Gets the component. Use this if the game object has this component only once.",
+				args = "()",
+				returns = "(ProceduralThornComponent)",
+				valuetype = "ProceduralThornComponent"
+			},
+			getProceduralThornComponent2 =
+			{
+				type = "function",
+				description = "Gets the component by the given occurrence index, since a game object may have this component several times.",
+				args = "(number occurrenceIndex)",
+				returns = "(ProceduralThornComponent)",
+				valuetype = "ProceduralThornComponent"
+			},
+			getProceduralThornComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component by its custom name.",
+				args = "(string name)",
+				returns = "(ProceduralThornComponent)",
+				valuetype = "ProceduralThornComponent"
 			},
 			getProceduralWallComponent =
 			{
@@ -13314,6 +13362,14 @@ return {
 				returns = "(PlanetSurfaceComponent)",
 				valuetype = "PlanetSurfaceComponent"
 			},
+			castProceduralBlockComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(ProceduralBlockComponent other)",
+				returns = "(ProceduralBlockComponent)",
+				valuetype = "ProceduralBlockComponent"
+			},
 			castProceduralGeometryComponent =
 			{
 				type = "function",
@@ -13369,6 +13425,14 @@ return {
 				args = "(ProceduralTerrainCreationComponent other)",
 				returns = "(ProceduralTerrainCreationComponent)",
 				valuetype = "ProceduralTerrainCreationComponent"
+			},
+			castProceduralThornComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(ProceduralThornComponent other)",
+				returns = "(ProceduralThornComponent)",
+				valuetype = "ProceduralThornComponent"
 			},
 			castProceduralWallComponent =
 			{
@@ -24097,7 +24161,7 @@ return {
 			setAutoOrientation =
 			{
 				type = "method",
-				description = "Sets whether the travelling game object should be rotated to face the direction it is currently moving in, instead of keeping its own fixed orientation for the whole path. At each waypoint it faces the NEXT waypoint; the final waypoint keeps facing the direction of the last leg. The existing 'Rotation Mode' property still controls how smoothly the turns are blended. Takes effect on the next (re-)build - typical usage from Lua is setAutoOrientation(true) followed by setActivated(true).",
+				description = "Sets whether the travelling game object should be rotated to face left or right depending on the direction it is currently moving in, instead of keeping its own fixed orientation for the whole path. Faces the game object's own DefaultDirection (its current/resting orientation) when the next waypoint is not to the left, and exactly 180 degrees around world Y from that when it is - left meaning a smaller world X coordinate. Height and depth differences between waypoints are ignored for this on purpose - only left/right along world X ever changes the facing. The existing 'Rotation Mode' property still controls how smoothly the turns are blended. Takes effect on the next (re-)build - typical usage from Lua is setAutoOrientation(true) followed by setActivated(true).",
 				args = "(boolean autoOrientation)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -29507,6 +29571,143 @@ return {
 			}
 		}
 	},
+	ProceduralBlockComponent =
+	{
+		type = "class",
+		description = "Usage: Creates a single solid rectangular block, sized in exact meters, for building straight platforms.  SIZE: - 'Columns' is the block's length in whole meters, along the direction of travel (1 column = 1 meter). - 'Rows' is the block's height in whole meters (1 row = 1 meter). - 'Depth' is the block's depth in meters, a plain value rather than row/column based. - Changing any of these regenerates the whole block from scratch. There is no mouse-driven editing   and no undo/redo for this component - every dimension is typed in.  MATERIAL: - 'Datablock' is the single material used for the whole block. - 'UV Tiling' scales the texture in meters per repeat.  COLLISION: - Add a PhysicsArtifactComponent to the same game object and the block is rebuilt as a collision   hull automatically whenever its geometry changes.  LUA API: - getProceduralBlockComponent() on a GameObject returns this component. - setColumns(c), setRows(r), setDepth(d) set the size. - setDatablock(name) sets the material. ",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setColumns =
+			{
+				type = "method",
+				description = "Sets the block's length in whole meters (1 column = 1 meter). Regenerates the whole block.",
+				args = "(number columns)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getColumns =
+			{
+				type = "function",
+				description = "Gets the block's length in columns.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setRows =
+			{
+				type = "method",
+				description = "Sets the block's height in whole meters (1 row = 1 meter). Regenerates the whole block.",
+				args = "(number rows)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRows =
+			{
+				type = "function",
+				description = "Gets the block's height in rows.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setDepth =
+			{
+				type = "method",
+				description = "Sets the block's depth in meters. Regenerates the whole block.",
+				args = "(number depth)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDepth =
+			{
+				type = "function",
+				description = "Gets the block's depth in meters.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getLength =
+			{
+				type = "function",
+				description = "Gets the block's actual length in meters (columns * 1.0).",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getHeight =
+			{
+				type = "function",
+				description = "Gets the block's actual height in meters (rows * 1.0).",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setDatablock =
+			{
+				type = "method",
+				description = "Sets the single datablock used for the whole block.",
+				args = "(string datablock)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDatablock =
+			{
+				type = "function",
+				description = "Gets the block's datablock.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setUseGradient =
+			{
+				type = "method",
+				description = "Sets whether the block is a sloped ramp instead of a straight box. The slope is Height / Length, not a separate setting. Takes priority over Use Bevel. Regenerates the whole block.",
+				args = "(boolean useGradient)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getUseGradient =
+			{
+				type = "function",
+				description = "Gets whether the block is built as a ramp.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setUseBevel =
+			{
+				type = "method",
+				description = "Sets whether the block's top-front and top-back edges are chamfered. Has no effect while Use Gradient is true. Regenerates the whole block.",
+				args = "(boolean useBevel)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getUseBevel =
+			{
+				type = "function",
+				description = "Gets whether the block's top edges are chamfered.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setBevelSize =
+			{
+				type = "method",
+				description = "Sets how far the chamfer cuts in, in meters. Regenerates the whole block.",
+				args = "(number bevelSize)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBevelSize =
+			{
+				type = "function",
+				description = "Gets the chamfer size in meters.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			}
+		}
+	},
 	ProceduralGeometryComponent =
 	{
 		type = "class",
@@ -30984,6 +31185,95 @@ return {
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
+			}
+		}
+	},
+	ProceduralThornComponent =
+	{
+		type = "class",
+		description = "Usage: Creates a row of procedural spikes the player must jump over, sized in exact meters.  SIZE: - 'Thorn Length', 'Thorn Width' and 'Thorn Height' are the field's outer dimensions in meters -   Length along the direction of travel, Width across the fixed depth axis, Height how tall each   cone stands. - 'Thorn Base Size' is each cone's base diameter in meters (0.5 x 0.5m by default), and also the   grid spacing in both directions - cones are laid out on a grid filling the whole Length x   Width area, base to base with no gaps. The actual grid counts are rounded so the cones fill   the stated Length and Width exactly. - Changing any of these regenerates the whole field from scratch. There is no mouse-driven   editing and no undo/redo for this component - every dimension is typed in.  MATERIAL: - 'Datablock' is the single material used for the whole strip. - 'UV Tiling' scales the texture in meters per repeat.  COLLISION: - Add a PhysicsArtifactComponent to the same game object and the field is rebuilt as a   collision hull automatically whenever its geometry changes. - This component only builds the shape and its collision hull; it does not itself apply   damage on contact.  LUA API: - getProceduralThornComponent() on a GameObject returns this component. - setThornLength(l), setThornWidth(w), setThornHeight(h), setThornBaseSize(s) set the size in meters. - setDatablock(name) sets the material. ",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setThornLength =
+			{
+				type = "method",
+				description = "Sets the spike strip's length in meters. Regenerates the whole strip.",
+				args = "(number length)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getThornLength =
+			{
+				type = "function",
+				description = "Gets the spike strip's length in meters.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setThornWidth =
+			{
+				type = "method",
+				description = "Sets the spike strip's depth in meters. Regenerates the whole strip.",
+				args = "(number width)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getThornWidth =
+			{
+				type = "function",
+				description = "Gets the spike strip's depth in meters.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setThornHeight =
+			{
+				type = "method",
+				description = "Sets each spike's height in meters. Regenerates the whole strip.",
+				args = "(number height)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getThornHeight =
+			{
+				type = "function",
+				description = "Gets each spike's height in meters.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setThornBaseSize =
+			{
+				type = "method",
+				description = "Sets each cone's base diameter in meters, also used as the grid spacing. Regenerates the whole field.",
+				args = "(number baseSize)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getThornBaseSize =
+			{
+				type = "function",
+				description = "Gets each cone's base diameter in meters.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setDatablock =
+			{
+				type = "method",
+				description = "Sets the single datablock used for the whole strip.",
+				args = "(string datablock)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDatablock =
+			{
+				type = "function",
+				description = "Gets the strip's datablock.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
 			}
 		}
 	},

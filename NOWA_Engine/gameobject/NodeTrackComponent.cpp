@@ -401,18 +401,23 @@ namespace NOWA
             {
                 orientationKeyFrameRotations.resize(orientationKeyFramePositions.size(), travellingObjectOrientation);
 
-                // The axis this component treats as "forward" when auto-orienting. Ogre's
-                // own camera convention looks down local -Z by default, which matters here
-                // because this component's first-class use case (see the class description)
-                // is driving an actual Ogre::Camera (this->camera above). If a non-camera
-                // mesh is authored facing a different local axis, this is the one place to
-                // change.
-                const Ogre::Vector3 forwardAxis = this->gameObjectPtr->getDefaultDirection();
-
-                // Starting fallback direction, used only if even the FIRST segment turns out
-                // to be zero-length (two waypoints at the same spot) - keeps the object at
-                // whatever it was already facing rather than producing an undefined rotation.
-                Ogre::Vector3 lastValidDirection = travellingObjectOrientation * forwardAxis;
+                // BUGFIX (design correction): this used to hardcode Ogre::Vector3::NEGATIVE_UNIT_Z as
+                // "forward" and build the rotation via Vector3::getRotationTo(), which finds the
+                // SHORTEST rotation between two vectors - that can land on ANY axis, including a roll
+                // component around the object's own forward axis. Wrong on two counts for this game:
+                // Luizius's actual authored forward is (0,0,1), not -Z (see DefaultDirection in the
+                // scene file), and even with the right forward axis, an unconstrained
+                // shortest-rotation can still introduce a roll/tilt this 2.5D game never wants.
+                //
+                // Replaced with an explicit two-angle composition, per exact spec: rotate around
+                // world Y for horizontal heading (which waypoint is left/right) and around world Z
+                // for vertical heading (which waypoint is higher/lower) - and NEVER around world X.
+                // Both angles are measured as DELTAS from the object's CURRENT facing
+                // (getDefaultDirection() transformed by its current/rest orientation, not some
+                // assumed identity pose), so the very first keyframe does not snap the object to a
+                // different base pose than it already visibly has.
+                const Ogre::Vector3 defaultDirection = this->gameObjectPtr->getDefaultDirection();
+                const Ogre::Vector3 currentForward = travellingObjectOrientation * defaultDirection;
 
                 for (size_t i = 0; i < orientationKeyFramePositions.size(); i++)
                 {
@@ -431,29 +436,46 @@ namespace NOWA
                     else
                     {
                         // Only one keyframe total - nothing to derive a direction from at all.
-                        direction = lastValidDirection;
+                        direction = currentForward;
                     }
 
-                    if (direction.squaredLength() > 0.0001f)
+                    if (direction.squaredLength() < 0.0001f)
                     {
-                        direction.normalise();
-                        lastValidDirection = direction;
+                        // Zero-length segment (two waypoints at the same spot, or a synthetic
+                        // start keyframe sitting exactly on the first waypoint) - no heading can
+                        // be derived from it, so keep facing whatever the PREVIOUS keyframe ended
+                        // up facing (or the object's own current orientation, for the very first
+                        // one), rather than an undefined rotation.
+                        orientationKeyFrameRotations[i] = (i > 0) ? orientationKeyFrameRotations[i - 1] : travellingObjectOrientation;
+                        continue;
+                    }
+                    direction.normalise();
+
+                    // BUGFIX (simplification): this used to compute yaw from the FULL horizontal
+                    // (X, Z) direction via atan2 - mathematically correct for an arbitrary 3D
+                    // heading, but the wrong question for this game. Confirmed in testing: a leg
+                    // of the path with barely any X difference but a real Z difference (depth) made
+                    // the atan2 result swing toward Z - producing exactly the "rotated 90 degrees
+                    // into -Z right at the start" symptom, even though the yaw MATH itself was by
+                    // then correct. This is a 2.5D game where "left/right" is a WORLD-X-only
+                    // concept - Z (depth) must never influence facing at all, only actual left/right
+                    // position along the level.
+                    //
+                    // So this is now a plain binary decision, nothing else: face
+                    // getDefaultDirection() (the object's own resting/current orientation, i.e. no
+                    // rotation at all) when the next point is not to the left, or its exact 180
+                    // degree opposite when it is - "left" meaning a smaller world X coordinate,
+                    // matching how this project already defines a level's own left/right (see
+                    // ProceduralPlatformComponent: X runs along the level's length). Y (height) and
+                    // Z (depth) differences between waypoints are not read at all here, on purpose.
+                    if (direction.x < 0.0f)
+                    {
+                        orientationKeyFrameRotations[i] = Ogre::Quaternion(Ogre::Radian(Ogre::Math::PI), Ogre::Vector3::UNIT_Y) * travellingObjectOrientation;
                     }
                     else
                     {
-                        // Zero-length segment (two waypoints at the same spot, or a
-                        // synthetic start keyframe sitting exactly on the first waypoint) -
-                        // no direction can be derived from it, so keep facing whatever
-                        // direction was last valid.
-                        direction = lastValidDirection;
+                        orientationKeyFrameRotations[i] = travellingObjectOrientation;
                     }
-
-                    // Note: if a path doubles straight back on itself, direction ends up
-                    // exactly opposite forwardAxis (a 180 degree turn), for which Ogre's
-                    // getRotationTo() has to pick an arbitrary perpendicular roll axis since
-                    // infinitely many are equally valid - a real, unavoidable ambiguity of a
-                    // true reversal, not a bug in this computation.
-                    orientationKeyFrameRotations[i] = forwardAxis.getRotationTo(direction);
                 }
             }
 
@@ -1216,9 +1238,10 @@ namespace NOWA
             "which then (re-)builds the animation from the now reordered ids.");
         LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "bool getReverse()", "Gets whether the waypoint order is currently reversed.");
         LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "void setAutoOrientation(bool autoOrientation)",
-            "Sets whether the travelling game object should be rotated to face the direction it is currently moving in, instead of keeping its own fixed orientation for the whole path. At each waypoint it faces the NEXT waypoint; the final "
-            "waypoint keeps facing the direction of the last leg. The existing 'Rotation Mode' property still controls how smoothly the turns are blended. Takes effect on the next (re-)build - typical usage from Lua is "
-            "setAutoOrientation(true) followed by setActivated(true).");
+            "Sets whether the travelling game object should be rotated to face left or right depending on the direction it is currently moving in, instead of keeping its own fixed orientation for the whole path. Faces the game object's "
+            "own DefaultDirection (its current/resting orientation) when the next waypoint is not to the left, and exactly 180 degrees around world Y from that when it is - left meaning a smaller world X coordinate. Height and depth "
+            "differences between waypoints are ignored for this on purpose - only left/right along world X ever changes the facing. The existing 'Rotation Mode' property still controls how smoothly the turns are blended. Takes effect "
+            "on the next (re-)build - typical usage from Lua is setAutoOrientation(true) followed by setActivated(true).");
         LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "bool getAutoOrientation()", "Gets whether the travelling game object is rotated to face its direction of travel.");
         LuaScriptApi::getInstance()->addClassToCollection("NodeTrackComponent", "void reactOnEndOfPathReached(func closureFunction)",
             "Sets the closure function which is called when the LAST node of the path has been reached. The closure receives the game object as parameter. With 'Repeat' enabled it fires on every completed lap. Calling this again replaces the "

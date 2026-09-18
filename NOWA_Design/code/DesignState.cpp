@@ -2636,7 +2636,7 @@ bool DesignState::mouseMoved(const OIS::MouseEvent& evt)
 
                 if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
                 {
-                    id = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->second.gameObject->getId();
+                    id = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->first;
                 }
 
                 MyGUIHelper::getInstance()->setScrollPosition(id, scrollAmount);
@@ -2758,6 +2758,23 @@ bool DesignState::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id
                 }
             }
         }
+
+        if (false == this->gameObjectController->getIsSimulating() && false == this->bQuit && true == validScene)
+        {
+            if (id == OIS::MB_Left && nullptr != editorManager && this->editorManager->getManipulationMode() != NOWA::EditorManager::EDITOR_TERRAIN_MODIFY_MODE &&
+                this->editorManager->getManipulationMode() != NOWA::EditorManager::EDITOR_TERRAIN_SMOOTH_MODE && this->editorManager->getManipulationMode() != NOWA::EditorManager::EDITOR_TERRAIN_PAINT_MODE)
+            {
+                if (this->editorManager->getManipulationMode() != NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE)
+                {
+                    // Show properties (only when selection changed, because showProperties is an heavy operation!)
+                    NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+                    {
+                        this->propertiesPanel->showProperties();
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::mouseRelease_showProperties");
+                }
+            }
+        }
     }
 
     return true;
@@ -2769,7 +2786,7 @@ bool DesignState::mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID i
 
     // Prevent scene manipulation, when user does something in GUI
     MyGUI::Widget* widget = NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget();
-    if (nullptr != widget /* && true == this->gameObjectController->getIsSimulating()*/) // causes ugly gui behavior
+    if (nullptr != widget)
     {
         return true;
     }
@@ -2784,62 +2801,22 @@ bool DesignState::mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID i
 
     if (false == this->gameObjectController->getIsSimulating() && false == this->bQuit && true == validScene)
     {
-        if (id == OIS::MB_Left && nullptr != editorManager && this->editorManager->getManipulationMode() != NOWA::EditorManager::EDITOR_TERRAIN_MODIFY_MODE &&
-            this->editorManager->getManipulationMode() != NOWA::EditorManager::EDITOR_TERRAIN_SMOOTH_MODE && this->editorManager->getManipulationMode() != NOWA::EditorManager::EDITOR_TERRAIN_PAINT_MODE)
+        const bool isRelevantMouseButton = id == OIS::MB_Left && nullptr != this->editorManager && this->editorManager->getManipulationMode() != NOWA::EditorManager::EDITOR_TERRAIN_MODIFY_MODE &&
+                                           this->editorManager->getManipulationMode() != NOWA::EditorManager::EDITOR_TERRAIN_SMOOTH_MODE && this->editorManager->getManipulationMode() != NOWA::EditorManager::EDITOR_TERRAIN_PAINT_MODE;
+
+        if (true == isRelevantMouseButton)
         {
-            if (false == MyGUIHelper::getInstance()->isIdPairingActive())
-            {
-                if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
-                {
-                    /*bool selectedGameObjectsChanged = false;
-                    for (auto it = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin(); it != this->editorManager->getSelectionManager()->getSelectedGameObjects().cend(); ++it)
-                    {
-                        auto found = oldSelectedGameObjectIds.find(it->first);
-                        if (found == oldSelectedGameObjectIds.cend())
-                        {
-                            selectedGameObjectsChanged = true;
-                            break;
-                        }
-                    }*/
-
-                    if (this->editorManager->getManipulationMode() != NOWA::EditorManager::EDITOR_MESH_MODIFY_MODE)
-                    {
-                        // Show properties (only when selection changed, because showProperties is an heavy operation!)
-                        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
-                        {
-                            this->propertiesPanel->showProperties();
-                        };
-                        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::mouseRelease_showProperties");
-                    }
-                    // Attention: To early here, better, when everything is loaded
-                    /*if (-1 != MyGUIHelper::getInstance()->getScrollPosition())
-                    {
-                        MyGUI::ScrollView* scrollView = MyGUIHelper::getInstance()->findParentWidgetByType<MyGUI::ScrollView>(widget);
-                        if (nullptr != scrollView)
-                        {
-                            scrollView->setViewOffset(MyGUI::IntPoint(scrollView->getViewOffset().left, MyGUIHelper::getInstance()->getScrollPosition()));
-                        }
-                    }*/
-
-                    /*oldSelectedGameObjectIds.clear();
-                    for (auto it = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin(); it != this->editorManager->getSelectionManager()->getSelectedGameObjects().cend(); ++it)
-                    {
-                        oldSelectedGameObjectIds.emplace(it->first);
-                    }*/
-                }
-            }
-            else
+            if (true == MyGUIHelper::getInstance()->isIdPairingActive())
             {
                 // When id to edit box pairing is active, pair the id
-                if (1 == this->editorManager->getSelectionManager()->getSelectedGameObjects().size())
+                auto& selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
+                if (1 == selectedGameObjects.size())
                 {
-                    NOWA::GameObject* gameObject = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->second.gameObject;
-                    if (nullptr != gameObject)
-                    {
-                        MyGUIHelper::getInstance()->pairIdWithEditBox(Ogre::StringConverter::toString(gameObject->getId()));
-                    }
+                    const unsigned long gameObjectId = selectedGameObjects.cbegin()->first;
+                    MyGUIHelper::getInstance()->pairIdWithEditBox(Ogre::StringConverter::toString(gameObjectId));
                 }
             }
+
             MyGUIHelper::getInstance()->clearIdPairing();
         }
     }

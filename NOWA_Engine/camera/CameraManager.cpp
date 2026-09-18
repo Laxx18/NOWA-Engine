@@ -83,68 +83,49 @@ namespace NOWA
 		return static_cast<unsigned int>(this->cameraDataMap.size());
 	}
 
-	void CameraManager::removeCameraBehavior(const Ogre::String& cameraBehaviorType)
-	{
-		size_t found = cameraBehaviorType.find(NullCamera::BehaviorType());
-		if (found != Ogre::String::npos)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CameraManager] Default camera type cannot be removed.");
-			return;
-		}
+	void CameraManager::removeCameraBehavior(Ogre::Camera* camera, const Ogre::String& cameraBehaviorType)
+    {
+        size_t found = cameraBehaviorType.find(NullCamera::BehaviorType());
+        if (found != Ogre::String::npos)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CameraManager] Default camera type cannot be removed.");
+            return;
+        }
 
-		// Iterate through the cameraDataMap to find and remove the camera behavior
-		for (auto mainIt = this->cameraDataMap.begin(); mainIt != this->cameraDataMap.end();)
-		{
-			CameraData& cameraData = mainIt->second;
-			bool noBehaviorLeft = false;
+        auto mainIt = this->cameraDataMap.find(camera);
+        if (mainIt == this->cameraDataMap.end())
+        {
+            return;
+        }
 
-			for (auto it = mainIt->second.behaviorData.begin(); it != mainIt->second.behaviorData.end(); ++it)
-			{
-				if (it->cameraBehaviorKey == cameraBehaviorType)
-				{
-					auto cameraBehavior = it->cameraBehavior;
-					// Clear the behavior data
-					cameraBehavior->onClearData();
+        CameraData& cameraData = mainIt->second;
 
-					// REALLY Important: deactivated this: Else because of queue, if in camerabehavior camera is first remove -> then this is called, and then added, then this event fires later in camerabehavior and removes the behavior again
-					// Which causes catastrophic behavior
-					// boost::shared_ptr<EventDataRemoveCameraBehavior> eventDataRemoveCamera(new EventDataRemoveCameraBehavior(mainIt->first));
-					// AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRemoveCamera);
+        for (auto it = cameraData.behaviorData.begin(); it != cameraData.behaviorData.end(); ++it)
+        {
+            if (it->cameraBehaviorKey == cameraBehaviorType)
+            {
+                auto cameraBehavior = it->cameraBehavior;
+                cameraBehavior->onClearData();
+                delete cameraBehavior;
 
-					delete cameraBehavior;
+                cameraData.behaviorData.erase(it);
 
-					// Clear the camera behavior key
-					it->cameraBehaviorKey.clear();
-					mainIt->second.behaviorData.erase(it);
-
-					// If the removed behavior was the current active one, attempt to restore another behavior
-					if (true == cameraData.isActive)
-					{
-						if (false == mainIt->second.behaviorData.empty())
-						{
-							auto otherBehavior = mainIt->second.behaviorData.begin();
-							// Use setActiveCameraBehavior to set the new behavior
-							this->setActiveCameraBehavior(mainIt->first, mainIt->second.behaviorData.begin()->cameraBehaviorKey);
-						}
-						else
-						{
-							noBehaviorLeft = true;
-						}
-					}
-					break;
-				}
-			}
-
-			if (false == noBehaviorLeft)
-			{
-				++mainIt;
-			}
-			else
-			{
-				mainIt = this->cameraDataMap.erase(mainIt);
-			}
-		}
-	}
+                // Wenn das entfernte Behavior das aktuell aktive war, ein anderes vorhandenes aktivieren
+                if (true == cameraData.isActive)
+                {
+                    if (false == cameraData.behaviorData.empty())
+                    {
+                        this->setActiveCameraBehavior(camera, cameraData.behaviorData.begin()->cameraBehaviorKey);
+                    }
+                    else
+                    {
+                        this->cameraDataMap.erase(mainIt);
+                    }
+                }
+                break;
+            }
+        }
+    }
 
 	void CameraManager::setActiveCameraBehavior(Ogre::Camera* camera, const Ogre::String& cameraBehaviorType)
 	{
