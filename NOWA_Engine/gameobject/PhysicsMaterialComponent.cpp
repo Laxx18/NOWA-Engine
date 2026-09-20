@@ -16,7 +16,8 @@ namespace NOWA
 		ogreNewt(AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt()),
 		materialPair(nullptr),
 		conveyorContactCallback(nullptr),
-		genericContactCallback(nullptr)
+		genericContactCallback(nullptr),
+		oneWayContactCallback(nullptr)
 	{
 		std::vector<Ogre::String> allCategories = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getAllCategoriesSoFar();
 		this->category1 = new Variant(PhysicsMaterialComponent::AttrCategory1(), allCategories, this->attributes);
@@ -27,15 +28,28 @@ namespace NOWA
 		this->elasticity = new Variant(PhysicsMaterialComponent::AttrElasticity(), Ogre::Real(0.01f), this->attributes);
 		this->surfaceThickness = new Variant(PhysicsMaterialComponent::AttrSurfaceThickness(), Ogre::Real(0.125f), this->attributes);
 		this->collideable = new Variant(PhysicsMaterialComponent::AttrCollideable(), true, this->attributes);
-		this->contactBehavior = new Variant(PhysicsMaterialComponent::AttrContactBehavior(), { "None", "ConveyorPlayer", "ConveyorObject" }, this->attributes);
+		this->contactBehavior = new Variant(PhysicsMaterialComponent::AttrContactBehavior(), { "None", "ConveyorPlayer", "ConveyorObject", "OneWay" }, this->attributes);
 		this->contactSpeed = new Variant(PhysicsMaterialComponent::AttrContactSpeed(), Ogre::Real(10.0f), this->attributes);
 		this->contactDirection = new Variant(PhysicsMaterialComponent::AttrContactDirection(), Ogre::Vector3::NEGATIVE_UNIT_Z, this->attributes);
+		// One-way filtering: axis is in the CATEGORY1 body's own local space (rotated into world
+		// space by its current orientation at contact time, same as ConveyorContactCallback already
+		// does for its belt direction) - "Y" gives the classic jump-through-from-below platform,
+		// "X" a one-way wall/corridor. AllowedDirection picks which way along that axis the moving
+		// object may pass through; the opposite way always collides normally.
+		this->oneWayAxis = new Variant(PhysicsMaterialComponent::AttrOneWayAxis(), std::vector<Ogre::String>{ "Y", "X" }, this->attributes);
+        this->oneWayAllowedDirection = new Variant(PhysicsMaterialComponent::AttrOneWayAllowedDirection(), std::vector<Ogre::String>{"Positive", "Negative"}, this->attributes);
 		this->overlapFunctionName = new Variant(PhysicsMaterialComponent::AttrOverlapFunctionName(), Ogre::String(""), this->attributes);
 		this->contactFunctionName = new Variant(PhysicsMaterialComponent::AttrContactFunctionName(), Ogre::String(""), this->attributes);
 		this->contactOnceFunctionName = new Variant(PhysicsMaterialComponent::AttrContactOnceFunctionName(), Ogre::String(""), this->attributes);
 		this->contactScratchFunctionName = new Variant(PhysicsMaterialComponent::AttrContactScratchFunctionName(), Ogre::String(""), this->attributes);
 
 		this->contactBehavior->setListSelectedValue("None");
+		this->oneWayAxis->setListSelectedValue("Y");
+		this->oneWayAllowedDirection->setListSelectedValue("Positive");
+		this->oneWayAxis->setDescription("Only used when Contact Behavior is 'OneWay'. Local axis of category1's body (rotated by its "
+			"current orientation) the one-way filter operates along. 'Y' is the classic platform you can jump through from below and land "
+			"on from above; 'X' is a one-way wall/corridor.");
+		this->oneWayAllowedDirection->setDescription("Only used when Contact Behavior is 'OneWay'. Which direction along One Way Axis the moving object may pass through without colliding - the opposite direction always collides normally.");
 		// this->contactSpeed->setVisible("None" != this->contactBehavior->getListSelectedValue());
 		// this->contactDirection->setVisible("None" != this->contactBehavior->getListSelectedValue());
 
@@ -106,6 +120,11 @@ namespace NOWA
 			delete this->genericContactCallback;
 			this->genericContactCallback = nullptr;
 		}
+		if (nullptr != this->oneWayContactCallback)
+		{
+			delete this->oneWayContactCallback;
+			this->oneWayContactCallback = nullptr;
+		}
 		if (nullptr != this->materialPair)
 		{
 			delete this->materialPair;
@@ -170,6 +189,16 @@ namespace NOWA
 			this->contactDirection->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OneWayAxis")
+		{
+			this->oneWayAxis->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OneWayAllowedDirection")
+		{
+			this->oneWayAllowedDirection->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OverlapFunctionName")
 		{
 			this->setOverlapFunctionName(XMLConverter::getAttrib(propertyElement, "data"));
@@ -231,6 +260,11 @@ namespace NOWA
 			delete this->conveyorContactCallback;
 			this->conveyorContactCallback = nullptr;
 		}
+		if (nullptr != this->oneWayContactCallback)
+		{
+			delete this->oneWayContactCallback;
+			this->oneWayContactCallback = nullptr;
+		}
 		if (nullptr != this->materialPair)
 		{
 			delete this->materialPair;
@@ -288,6 +322,23 @@ namespace NOWA
 					int conveyorCategoryId = AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId(this->category1->getListSelectedValue());
 					this->conveyorContactCallback = new ConveyorContactCallback(this->contactSpeed->getReal(), this->contactDirection->getVector3(), conveyorCategoryId, false);
 					materialPair->setContactCallback(this->conveyorContactCallback);
+				}
+				else if ("OneWay" == this->contactBehavior->getListSelectedValue())
+				{
+					// The one-way body's own category id, same resolution ConveyorContactCallback
+					// already uses for conveyorCategoryId - it is category1's body whose
+					// orientation the configured axis gets rotated by, and whose "side" defines
+					// which direction is the allowed pass-through direction.
+					int oneWayCategoryId = AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId(this->category1->getListSelectedValue());
+					Ogre::Vector3 axis = ("Y" == this->oneWayAxis->getListSelectedValue()) ? Ogre::Vector3::UNIT_Y : Ogre::Vector3::UNIT_X;
+					bool allowPositiveDirection = ("Positive" == this->oneWayAllowedDirection->getListSelectedValue());
+					if (nullptr != this->oneWayContactCallback)
+					{
+						delete this->oneWayContactCallback;
+						this->oneWayContactCallback = nullptr;
+					}
+					this->oneWayContactCallback = new OneWayContactCallback(axis, allowPositiveDirection, oneWayCategoryId);
+					materialPair->setContactCallback(this->oneWayContactCallback);
 				}
 				else if (nullptr != gameObjectPtr->getLuaScript())
 				{
@@ -353,6 +404,14 @@ namespace NOWA
 		else if (PhysicsMaterialComponent::AttrContactDirection() == attribute->getName())
 		{
 			this->contactDirection->setValue(attribute->getVector3());
+		}
+		else if (PhysicsMaterialComponent::AttrOneWayAxis() == attribute->getName())
+		{
+			this->setOneWayAxis(attribute->getListSelectedValue());
+		}
+		else if (PhysicsMaterialComponent::AttrOneWayAllowedDirection() == attribute->getName())
+		{
+			this->setOneWayAllowedDirection(attribute->getListSelectedValue());
 		}
 		else if (PhysicsMaterialComponent::AttrOverlapFunctionName() == attribute->getName())
 		{
@@ -441,6 +500,18 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "ContactDirection"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->contactDirection->getVector3())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "OneWayAxis"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->oneWayAxis->getListSelectedValue())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "OneWayAllowedDirection"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->oneWayAllowedDirection->getListSelectedValue())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
@@ -610,6 +681,35 @@ namespace NOWA
 	Ogre::Vector3 PhysicsMaterialComponent::getContactDirection(void) const
 	{
 		return this->contactDirection->getVector3();
+	}
+
+	void PhysicsMaterialComponent::setOneWayAxis(const Ogre::String& oneWayAxis)
+	{
+		this->oneWayAxis->setListSelectedValue(oneWayAxis);
+		if (nullptr != this->oneWayContactCallback)
+		{
+			Ogre::Vector3 axis = ("Y" == oneWayAxis) ? Ogre::Vector3::UNIT_Y : Ogre::Vector3::UNIT_X;
+			this->oneWayContactCallback->setLocalAxis(axis);
+		}
+	}
+
+	Ogre::String PhysicsMaterialComponent::getOneWayAxis(void) const
+	{
+		return this->oneWayAxis->getListSelectedValue();
+	}
+
+	void PhysicsMaterialComponent::setOneWayAllowedDirection(const Ogre::String& oneWayAllowedDirection)
+	{
+		this->oneWayAllowedDirection->setListSelectedValue(oneWayAllowedDirection);
+		if (nullptr != this->oneWayContactCallback)
+		{
+			this->oneWayContactCallback->setAllowPositiveDirection("Positive" == oneWayAllowedDirection);
+		}
+	}
+
+	Ogre::String PhysicsMaterialComponent::getOneWayAllowedDirection(void) const
+	{
+		return this->oneWayAllowedDirection->getListSelectedValue();
 	}
 
 	void PhysicsMaterialComponent::setOverlapFunctionName(const Ogre::String& overlapFunctionName)
@@ -857,6 +957,124 @@ namespace NOWA
 	void ConveyorContactCallback::setContactDirection(const Ogre::Vector3& contactDirection)
 	{
 		this->direction = contactDirection;
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// OneWayContactCallback - one-directional collision along a configurable local axis.
+	//
+	// Filters a single contact PER FRAME based on the moving object's velocity at the contact
+	// point, projected onto the platform's own local axis (rotated into world space by the
+	// platform's current orientation - same pattern as ConveyorContactCallback's own belt
+	// direction above). Moving in the allowed direction disables collision resolution for that
+	// contact via Contact::setCollidable(false); moving the other way leaves it enabled, so the
+	// object collides and can stand/land on it or be blocked by it.
+	//
+	// This never touches geometry or the collision shape - the filtering happens entirely
+	// per-contact, per-frame, in contactsProcess(), exactly like the conveyor belt's own
+	// tangent-acceleration adjustment happens per-contact rather than by changing the mesh.
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	OneWayContactCallback::OneWayContactCallback(const Ogre::Vector3& localAxis, bool allowPositiveDirection, int oneWayCategoryId)
+		: OgreNewt::ContactCallback(),
+		localAxis(localAxis.normalisedCopy()),
+		allowPositiveDirection(allowPositiveDirection),
+		oneWayCategoryId(oneWayCategoryId)
+	{
+
+	}
+
+	OneWayContactCallback::~OneWayContactCallback()
+	{
+
+	}
+
+	int OneWayContactCallback::onAABBOverlap(OgreNewt::Body* body0, OgreNewt::Body* body1, int threadIndex)
+	{
+		// Same restriction ConveyorContactCallback uses above: only bother generating contacts
+		// for pairs that actually involve the one-way body at all.
+		if (body0->getType() == this->oneWayCategoryId || body1->getType() == this->oneWayCategoryId)
+		{
+			return 1;
+		}
+		return 0;
+	}
+
+	void OneWayContactCallback::contactsProcess(const OgreNewt::ContactJoint& contactJoint, Ogre::Real timeStep, int threadIndex)
+	{
+		OgreNewt::ContactJoint& mutableJoint = const_cast<OgreNewt::ContactJoint&>(contactJoint);
+		const OgreNewt::Body* body0 = mutableJoint.getBody0();
+		const OgreNewt::Body* body1 = mutableJoint.getBody1();
+
+		// Which body is the one-way platform/wall, which is the moving object - identical
+		// category-id resolution to ConveyorContactCallback's conveyor/object split above.
+		const OgreNewt::Body* platform = nullptr;
+		const OgreNewt::Body* object = nullptr;
+		if (body0->getType() == this->oneWayCategoryId)
+		{
+			platform = body0;
+			object = body1;
+		}
+		else if (body1->getType() == this->oneWayCategoryId)
+		{
+			platform = body1;
+			object = body0;
+		}
+
+		if (nullptr == platform || nullptr == object)
+		{
+			return;
+		}
+
+		// The configured local axis rotated into world space by the PLATFORM's own current
+		// orientation, so a rotated one-way platform still filters along its own "up" or
+		// "right" rather than the world's - same pattern as the conveyor belt's own direction.
+		Ogre::Vector3 worldAxis = platform->getOgreNode()->_getDerivedOrientation() * this->localAxis;
+		worldAxis.normalise();
+
+		Ogre::Vector3 objectPosition;
+		Ogre::Quaternion objectOrientation;
+		object->getPositionOrientation(objectPosition, objectOrientation);
+
+		for (OgreNewt::Contact contact = mutableJoint.getFirstContact(); contact; contact = contact.getNext())
+		{
+			Ogre::Vector3 contactPosition;
+			Ogre::Vector3 contactNormal;
+			contact.getPositionAndNormal(contactPosition, contactNormal);
+
+			// Velocity of the OBJECT at the actual contact point, not its center of mass - v =
+			// v_cm + omega x r, same formula ConveyorContactCallback uses above, since a
+			// spinning or off-center-contacting object's point velocity can differ from its
+			// center velocity.
+			Ogre::Vector3 r = contactPosition - objectPosition;
+			Ogre::Vector3 pointVelocity = object->getVelocity() + object->getOmega().crossProduct(r);
+
+			// Component of the object's contact-point velocity along the platform's configured
+			// axis - positive means moving in the platform's local +axis direction (e.g. up, or
+			// right).
+			Ogre::Real axisSpeed = pointVelocity.dotProduct(worldAxis);
+
+			// allowPositiveDirection true: passes through while moving in +axis (e.g. jumping up
+			// through a platform's underside); moving in -axis (e.g. falling onto its top) still
+			// collides, which is what makes the platform landable. Flipped when false.
+			const bool movingInAllowedDirection = this->allowPositiveDirection ? (axisSpeed > 0.0f) : (axisSpeed < 0.0f);
+
+			// Re-evaluated every frame for every contact, on purpose: a contact that is
+			// currently passing through (collision disabled) must go back to colliding normally
+			// the instant the object's velocity crosses back the other way (e.g. the player
+			// stops rising and starts falling while still overlapping the platform) - there is
+			// no state to reset between frames, just this per-contact decision.
+			contact.setCollidable(false == movingInAllowedDirection);
+		}
+	}
+
+	void OneWayContactCallback::setLocalAxis(const Ogre::Vector3& localAxis)
+	{
+		this->localAxis = localAxis.normalisedCopy();
+	}
+
+	void OneWayContactCallback::setAllowPositiveDirection(bool allowPositiveDirection)
+	{
+		this->allowPositiveDirection = allowPositiveDirection;
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////

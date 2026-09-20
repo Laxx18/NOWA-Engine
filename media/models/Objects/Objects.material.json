@@ -583,7 +583,7 @@
 			}
 		},
 		
-		"SOLID/TEX/thorn.png" :
+		"des" :
 		{
 			"macroblock" : "Objects_Macroblock_0",
 			"blendblock" : "Objects_Blendblock_0",
@@ -1245,6 +1245,30 @@
 			"roughness" :
 			{
 				"value" : 0.09
+			}
+		},
+		"CoinCrown" :
+		{
+			"macroblock" : "Objects_Macroblock_0",
+			"blendblock" : "Objects_Blendblock_0",
+			"receive_shadows" : false,
+			"workflow" : "metallic",
+			"brdf" : "cook_torrance",
+			"diffuse" :
+			{
+				"value" : [0.83, 0.62, 0.20]
+			},
+			"metallness" :
+			{
+				"value" : 0.5
+			},
+			"roughness" :
+			{
+				"value" : 0.35
+			},
+			"emissive"  :
+			{ 
+				"value" : [0.12, 0.08, 0.01]
 			}
 		}
 	}

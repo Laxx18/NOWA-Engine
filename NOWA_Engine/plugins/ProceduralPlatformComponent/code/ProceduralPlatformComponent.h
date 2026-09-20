@@ -37,6 +37,12 @@ namespace NOWA
      *   GameObject, which gets merged into this one and removed - mirrors
      *   ProceduralRoadComponent's findOtherRoadNearby/mergeOtherRoadIntoThis exactly.
      *
+     * Persistence: the authored path (segments + control points + origin) is stored as a
+     * base64 "Path Data" property inside the scene XML itself - see serializePathData. There
+     * is no .platformdata side car file any more; the mesh is regenerated from the path on
+     * scene load (handleSceneParsed), which also guarantees grass and trees get their
+     * surface frames instead of silently disappearing after a save/load round trip.
+     *
      * Derives from PlatformComponentBase (not GameObjectComponent directly) so that other
      * code - and other ProceduralPlatformComponent instances performing a cross-network
      * merge - can reference a platform component through its data-level interface
@@ -76,7 +82,7 @@ namespace NOWA
         // genuinely separate geometry with its own datablock, whereas a platform junction is
         // just more arm surface. Nothing ever passed it to addPlatformQuad, so it produced an
         // empty dummy submesh on every rebuild until it was removed along with its buffers,
-        // its cached copies and its slots in the .platformdata format.
+        // its cached copies and its slots in the undo/redo blob format.
         enum class PlatformMeshBuffer
         {
             SURFACE,
@@ -95,8 +101,9 @@ namespace NOWA
             //     are read: rebuildMesh ramps linearly by arc length between them and gives
             //     every path point its own offset, which generatePlatformBox sweeps per point.
             //     The surface therefore drifts across in depth over the whole chain and stays
-            //     continuous - no step, nothing to fall through. Both save paths already wrote
-            //     and read this field before it meant anything, so old files load unchanged.
+            //     continuous - no step, nothing to fall through. Both serialisation paths (the
+            //     "Path Data" scene property and the undo/redo blob) already wrote and read
+            //     this field before it meant anything, so neither needed a version bump.
             Ogre::Vector3 position;
             Ogre::Real rawHeight = 0.0f;      // Vertical position exactly as placed by the user drag (no raycast involved - there is no terrain to sample)
             Ogre::Real smoothedHeight = 0.0f; // Vertical position after gradient smoothing between segments
@@ -659,6 +666,15 @@ namespace NOWA
         {
             return "Ground UV Tiling";
         }
+        // The authored path, base64 encoded, stored directly inside the scene's own XML
+        // instead of in a side car file. This is NOT an editor attribute (no Variant, it
+        // never shows up in the properties panel) - it is pure serialisation state, written
+        // by writeXML and consumed by init() at exactly the same position in the property
+        // order, which is all init()'s strictly sequential reader needs.
+        static Ogre::String AttrPathData(void)
+        {
+            return "Path Data";
+        }
         static Ogre::String AttrEditMode()
         {
             return "Edit Mode";
@@ -799,14 +815,35 @@ namespace NOWA
 
         void scheduleSnapIndicatorUpdate(void);
 
-        // Save/Load functionality
-        Ogre::String getPlatformDataFilePath(void) const;
+        // ── Path persistence ─────────────────────────────────────────────────────────
+        // Replaces the former "Platform_<id>.platformdata" side car file entirely. A level
+        // with 30 platforms used to drop 30 binary files next to the scene; the path is now
+        // just another property inside the scene XML.
+        //
+        // Only the AUTHORED PATH is serialised here - segments, control points and the
+        // platform origin. The vertex/index buffers the old file also carried were a pure
+        // load-time optimisation, and caching them turned out to cost more than it saved:
+        // restoring geometry from cache skips the sweep, and the sweep is what produces the
+        // surface frames grass and trees are scattered on. So the mesh is simply rebuilt
+        // from the path on scene load, which is the one code path that is guaranteed to be
+        // consistent with whatever the current attributes say.
 
-        bool savePlatformDataToFile(void);
+        /**
+         * @brief Serialises segments + origin into the base64 blob stored as the "Path Data"
+         *        property. Returns an empty string when there is no path at all, in which
+         *        case writeXML still writes the (empty) property so the property order
+         *        init() walks stays stable.
+         */
+        Ogre::String serializePathData(void) const;
 
-        bool loadPlatformDataFromFile(void);
-
-        void deletePlatformDataFile(void);
+        /**
+         * @brief Rebuilds platformSegments/platformOrigin from a "Path Data" blob. Does NOT
+         *        touch any Ogre object - it is called from init(), long before postInit has
+         *        run, so the actual mesh generation is deferred to handleSceneParsed.
+         * @return True if the blob was decoded completely, false on any malformed input
+         *         (in which case the segments are left cleared rather than half-filled).
+         */
+        bool deserializePathData(const Ogre::String& encodedData);
 
         /**
          * @brief Exports the platform mesh and converts the GameObject to use the static mesh file.
@@ -840,12 +877,27 @@ namespace NOWA
         void updateModificationState(void);
 
     private:
+        // In-memory blob format used ONLY by getPlatformData/setPlatformData (undo/redo).
+        // It still carries the mesh buffers, which is fine and in fact wanted there: an undo
+        // step is restored into a live component within the same session, so the cached
+        // geometry is guaranteed to match, and restoring it is cheaper than a full sweep.
+        // Nothing of this ever reaches a file any more.
         static const uint32_t PLATFORMDATA_MAGIC = 0x504C4154; // "PLAT" in hex
         // 2: the junction vertex/index arrays and their two header counts were removed.
         // Nothing ever wrote to that buffer, so the data was always empty - but the header
-        // shrank from 49 to 41 bytes, which makes v1 files unreadable rather than merely
+        // shrank from 49 to 41 bytes, which makes v1 buffers unreadable rather than merely
         // wasteful. They are rejected by the version check with a clear log line.
         static const uint32_t PLATFORMDATA_VERSION = 2;
+
+        // On-disk (scene XML) format of the "Path Data" property. Deliberately a SEPARATE
+        // version counter from PLATFORMDATA_VERSION above: the two formats have nothing in
+        // common any more except the per-control-point layout, and tying them together would
+        // mean an undo/redo change forces a scene format bump and vice versa.
+        // 1: version, numSegments, then the segments.
+        // 2: adds platformOrigin (3 floats) right after numSegments. Version 1 is still
+        //    readable - its origin is reconstructed from the first control point, which is
+        //    exactly where the origin is taken from when a path is first placed.
+        static const uint32_t PATHDATA_VERSION = 2;
 
     private:
         Ogre::String name;

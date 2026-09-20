@@ -37,16 +37,23 @@ GPL v3
 
 #include "OgreAbiUtils.h"
 
-#include <filesystem>
-#include <fstream>
-#include <system_error>
+// <filesystem>, <fstream> and <system_error> are deliberately gone: nothing in this
+// component touches the disk any more since the .platformdata side car file was replaced by
+// the "Path Data" scene property (see serializePathData). exportMesh writes through Ogre's
+// own MeshSerializer, which brings its own stream handling.
 
 // =============================================================================
 // STATUS: complete. Every method declared in ProceduralPlatformComponent.h is defined in
 // this file (constructor, Plugin boilerplate, XML round-trip, input handling, placement
 // lifecycle, rebuildMesh + curve/smoothing helpers, style generators, junction fill, mesh
-// creation/destruction/preview, save/load + undo/redo, segment mode, snapping, cross-network
-// merging, batch API, event handlers, Lua API).
+// creation/destruction/preview, path serialisation + undo/redo, segment mode, snapping,
+// cross-network merging, batch API, event handlers, Lua API).
+//
+// PERSISTENCE: the path is stored as a base64 "Path Data" property inside the scene XML
+// (serializePathData / deserializePathData, written by writeXML, read by init). There is no
+// "Platform_<id>.platformdata" file any more - any left over from an earlier build are
+// orphans and can be deleted. The mesh is always swept from the path in handleSceneParsed
+// rather than restored from a cache.
 //
 // Known deliberate scope differences from ProceduralRoadComponent (all flagged inline where
 // they occur too):
@@ -367,17 +374,82 @@ namespace NOWA
             this->groundUVTiling->setValue(XMLConverter::getAttribVector2(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
         }
+        // The path itself. Deliberately the LAST property, so every attribute above keeps the
+        // exact position it had while the path still lived in a .platformdata file - a scene
+        // saved before this change simply has no Path Data property here and loads with an
+        // empty path, which is also what an old, now orphaned .platformdata file effectively
+        // means (nothing reads it any more, it can just be deleted).
+        //
+        // Decoding happens here, but only into plain CPU-side data. Nothing Ogre-related is
+        // touched: init() runs before postInit, so there is no scene node, no query and no
+        // frame yet. The mesh is built later, in handleSceneParsed.
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralPlatformComponent::AttrPathData())
+        {
+            const Ogre::String encodedPathData = XMLConverter::getAttrib(propertyElement, "data");
+            propertyElement = propertyElement->next_sibling("property");
+
+            if (false == encodedPathData.empty())
+            {
+                this->deserializePathData(encodedPathData);
+            }
+        }
         return true;
     }
 
     GameObjectCompPtr ProceduralPlatformComponent::clone(GameObjectPtr clonedGameObjectPtr)
     {
-        // NOTE: mirrors ProceduralRoadComponent::clone() exactly - cloning is not yet
-        // supported, for the same reason: the procedural geometry cache is keyed by this
-        // GameObject's own id (getPlatformDataFilePath() -> "Platform_<id>.platformdata"),
-        // so a naive clone would either collide with or silently miss the source object's
-        // saved geometry. Left unimplemented rather than guessed at.
-        return nullptr;
+        ProceduralPlatformComponentPtr clonedCompPtr(boost::make_shared<ProceduralPlatformComponent>());
+
+        // setOwner() must come before any of the setters below - see ProceduralBlockComponent's
+        // own clone() for the exact same rule. Several of these setters (setPlatformDepth,
+        // setPlatformStyle, setCurveSubdivisions, the grass/tree setters, ...) call rebuildMesh()
+        // internally, which reaches through this->gameObjectPtr for the scene manager and scene
+        // node - a null owner at that point would crash rather than silently do nothing.
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+        // Direct member copy, deliberately BEFORE any setter runs - every rebuild-triggering
+        // setter below guards itself with "if (false == this->platformSegments.empty())", so
+        // without the path already in place first, NONE of them would build anything, and the
+        // clone would end up with correct attributes but no visible mesh at all. This is the
+        // same reasoning as NodeTrackComponent::clone()'s direct copy of its own "reverse" member
+        // - bypassing a setter's side effects because the value must already be in its final
+        // shape before that setter is called.
+        clonedCompPtr->platformSegments = this->platformSegments;
+
+        clonedCompPtr->setPlatformDepth(this->platformDepth->getReal());
+        clonedCompPtr->setPlatformHeight(this->platformHeight->getReal());
+        clonedCompPtr->setPlatformStyle(this->platformStyle->getListSelectedValue());
+        clonedCompPtr->setSnapToGrid(this->snapToGrid->getBool());
+        clonedCompPtr->setGridSize(this->gridSize->getReal());
+        clonedCompPtr->setSmoothingFactor(this->smoothingFactor->getReal());
+        clonedCompPtr->setCurveSubdivisions(this->curveSubdivisions->getInt());
+        clonedCompPtr->setSurfaceDatablock(this->surfaceDatablock->getString());
+        clonedCompPtr->setGroundDatablock(this->groundDatablock->getString());
+        clonedCompPtr->setSurfaceUVTiling(this->surfaceUVTiling->getVector2());
+        clonedCompPtr->setGroundUVTiling(this->groundUVTiling->getVector2());
+        clonedCompPtr->setUseGrass(this->useGrass->getBool());
+        clonedCompPtr->setGrassMaterialName(this->grassMaterialName->getString());
+        clonedCompPtr->setGrassDensity(this->grassDensity->getReal());
+        clonedCompPtr->setGrassBladeWidth(this->grassBladeWidth->getReal());
+        clonedCompPtr->setGrassBladeHeight(this->grassBladeHeight->getReal());
+        clonedCompPtr->setUseTrees(this->useTrees->getBool());
+        clonedCompPtr->setTreeMeshName(this->treeMeshName->getString());
+        clonedCompPtr->setTreeSpacing(this->treeSpacing->getReal());
+        clonedCompPtr->setTreeZStart(this->treeZStart->getReal());
+        clonedCompPtr->setTreeScale(this->treeScale->getReal());
+        clonedCompPtr->setTreeBranchClusterCount(this->treeBranchClusterCount->getInt());
+
+        // Edit Mode is deliberately NOT cloned - it is transient editor state (see its
+        // AttrActionNoUndo tag and its exclusion from writeXML), not part of the object's data.
+        // A cloned platform starts in Object mode regardless of what this one is currently in.
+
+        clonedCompPtr->setActivated(this->activated->getBool());
+
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+
+        return clonedCompPtr;
     }
 
     bool ProceduralPlatformComponent::postInit(void)
@@ -438,54 +510,48 @@ namespace NOWA
     {
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralPlatformComponent::handleSceneParsed), EventDataSceneParsed::getStaticEventType());
 
-        // Load platform data from file
-        if (true == this->loadPlatformDataFromFile())
+        // The path itself was already decoded in init(), straight out of the scene XML's
+        // "Path Data" property - there is no file to open here any more. What is left to do
+        // is the part that needs a live scene: sweep the path into geometry.
+        if (true == this->platformSegments.empty())
         {
-            // BUGFIX: grass disappeared after saving and reloading a scene.
-            //
-            // My earlier comment here claimed loadPlatformDataFromFile rebuilds the mesh. It
-            // does not - and that is the whole point of it. It restores the mesh from the
-            // vertex and index buffers CACHED in the .platformdata file, straight into
-            // createPlatformMeshInternal, precisely so a saved platform does not have to be
-            // swept again on every scene load.
-            //
-            // Grass frames, though, are produced by that sweep: rebuildMesh ->
-            // generatePlatformBox -> collectSurfaceFrames, because a blade needs the surface
-            // point and the mitered surface normal the sweep computes. Restoring from cache
-            // skips all of it, so surfaceFrames stayed empty and regenerateGrass had nothing to
-            // turn into Items. The grass attributes themselves were saved and reloaded
-            // perfectly - Use Grass still read true - which is exactly why it looked like the
-            // setting had been lost rather than the geometry.
-            //
-            // The blades are not cached with the mesh on purpose (they are a pure function of
-            // the path plus five attributes, so caching them would only add a way for them to
-            // go stale), so the sweep has to be run once here to produce the frames. Only when
-            // grass is actually enabled: with Use Grass off, the cached-load fast path is
-            // untouched and load stays exactly as quick as it was.
-            if (true == this->useGrass->getBool() || true == this->useTrees->getBool())
-            {
-                this->rebuildMesh();
-            }
+            return;
+        }
 
-            this->regenerateGrass();
-            this->regenerateTrees();
+        // ALWAYS a full rebuild, never a cache restore.
+        //
+        // The old .platformdata file also carried the finished vertex and index buffers, and
+        // loading those straight into createPlatformMeshInternal skipped the sweep entirely.
+        // That was a genuine load-time saving, but it cost a class of bug that is not worth
+        // it: grass and tree placement frames are produced BY the sweep (rebuildMesh ->
+        // generatePlatformBox -> collectSurfaceFrames), because a blade needs the surface
+        // point plus the mitered surface normal. Restoring from cache left surfaceFrames
+        // empty, so all foliage silently vanished on the first save/load round trip while the
+        // attributes themselves still read true - which made it look like a lost setting
+        // rather than lost geometry.
+        //
+        // Rebuilding unconditionally also means the geometry can never be stale with respect
+        // to the attributes: change Platform Height in a text editor, reload, and the mesh
+        // follows instead of restoring an old cached shape.
+        this->rebuildMesh();
 
-            // Get PhysicsArtifactComponent if exists
-            const auto& physicsArtifactCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());
-            if (physicsArtifactCompPtr)
-            {
-                this->physicsArtifactComponent = physicsArtifactCompPtr.get();
-                if (nullptr != this->physicsArtifactComponent)
-                {
-                    this->physicsArtifactComponent->reCreateCollision();
-                }
-            }
+        this->regenerateGrass();
+        this->regenerateTrees();
 
-            if (false == this->platformSegments.empty())
+        this->updateContinuationPoint();
+
+        // Get PhysicsArtifactComponent if exists
+        const auto& physicsArtifactCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());
+        if (physicsArtifactCompPtr)
+        {
+            this->physicsArtifactComponent = physicsArtifactCompPtr.get();
+            if (nullptr != this->physicsArtifactComponent)
             {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralPlatformComponent] Successfully loaded and rebuilt platform with " + Ogre::StringConverter::toString(this->platformSegments.size()) + " segments");
+                this->physicsArtifactComponent->reCreateCollision();
             }
         }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralPlatformComponent] Successfully rebuilt platform from scene path data with " + Ogre::StringConverter::toString(this->platformSegments.size()) + " segments");
     }
 
     bool ProceduralPlatformComponent::connect(void)
@@ -838,7 +904,26 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->groundUVTiling->getVector2())));
         propertiesXML->append_node(propertyXML);
 
-        this->savePlatformDataToFile();
+        // The path, base64 encoded, as an ordinary string property (type 7). This is what
+        // used to be savePlatformDataToFile() - one "Platform_<id>.platformdata" file per
+        // GameObject, which meant a level with 30 platforms scattered 30 binary files around
+        // the project folder.
+        //
+        // allocate_string is required here rather than handing over serializePathData()'s
+        // return value directly: rapidxml does not copy the strings it is given, and that
+        // temporary dies at the end of this statement.
+        //
+        // Written unconditionally, even when the path is empty. An always-present property
+        // keeps the sequence init() walks identical for every saved platform, which matters
+        // because that reader stops dead on the first property whose name does not match and
+        // would then silently drop everything after it.
+        const Ogre::String encodedPathData = this->serializePathData();
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(ProceduralPlatformComponent::AttrPathData().c_str())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", doc.allocate_string(encodedPathData.c_str())));
+        propertiesXML->append_node(propertyXML);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -1146,9 +1231,10 @@ namespace NOWA
             // entry and exit lanes can be made to pass in front of / behind each other
             // instead of intersecting. The offset lives in each control point's position.z,
             // which is a field that already existed and is already written and read by BOTH
-            // save paths - so this needs no PLATFORMDATA_VERSION bump and old files keep
-            // loading unchanged (every point in them simply carries the same base-plane
-            // value, which is exactly "no offset").
+            // serialisation paths (the "Path Data" scene property and the undo/redo blob) - so
+            // this needed no version bump anywhere, and a path saved before the nudge existed
+            // simply carries the same base-plane value in every point, which is exactly
+            // "no offset".
             //
             // One press moves by a full Platform Depth. That is the smallest offset that
             // makes two crossing lanes stop overlapping at all.
@@ -5248,7 +5334,7 @@ namespace NOWA
         // "mesh already exists".
         //
         // The junction BUFFERS are gone too, along with their cached copies, the
-        // PlatformMeshBuffer::JUNCTION enum value and their two counts in the .platformdata
+        // PlatformMeshBuffer::JUNCTION enum value and their two counts in the undo/redo blob
         // header - which is why PLATFORMDATA_VERSION is now 2. Junctions themselves are
         // unaffected: they were never a buffer, they are a property of the PATH (arms meeting
         // at a shared endpoint, then interpenetrating), and all of that still works.
@@ -6075,372 +6161,379 @@ namespace NOWA
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
-    // Save/Load
+    // Path persistence
     //
-    // Binary layout is a direct port of ProceduralRoadComponent's .roaddata format: same
-    // header shape (magic, version, origin xyz, counts, posSet byte), same per-segment
-    // layout (isCurved, curvature, numCPs, then 5 floats per control point = 20 bytes -
-    // position.xyz + rawHeight + smoothedHeight, mirroring position.xyz + groundHeight +
-    // smoothedHeight), same trailing surface/ground/junction vertex+index blocks. Only the
-    // magic constant, file suffix, and field names differ.
+    // ARCHITECTURE CHANGE: the per-GameObject "Platform_<id>.platformdata" side car file is
+    // gone, together with getPlatformDataFilePath/savePlatformDataToFile/
+    // loadPlatformDataFromFile/deletePlatformDataFile. A level with 30 platforms used to drop
+    // 30 binary files into the project folder, all of which had to be kept in sync with the
+    // scene by hand (copy a scene, rename it, move it to another machine - the paths stayed
+    // behind). The path now travels inside the scene XML itself, as a base64 "Path Data"
+    // property written by writeXML and read by init().
+    //
+    // What is serialised shrank accordingly: ONLY the authored path (segments, control points,
+    // platform origin). The vertex and index buffers the file also carried were a load-time
+    // optimisation whose price was too high - see handleSceneParsed for why restoring geometry
+    // from a cache is what made grass and trees disappear on reload. The mesh is swept from
+    // the path instead, every time.
+    //
+    // The in-memory blob used by getPlatformData/setPlatformData further down is a DIFFERENT
+    // format and keeps its mesh buffers: it never leaves the process, an undo step lands in a
+    // component whose attributes cannot have changed underneath it, so the cached geometry is
+    // guaranteed to match and restoring it is cheaper than a sweep.
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    Ogre::String ProceduralPlatformComponent::getPlatformDataFilePath(void) const
+    namespace
     {
-        Ogre::String projectFilePath;
+        // Plain RFC 4648 base64 with '=' padding, kept local on purpose. It is the only place
+        // in this component that needs it, and an own copy means the scene file format cannot
+        // change underneath the component if some shared helper ever switches to the URL-safe
+        // alphabet or drops padding.
+        const char* const platformBase64Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-        if (false == this->gameObjectPtr->getGlobal())
+        Ogre::String encodePlatformBase64(const std::vector<unsigned char>& data)
         {
-            projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName();
-        }
-        else
-        {
-            projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath();
-        }
+            Ogre::String result;
+            result.reserve(((data.size() + 2) / 3) * 4);
 
-        Ogre::String filename = "Platform_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + ".platformdata";
-
-        return projectFilePath + "/" + filename;
-    }
-
-    bool ProceduralPlatformComponent::savePlatformDataToFile(void)
-    {
-        if (this->platformSegments.empty() && this->cachedSurfaceVertices.empty())
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralPlatformComponent] savePlatformDataToFile: nothing to save, deleting file");
-            this->deletePlatformDataFile();
-            return true;
-        }
-
-        Ogre::String filePath = this->getPlatformDataFilePath();
-
-        try
-        {
-            uint32_t numSegments = static_cast<uint32_t>(this->platformSegments.size());
-            uint32_t numSurfaceVerts = static_cast<uint32_t>(this->cachedNumSurfaceVertices);
-            uint32_t numSurfaceIdx = static_cast<uint32_t>(this->cachedSurfaceIndices.size());
-            uint32_t numGroundVerts = static_cast<uint32_t>(this->cachedNumGroundVertices);
-            uint32_t numGroundIdx = static_cast<uint32_t>(this->cachedGroundIndices.size());
-
-            const size_t floatsPerVertex = 8;
-
-            size_t segmentDataSize = 0;
-            for (const auto& seg : this->platformSegments)
+            size_t i = 0;
+            while (i + 2 < data.size())
             {
-                segmentDataSize += 1;
-                segmentDataSize += 4;
-                segmentDataSize += 4;
-                segmentDataSize += seg.controlPoints.size() * 20;
+                const uint32_t triple = (static_cast<uint32_t>(data[i]) << 16) | (static_cast<uint32_t>(data[i + 1]) << 8) | static_cast<uint32_t>(data[i + 2]);
+
+                result += platformBase64Alphabet[(triple >> 18) & 0x3F];
+                result += platformBase64Alphabet[(triple >> 12) & 0x3F];
+                result += platformBase64Alphabet[(triple >> 6) & 0x3F];
+                result += platformBase64Alphabet[triple & 0x3F];
+
+                i += 3;
             }
 
-            // 41 bytes: magic(4) version(4) origin(12) numSegments(4) surfaceVerts(4)
-            // surfaceIdx(4) groundVerts(4) groundIdx(4) posSet(1). Was 49 - the two junction
-            // counts are gone with the junction buffers, hence PLATFORMDATA_VERSION 2.
-            size_t headerSize = 41;
-            size_t surfaceVertBytes = numSurfaceVerts * floatsPerVertex * sizeof(float);
-            size_t surfaceIdxBytes = numSurfaceIdx * sizeof(uint32_t);
-            size_t groundVertBytes = numGroundVerts * floatsPerVertex * sizeof(float);
-            size_t groundIdxBytes = numGroundIdx * sizeof(uint32_t);
-            size_t totalSize = headerSize + segmentDataSize + surfaceVertBytes + surfaceIdxBytes + groundVertBytes + groundIdxBytes;
+            const size_t remaining = data.size() - i;
 
-            std::vector<unsigned char> buffer(totalSize);
-            size_t off = 0;
-
-            uint32_t magic = PLATFORMDATA_MAGIC;
-            uint32_t version = PLATFORMDATA_VERSION;
-            memcpy(&buffer[off], &magic, 4);
-            off += 4;
-            memcpy(&buffer[off], &version, 4);
-            off += 4;
-            memcpy(&buffer[off], &this->cachedPlatformOrigin.x, 4);
-            off += 4;
-            memcpy(&buffer[off], &this->cachedPlatformOrigin.y, 4);
-            off += 4;
-            memcpy(&buffer[off], &this->cachedPlatformOrigin.z, 4);
-            off += 4;
-            memcpy(&buffer[off], &numSegments, 4);
-            off += 4;
-            memcpy(&buffer[off], &numSurfaceVerts, 4);
-            off += 4;
-            memcpy(&buffer[off], &numSurfaceIdx, 4);
-            off += 4;
-            memcpy(&buffer[off], &numGroundVerts, 4);
-            off += 4;
-            memcpy(&buffer[off], &numGroundIdx, 4);
-            off += 4;
-            uint8_t posSet = this->originPositionSet ? 1 : 0;
-            buffer[off++] = posSet;
-
-            for (const auto& seg : this->platformSegments)
+            if (1 == remaining)
             {
-                uint8_t curved = seg.isCurved ? 1 : 0;
-                buffer[off++] = curved;
+                const uint32_t triple = static_cast<uint32_t>(data[i]) << 16;
 
-                memcpy(&buffer[off], &seg.curvature, 4);
-                off += 4;
+                result += platformBase64Alphabet[(triple >> 18) & 0x3F];
+                result += platformBase64Alphabet[(triple >> 12) & 0x3F];
+                result += "==";
+            }
+            else if (2 == remaining)
+            {
+                const uint32_t triple = (static_cast<uint32_t>(data[i]) << 16) | (static_cast<uint32_t>(data[i + 1]) << 8);
 
-                uint32_t numCPs = static_cast<uint32_t>(seg.controlPoints.size());
-                memcpy(&buffer[off], &numCPs, 4);
-                off += 4;
+                result += platformBase64Alphabet[(triple >> 18) & 0x3F];
+                result += platformBase64Alphabet[(triple >> 12) & 0x3F];
+                result += platformBase64Alphabet[(triple >> 6) & 0x3F];
+                result += '=';
+            }
 
-                for (const auto& cp : seg.controlPoints)
+            return result;
+        }
+
+        // Returns false only on a character that cannot appear in base64 at all. Whitespace is
+        // tolerated because an XML editor may have wrapped the attribute across lines, and '='
+        // simply ends the payload. A truncated (but otherwise valid) string decodes to fewer
+        // bytes - that case is caught by the bounds-checked reader in deserializePathData,
+        // which is where a meaningful error message can be produced.
+        bool decodePlatformBase64(const Ogre::String& encoded, std::vector<unsigned char>& outData)
+        {
+            outData.clear();
+            outData.reserve((encoded.size() / 4) * 3);
+
+            uint32_t accumulator = 0;
+            int bitsCollected = 0;
+
+            for (size_t i = 0; i < encoded.size(); ++i)
+            {
+                const char c = encoded[i];
+
+                if (' ' == c || '\t' == c || '\r' == c || '\n' == c)
                 {
-                    memcpy(&buffer[off], &cp.position.x, 4);
-                    off += 4;
-                    memcpy(&buffer[off], &cp.position.y, 4);
-                    off += 4;
-                    memcpy(&buffer[off], &cp.position.z, 4);
-                    off += 4;
-                    memcpy(&buffer[off], &cp.rawHeight, 4);
-                    off += 4;
-                    memcpy(&buffer[off], &cp.smoothedHeight, 4);
-                    off += 4;
+                    continue;
                 }
-            }
-
-            if (surfaceVertBytes > 0)
-            {
-                memcpy(&buffer[off], this->cachedSurfaceVertices.data(), surfaceVertBytes);
-            }
-            off += surfaceVertBytes;
-
-            if (surfaceIdxBytes > 0)
-            {
-                memcpy(&buffer[off], this->cachedSurfaceIndices.data(), surfaceIdxBytes);
-            }
-            off += surfaceIdxBytes;
-
-            if (groundVertBytes > 0)
-            {
-                memcpy(&buffer[off], this->cachedGroundVertices.data(), groundVertBytes);
-            }
-            off += groundVertBytes;
-
-            if (groundIdxBytes > 0)
-            {
-                memcpy(&buffer[off], this->cachedGroundIndices.data(), groundIdxBytes);
-            }
-            off += groundIdxBytes;
-
-            std::ofstream outFile(filePath.c_str(), std::ios::binary);
-            if (false == outFile.is_open())
-            {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] Cannot open for writing: " + filePath);
-                return false;
-            }
-
-            outFile.write(reinterpret_cast<const char*>(buffer.data()), totalSize);
-            outFile.close();
-
-            if (true == outFile.fail())
-            {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] Write failed: " + filePath);
-                return false;
-            }
-
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralPlatformComponent] Saved to: " + filePath + " (" + Ogre::StringConverter::toString(totalSize) + " bytes)");
-            return true;
-        }
-        catch (const std::exception& e)
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] Exception saving: " + Ogre::String(e.what()));
-            return false;
-        }
-    }
-
-    bool ProceduralPlatformComponent::loadPlatformDataFromFile(void)
-    {
-        Ogre::String filePath = this->getPlatformDataFilePath();
-
-        std::ifstream inFile(filePath.c_str(), std::ios::binary);
-        if (false == inFile.is_open())
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralPlatformComponent] No platform data file (new platform): " + filePath);
-            return true;
-        }
-
-        try
-        {
-            inFile.seekg(0, std::ios::end);
-            size_t fileSize = static_cast<size_t>(inFile.tellg());
-            inFile.seekg(0, std::ios::beg);
-
-            if (fileSize < 49)
-            {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] File too small: " + filePath);
-                inFile.close();
-                return false;
-            }
-
-            std::vector<unsigned char> buffer(fileSize);
-            inFile.read(reinterpret_cast<char*>(buffer.data()), fileSize);
-            inFile.close();
-
-            if (true == inFile.fail())
-            {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] Read failed: " + filePath);
-                return false;
-            }
-
-            size_t off = 0;
-
-            uint32_t magic, version;
-            memcpy(&magic, &buffer[off], 4);
-            off += 4;
-            memcpy(&version, &buffer[off], 4);
-            off += 4;
-
-            if (magic != PLATFORMDATA_MAGIC)
-            {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] Bad magic in: " + filePath);
-                return false;
-            }
-            if (version != PLATFORMDATA_VERSION)
-            {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                    "[ProceduralPlatformComponent] Unsupported version " + Ogre::StringConverter::toString(version) + " in: " + filePath + " (expected " + Ogre::StringConverter::toString(PLATFORMDATA_VERSION) + ")");
-                return false;
-            }
-
-            Ogre::Vector3 origin;
-            memcpy(&origin.x, &buffer[off], 4);
-            off += 4;
-            memcpy(&origin.y, &buffer[off], 4);
-            off += 4;
-            memcpy(&origin.z, &buffer[off], 4);
-            off += 4;
-
-            uint32_t numSegments, numSurfaceVerts, numSurfaceIdx, numGroundVerts, numGroundIdx;
-            memcpy(&numSegments, &buffer[off], 4);
-            off += 4;
-            memcpy(&numSurfaceVerts, &buffer[off], 4);
-            off += 4;
-            memcpy(&numSurfaceIdx, &buffer[off], 4);
-            off += 4;
-            memcpy(&numGroundVerts, &buffer[off], 4);
-            off += 4;
-            memcpy(&numGroundIdx, &buffer[off], 4);
-            off += 4;
-
-            uint8_t posSet = buffer[off++];
-            this->originPositionSet = (posSet != 0);
-
-            this->platformSegments.clear();
-            for (uint32_t i = 0; i < numSegments; ++i)
-            {
-                if (off >= fileSize)
+                if ('=' == c)
                 {
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] Unexpected end of file reading segment " + Ogre::StringConverter::toString(i));
+                    break;
+                }
+
+                int value = -1;
+
+                if (c >= 'A' && c <= 'Z')
+                {
+                    value = c - 'A';
+                }
+                else if (c >= 'a' && c <= 'z')
+                {
+                    value = c - 'a' + 26;
+                }
+                else if (c >= '0' && c <= '9')
+                {
+                    value = c - '0' + 52;
+                }
+                else if ('+' == c)
+                {
+                    value = 62;
+                }
+                else if ('/' == c)
+                {
+                    value = 63;
+                }
+                else
+                {
                     return false;
                 }
 
-                PlatformSegment seg;
-                seg.isCurved = (buffer[off++] != 0);
+                accumulator = (accumulator << 6) | static_cast<uint32_t>(value);
+                bitsCollected += 6;
 
-                memcpy(&seg.curvature, &buffer[off], 4);
-                off += 4;
-
-                uint32_t numCPs;
-                memcpy(&numCPs, &buffer[off], 4);
-                off += 4;
-
-                for (uint32_t j = 0; j < numCPs; ++j)
+                if (bitsCollected >= 8)
                 {
-                    PlatformControlPoint cp;
-                    memcpy(&cp.position.x, &buffer[off], 4);
-                    off += 4;
-                    memcpy(&cp.position.y, &buffer[off], 4);
-                    off += 4;
-                    memcpy(&cp.position.z, &buffer[off], 4);
-                    // Seed the derived draw depth from the authored one, so anything that reads
-                    // renderZ before the first rebuildMesh (the segment overlay in particular)
-                    // sees the stored plane rather than 0.
-                    cp.renderZ = cp.position.z;
-                    off += 4;
-                    memcpy(&cp.rawHeight, &buffer[off], 4);
-                    off += 4;
-                    memcpy(&cp.smoothedHeight, &buffer[off], 4);
-                    off += 4;
-
-                    cp.distFromStart = 0.0f;
-                    seg.controlPoints.push_back(cp);
+                    bitsCollected -= 8;
+                    outData.push_back(static_cast<unsigned char>((accumulator >> bitsCollected) & 0xFF));
                 }
-
-                this->platformSegments.push_back(seg);
             }
 
-            this->cachedPlatformOrigin = origin;
-            this->platformOrigin = origin;
-            this->hasPlatformOrigin = true;
+            return true;
+        }
+    } // namespace
 
-            const size_t floatsPerVertex = 8;
-            size_t surfaceVertBytes = numSurfaceVerts * floatsPerVertex * sizeof(float);
-            size_t surfaceIdxBytes = numSurfaceIdx * sizeof(uint32_t);
-            size_t groundVertBytes = numGroundVerts * floatsPerVertex * sizeof(float);
-            size_t groundIdxBytes = numGroundIdx * sizeof(uint32_t);
-            size_t expectedRemaining = surfaceVertBytes + surfaceIdxBytes + groundVertBytes + groundIdxBytes;
-            if (off + expectedRemaining > fileSize)
+    Ogre::String ProceduralPlatformComponent::serializePathData(void) const
+    {
+        if (true == this->platformSegments.empty())
+        {
+            return "";
+        }
+
+        // Layout, little endian throughout. The per-control-point part is byte for byte what
+        // the old .platformdata file wrote, so the numbers themselves did not change - only
+        // the header in front of them and where the whole thing ends up:
+        //
+        //   uint32 version                 (PATHDATA_VERSION)
+        //   uint32 numSegments
+        //   float  platformOrigin.x, .y, .z
+        //   per segment:
+        //     uint8  isCurved
+        //     float  curvature
+        //     uint32 numControlPoints
+        //     per control point:
+        //       float position.x, position.y, position.z, rawHeight, smoothedHeight
+        //
+        // renderZ, distFromStart, skipFrontCap and skipBackCap are deliberately NOT written.
+        // All four are derived values that rebuildMesh recomputes from scratch on every sweep
+        // (renderZ is the ramped depth, distFromStart a UV running total, the two cap flags a
+        // reversal-cut bookkeeping detail), so storing them could only ever create a way for
+        // the scene file to disagree with the geometry it describes.
+        size_t totalSize = 4 + 4 + 12;
+
+        for (const auto& seg : this->platformSegments)
+        {
+            totalSize += 1;
+            totalSize += 4;
+            totalSize += 4;
+            totalSize += seg.controlPoints.size() * 20;
+        }
+
+        std::vector<unsigned char> buffer(totalSize);
+        size_t off = 0;
+
+        uint32_t version = PATHDATA_VERSION;
+        uint32_t numSegments = static_cast<uint32_t>(this->platformSegments.size());
+
+        memcpy(&buffer[off], &version, 4);
+        off += 4;
+        memcpy(&buffer[off], &numSegments, 4);
+        off += 4;
+
+        // platformOrigin is the live value while the path is being edited, cachedPlatformOrigin
+        // the copy createPlatformMesh takes on every rebuild. They agree everywhere except
+        // before the very first mesh exists, which is what the fallback covers.
+        const Ogre::Vector3 origin = (true == this->hasPlatformOrigin) ? this->platformOrigin : this->cachedPlatformOrigin;
+
+        memcpy(&buffer[off], &origin.x, 4);
+        off += 4;
+        memcpy(&buffer[off], &origin.y, 4);
+        off += 4;
+        memcpy(&buffer[off], &origin.z, 4);
+        off += 4;
+
+        for (const auto& seg : this->platformSegments)
+        {
+            uint8_t curved = seg.isCurved ? 1 : 0;
+            buffer[off++] = curved;
+
+            memcpy(&buffer[off], &seg.curvature, 4);
+            off += 4;
+
+            uint32_t numCPs = static_cast<uint32_t>(seg.controlPoints.size());
+            memcpy(&buffer[off], &numCPs, 4);
+            off += 4;
+
+            for (const auto& cp : seg.controlPoints)
             {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                    "[ProceduralPlatformComponent] File size mismatch: need " + Ogre::StringConverter::toString(off + expectedRemaining) + " bytes, file has " + Ogre::StringConverter::toString(fileSize));
+                memcpy(&buffer[off], &cp.position.x, 4);
+                off += 4;
+                memcpy(&buffer[off], &cp.position.y, 4);
+                off += 4;
+                memcpy(&buffer[off], &cp.position.z, 4);
+                off += 4;
+                memcpy(&buffer[off], &cp.rawHeight, 4);
+                off += 4;
+                memcpy(&buffer[off], &cp.smoothedHeight, 4);
+                off += 4;
+            }
+        }
+
+        return encodePlatformBase64(buffer);
+    }
+
+    bool ProceduralPlatformComponent::deserializePathData(const Ogre::String& encodedData)
+    {
+        std::vector<unsigned char> buffer;
+
+        if (false == decodePlatformBase64(encodedData, buffer))
+        {
+            return false;
+        }
+
+        if (buffer.size() < 8)
+        {
+            return false;
+        }
+
+        size_t off = 0;
+        bool ok = true;
+
+        // Every read goes through this, so a truncated or hand-edited property cannot walk off
+        // the end of the buffer. The first read that does not fit poisons the flag and all
+        // following ones become no-ops, which keeps the parse loop below free of an error check
+        // after every single field.
+        auto readBytes = [&buffer, &off, &ok](void* destination, size_t byteCount)
+        {
+            if (false == ok || off + byteCount > buffer.size())
+            {
+                ok = false;
+                return;
+            }
+
+            memcpy(destination, &buffer[off], byteCount);
+            off += byteCount;
+        };
+
+        uint32_t version = 0;
+        uint32_t numSegments = 0;
+
+        readBytes(&version, 4);
+        readBytes(&numSegments, 4);
+
+        if (false == ok || (version != PATHDATA_VERSION && version != 1u))
+        {
+            return false;
+        }
+
+        const bool hasStoredOrigin = (version >= 2);
+
+        Ogre::Vector3 origin = Ogre::Vector3::ZERO;
+        if (true == hasStoredOrigin)
+        {
+            readBytes(&origin.x, 4);
+            readBytes(&origin.y, 4);
+            readBytes(&origin.z, 4);
+        }
+
+        // Parsed into a local list first and only committed once the whole blob turned out to
+        // be readable. A half-restored path is worse than no path at all: it would look like a
+        // shortened platform, and the next scene save would happily write that truncation back
+        // over the intact data.
+        std::vector<PlatformSegment> parsedSegments;
+        parsedSegments.reserve(numSegments);
+
+        for (uint32_t i = 0; i < numSegments; ++i)
+        {
+            PlatformSegment seg;
+
+            uint8_t curved = 0;
+            readBytes(&curved, 1);
+            seg.isCurved = (0 != curved);
+
+            readBytes(&seg.curvature, 4);
+
+            uint32_t numCPs = 0;
+            readBytes(&numCPs, 4);
+
+            if (false == ok)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] Unexpected end of Path Data at segment " + Ogre::StringConverter::toString(i));
                 return false;
             }
 
-            this->cachedSurfaceVertices.resize(numSurfaceVerts * floatsPerVertex);
-            this->cachedSurfaceIndices.resize(numSurfaceIdx);
-            this->cachedGroundVertices.resize(numGroundVerts * floatsPerVertex);
-            this->cachedGroundIndices.resize(numGroundIdx);
-
-            if (surfaceVertBytes > 0)
+            // Checked BEFORE reserving: 20 bytes per control point is the minimum that still
+            // has to be present, so a garbage count cannot make this allocate wildly before the
+            // per-field bounds check would have caught it.
+            if (off + static_cast<size_t>(numCPs) * 20 > buffer.size())
             {
-                memcpy(this->cachedSurfaceVertices.data(), &buffer[off], surfaceVertBytes);
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[ProceduralPlatformComponent] Path Data claims " + Ogre::StringConverter::toString(numCPs) + " control points in segment " + Ogre::StringConverter::toString(i) + ", which does not fit into the remaining buffer");
+                return false;
             }
-            off += surfaceVertBytes;
 
-            if (surfaceIdxBytes > 0)
+            seg.controlPoints.reserve(numCPs);
+
+            for (uint32_t j = 0; j < numCPs; ++j)
             {
-                memcpy(this->cachedSurfaceIndices.data(), &buffer[off], surfaceIdxBytes);
+                PlatformControlPoint cp;
+
+                readBytes(&cp.position.x, 4);
+                readBytes(&cp.position.y, 4);
+                readBytes(&cp.position.z, 4);
+                readBytes(&cp.rawHeight, 4);
+                readBytes(&cp.smoothedHeight, 4);
+
+                // Seed the derived draw depth from the authored one, so anything that reads
+                // renderZ before the first rebuildMesh (the segment overlay in particular)
+                // sees the stored plane rather than 0.
+                cp.renderZ = cp.position.z;
+                cp.distFromStart = 0.0f;
+
+                seg.controlPoints.push_back(cp);
             }
-            off += surfaceIdxBytes;
 
-            if (groundVertBytes > 0)
-            {
-                memcpy(this->cachedGroundVertices.data(), &buffer[off], groundVertBytes);
-            }
-            off += groundVertBytes;
-
-            if (groundIdxBytes > 0)
-            {
-                memcpy(this->cachedGroundIndices.data(), &buffer[off], groundIdxBytes);
-            }
-            off += groundIdxBytes;
-
-            this->cachedNumSurfaceVertices = numSurfaceVerts;
-            this->cachedNumGroundVertices = numGroundVerts;
-
-            std::vector<float> sv = this->cachedSurfaceVertices;
-            std::vector<Ogre::uint32> si = this->cachedSurfaceIndices;
-            std::vector<float> gv = this->cachedGroundVertices;
-            std::vector<Ogre::uint32> gi = this->cachedGroundIndices;
-            size_t nsv = this->cachedNumSurfaceVertices;
-            size_t ngv = this->cachedNumGroundVertices;
-
-            GraphicsModule::RenderCommand renderCommand = [this, sv, si, nsv, gv, gi, ngv, origin]()
-            {
-                this->createPlatformMeshInternal(sv, si, nsv, gv, gi, ngv, origin);
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralPlatformComponent::loadPlatformDataFromFile");
-
-            this->updateContinuationPoint();
-
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralPlatformComponent] Load complete: " + filePath);
-            return true;
+            parsedSegments.push_back(seg);
         }
-        catch (const std::exception& e)
+
+        if (false == ok)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] Exception loading: " + Ogre::String(e.what()));
             return false;
         }
+
+        this->platformSegments = parsedSegments;
+
+        if (false == hasStoredOrigin)
+        {
+            // Version 1 blobs have no origin. Reconstruct it the same way startPlatformPlacement
+            // establishes it for a fresh path - from the first control point - so such a scene
+            // loads in the right place instead of collapsing onto the world origin.
+            if (false == this->platformSegments.empty() && false == this->platformSegments.front().controlPoints.empty())
+            {
+                const PlatformControlPoint& firstControlPoint = this->platformSegments.front().controlPoints.front();
+                origin = Ogre::Vector3(firstControlPoint.position.x, firstControlPoint.rawHeight, firstControlPoint.position.z);
+            }
+        }
+
+        this->platformOrigin = origin;
+        this->cachedPlatformOrigin = origin;
+        this->hasPlatformOrigin = (false == this->platformSegments.empty());
+
+        // The old file format carried an explicit posSet byte at this point. Its only job is to
+        // stop createPlatformMeshInternal from snapping the GameObject's scene node back onto
+        // the stored origin, and deriving it is equivalent to storing it: a path that has
+        // segments has been meshed at least once, so its node transform was already written to
+        // the scene XML by the GameObject itself - and THAT transform is the authoritative one,
+        // because the object may well have been dragged around with the gizmo since.
+        this->originPositionSet = (false == this->platformSegments.empty());
+
+        return true;
     }
 
     std::vector<unsigned char> ProceduralPlatformComponent::getPlatformData(void) const
@@ -6469,7 +6562,11 @@ namespace NOWA
             segmentDataSize += seg.controlPoints.size() * 20;
         }
 
-        size_t headerSize = 41; // see savePlatformDataToFile for the byte-by-byte breakdown
+        // 41 bytes: magic(4) version(4) origin(12) numSegments(4) surfaceVerts(4)
+        // surfaceIdx(4) groundVerts(4) groundIdx(4) posSet(1). This is the UNDO/REDO blob,
+        // not the scene property - see serializePathData for the much smaller path-only
+        // format that goes into the XML.
+        size_t headerSize = 41;
         size_t surfaceVertBytes = numSurfaceVerts * floatsPerVertex * sizeof(float);
         size_t surfaceIdxBytes = numSurfaceIdx * sizeof(uint32_t);
         size_t groundVertBytes = numGroundVerts * floatsPerVertex * sizeof(float);
@@ -6730,31 +6827,6 @@ namespace NOWA
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralPlatformComponent] setPlatformData: restored " + Ogre::StringConverter::toString(numSegments) + " segments, " + Ogre::StringConverter::toString(numSurfaceVerts) +
                                                                                " surface verts, " + Ogre::StringConverter::toString(numGroundVerts) + " ground verts");
-    }
-
-    void ProceduralPlatformComponent::deletePlatformDataFile(void)
-    {
-        std::filesystem::path relativePath(this->getPlatformDataFilePath());
-        std::filesystem::path absolutePath = std::filesystem::absolute(relativePath);
-
-        if (false == std::filesystem::exists(absolutePath))
-        {
-            return;
-        }
-
-        std::error_code ec;
-        bool removed = std::filesystem::remove(absolutePath, ec);
-
-        if (ec)
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] Delete failed: " + ec.message());
-            return;
-        }
-
-        if (false == removed)
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] Remove returned false.");
-        }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -7823,7 +7895,12 @@ namespace NOWA
         {
             if (this->getClassName() == castEventData->getComponentName())
             {
-                this->deletePlatformDataFile();
+                // Nothing to clean up on disk any more. Deleting the component removes its
+                // whole property block from the scene XML, and the path went with it - which
+                // is precisely the orphaned-file class of bug the side car file kept
+                // producing (delete the component, keep the .platformdata, re-add the
+                // component, get a zombie platform back).
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralPlatformComponent] Component manually deleted for game object: " + this->gameObjectPtr->getName());
             }
         }
     }

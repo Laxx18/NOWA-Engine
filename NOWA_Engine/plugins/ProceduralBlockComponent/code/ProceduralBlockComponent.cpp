@@ -56,7 +56,7 @@ namespace NOWA
         rows(new Variant(ProceduralBlockComponent::AttrRows(), 1, this->attributes)),
         depth(new Variant(ProceduralBlockComponent::AttrDepth(), 10.0f, this->attributes)),
         datablock(new Variant(ProceduralBlockComponent::AttrDatablock(), Ogre::String("rockClif_D"), this->attributes)),
-        uvTiling(new Variant(ProceduralBlockComponent::AttrUVTiling(), Ogre::Vector2(1.0f, 5.0f), this->attributes)),
+        uvTiling(new Variant(ProceduralBlockComponent::AttrUVTiling(), Ogre::Vector2(1.0f, 1.0f), this->attributes)),
         useGradient(new Variant(ProceduralBlockComponent::AttrUseGradient(), false, this->attributes)),
         useBevel(new Variant(ProceduralBlockComponent::AttrUseBevel(), false, this->attributes)),
         bevelSize(new Variant(ProceduralBlockComponent::AttrBevelSize(), 0.1f, this->attributes)),
@@ -184,6 +184,8 @@ namespace NOWA
     {
         ProceduralBlockCompPtr clonedCompPtr(boost::make_shared<ProceduralBlockComponent>());
 
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
         clonedCompPtr->setColumns(this->columns->getInt());
         clonedCompPtr->setRows(this->rows->getInt());
         clonedCompPtr->setDepth(this->depth->getReal());
@@ -192,10 +194,11 @@ namespace NOWA
         clonedCompPtr->setUseGradient(this->useGradient->getBool());
         clonedCompPtr->setUseBevel(this->useBevel->getBool());
         clonedCompPtr->setBevelSize(this->bevelSize->getReal());
-        clonedGameObjectPtr->addComponent(clonedCompPtr);
-        clonedCompPtr->setOwner(clonedGameObjectPtr);
-
         clonedCompPtr->setActivated(this->activated->getBool());
+
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 
         return clonedCompPtr;
     }

@@ -7,6 +7,7 @@ namespace NOWA
 {
 	class ConveyorContactCallback;
 	class GenericContactCallback;
+	class OneWayContactCallback;
 	class LuaScript;
 
 	class EXPORTED PhysicsMaterialComponent : public GameObjectComponent
@@ -118,6 +119,26 @@ namespace NOWA
 
 		Ogre::Vector3 getContactDirection(void) const;
 
+		/**
+		 * @brief Sets the local axis (of category1's body, rotated by its current orientation) the
+		 *        one-way filter operates along. Only used when Contact Behavior is 'OneWay'.
+		 * @param[in] oneWayAxis 'Y' for the classic platform you can jump through from below and
+		 *        land on from above, 'X' for a one-way wall/corridor.
+		 */
+		void setOneWayAxis(const Ogre::String& oneWayAxis);
+
+		Ogre::String getOneWayAxis(void) const;
+
+		/**
+		 * @brief Sets which direction along One Way Axis the moving object may pass through
+		 *        without colliding - the opposite direction always collides normally. Only used
+		 *        when Contact Behavior is 'OneWay'.
+		 * @param[in] oneWayAllowedDirection 'Positive' or 'Negative'
+		 */
+		void setOneWayAllowedDirection(const Ogre::String& oneWayAllowedDirection);
+
+		Ogre::String getOneWayAllowedDirection(void) const;
+
 		void setOverlapFunctionName(const Ogre::String& overlapFunctionName);
 
 		void setContactFunctionName(const Ogre::String& contactFunctionName);
@@ -151,6 +172,8 @@ namespace NOWA
 		static const Ogre::String AttrContactBehavior(void) { return "Contact Behavior"; }
 		static const Ogre::String AttrContactSpeed(void) { return "Contact Speed"; }
 		static const Ogre::String AttrContactDirection(void) { return "Contact Direction"; }
+		static const Ogre::String AttrOneWayAxis(void) { return "One Way Axis"; }
+		static const Ogre::String AttrOneWayAllowedDirection(void) { return "One Way Allowed Direction"; }
 		static const Ogre::String AttrOverlapFunctionName(void) { return "Overlap Function Name"; }
 		static const Ogre::String AttrContactFunctionName(void) { return "Contact Function Name"; }
 		static const Ogre::String AttrContactOnceFunctionName(void) { return "Contact Once Function Name"; }
@@ -168,6 +191,8 @@ namespace NOWA
 		Variant* contactBehavior;
 		Variant* contactSpeed;
 		Variant* contactDirection;
+		Variant* oneWayAxis;
+		Variant* oneWayAllowedDirection;
 		Variant* overlapFunctionName;
 		Variant* contactFunctionName;
 		Variant* contactOnceFunctionName;
@@ -177,6 +202,7 @@ namespace NOWA
 		OgreNewt::MaterialPair* materialPair;
 		ConveyorContactCallback* conveyorContactCallback;
 		GenericContactCallback* genericContactCallback;
+		OneWayContactCallback* oneWayContactCallback;
 	};
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -199,6 +225,46 @@ namespace NOWA
 		Ogre::Real speed;
 		Ogre::Vector3 direction;
 		bool forPlayer;
+	};
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/**
+	 * @class OneWayContactCallback
+	 * @brief One-directional collision along a configurable local axis - e.g. a platform you can
+	 *        jump through from below and land on from above, or a one-way wall/corridor.
+	 *        Re-evaluated per contact, per frame, from the moving object's velocity at the contact
+	 *        point - see contactsProcess() for the full reasoning.
+	 */
+	class OneWayContactCallback : public OgreNewt::ContactCallback
+	{
+	public:
+		/**
+		 * @param[in] localAxis The axis, in the ONE-WAY BODY's own local space, this filter
+		 *            operates along. Ogre::Vector3::UNIT_Y for a classic jump-through-from-below
+		 *            platform, Ogre::Vector3::UNIT_X for a one-way wall/corridor.
+		 * @param[in] allowPositiveDirection If true, the moving object may pass through while its
+		 *            velocity at the contact point has a POSITIVE component along the platform's
+		 *            world-space axis (e.g. moving up, or moving right); moving the opposite way
+		 *            still collides normally. If false, the allowed direction is negative instead.
+		 * @param[in] oneWayCategoryId The category/type id of the body this filtering is anchored
+		 *            to - its OWN orientation is what localAxis gets rotated by, same as
+		 *            ConveyorContactCallback's conveyorCategoryId identifies the belt body.
+		 */
+		OneWayContactCallback(const Ogre::Vector3& localAxis, bool allowPositiveDirection, int oneWayCategoryId);
+		~OneWayContactCallback();
+
+		int onAABBOverlap(OgreNewt::Body* body0, OgreNewt::Body* body1, int threadIndex);
+
+		void contactsProcess(const OgreNewt::ContactJoint& contactJoint, Ogre::Real timeStep, int threadIndex);
+
+		void setLocalAxis(const Ogre::Vector3& localAxis);
+
+		void setAllowPositiveDirection(bool allowPositiveDirection);
+	private:
+		Ogre::Vector3 localAxis;
+		bool allowPositiveDirection;
+		int oneWayCategoryId;
 	};
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////
