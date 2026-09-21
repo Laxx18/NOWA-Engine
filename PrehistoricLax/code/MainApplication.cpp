@@ -83,7 +83,7 @@ void MainApplication::startSimulation(const Ogre::String& graphicsConfigName)
 	PrehistoryState::create(NOWA::AppStateManager::getSingletonPtr(), "PrehistoryState", "PrehistoryState");
 	Level1SectorState::create(NOWA::AppStateManager::getSingletonPtr(), "Level1SectorState", "Level1SectorState");
 	EvilMagicState::create(NOWA::AppStateManager::getSingletonPtr(), "EvilMagicState", "EvilMagicState");
-	// GameState::create(NOWA::AppStateManager::getSingletonPtr(), "GameState", "GameState");
+	GameState::create(NOWA::AppStateManager::getSingletonPtr(), "GameState", "GameState");
 
 	// Lets start with the Game
 	NOWA::AppStateManager::getSingletonPtr()->start("IntroState", false);

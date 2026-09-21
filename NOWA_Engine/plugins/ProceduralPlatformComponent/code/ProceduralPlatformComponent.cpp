@@ -37,10 +37,11 @@ GPL v3
 
 #include "OgreAbiUtils.h"
 
-// <filesystem>, <fstream> and <system_error> are deliberately gone: nothing in this
-// component touches the disk any more since the .platformdata side car file was replaced by
-// the "Path Data" scene property (see serializePathData). exportMesh writes through Ogre's
-// own MeshSerializer, which brings its own stream handling.
+// <fstream> is still here for ONE reason: loadLegacyPlatformDataFile, the read-only import
+// of pre-"Path Data" scenes. Nothing in this component writes to disk any more - the path
+// goes into the scene XML (see serializePathData) and exportMesh goes through Ogre's own
+// MeshSerializer. <filesystem> and <system_error> are gone with the file deletion code.
+#include <fstream>
 
 // =============================================================================
 // STATUS: complete. Every method declared in ProceduralPlatformComponent.h is defined in
@@ -132,6 +133,7 @@ namespace NOWA
         snapRadius(0.0f),
         bBatchMode(false),
         platformLoadedFromScene(false),
+        legacyPathDataMigrationPending(false),
         physicsArtifactComponent(nullptr)
     {
         this->platformStyle->setDescription("Style of the platform to generate.");
@@ -383,8 +385,18 @@ namespace NOWA
         // Decoding happens here, but only into plain CPU-side data. Nothing Ogre-related is
         // touched: init() runs before postInit, so there is no scene node, no query and no
         // frame yet. The mesh is built later, in handleSceneParsed.
+        //
+        // Its mere PRESENCE - empty or not - is also what tells this component that the scene
+        // was written by a build that already had this property. If it is missing entirely,
+        // the scene is older than the change and its path still lives in a
+        // "Platform_<id>.platformdata" file next to it, so the legacy import is armed for
+        // handleSceneParsed. See loadLegacyPlatformDataFile.
+        bool pathDataPropertyPresent = false;
+
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == ProceduralPlatformComponent::AttrPathData())
         {
+            pathDataPropertyPresent = true;
+
             const Ogre::String encodedPathData = XMLConverter::getAttrib(propertyElement, "data");
             propertyElement = propertyElement->next_sibling("property");
 
@@ -393,6 +405,9 @@ namespace NOWA
                 this->deserializePathData(encodedPathData);
             }
         }
+
+        this->legacyPathDataMigrationPending = (false == pathDataPropertyPresent);
+
         return true;
     }
 
@@ -400,22 +415,28 @@ namespace NOWA
     {
         ProceduralPlatformComponentPtr clonedCompPtr(boost::make_shared<ProceduralPlatformComponent>());
 
-        // setOwner() must come before any of the setters below - see ProceduralBlockComponent's
-        // own clone() for the exact same rule. Several of these setters (setPlatformDepth,
-        // setPlatformStyle, setCurveSubdivisions, the grass/tree setters, ...) call rebuildMesh()
-        // internally, which reaches through this->gameObjectPtr for the scene manager and scene
-        // node - a null owner at that point would crash rather than silently do nothing.
+        // setOwner() must come before anything else - the setters below reach through
+        // gameObjectPtr, and a null owner there would crash rather than silently do nothing.
         clonedCompPtr->setOwner(clonedGameObjectPtr);
 
-        // Direct member copy, deliberately BEFORE any setter runs - every rebuild-triggering
-        // setter below guards itself with "if (false == this->platformSegments.empty())", so
-        // without the path already in place first, NONE of them would build anything, and the
-        // clone would end up with correct attributes but no visible mesh at all. This is the
-        // same reasoning as NodeTrackComponent::clone()'s direct copy of its own "reverse" member
-        // - bypassing a setter's side effects because the value must already be in its final
-        // shape before that setter is called.
-        clonedCompPtr->platformSegments = this->platformSegments;
-
+        // ORDER MATTERS, and it is the reverse of what looks natural: the attribute setters
+        // run FIRST, while the clone's path is still EMPTY, and the path is copied in
+        // afterwards.
+        //
+        // Copying the path first looks like the safer order (every rebuild-triggering setter
+        // guards itself with "if (false == this->platformSegments.empty())", so with an empty
+        // path none of them build anything) - but that is exactly what has to be avoided
+        // here. A setter that rebuilds at THIS point runs createPlatformMeshInternal against
+        // a component whose postInit() has not happened yet: no platformFrame, no
+        // platformPlaneAnchor, no preview node, and - the part that actually breaks it - a
+        // GameObject that has not been initialised. createPlatformMeshInternal ends with
+        // attachObject + gameObjectPtr->init(platformItem), and the cloned GameObject's own
+        // initialisation afterwards replaces that, so the item is built, thrown away, and the
+        // clone ends up with correct attributes and no visible mesh - with no error anywhere,
+        // because nothing actually failed.
+        //
+        // So: attributes now, path as plain data, and ONE rebuild later in postInit(), where
+        // the environment is guaranteed - the same deferral the scene-load path uses.
         clonedCompPtr->setPlatformDepth(this->platformDepth->getReal());
         clonedCompPtr->setPlatformHeight(this->platformHeight->getReal());
         clonedCompPtr->setPlatformStyle(this->platformStyle->getListSelectedValue());
@@ -440,10 +461,32 @@ namespace NOWA
         clonedCompPtr->setTreeBranchClusterCount(this->treeBranchClusterCount->getInt());
 
         // Edit Mode is deliberately NOT cloned - it is transient editor state (see its
-        // AttrActionNoUndo tag and its exclusion from writeXML), not part of the object's data.
-        // A cloned platform starts in Object mode regardless of what this one is currently in.
+        // AttrActionNoUndo tag and its exclusion from writeXML), not part of the object's
+        // data. A cloned platform starts in Object mode regardless of this one's mode.
 
         clonedCompPtr->setActivated(this->activated->getBool());
+
+        // The path, as plain data. Direct member assignment on purpose: there is no setter
+        // for it, and there must not be one that builds - see the block above.
+        clonedCompPtr->platformSegments = this->platformSegments;
+
+        // The origin has to come along with the path, and it is the piece that is easiest to
+        // forget: rebuildMesh subtracts it from every control point to get the mesh's LOCAL
+        // space (see "originToUse" there). Left at zero, the clone's vertices would come out
+        // in absolute path coordinates while its node sits somewhere else entirely - a
+        // platform drawn hundreds of units away from where the object is, which reads as
+        // "nothing was generated" just as convincingly as an actual failure.
+        clonedCompPtr->platformOrigin = this->platformOrigin;
+        clonedCompPtr->cachedPlatformOrigin = this->platformOrigin;
+        clonedCompPtr->hasPlatformOrigin = this->hasPlatformOrigin;
+
+        // Pre-set, so createPlatformMeshInternal does NOT snap the clone's scene node onto
+        // the source's origin. Where the clone sits is the editor's decision (same spot, or
+        // offset by whatever the clone action applies), and postInit re-anchors the copied
+        // path onto that position rather than the other way round.
+        clonedCompPtr->originPositionSet = true;
+
+        clonedCompPtr->platformClonedNeedsRebuild = (false == this->platformSegments.empty());
 
         clonedGameObjectPtr->addComponent(clonedCompPtr);
 
@@ -503,6 +546,70 @@ namespace NOWA
         // Adjust snap radius here
         this->snapRadius = this->platformDepth->getReal() * 0.4f;
 
+        // A CLONE has neither an init() nor an EventDataSceneParsed to hang its first build
+        // on - it is created while the scene is already running, so the deferral above does
+        // not apply to it. clone() therefore copies the path as plain data and sets this
+        // flag, and the single rebuild happens HERE, at the one point where the scene node,
+        // platformFrame, platformPlaneAnchor, the preview node and the GameObject's own
+        // initialisation all exist.
+        if (true == this->platformClonedNeedsRebuild)
+        {
+            this->platformClonedNeedsRebuild = false;
+
+            if (false == this->platformSegments.empty())
+            {
+                // Re-anchor the copied path onto the CLONE's node before sweeping it.
+                //
+                // Control points are stored in absolute platform space, not relative to the
+                // object - the mesh only becomes local by subtracting platformOrigin. So a
+                // clone that is dropped somewhere else would render correctly (node transform
+                // moves the finished mesh) but would be UNEDITABLE: the moment the user
+                // extends it, the new point comes from a mouse ray in the clone's world
+                // position while every existing point still describes the source's, and the
+                // platform jumps across the level.
+                //
+                // Shifting the points AND the origin by the same delta leaves every local
+                // vertex identical - the mesh looks exactly like the source's - while putting
+                // the path into the clone's own coordinate space, where further editing
+                // behaves like a freshly drawn platform.
+                const Ogre::Vector3 sourceNodePosition = this->platformFrame * this->platformOrigin;
+                const Ogre::Vector3 delta = this->platformPlaneAnchor - sourceNodePosition;
+
+                if (false == delta.positionEquals(Ogre::Vector3::ZERO, 0.0001f))
+                {
+                    for (PlatformSegment& seg : this->platformSegments)
+                    {
+                        for (PlatformControlPoint& cp : seg.controlPoints)
+                        {
+                            // Only x and z live in position - the height is carried by
+                            // rawHeight/smoothedHeight and position.y is always 0 in this
+                            // component (see the local point build in rebuildMesh). The
+                            // vertical part of the delta therefore goes to the two height
+                            // fields, NOT to position.y.
+                            cp.position.x += delta.x;
+                            cp.position.z += delta.z;
+                            cp.rawHeight += delta.y;
+                            cp.smoothedHeight += delta.y;
+                            cp.renderZ = cp.position.z;
+                        }
+                    }
+
+                    this->platformOrigin += delta;
+                    this->cachedPlatformOrigin = this->platformOrigin;
+                }
+
+                this->rebuildMesh();
+
+                this->regenerateGrass();
+                this->regenerateTrees();
+
+                this->updateContinuationPoint();
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                    "[ProceduralPlatformComponent] Rebuilt cloned platform with " + Ogre::StringConverter::toString(this->platformSegments.size()) + " segments for game object: " + this->gameObjectPtr->getName());
+            }
+        }
+
         return true;
     }
 
@@ -511,8 +618,21 @@ namespace NOWA
         AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ProceduralPlatformComponent::handleSceneParsed), EventDataSceneParsed::getStaticEventType());
 
         // The path itself was already decoded in init(), straight out of the scene XML's
-        // "Path Data" property - there is no file to open here any more. What is left to do
-        // is the part that needs a live scene: sweep the path into geometry.
+        // "Path Data" property. The one exception is a scene saved by an older build, which
+        // has no such property - there the path is imported from the legacy side car file
+        // once, here, because this needs Core's current project path and scene name to be
+        // settled, which they are by the time the scene is parsed.
+        if (true == this->legacyPathDataMigrationPending)
+        {
+            this->legacyPathDataMigrationPending = false;
+
+            if (true == this->platformSegments.empty())
+            {
+                this->loadLegacyPlatformDataFile();
+            }
+        }
+
+        // What is left to do is the part that needs a live scene: sweep the path into geometry.
         if (true == this->platformSegments.empty())
         {
             return;
@@ -6534,6 +6654,206 @@ namespace NOWA
         this->originPositionSet = (false == this->platformSegments.empty());
 
         return true;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // Legacy import (read-only, one way)
+    //
+    // Everything below exists purely so scenes saved before "Path Data" existed keep their
+    // platforms. It reads the old "Platform_<id>.platformdata" file and takes NOTHING but the
+    // path out of it. The file is never written and never deleted - the migration is finished
+    // the moment the user saves the scene, because writeXML then emits the path as a property
+    // and init() will find it on the next load, which switches this whole code path off for
+    // that platform. Once every scene in the project has been re-saved, this section and the
+    // legacyPathDataMigrationPending flag can be deleted outright.
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    Ogre::String ProceduralPlatformComponent::getLegacyPlatformDataFilePath(void) const
+    {
+        Ogre::String projectFilePath;
+
+        if (false == this->gameObjectPtr->getGlobal())
+        {
+            projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName();
+        }
+        else
+        {
+            projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath();
+        }
+
+        Ogre::String filename = "Platform_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + ".platformdata";
+
+        return projectFilePath + "/" + filename;
+    }
+
+    bool ProceduralPlatformComponent::loadLegacyPlatformDataFile(void)
+    {
+        const Ogre::String filePath = this->getLegacyPlatformDataFilePath();
+
+        std::ifstream inFile(filePath.c_str(), std::ios::binary);
+        if (false == inFile.is_open())
+        {
+            // Not an error: a platform that was created and saved before this build but never
+            // actually drawn has no file either.
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralPlatformComponent] No legacy platform data file to migrate: " + filePath);
+            return false;
+        }
+
+        try
+        {
+            inFile.seekg(0, std::ios::end);
+            const size_t fileSize = static_cast<size_t>(inFile.tellg());
+            inFile.seekg(0, std::ios::beg);
+
+            std::vector<unsigned char> buffer(fileSize);
+            if (fileSize > 0)
+            {
+                inFile.read(reinterpret_cast<char*>(buffer.data()), fileSize);
+            }
+            inFile.close();
+
+            if (true == inFile.fail())
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] Legacy read failed: " + filePath);
+                return false;
+            }
+
+            size_t off = 0;
+            bool ok = true;
+
+            // Same bounds-checked reader deserializePathData uses, for the same reason: this
+            // parses a file nobody validates any more.
+            auto readBytes = [&buffer, &off, &ok](void* destination, size_t byteCount)
+            {
+                if (false == ok || off + byteCount > buffer.size())
+                {
+                    ok = false;
+                    return;
+                }
+
+                memcpy(destination, &buffer[off], byteCount);
+                off += byteCount;
+            };
+
+            uint32_t magic = 0;
+            uint32_t version = 0;
+
+            readBytes(&magic, 4);
+            readBytes(&version, 4);
+
+            if (false == ok || magic != PLATFORMDATA_MAGIC)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] Bad magic in legacy file: " + filePath);
+                return false;
+            }
+
+            // BOTH historical layouts are accepted here, unlike the old loader which rejected
+            // version 1 outright. This is a one-shot rescue of data that cannot be recreated by
+            // hand, so it is worth reading the older shape too - and the difference is a pure
+            // header matter: version 1 carried two extra counts for the junction buffers that
+            // were later removed (49-byte header), version 2 does not (41 bytes). The segment
+            // block that follows is identical in both, which is all this function wants.
+            if (version != 1u && version != 2u)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] Unsupported legacy version " + Ogre::StringConverter::toString(version) + " in: " + filePath);
+                return false;
+            }
+
+            Ogre::Vector3 origin = Ogre::Vector3::ZERO;
+            readBytes(&origin.x, 4);
+            readBytes(&origin.y, 4);
+            readBytes(&origin.z, 4);
+
+            uint32_t numSegments = 0;
+            readBytes(&numSegments, 4);
+
+            // The four (version 2) or six (version 1) mesh counts are read past and thrown
+            // away, along with the vertex and index blocks they describe at the end of the
+            // file. The mesh is swept from the path, so caching it was the part of this format
+            // that is deliberately not coming back.
+            uint32_t discardedCount = 0;
+            const int numDiscardedCounts = (1u == version) ? 6 : 4;
+
+            for (int i = 0; i < numDiscardedCounts; ++i)
+            {
+                readBytes(&discardedCount, 4);
+            }
+
+            uint8_t posSet = 0;
+            readBytes(&posSet, 1);
+
+            if (false == ok)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] Legacy file header truncated: " + filePath);
+                return false;
+            }
+
+            std::vector<PlatformSegment> parsedSegments;
+            parsedSegments.reserve(numSegments);
+
+            for (uint32_t i = 0; i < numSegments; ++i)
+            {
+                PlatformSegment seg;
+
+                uint8_t curved = 0;
+                readBytes(&curved, 1);
+                seg.isCurved = (0 != curved);
+
+                readBytes(&seg.curvature, 4);
+
+                uint32_t numCPs = 0;
+                readBytes(&numCPs, 4);
+
+                if (false == ok || off + static_cast<size_t>(numCPs) * 20 > buffer.size())
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] Legacy file truncated at segment " + Ogre::StringConverter::toString(i));
+                    return false;
+                }
+
+                seg.controlPoints.reserve(numCPs);
+
+                for (uint32_t j = 0; j < numCPs; ++j)
+                {
+                    PlatformControlPoint cp;
+
+                    readBytes(&cp.position.x, 4);
+                    readBytes(&cp.position.y, 4);
+                    readBytes(&cp.position.z, 4);
+                    readBytes(&cp.rawHeight, 4);
+                    readBytes(&cp.smoothedHeight, 4);
+
+                    cp.renderZ = cp.position.z;
+                    cp.distFromStart = 0.0f;
+
+                    seg.controlPoints.push_back(cp);
+                }
+
+                parsedSegments.push_back(seg);
+            }
+
+            if (false == ok)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] Legacy file truncated in segment block: " + filePath);
+                return false;
+            }
+
+            this->platformSegments = parsedSegments;
+
+            this->platformOrigin = origin;
+            this->cachedPlatformOrigin = origin;
+            this->hasPlatformOrigin = (false == this->platformSegments.empty());
+            this->originPositionSet = (0 != posSet);
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] MIGRATED " + Ogre::StringConverter::toString(this->platformSegments.size()) + " segments from legacy file " + filePath +
+                                                                                    " - SAVE THE SCENE to store the path as Path Data in the scene file; after that the file is no longer read and can be deleted.");
+
+            return true;
+        }
+        catch (const std::exception& e)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralPlatformComponent] Exception migrating legacy file: " + Ogre::String(e.what()));
+            return false;
+        }
     }
 
     std::vector<unsigned char> ProceduralPlatformComponent::getPlatformData(void) const

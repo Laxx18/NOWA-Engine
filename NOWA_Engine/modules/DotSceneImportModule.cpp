@@ -439,6 +439,10 @@ namespace NOWA
         {
             this->parseGlobalScene(crypted);
         }
+        else
+        {
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Attention: Scene: '" + this->scenePath + "' uses ignore global scene. If this is desired, then its fine. Else some gameobjects will not be loaded. Keep that in mind!");
+        }
 
         NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
         {

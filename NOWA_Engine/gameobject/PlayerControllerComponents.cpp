@@ -2836,7 +2836,20 @@ namespace NOWA
             // IDLE
             // ------------------------------------------------------------------
             this->walkCount = 0.0f;
+
+            // In 2D the facing direction must SURVIVE releasing the key. Clearing it here
+            // made the pending 180 degree turn abort the moment the key went up - the
+            // player only turned while the key was held - and set direction to NONE, which
+            // the next frame then detected as yet another direction change.
+            if (false == this->playerController->getIsFor2D())
+            {
+                this->keyDirection = Ogre::Vector3::ZERO;
+            }
+            else
+            {
+                // No movement input, but keep facing where we are turning to.
             this->keyDirection = Ogre::Vector3::ZERO;
+            }
 
             if (false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_1) && false == this->inAir)
             {
@@ -2844,7 +2857,13 @@ namespace NOWA
             }
 
             tempAnimationSpeed = this->playerController->getAnimationSpeed() * 0.5f;
+
+            // Same reasoning: in 2D the player keeps facing LEFT or RIGHT while idle.
+            // Resetting to NONE restarted the turn detection on the next key press.
+            if (false == this->playerController->getIsFor2D())
+            {
             this->direction = Direction::NONE;
+            }
 
             if (0.0f == this->playerController->getAcceleration())
             {
@@ -3112,7 +3131,8 @@ namespace NOWA
                     this->accelerationTimer = 0.0f;
                     this->lastReportedSpeed = 0.0f;
 
-                    enqueuePlayerClosure(this->playerController->getDirectionChangedClosure(), "reactOnDirectionChanged", static_cast<int>(this->oldDirection), static_cast<int>(this->direction));
+                    enqueuePlayerClosure(this->playerController->getDirectionChangedClosure(), "reactOnDirectionChanged",
+                        static_cast<int>(this->oldDirection), static_cast<int>(this->direction));
                 }
 
                 // Running into a wall stops the acceleration as well - the player is no
@@ -3123,44 +3143,9 @@ namespace NOWA
                     this->lastReportedSpeed = 0.0f;
                 }
 
-                if (true == this->directionChanged)
-                {
-                    this->boringTimer = 0.0f;
-
-                    Ogre::Real currentDegree = this->playerController->getPhysicsComponent()->getOrientation().getYaw().valueDegrees();
-                    if (Direction::RIGHT == this->direction)
-                    {
-                        yawAtSpeed = this->playerController->getRotationSpeed();
-                        if (currentDegree >= 90.0f)
-                        {
-                            this->directionChanged = false;
-                            yawAtSpeed = 0.0f;
-                            this->playerController->getPhysicsComponent()->setOrientation(Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_Y));
-                        }
-                    }
-                    else if (Direction::LEFT == this->direction)
-                    {
-                        yawAtSpeed = -this->playerController->getRotationSpeed();
-                        if (currentDegree <= -90.0f)
-                        {
-                            this->directionChanged = false;
-                            yawAtSpeed = 0.0f;
-                            this->playerController->getPhysicsComponent()->setOrientation(Ogre::Quaternion(Ogre::Degree(-90.0f), Ogre::Vector3::UNIT_Y));
-                        }
-                    }
-                    this->playerController->getPhysicsComponent()->applyOmegaForce(Ogre::Vector3(0.0f, yawAtSpeed, 0.0f));
-                }
-                else
-                {
-                    if (Direction::LEFT == this->direction)
-                    {
-                        this->playerController->getPhysicsComponent()->setOrientation(Ogre::Quaternion(Ogre::Degree(-90.0f), Ogre::Vector3::UNIT_Y));
-                    }
-                    else
-                    {
-                        this->playerController->getPhysicsComponent()->setOrientation(Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_Y));
-                    }
-                }
+                // The turn itself is NOT handled here anymore, see the block after the
+                // movement branch: it has to keep running even when the key is released,
+                // otherwise a 180 degree turn aborts halfway through.
             }
 
             // Blend to the movement animation -- only if not already active and
@@ -3304,9 +3289,13 @@ namespace NOWA
         Ogre::Vector3 jumpVelocity = Ogre::Vector3::ZERO;
 
         const bool doNormalJump = this->jumpKeyPressed && false == this->isJumping && false == this->inAir;
-        const bool doDoubleJump = this->playerController->getDoubleJump() && this->jumpCount == 2;
+        // jumpKeyPressed is REQUIRED for the air jumps too. Without it these conditions stay
+        // true for as long as jumpCount says so, and the force below was applied on every
+        // single frame - holding the jump key made the player fly. In xJump mode the counter
+        // never resets either, so it never stopped.
+        const bool doDoubleJump = this->jumpKeyPressed && this->playerController->getDoubleJump() && this->jumpCount == 2;
         // xJump overrides double jump: any press while airborne jumps again, without limit.
-        const bool doXJump = this->playerController->getXJump() && this->jumpCount >= 2;
+        const bool doXJump = this->jumpKeyPressed && this->playerController->getXJump() && this->jumpCount >= 2;
 
         if (1.0f == this->playerController->getJumpWeight() && (true == doNormalJump || true == doDoubleJump || true == doXJump))
         {
@@ -3375,13 +3364,108 @@ namespace NOWA
             }
         }
 
+
+        // -------------------------------------------------------------------------
+        // 2D turning -- runs EVERY frame, independent of the movement branch above.
+        //
+        // This used to sit inside the movement branch, so it only ran while a direction
+        // key was held down: releasing the key mid turn left the player half rotated, and
+        // the idle branch reset direction to NONE so the next press was detected as yet
+        // another change. One tap now turns the player a full 180 degrees, as intended.
+        // -------------------------------------------------------------------------
+        if (true == this->playerController->getIsFor2D())
+        {
+            // setOrientation() is deliberately NOT used anywhere in here.
+            //
+            // It overwrites the very transform the physics step just handed to the render
+            // thread for interpolation, so the node is yanked back and forth between the
+            // interpolated and the forced value - that is the flickering. The 3D branch
+            // never calls it either; it steers purely through omega forces. The original lua
+            // version noted the same thing, adding that setOrientation also corrupts the
+            // ragdoll and makes the arms fly around.
+            const Ogre::Real targetDegree = (Direction::LEFT == this->direction) ? -90.0f : 90.0f;
+            if (true == this->directionChanged)
+            {
+                this->boringTimer = 0.0f;
+
+                const Ogre::Real currentDegree = this->playerController->getPhysicsComponent()->getOrientation().getYaw().valueDegrees();
+
+                // Compared against the REMAINING angle rather than an absolute yaw
+                // threshold: the old '>= 90' / '<= -90' test only worked in one direction
+                // and could be overshot within a single frame, leaving directionChanged
+                // stuck true forever.
+                if (Ogre::Math::Abs(currentDegree - targetDegree) <= 2.0f)
+                    {
+                        this->directionChanged = false;
+                    this->playerController->getPhysicsComponent()->applyOmegaForce(Ogre::Vector3::ZERO);
+                    }
+                else
+                {
+                    const Ogre::Real turnSpeed = (Direction::RIGHT == this->direction) ? this->playerController->getRotationSpeed() : -this->playerController->getRotationSpeed();
+                    this->playerController->getPhysicsComponent()->applyOmegaForce(Ogre::Vector3(0.0f, turnSpeed, 0.0f));
+                    }
+                }
+
+            else if (Direction::NONE != this->direction)
+            {
+                // Holds the facing against collisions and ragdoll disturbances, driven by
+                // the physics instead of forcing the transform.
+                const Ogre::Quaternion targetOrientation(Ogre::Degree(targetDegree), Ogre::Vector3::UNIT_Y);
+                this->playerController->getPhysicsComponent()->applyOmegaForceRotateTo(targetOrientation, Ogre::Vector3::UNIT_Y, 10.0f);
+            }
+        }
+
         // -------------------------------------------------------------------------
         // Velocity decomposition -- preserve vertical (gravity) component, apply
         // horizontal movement in the key direction.
         // -------------------------------------------------------------------------
         Ogre::Vector3 verticalVelocity = gravityDir * currentVelocity.dotProduct(gravityDir);
         Ogre::Vector3 directionMove = this->keyDirection * tempSpeed * this->acceleration;
+
+        // While airborne the horizontal velocity the player had when taking off must be
+        // CARRIED OVER, not replaced. Without this, keyDirection is zero the moment the
+        // movement branch is skipped - which is exactly what happens during a jump - so
+        // directionMove became zero and the player rose straight up instead of jumping
+        // forward. Any steering input while in the air still overrides it, which keeps the
+        // usual mid air control.
+        if (true == this->inAir && true == directionMove.positionEquals(Ogre::Vector3::ZERO, 0.0001f))
+        {
+            directionMove = currentVelocity - gravityDir * currentVelocity.dotProduct(gravityDir);
+        }
+
         Ogre::Vector3 newVelocity = verticalVelocity + directionMove;
+
+        // TEMPORARY DIAGNOSTICS - remove once the 2D jump is understood. Throttled to twice
+        // a second, and only while airborne or jumping, so walking does not flood the log.
+        // Function local static instead of a member, so this needs no header change and
+        // therefore no full rebuild.
+        if (true == this->playerController->getIsFor2D() && (true == this->inAir || true == this->jumpKeyPressed || true == this->isJumping))
+        {
+            static Ogre::Real jumpDiagAccumulator = 0.0f;
+            jumpDiagAccumulator += dt;
+            if (jumpDiagAccumulator > 0.5f)
+            {
+                jumpDiagAccumulator = 0.0f;
+
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WalkingStateJumpNRun][DIAG2D] inAir: " + Ogre::StringConverter::toString(this->inAir)
+                    + " isJumping: " + Ogre::StringConverter::toString(this->isJumping)
+                    + " jumpKeyPressed: " + Ogre::StringConverter::toString(this->jumpKeyPressed)
+                    + " tryJump: " + Ogre::StringConverter::toString(this->tryJump)
+                    + " jumpCount: " + Ogre::StringConverter::toString(this->jumpCount)
+                    + " canDoubleJump: " + Ogre::StringConverter::toString(this->canDoubleJump)
+                    + " height: " + Ogre::StringConverter::toString(height)
+                    + " direction: " + Ogre::StringConverter::toString(static_cast<int>(this->direction))
+                    + " keyDirection: " + Ogre::StringConverter::toString(this->keyDirection)
+                    + " tempSpeed: " + Ogre::StringConverter::toString(tempSpeed)
+                    + " acceleration: " + Ogre::StringConverter::toString(this->acceleration)
+                    + " directionMove: " + Ogre::StringConverter::toString(directionMove)
+                    + " currentVelocity: " + Ogre::StringConverter::toString(currentVelocity)
+                    + " newVelocity: " + Ogre::StringConverter::toString(newVelocity)
+                    + " jumpVelocity: " + Ogre::StringConverter::toString(jumpVelocity)
+                    + " hitBelow: " + Ogre::String(nullptr != this->playerController->getHitGameObjectBelow() ? this->playerController->getHitGameObjectBelow()->getName() : "<none>")
+                    + " hitFront: " + Ogre::String(nullptr != this->playerController->getHitGameObjectFront() ? this->playerController->getHitGameObjectFront()->getName() : "<none>"));
+            }
+        }
 
         if (false == this->hasPhysicsPlayerControllerComponent)
         {

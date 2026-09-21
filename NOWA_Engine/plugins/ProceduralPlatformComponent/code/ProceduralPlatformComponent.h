@@ -846,6 +846,22 @@ namespace NOWA
         bool deserializePathData(const Ogre::String& encodedData);
 
         /**
+         * @brief One-way migration path for scenes written before "Path Data" existed:
+         *        builds the file name the old build used, "Platform_<id>.platformdata".
+         */
+        Ogre::String getLegacyPlatformDataFilePath(void) const;
+
+        /**
+         * @brief Reads segments + origin out of a legacy .platformdata file. ONLY the path is
+         *        taken - the cached vertex/index blocks at the end of the file are skipped
+         *        without even being read, since the mesh is swept from the path anyway.
+         *        Never writes and never deletes the file; the migration completes when the
+         *        user saves the scene, which then contains the path as a "Path Data" property.
+         * @return True if a file existed and its path could be read.
+         */
+        bool loadLegacyPlatformDataFile(void);
+
+        /**
          * @brief Exports the platform mesh and converts the GameObject to use the static mesh file.
          *        This is a one-way operation - the procedural data will be removed.
          * @return True if conversion succeeded
@@ -1097,6 +1113,20 @@ namespace NOWA
 
         bool bBatchMode;
         bool platformLoadedFromScene;
+
+        // Set by init() when the scene's property block has NO "Path Data" property at all,
+        // which can only mean the scene was written by a build that still used the
+        // "Platform_<id>.platformdata" side car file. handleSceneParsed then makes one
+        // attempt to read that file. An EMPTY Path Data property does not set this: that is
+        // a platform saved by the current build which genuinely has no path, and reviving it
+        // from a stale leftover file would be wrong.
+        bool legacyPathDataMigrationPending;
+
+        // Set by clone() when it copied a non-empty path. postInit() does the single rebuild
+        // and clears it again. A clone cannot use either of the other two build triggers:
+        // init() never runs for it (there is no XML to read) and EventDataSceneParsed has
+        // long since fired by the time the user presses the clone key.
+        bool platformClonedNeedsRebuild;
 
         PhysicsArtifactComponent* physicsArtifactComponent;
     };

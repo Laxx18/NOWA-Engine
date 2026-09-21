@@ -141,6 +141,10 @@ MainGameObject["connect"] = function(gameObject)
     spellBall:getParticleFxComponent():setActivated(false);
     spellBall2:getParticleFxComponent():setActivated(false);
     agathe:getParticleFxComponent():setActivated(false);
+    
+    mainGameObject:getMyGUIButtonComponentFromName("SkipButton"):reactOnMouseButtonClick(function()
+        AppStateManager:changeAppState("Level1");
+    end);
 end
 
 MainGameObject["disconnect"] = function()
@@ -309,7 +313,6 @@ end
 MainGameObject["LaxFollow2EndTimePoint"] = function(timePointSec)
     mainGameObject:getFadeComponentFromIndex(1):setActivated(true);
     mainGameObject:getFadeComponentFromIndex(1):reactOnFadeCompleted(function() 
-         log("--> change to Level1SectorState");
          AppStateManager:changeAppState("Level1SectorState");
     end);
 end

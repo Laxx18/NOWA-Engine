@@ -61,6 +61,10 @@ MainGameObject["connect"] = function(gameObject)
      luizius:getSimpleSoundComponentFromName("Laugh"):setActivated(false);
      luizius:getTransformEaseComponent():setActivated(true);
      mainGameObject:getFadeComponent():setActivated(false);
+     
+     mainGameObject:getMyGUIButtonComponentFromName("SkipButton"):reactOnMouseButtonClick(function()
+        AppStateManager:changeAppState("Level1");
+    end);
 end
 
 MainGameObject["disconnect"] = function()

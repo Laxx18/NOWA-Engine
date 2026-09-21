@@ -239,6 +239,25 @@
 					<property type="7" name="FadeMode" data="FadeOut"/>
 					<property type="6" name="Duration" data="2"/>
 					<property type="7" name="EaseFunction" data="easeOutSine"/>
+					<property type="7" name="Name" data="SkipButton"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="3643551685"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.75 0.75"/>
+					<property type="8" name="Size" data="0.1 0.05"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Back"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Skin" data="WoodButton"/>
+					<property type="12" name="CommonWidget" data="false"/>
+					<property type="7" name="Caption" data="Skip"/>
+					<property type="2" name="FontHeight" data="22"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="0.95 0.95 0.95 1"/>
 				</userData>
 			</item>
 		</node>

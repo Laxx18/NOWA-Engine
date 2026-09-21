@@ -3400,7 +3400,7 @@ return {
 	{
 		type = "class",
 		description = "Requirements: A kind of player controller component must exist.",
-		inherits = "CameraBehaviorBaseComponent",
+		inherits = "CameraBehaviorComponent",
 		childs = 
 		{
 			setMoveSpeed =
@@ -3499,6 +3499,22 @@ return {
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
+			},
+			setCameraGameObjectId =
+			{
+				type = "method",
+				description = "Sets the camera gameobject id. The camera will then be activated for this behavior.",
+				args = "(string id)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCameraGameObjectId =
+			{
+				type = "function",
+				description = "Gets camera gameobject id.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
 			}
 		}
 	},
@@ -9842,6 +9858,22 @@ return {
 				returns = "(LuaScriptComponent)",
 				valuetype = "LuaScriptComponent"
 			},
+			getCameraBehaviorComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(CameraBehaviorComponent)",
+				valuetype = "CameraBehaviorComponent"
+			},
+			getCameraBehaviorComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(CameraBehaviorComponent)",
+				valuetype = "CameraBehaviorComponent"
+			},
 			getAiLuaGoalComponent =
 			{
 				type = "function",
@@ -11066,6 +11098,30 @@ return {
 				returns = "(ProceduralBlockComponent)",
 				valuetype = "ProceduralBlockComponent"
 			},
+			getProceduralConveyorLoopComponent =
+			{
+				type = "function",
+				description = "Gets the component. Use this if the game object has this component only once.",
+				args = "()",
+				returns = "(ProceduralConveyorLoopComponent)",
+				valuetype = "ProceduralConveyorLoopComponent"
+			},
+			getProceduralConveyorLoopComponent2 =
+			{
+				type = "function",
+				description = "Gets the component by the given occurrence index, since a game object may have this component several times.",
+				args = "(number occurrenceIndex)",
+				returns = "(ProceduralConveyorLoopComponent)",
+				valuetype = "ProceduralConveyorLoopComponent"
+			},
+			getProceduralConveyorLoopComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component by its custom name.",
+				args = "(string name)",
+				returns = "(ProceduralConveyorLoopComponent)",
+				valuetype = "ProceduralConveyorLoopComponent"
+			},
 			getProceduralGeometryComponent =
 			{
 				type = "function",
@@ -11727,9 +11783,17 @@ return {
 	GameObjectController =
 	{
 		type = "class",
-		description = "The game object controller manages all game objects.",
+		description = "GameObjectController class",
 		childs = 
 		{
+			castCameraBehaviorComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(CameraBehaviorComponent other)",
+				returns = "(CameraBehaviorComponent)",
+				valuetype = "CameraBehaviorComponent"
+			},
 			undo =
 			{
 				type = "method",
@@ -13369,6 +13433,14 @@ return {
 				args = "(ProceduralBlockComponent other)",
 				returns = "(ProceduralBlockComponent)",
 				valuetype = "ProceduralBlockComponent"
+			},
+			castProceduralConveyorLoopComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(ProceduralConveyorLoopComponent other)",
+				returns = "(ProceduralConveyorLoopComponent)",
+				valuetype = "ProceduralConveyorLoopComponent"
 			},
 			castProceduralGeometryComponent =
 			{
@@ -29705,6 +29777,143 @@ return {
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
+			}
+		}
+	},
+	ProceduralConveyorLoopComponent =
+	{
+		type = "class",
+		description = "Usage: A conveyor belt whose texture visibly scrolls around a closed stadium-shaped loop.  SIZE: - 'Belt Length' and 'Depth' are the belt's outer dimensions in meters. - 'Roller Radius' sets how rounded the two ends are - also the belt's overall height (2 x radius).  ANIMATION: - 'Belt Speed' is how fast the texture scrolls around the loop, in meters per second. Negative reverses direction. - 'Belt Repeat Count' is how many times the belt texture repeats around one full lap - kept as a whole number on purpose, so the scroll never visibly pops once it has gone all the way around. - This only animates the TEXTURE, not physics - pair with a PhysicsMaterialComponent set to Contact Behavior 'ConveyorPlayer'/'ConveyorObject' for objects to actually be pushed along.  MATERIAL: - 'Belt Datablock' covers the scrolling belt surface; 'End Cap Datablock' covers the two flat, non-scrolling faces at each end. - 'Depth UV Tiling' scales the belt's texture across its depth, in meters per repeat.  COLLISION: - Add a PhysicsArtifactComponent to the same game object and the belt is rebuilt as a collision hull automatically whenever its geometry changes.  LUA API: - getProceduralConveyorLoopComponent() on a GameObject returns this component. - setBeltLength(l), setRollerRadius(r), setDepth(d), setBeltSpeed(s) set size and speed. - setBeltDatablock(name), setEndCapDatablock(name) set the two materials. ",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setBeltLength =
+			{
+				type = "method",
+				description = "Sets the belt's length in meters. Regenerates the whole belt.",
+				args = "(number length)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBeltLength =
+			{
+				type = "function",
+				description = "Gets the belt's length in meters.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setRollerRadius =
+			{
+				type = "method",
+				description = "Sets the roller radius in meters. Regenerates the whole belt.",
+				args = "(number radius)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRollerRadius =
+			{
+				type = "function",
+				description = "Gets the roller radius in meters.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setDepth =
+			{
+				type = "method",
+				description = "Sets the belt's depth in meters. Regenerates the whole belt.",
+				args = "(number depth)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDepth =
+			{
+				type = "function",
+				description = "Gets the belt's depth in meters.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setBeltSpeed =
+			{
+				type = "method",
+				description = "Sets how fast the texture scrolls around the loop, in meters per second. Negative reverses direction.",
+				args = "(number speed)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBeltSpeed =
+			{
+				type = "function",
+				description = "Gets the belt's scroll speed in meters per second.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setBeltRepeatCount =
+			{
+				type = "method",
+				description = "Sets how many times the belt's texture repeats around one full lap - a whole number, so the scroll never pops once it wraps. Regenerates the whole belt.",
+				args = "(number count)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBeltRepeatCount =
+			{
+				type = "function",
+				description = "Gets the belt's texture repeat count.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setDepthUVTiling =
+			{
+				type = "method",
+				description = "Sets the belt's texture tiling across its depth, in meters per repeat. Regenerates the whole belt.",
+				args = "(number tiling)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDepthUVTiling =
+			{
+				type = "function",
+				description = "Gets the belt's depth texture tiling.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setBeltDatablock =
+			{
+				type = "method",
+				description = "Sets the datablock covering the belt's own scrolling surface.",
+				args = "(string datablock)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBeltDatablock =
+			{
+				type = "function",
+				description = "Gets the belt surface's datablock.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setEndCapDatablock =
+			{
+				type = "method",
+				description = "Sets the datablock covering the two flat, non-scrolling end faces.",
+				args = "(string datablock)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getEndCapDatablock =
+			{
+				type = "function",
+				description = "Gets the end caps' datablock.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
 			}
 		}
 	},

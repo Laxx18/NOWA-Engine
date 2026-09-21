@@ -159,6 +159,11 @@ namespace NOWA
 		 * @return cameraGameObjectId The cameraGameObjectId to get
 		 */
 		unsigned long getCameraGameObjectId(void) const;
+
+		/**
+         * @see  GameObjectComponent::createStaticApiForLua
+         */
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 	protected:
 		void acquireActiveCamera(void);
 	public:

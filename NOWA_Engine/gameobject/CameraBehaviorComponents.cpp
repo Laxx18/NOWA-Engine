@@ -3,6 +3,8 @@
 #include "PhysicsActiveComponent.h"
 #include "WorkspaceComponents.h"
 
+#include <set>
+
 #include "utilities/MathHelper.h"
 #include "utilities/XMLConverter.h"
 
@@ -224,12 +226,12 @@ namespace NOWA
                 {
                     this->baseCamera->setPhysicsBody(nullptr);
 
-                    NOWA::GraphicsModule::RenderCommand oceanRdCmd = [this]
+                    NOWA::GraphicsModule::RenderCommand command = [this]
                     {
                         this->baseCamera->getCamera()->setPosition(this->baseCamera->getCamera()->getParentSceneNode()->convertWorldToLocalPositionUpdated(this->oldPosition));
                         this->baseCamera->getCamera()->setOrientation(this->baseCamera->getCamera()->getParentSceneNode()->convertWorldToLocalOrientationUpdated(this->oldOrientation));
                     };
-                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(oceanRdCmd), "CameraBehaviorComponent::setActivated");
+                    NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(command), "CameraBehaviorComponent::setActivated");
 
                     AppStateManager::getSingletonPtr()->getCameraManager()->removeCameraBehavior(this->baseCamera->getCamera(), this->baseCamera->getBehaviorType());
                     this->baseCamera = nullptr;
@@ -241,7 +243,6 @@ namespace NOWA
     void CameraBehaviorComponent::snapToTarget(void) const
     {
     }
-
 
     bool CameraBehaviorComponent::isActivated(void) const
     {
@@ -276,6 +277,133 @@ namespace NOWA
     unsigned long CameraBehaviorComponent::getCameraGameObjectId(void) const
     {
         return this->cameraGameObjectId->getULong();
+    }
+
+    // Attention: internal linkage. This is now the ONLY place CameraBehaviorComponent is
+    // registered with luabind at all - see createStaticApiForLua() below - so there is no
+    // longer any other translation unit that could define the same symbol and collide with
+    // this one at link time.
+    namespace
+    {
+        void setCameraGameObjectIdForLua(CameraBehaviorComponent* instance, const Ogre::String& cameraId)
+        {
+            instance->setCameraGameObjectId(Ogre::StringConverter::parseUnsignedLong(cameraId));
+        }
+
+        Ogre::String getCameraGameObjectIdForLua(CameraBehaviorComponent* instance)
+        {
+            return Ogre::StringConverter::toString(instance->getCameraGameObjectId());
+        }
+    }
+
+    CameraBehaviorComponent* getCameraBehaviorComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+    {
+        return makeStrongPtr<CameraBehaviorComponent>(gameObject->getComponentWithOccurrence<CameraBehaviorComponent>(occurrenceIndex)).get();
+    }
+
+    CameraBehaviorComponent* getCameraBehaviorComponent(GameObject* gameObject)
+    {
+        return makeStrongPtr<CameraBehaviorComponent>(gameObject->getComponent<CameraBehaviorComponent>()).get();
+    }
+
+    CameraBehaviorComponent* getCameraBehaviorComponentFromName(GameObject* gameObject, const Ogre::String& name)
+    {
+        return makeStrongPtr<CameraBehaviorComponent>(gameObject->getComponentFromName<CameraBehaviorComponent>(name)).get();
+    }
+
+    namespace
+    {
+        // Attention: guards CameraBehaviorComponent::createStaticApiForLua() against being run
+        // twice against the SAME lua_State - see the long comment inside that function for why
+        // a plain process-lifetime "static bool" is wrong here (it survives a simulation
+        // stop/start, which rebuilds the lua_State, and would then wrongly skip registering
+        // against the new one). Keyed by the lua_State pointer instead, so a fresh state always
+        // gets registered, and repeated calls against the SAME state are safely ignored.
+        //
+        // A plain std::set is enough here: Lua API (re-)registration only ever happens on the
+        // logic/main thread during startup or a simulation stop/start, never concurrently.
+        // Attention: two guards, because two classes in this hierarchy are each reached from
+        // multiple independent call sites within the same lua_State - see each guard's own
+        // comment below for exactly which call sites. Both are keyed by lua_State pointer, NOT
+        // by a plain process-lifetime static bool, because a simulation stop/start rebuilds the
+        // lua_State: a process-lifetime flag would then wrongly skip registering against the new
+        // state, leaving anything deriving from it without a registered base.
+        bool wasCameraBehaviorComponentRegistered(lua_State* lua)
+        {
+            static std::set<lua_State*> registeredStates;
+            if (registeredStates.count(lua) > 0)
+            {
+                return true;
+            }
+            registeredStates.insert(lua);
+            return false;
+        }
+
+        // Attention: CameraBehaviorBaseComponent, all FIVE concrete camera behavior subclasses
+        // (CameraBehaviorFirstPersonComponent, CameraBehaviorThirdPersonComponent,
+        // CameraBehaviorThirdPersonOcclusionComponent, CameraBehaviorFollow2DComponent,
+        // CameraBehaviorZoomComponent) all inherit from CameraBehaviorComponent DIRECTLY in C++
+        // (see CameraBehaviorComponents.h) - CameraBehaviorBaseComponent is their SIBLING, not
+        // their shared ancestor, despite what it might look like from the "Base" name. Each of
+        // those six classes' createStaticApiForLua() therefore calls
+        // CameraBehaviorComponent::createStaticApiForLua() explicitly first, all against the same
+        // lua_State, and this guard keeps that safe to do six times over.
+        bool wasCameraBehaviorBaseComponentRegistered(lua_State* lua)
+        {
+            static std::set<lua_State*> registeredStates;
+            if (registeredStates.count(lua) > 0)
+            {
+                return true;
+            }
+            registeredStates.insert(lua);
+            return false;
+        }
+    }
+
+    void CameraBehaviorComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+    {
+        // Attention: CameraBehaviorComponent is abstract (no canStaticAddComponent), so the
+        // component registry never calls this function on its own - it only calls
+        // createStaticApiForLua() on concrete, addable components. But EVERY concrete camera
+        // behavior class (CameraBehaviorBaseComponent and all five siblings under it) inherits
+        // from CameraBehaviorComponent DIRECTLY in C++, and each of them explicitly calls this
+        // function first, guarded by wasCameraBehaviorComponentRegistered() so six call sites
+        // against the same lua_State cannot double-register the class.
+        if (true == wasCameraBehaviorComponentRegistered(lua))
+        {
+            return;
+        }
+
+        module(lua)[class_<CameraBehaviorComponent, GameObjectComponent>("CameraBehaviorComponent")
+                // .def("getClassName", &CameraBehaviorComponent::getClassName)
+                .def("getParentClassName", &CameraBehaviorComponent::getParentClassName)
+                .def("setActivated", &CameraBehaviorComponent::setActivated)
+                .def("isActivated", &CameraBehaviorComponent::isActivated)
+                .def("getCamera", &CameraBehaviorComponent::getCamera)
+                .def("setCameraControlLocked", &CameraBehaviorComponent::setCameraControlLocked)
+                .def("getCameraControlLocked", &CameraBehaviorComponent::getCameraControlLocked)
+                .def("setCameraGameObjectId", &setCameraGameObjectIdForLua)
+                .def("getCameraGameObjectId", &getCameraGameObjectIdForLua)];
+
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorComponent", "class inherits GameObjectComponent", CameraBehaviorComponent::getStaticInfoText());
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorComponent", "void setActivated(bool activated)", "Sets the camera behavior component is activated. If true, the camera will do its work according the used behavior.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorComponent", "bool isActivated()", "Gets whether camera behavior component is activated. If true, the camera will do its work according the used behavior.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorComponent", "Camera getCamera()", "Gets the used camera pointer for direct manipulation.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorComponent", "void setCameraControlLocked(bool locked)",
+            "Sets whether the camera can be moved by keys. Note: This should be locked, if a behavior is active, since the camera will be moved automatically.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorComponent", "bool getCameraControlLocked()",
+            "Gets the rotation speed for the ai controller game object. Note: This should be locked, if a behavior is active, since the camera will be moved automatically.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorComponent", "void setCameraGameObjectId(String id)", "Sets the camera gameobject id. The camera will then be activated for this behavior.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorComponent", "String getCameraGameObjectId()", "Gets camera gameobject id.");
+
+        gameObjectClass.def("getCameraBehaviorComponentFromName", &getCameraBehaviorComponentFromName);
+        gameObjectClass.def("getCameraBehaviorComponent", (CameraBehaviorComponent * (*)(GameObject*)) & getCameraBehaviorComponent);
+
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CameraBehaviorComponent getCameraBehaviorComponent()", "Gets the component. This can be used if the game object this component just once.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CameraBehaviorComponent getCameraBehaviorComponentFromName(String name)", "Gets the component from name.");
+
+        gameObjectControllerClass.def("castCameraBehaviorComponent", &GameObjectController::cast<CameraBehaviorComponent>);
+        LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "CameraBehaviorComponent castCameraBehaviorComponent(CameraBehaviorComponent other)", "Casts an incoming type from function for lua auto completion.");
     }
 
     void CameraBehaviorComponent::acquireActiveCamera(void)
@@ -501,20 +629,31 @@ namespace NOWA
 
     void CameraBehaviorBaseComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
     {
-        module(lua)
-        [
-            class_<CameraBehaviorBaseComponent, GameObjectComponent>("CameraBehaviorBaseComponent")
-            .def("setMoveSpeed", &CameraBehaviorBaseComponent::setMoveSpeed)
-            .def("getMoveSpeed", &CameraBehaviorBaseComponent::getMoveSpeed)
-            .def("setRotationSpeed", &CameraBehaviorBaseComponent::setRotationSpeed)
-            .def("getRotationSpeed", &CameraBehaviorBaseComponent::getRotationSpeed)
-            .def("setSmoothValue", &CameraBehaviorBaseComponent::setSmoothValue)
-            .def("getSmoothValue", &CameraBehaviorBaseComponent::getSmoothValue)
-            // Issue: CameraBehavioromponent has no lua section, but then that is required because of snapToTarget and other components must lua technically then derive from CameraBehaviorComponent instead of GameObjectComponent. I'm to lazy. if required, adapt that all!
-            // .def("snapToTarget", &CameraBehaviorBaseComponent::snapToTarget)
-        ];
+        // Attention: guarded because the registry may call this directly (CameraBehaviorBaseComponent
+        // is itself a concrete, addable component) AND every one of the five sibling classes below
+        // also chains into CameraBehaviorComponent first, not into this function - so in practice
+        // this guard mainly protects against the registry calling this class more than once, but
+        // costs nothing to keep uniform with the pattern used everywhere else in this file.
+        if (true == wasCameraBehaviorBaseComponentRegistered(lua))
+        {
+            return;
+        }
 
-        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorBaseComponent", "class inherits CameraBehaviorBaseComponent", CameraBehaviorBaseComponent::getStaticInfoText());
+        // Attention: explicit call to CameraBehaviorComponent::createStaticApiForLua() here,
+        // because CameraBehaviorBaseComponent's REAL C++ parent is CameraBehaviorComponent (see
+        // CameraBehaviorComponents.h) - guaranteed idempotent per lua_State by
+        // wasCameraBehaviorComponentRegistered() inside it.
+        CameraBehaviorComponent::createStaticApiForLua(lua, gameObjectClass, gameObjectControllerClass);
+
+        module(lua)[class_<CameraBehaviorBaseComponent, CameraBehaviorComponent>("CameraBehaviorBaseComponent")
+                .def("setMoveSpeed", &CameraBehaviorBaseComponent::setMoveSpeed)
+                .def("getMoveSpeed", &CameraBehaviorBaseComponent::getMoveSpeed)
+                .def("setRotationSpeed", &CameraBehaviorBaseComponent::setRotationSpeed)
+                .def("getRotationSpeed", &CameraBehaviorBaseComponent::getRotationSpeed)
+                .def("setSmoothValue", &CameraBehaviorBaseComponent::setSmoothValue)
+                .def("getSmoothValue", &CameraBehaviorBaseComponent::getSmoothValue)];
+
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorBaseComponent", "class inherits CameraBehaviorComponent", CameraBehaviorBaseComponent::getStaticInfoText());
         LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorBaseComponent", "void setMoveSpeed(float moveSpeed)", "Sets the camera move speed.");
         LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorBaseComponent", "float getMoveSpeed()", "Gets the camera move speed.");
         LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorBaseComponent", "void setRotationSpeed(float rotationSpeed)", "Sets the camera rotation speed.");
@@ -522,10 +661,6 @@ namespace NOWA
         LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorBaseComponent", "void setSmoothValue(float smoothValue)",
             "Sets the camera value for more smooth transform. Note: Setting to 0, camera transform is not smooth, setting to 1 would be to smooth and lag behind, a good value is 0.1");
         LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorBaseComponent", "float getSmoothValue()", "Gets the camera value for more smooth transform.");
-        /*LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorBaseComponent", "void snapToTarget()",
-            "Immediately snaps the camera's transform, spring state, and occlusion cache to the target's current transform, discarding all smoothing history. "
-            "Call this after the target's transform has just been changed instantaneously by other code (e.g. after a scripted takeoff or teleport), so the camera "
-            "reflects the new transform immediately instead of spring-easing toward it over several frames.");*/
 
         gameObjectClass.def("getCameraBehaviorBaseComponentFromName", &getCameraBehaviorBaseComponentFromName);
         gameObjectClass.def("getCameraBehaviorBaseComponent", (CameraBehaviorBaseComponent * (*)(GameObject*)) & getCameraBehaviorBaseComponent);
@@ -750,7 +885,21 @@ namespace NOWA
 
     void CameraBehaviorFirstPersonComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
     {
-        module(lua)[class_<CameraBehaviorFirstPersonComponent, GameObjectComponent>("CameraBehaviorFirstPersonComponent")
+        // Attention: CameraBehaviorFirstPersonComponent's REAL C++ parent is CameraBehaviorComponent, NOT
+        // CameraBehaviorBaseComponent (see CameraBehaviorComponents.h - CameraBehaviorBaseComponent
+        // is its SIBLING, both derive from CameraBehaviorComponent directly). The luabind
+        // inheritance declared here has to match that real relationship: declaring this against
+        // CameraBehaviorBaseComponent would falsely claim CameraBehaviorFirstPersonComponent inherits its
+        // moveSpeed/rotationSpeed/smoothValue - methods CameraBehaviorFirstPersonComponent never actually has,
+        // and worse, "Rotation Speed" / "Smooth Value" collide by NAME with CameraBehaviorFirstPersonComponent's
+        // own, separate XML properties, which corrupts scene loading if the two ever share an
+        // init()/actualizeValue() call chain. Calling CameraBehaviorComponent::createStaticApiForLua()
+        // explicitly here, instead of relying on registry order, guards against "you cannot derive
+        // from an unregistered type" regardless of what order getRegisteredComponentNames() returns
+        // classes in (that call is itself idempotent per lua_State, see its own guard).
+        CameraBehaviorComponent::createStaticApiForLua(lua, gameObjectClass, gameObjectControllerClass);
+
+        module(lua)[class_<CameraBehaviorFirstPersonComponent, CameraBehaviorComponent>("CameraBehaviorFirstPersonComponent")
                 .def("setSmoothValue", &CameraBehaviorFirstPersonComponent::setSmoothValue)
                 .def("getSmoothValue", &CameraBehaviorFirstPersonComponent::getSmoothValue)
                 .def("setRotationSpeed", &CameraBehaviorFirstPersonComponent::setRotationSpeed)
@@ -1035,7 +1184,21 @@ namespace NOWA
 
     void CameraBehaviorThirdPersonComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
     {
-        module(lua)[class_<CameraBehaviorThirdPersonComponent, GameObjectComponent>("CameraBehaviorThirdPersonComponent")
+        // Attention: CameraBehaviorThirdPersonComponent's REAL C++ parent is CameraBehaviorComponent, NOT
+        // CameraBehaviorBaseComponent (see CameraBehaviorComponents.h - CameraBehaviorBaseComponent
+        // is its SIBLING, both derive from CameraBehaviorComponent directly). The luabind
+        // inheritance declared here has to match that real relationship: declaring this against
+        // CameraBehaviorBaseComponent would falsely claim CameraBehaviorThirdPersonComponent inherits its
+        // moveSpeed/rotationSpeed/smoothValue - methods CameraBehaviorThirdPersonComponent never actually has,
+        // and worse, "Rotation Speed" / "Smooth Value" collide by NAME with CameraBehaviorThirdPersonComponent's
+        // own, separate XML properties, which corrupts scene loading if the two ever share an
+        // init()/actualizeValue() call chain. Calling CameraBehaviorComponent::createStaticApiForLua()
+        // explicitly here, instead of relying on registry order, guards against "you cannot derive
+        // from an unregistered type" regardless of what order getRegisteredComponentNames() returns
+        // classes in (that call is itself idempotent per lua_State, see its own guard).
+        CameraBehaviorComponent::createStaticApiForLua(lua, gameObjectClass, gameObjectControllerClass);
+
+        module(lua)[class_<CameraBehaviorThirdPersonComponent, CameraBehaviorComponent>("CameraBehaviorThirdPersonComponent")
                 .def("setOffsetPosition", &CameraBehaviorThirdPersonComponent::setOffsetPosition)
                 .def("getOffsetPosition", &CameraBehaviorThirdPersonComponent::getOffsetPosition)
                 .def("setLookAtOffset", &CameraBehaviorThirdPersonComponent::setLookAtOffset)
@@ -1329,7 +1492,7 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("name", "OcclusionMaxSpeed"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->occlusionMaxSpeed->getReal())));
         propertiesXML->append_node(propertyXML);
-        
+
         propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
         propertyXML->append_attribute(doc.allocate_attribute("name", "ProbeRadius"));
@@ -1421,8 +1584,9 @@ namespace NOWA
         }
         else
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CameraBehaviorThirdPersonOcclusionComponent] Cannot snap to target, because the base camera is null at that point. Maybe activatePlayerController for this for game object: " 
-                + this->gameObjectPtr->getName() + " has not been called.");
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                "[CameraBehaviorThirdPersonOcclusionComponent] Cannot snap to target, because the base camera is null at that point. Maybe activatePlayerController for this for game object: " + this->gameObjectPtr->getName() +
+                    " has not been called.");
         }
     }
 
@@ -1575,24 +1739,35 @@ namespace NOWA
 
     void CameraBehaviorThirdPersonOcclusionComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
     {
-        module(lua)
-        [
-            class_<CameraBehaviorThirdPersonOcclusionComponent, GameObjectComponent>("CameraBehaviorThirdPersonOcclusionComponent")
-            .def("setOffsetPosition", &CameraBehaviorThirdPersonOcclusionComponent::setOffsetPosition)
-            .def("getOffsetPosition", &CameraBehaviorThirdPersonOcclusionComponent::getOffsetPosition)
-            .def("setLookAtOffset", &CameraBehaviorThirdPersonOcclusionComponent::setLookAtOffset)
-            .def("getLookAtOffset", &CameraBehaviorThirdPersonOcclusionComponent::getLookAtOffset)
-            .def("setSpringForce", &CameraBehaviorThirdPersonOcclusionComponent::setSpringForce)
-            .def("getSpringForce", &CameraBehaviorThirdPersonOcclusionComponent::getSpringForce)
-            .def("setFriction", &CameraBehaviorThirdPersonOcclusionComponent::setFriction)
-            .def("getFriction", &CameraBehaviorThirdPersonOcclusionComponent::getFriction)
-            .def("setSpringLength", &CameraBehaviorThirdPersonOcclusionComponent::setSpringLength)
-            .def("getSpringLength", &CameraBehaviorThirdPersonOcclusionComponent::getSpringLength)
-            .def("setOcclusionMaxSpeed", &CameraBehaviorThirdPersonOcclusionComponent::setOcclusionMaxSpeed)
-            .def("getOcclusionMaxSpeed", &CameraBehaviorThirdPersonOcclusionComponent::getOcclusionMaxSpeed)
-            .def("setProbeOriginLift", &CameraBehaviorThirdPersonOcclusionComponent::setProbeOriginLift)
-            .def("getProbeOriginLift", &CameraBehaviorThirdPersonOcclusionComponent::getProbeOriginLift)
-        ];
+        // Attention: CameraBehaviorThirdPersonOcclusionComponent's REAL C++ parent is CameraBehaviorComponent, NOT
+        // CameraBehaviorBaseComponent (see CameraBehaviorComponents.h - CameraBehaviorBaseComponent
+        // is its SIBLING, both derive from CameraBehaviorComponent directly). The luabind
+        // inheritance declared here has to match that real relationship: declaring this against
+        // CameraBehaviorBaseComponent would falsely claim CameraBehaviorThirdPersonOcclusionComponent inherits its
+        // moveSpeed/rotationSpeed/smoothValue - methods CameraBehaviorThirdPersonOcclusionComponent never actually has,
+        // and worse, "Rotation Speed" / "Smooth Value" collide by NAME with CameraBehaviorThirdPersonOcclusionComponent's
+        // own, separate XML properties, which corrupts scene loading if the two ever share an
+        // init()/actualizeValue() call chain. Calling CameraBehaviorComponent::createStaticApiForLua()
+        // explicitly here, instead of relying on registry order, guards against "you cannot derive
+        // from an unregistered type" regardless of what order getRegisteredComponentNames() returns
+        // classes in (that call is itself idempotent per lua_State, see its own guard).
+        CameraBehaviorComponent::createStaticApiForLua(lua, gameObjectClass, gameObjectControllerClass);
+
+        module(lua)[class_<CameraBehaviorThirdPersonOcclusionComponent, CameraBehaviorComponent>("CameraBehaviorThirdPersonOcclusionComponent")
+                .def("setOffsetPosition", &CameraBehaviorThirdPersonOcclusionComponent::setOffsetPosition)
+                .def("getOffsetPosition", &CameraBehaviorThirdPersonOcclusionComponent::getOffsetPosition)
+                .def("setLookAtOffset", &CameraBehaviorThirdPersonOcclusionComponent::setLookAtOffset)
+                .def("getLookAtOffset", &CameraBehaviorThirdPersonOcclusionComponent::getLookAtOffset)
+                .def("setSpringForce", &CameraBehaviorThirdPersonOcclusionComponent::setSpringForce)
+                .def("getSpringForce", &CameraBehaviorThirdPersonOcclusionComponent::getSpringForce)
+                .def("setFriction", &CameraBehaviorThirdPersonOcclusionComponent::setFriction)
+                .def("getFriction", &CameraBehaviorThirdPersonOcclusionComponent::getFriction)
+                .def("setSpringLength", &CameraBehaviorThirdPersonOcclusionComponent::setSpringLength)
+                .def("getSpringLength", &CameraBehaviorThirdPersonOcclusionComponent::getSpringLength)
+                .def("setOcclusionMaxSpeed", &CameraBehaviorThirdPersonOcclusionComponent::setOcclusionMaxSpeed)
+                .def("getOcclusionMaxSpeed", &CameraBehaviorThirdPersonOcclusionComponent::getOcclusionMaxSpeed)
+                .def("setProbeOriginLift", &CameraBehaviorThirdPersonOcclusionComponent::setProbeOriginLift)
+                .def("getProbeOriginLift", &CameraBehaviorThirdPersonOcclusionComponent::getProbeOriginLift)];
 
         LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonOcclusionComponent", "void setOffsetPosition(Vector3 offsetPosition)",
             "Sets the offset of the camera relative to the target, in the camera's local right/up/forward axes (x/y/z).");
@@ -1620,7 +1795,8 @@ namespace NOWA
         gameObjectClass.def("getCameraBehaviorThirdPersonOcclusionComponentFromName", &getCameraBehaviorThirdPersonOcclusionComponentFromName);
         gameObjectClass.def("getCameraBehaviorThirdPersonOcclusionComponent", (CameraBehaviorThirdPersonOcclusionComponent * (*)(GameObject*)) & getCameraBehaviorThirdPersonOcclusionComponent);
 
-        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CameraBehaviorThirdPersonOcclusionComponent getCameraBehaviorThirdPersonOcclusionComponent()", "Gets the component. This can be used if the game object this component just once.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CameraBehaviorThirdPersonOcclusionComponent getCameraBehaviorThirdPersonOcclusionComponent()",
+            "Gets the component. This can be used if the game object this component just once.");
         LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CameraBehaviorThirdPersonOcclusionComponent getCameraBehaviorThirdPersonOcclusionComponentFromName(String name)", "Gets the component from name.");
 
         gameObjectControllerClass.def("castCameraBehaviorThirdPersonOcclusionComponent", &GameObjectController::cast<CameraBehaviorThirdPersonOcclusionComponent>);
@@ -1867,7 +2043,21 @@ namespace NOWA
 
     void CameraBehaviorFollow2DComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
     {
-        module(lua)[class_<CameraBehaviorFollow2DComponent, GameObjectComponent>("CameraBehaviorFollow2DComponent")
+        // Attention: CameraBehaviorFollow2DComponent's REAL C++ parent is CameraBehaviorComponent, NOT
+        // CameraBehaviorBaseComponent (see CameraBehaviorComponents.h - CameraBehaviorBaseComponent
+        // is its SIBLING, both derive from CameraBehaviorComponent directly). The luabind
+        // inheritance declared here has to match that real relationship: declaring this against
+        // CameraBehaviorBaseComponent would falsely claim CameraBehaviorFollow2DComponent inherits its
+        // moveSpeed/rotationSpeed/smoothValue - methods CameraBehaviorFollow2DComponent never actually has,
+        // and worse, "Rotation Speed" / "Smooth Value" collide by NAME with CameraBehaviorFollow2DComponent's
+        // own, separate XML properties, which corrupts scene loading if the two ever share an
+        // init()/actualizeValue() call chain. Calling CameraBehaviorComponent::createStaticApiForLua()
+        // explicitly here, instead of relying on registry order, guards against "you cannot derive
+        // from an unregistered type" regardless of what order getRegisteredComponentNames() returns
+        // classes in (that call is itself idempotent per lua_State, see its own guard).
+        CameraBehaviorComponent::createStaticApiForLua(lua, gameObjectClass, gameObjectControllerClass);
+
+        module(lua)[class_<CameraBehaviorFollow2DComponent, CameraBehaviorComponent>("CameraBehaviorFollow2DComponent")
                 .def("setSmoothValue", &CameraBehaviorFollow2DComponent::setSmoothValue)
                 .def("getSmoothValue", &CameraBehaviorFollow2DComponent::getSmoothValue)
                 .def("setOffsetPosition", &CameraBehaviorFollow2DComponent::setOffsetPosition)
@@ -2128,7 +2318,21 @@ namespace NOWA
 
     void CameraBehaviorZoomComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
     {
-        module(lua)[class_<CameraBehaviorZoomComponent, GameObjectComponent>("CameraBehaviorZoomComponent")
+        // Attention: CameraBehaviorZoomComponent's REAL C++ parent is CameraBehaviorComponent, NOT
+        // CameraBehaviorBaseComponent (see CameraBehaviorComponents.h - CameraBehaviorBaseComponent
+        // is its SIBLING, both derive from CameraBehaviorComponent directly). The luabind
+        // inheritance declared here has to match that real relationship: declaring this against
+        // CameraBehaviorBaseComponent would falsely claim CameraBehaviorZoomComponent inherits its
+        // moveSpeed/rotationSpeed/smoothValue - methods CameraBehaviorZoomComponent never actually has,
+        // and worse, "Rotation Speed" / "Smooth Value" collide by NAME with CameraBehaviorZoomComponent's
+        // own, separate XML properties, which corrupts scene loading if the two ever share an
+        // init()/actualizeValue() call chain. Calling CameraBehaviorComponent::createStaticApiForLua()
+        // explicitly here, instead of relying on registry order, guards against "you cannot derive
+        // from an unregistered type" regardless of what order getRegisteredComponentNames() returns
+        // classes in (that call is itself idempotent per lua_State, see its own guard).
+        CameraBehaviorComponent::createStaticApiForLua(lua, gameObjectClass, gameObjectControllerClass);
+
+        module(lua)[class_<CameraBehaviorZoomComponent, CameraBehaviorComponent>("CameraBehaviorZoomComponent")
                 .def("setCategory", &CameraBehaviorZoomComponent::setCategory)
                 .def("getCategory", &CameraBehaviorZoomComponent::getCategory)
                 .def("setSmoothValue", &CameraBehaviorZoomComponent::setSmoothValue)

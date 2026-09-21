@@ -161,6 +161,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralThornComponent", 
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralBlockComponent", "ProceduralBlockComponent\ProceduralBlockComponent.vcxproj", "{B0DE59A5-212F-499C-8FF7-D8A196B2DF76}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralConveyorLoopComponent", "ProceduralConveyorLoopComponent\ProceduralConveyorLoopComponent.vcxproj", "{54B2C03B-A35E-42A7-B6FB-631F7C34C702}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -443,6 +445,10 @@ Global
 		{B0DE59A5-212F-499C-8FF7-D8A196B2DF76}.Debug|x64.Build.0 = Debug|x64
 		{B0DE59A5-212F-499C-8FF7-D8A196B2DF76}.Release|x64.ActiveCfg = Release|x64
 		{B0DE59A5-212F-499C-8FF7-D8A196B2DF76}.Release|x64.Build.0 = Release|x64
+		{54B2C03B-A35E-42A7-B6FB-631F7C34C702}.Debug|x64.ActiveCfg = Debug|x64
+		{54B2C03B-A35E-42A7-B6FB-631F7C34C702}.Debug|x64.Build.0 = Debug|x64
+		{54B2C03B-A35E-42A7-B6FB-631F7C34C702}.Release|x64.ActiveCfg = Release|x64
+		{54B2C03B-A35E-42A7-B6FB-631F7C34C702}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

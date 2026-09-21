@@ -1,5 +1,128 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <scene formatVersion="1.1.0" generator="NOWA-Engine">
-	<nodes/>
+	<nodes>
+		<node name="PrehistoricLax" id="3286738008">
+			<position x="1.27965" y="1.00369" z="-7"/>
+			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="PrehistoricLax" meshFile="PrehistoricLaxBoy.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="PrehistoricLaxBoy"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3173747901"/>
+					<property type="7" name="Category" data="Player"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="true"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="PrehistoricLaxBoy"/>
+					<property type="7" name="ComponentPhysicsRagDollComponentV2" data="PhysicsRagDollComponentV2"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0.3 0.8 0.3"/>
+					<property type="9" name="OffsetPosition" data="0 0.7 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 90"/>
+					<property type="6" name="Mass" data="50"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0.1"/>
+					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
+					<property type="6" name="Density" data="1"/>
+					<property type="9" name="Gravity" data="0 -16.9 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="6" name="Speed" data="5"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="10"/>
+					<property type="7" name="CollisionType" data="Capsule"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="BoneConfigFile" data="PrehistoricLaxBoy2.rag"/>
+					<property type="7" name="State" data="Inactive"/>
+					<property type="7" name="ComponentCameraBehaviorFollow2DComponent" data="CameraBehaviorFollow2DComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="CameraGameObjectId" data="1255209972"/>
+					<property type="6" name="SmoothValue" data="0.9"/>
+					<property type="9" name="OffsetPosition" data="0 -1 10"/>
+					<property type="9" name="BorderOffset" data="0 0 0"/>
+					<property type="7" name="ComponentInputDeviceComponent" data="InputDeviceComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="DeviceName" data="Win32InputManager"/>
+					<property type="12" name="IsExclusive" data="false"/>
+					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="ScriptFile" data="PrehistoricLax.lua"/>
+					<property type="12" name="CloneScript" data="false"/>
+					<property type="12" name="HasCommonScript" data="false"/>
+					<property type="2" name="OrderIndex" data="2"/>
+					<property type="7" name="ComponentPlayerControllerJumpNRunComponent" data="PlayerControllerJumpNRunComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="RotationSpeed" data="10"/>
+					<property type="6" name="GoalRadius" data="0.5"/>
+					<property type="6" name="AnimationSpeed" data="1"/>
+					<property type="6" name="Acceleration" data="0.5"/>
+					<property type="7" name="Categories" data="All"/>
+					<property type="12" name="UseStandUp" data="false"/>
+					<property type="7" name="Wall Separation Mode" data="MovementDirection2D"/>
+					<property type="6" name="JumpForce" data="10"/>
+					<property type="12" name="DoubleJump" data="false"/>
+					<property type="6" name="RunAfterWalkTime" data="0"/>
+					<property type="12" name="For2D" data="true"/>
+					<property type="12" name="XJump" data="false"/>
+					<property type="12" name="UseAcceleration" data="false"/>
+					<property type="6" name="AccelerationDuration" data="10"/>
+					<property type="7" name="AnimIdle1" data="Boy 1 Idle"/>
+					<property type="7" name="AnimIdle2" data="Boy 1 Idle Turn Right"/>
+					<property type="7" name="AnimIdle3" data="Boy 1 Idle Turn Left"/>
+					<property type="7" name="AnimWalkNorth" data="Boy 1 Walk In Place"/>
+					<property type="7" name="AnimWalkSouth" data="Boy 1 Walk Backwards"/>
+					<property type="7" name="AnimWalkWest" data="Boy 1 Walk Turn Right"/>
+					<property type="7" name="AnimWalkEast" data="Boy 1 Walk Turn Left"/>
+					<property type="7" name="AnimJumpStart" data="Boy 1 Jump Up"/>
+					<property type="7" name="AnimJumpWalk" data="Boy 1 Fall"/>
+					<property type="7" name="AnimHighJumpEnd" data="Boy 1 Get Up"/>
+					<property type="7" name="AnimJumpEnd" data="Boy 1 Idle"/>
+					<property type="7" name="AnimRun" data="Boy 1 Run"/>
+					<property type="7" name="AnimSneak" data="None"/>
+					<property type="7" name="AnimDuck" data="Boy 1 Walk"/>
+					<property type="7" name="ComponentWindInteractionComponent" data="WindInteractionComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Radius" data="3"/>
+					<property type="6" name="Strength" data="0.8"/>
+					<property type="7" name="Offset Position" data="0 0 0"/>
+					<property type="7" name="Offset Orientation" data="0 0 0"/>
+				</userData>
+			</item>
+		</node>
+	</nodes>
 </scene>
 

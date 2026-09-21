@@ -2061,7 +2061,8 @@ namespace NOWA
             auto it = this->drawLineMap.find(key);
             if (it == this->drawLineMap.cend())
             {
-                ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContactBelow", _3(key, charPoint, rayEndPoint), {
+                NOWA::GraphicsModule::RenderCommand command = [this, key, charPoint, rayEndPoint]
+                {
                     Ogre::SceneNode* debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
                     debugLineNode->setName("getContactBelow");
                     Ogre::ManualObject* debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
@@ -2077,12 +2078,11 @@ namespace NOWA
                     debugLineObject->position(rayEndPoint);
                     debugLineObject->index(1);
                     debugLineObject->end();
-                });
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(command), "CameraBehaviorComponent::setActivated");
             }
             else
             {
-                // ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactBelow::Draw", _3(it, charPoint, rayEndPoint),
-                // {
                 auto closureFunction = [this, it, charPoint, rayEndPoint](Ogre::Real renderDt)
                 {
                     Ogre::ManualObject* debugLineObject = it->second.second;
@@ -2096,44 +2096,69 @@ namespace NOWA
                 };
                 Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::drawLineMap" + Ogre::StringConverter::toString(this->index) + "_" + it->second.first->getName();
                 NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
-                // });
             }
         }
 
         // OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
-        if (info.mBody)
+        const unsigned long ownGameObjectId = (nullptr != this->gameObjectPtr) ? this->gameObjectPtr->getId() : 0;
+
+        const int hitCount = ray.getHitCount();
+        for (int hitIndex = 0; hitIndex < hitCount; hitIndex++)
         {
-            unsigned int type = info.mBody->getType();
-            unsigned int finalType = type & categoryIds;
-
-            if (type == finalType)
+            OgreNewt::BasicRaycast::BasicRaycastInfo currentInfo = ray.getInfoAt(hitIndex);
+            if (nullptr == currentInfo.mBody)
             {
-                Ogre::String name = info.mBody->getOgreNode()->getName();
-                height = info.mDistance * 500.0f;
-
-                normal = info.mNormal;
-                slope = Ogre::Math::ACos(-targetDir.dotProduct(normal) / (targetDir.length() * normal.length())).valueDegrees();
-
-                Ogre::SceneNode* tempNode = static_cast<Ogre::SceneNode*>(info.mBody->getOgreNode());
-                if (nullptr == tempNode)
-                {
-                    return PhysicsActiveComponent::ContactData(nullptr, height, normal, slope);
-                }
-
-                const Ogre::Any& userAny = tempNode->getUserObjectBindings().getUserAny();
-                if (!userAny.isEmpty())
-                {
-                    try
-                    {
-                        gameObject = Ogre::any_cast<GameObject*>(userAny);
-                    }
-                    catch (Ogre::Exception&)
-                    {
-                        return PhysicsActiveComponent::ContactData(nullptr, height, normal, slope);
-                    }
-                }
+                continue;
             }
+
+            unsigned int type = currentInfo.mBody->getType();
+            unsigned int finalType = type & categoryIds;
+            if (type != finalType)
+            {
+                continue;
+            }
+
+            Ogre::SceneNode* tempNode = static_cast<Ogre::SceneNode*>(currentInfo.mBody->getOgreNode());
+            if (nullptr == tempNode)
+            {
+                continue;
+            }
+
+            const Ogre::Any& userAny = tempNode->getUserObjectBindings().getUserAny();
+            if (true == userAny.isEmpty())
+            {
+                continue;
+            }
+
+            GameObject* hitGameObject = nullptr;
+            try
+            {
+                hitGameObject = Ogre::any_cast<GameObject*>(userAny);
+            }
+            catch (Ogre::Exception&)
+            {
+                continue;
+            }
+
+            if (nullptr == hitGameObject)
+            {
+                continue;
+            }
+
+            // The own body - including every ragdoll bone body, because they all share this
+            // game object - is never a valid ground contact.
+            if (ownGameObjectId == hitGameObject->getId())
+            {
+                continue;
+            }
+
+            gameObject = hitGameObject;
+            height = currentInfo.mDistance * 500.0f;
+            normal = currentInfo.mNormal;
+            slope = Ogre::Math::ACos(-targetDir.dotProduct(normal) / (targetDir.length() * normal.length())).valueDegrees();
+            break;
         }
+
         return PhysicsActiveComponent::ContactData(gameObject, height, normal, slope);
     }
 

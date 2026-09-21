@@ -41,8 +41,8 @@
 	</OgreNewt>
 	<nodes>
 		<node name="MainCamera" id="4010617415">
-			<position x="26.0747" y="8.52712" z="5.38227"/>
-			<rotation qw="0.977998" qx="-0.182127" qy="0.101193" qz="0.0105147"/>
+			<position x="33.7947" y="8.40692" z="7.00241"/>
+			<rotation qw="0.98687" qx="-0.153512" qy="0.0501325" qz="-0.00278073"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -72,8 +72,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="33.7947 8.40692 7.00241"/>
-					<property type="9" name="CameraOrientation" data="-17.6207 6.01077 -1.25535"/>
+					<property type="9" name="CameraPosition" data="33.656 3.93624 -4.64959"/>
+					<property type="9" name="CameraOrientation" data="-19.5955 2.48025 -1.31893"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -109,7 +109,7 @@
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="100" y="21.08" z="-5"/>
-			<rotation qw="0.88088" qx="-0.362811" qy="0.280632" qz="-0.116896"/>
+			<rotation qw="0.880476" qx="-0.364705" qy="0.279848" qz="-0.115916"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -1394,7 +1394,7 @@
 					<property type="2" name="Tree Branch Clusters" data="8"/>
 					<property type="2" name="Curve Subdivisions" data="10"/>
 					<property type="7" name="Surface Datablock" data="grass_clean"/>
-					<property type="7" name="Ground Datablock" data="rockClif_D"/>
+					<property type="7" name="Ground Datablock" data="palm_date_trunk"/>
 					<property type="8" name="Surface UV Tiling" data="1 5"/>
 					<property type="8" name="Ground UV Tiling" data="1 1"/>
 					<property type="7" name="Path Data" data="AgAAAAEAAACATRtCEB6SPwAAIMEAAAAAAAIAAACATRtCAAAAAAAAIMEQHpI/EB6SPwl5Q0IAAAAAAAAgwRAekj8QHpI/"/>
@@ -1425,7 +1425,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="ComponentProceduralPlatformComponent" data="ProceduralPlatformComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -1450,7 +1450,7 @@
 					<property type="2" name="Tree Branch Clusters" data="8"/>
 					<property type="2" name="Curve Subdivisions" data="10"/>
 					<property type="7" name="Surface Datablock" data="grass_clean"/>
-					<property type="7" name="Ground Datablock" data="rockClif_D"/>
+					<property type="7" name="Ground Datablock" data="palm_date_trunk"/>
 					<property type="8" name="Surface UV Tiling" data="1 5"/>
 					<property type="8" name="Ground UV Tiling" data="1 1"/>
 					<property type="7" name="Path Data" data="AgAAAAEAAACmqTRCwp12QAAAIMEAAAAAAAIAAACmqTRCAAAAAAAAIMHCnXZAwp12QFr2YEIAAAAAAAAgwcKddkDCnXZA"/>
@@ -1481,7 +1481,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="ComponentProceduralPlatformComponent" data="ProceduralPlatformComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -1506,7 +1506,7 @@
 					<property type="2" name="Tree Branch Clusters" data="8"/>
 					<property type="2" name="Curve Subdivisions" data="10"/>
 					<property type="7" name="Surface Datablock" data="grass_clean"/>
-					<property type="7" name="Ground Datablock" data="rockClif_D"/>
+					<property type="7" name="Ground Datablock" data="palm_date_trunk"/>
 					<property type="8" name="Surface UV Tiling" data="1 5"/>
 					<property type="8" name="Ground UV Tiling" data="1 1"/>
 					<property type="7" name="Path Data" data="AgAAAAEAAAAs6UtC3GTXQAAAIMEAAAAAAAIAAAAs6UtCAAAAAAAAIMHcZNdA3GTXQDhTdEIAAAAAAAAgwUgm00BIJtNA"/>
@@ -1537,7 +1537,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="ComponentProceduralPlatformComponent" data="ProceduralPlatformComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -1562,7 +1562,7 @@
 					<property type="2" name="Tree Branch Clusters" data="8"/>
 					<property type="2" name="Curve Subdivisions" data="10"/>
 					<property type="7" name="Surface Datablock" data="grass_clean"/>
-					<property type="7" name="Ground Datablock" data="rockClif_D"/>
+					<property type="7" name="Ground Datablock" data="palm_date_trunk"/>
 					<property type="8" name="Surface UV Tiling" data="1 5"/>
 					<property type="8" name="Ground UV Tiling" data="1 1"/>
 					<property type="7" name="Path Data" data="AgAAAAEAAABWnUNCflZOQAAAIMEAAAAAAAIAAABWnUNCAAAAAAAAIMF+Vk5AflZOQBKlakIAAAAAAAAgwX5WTkB+Vk5A"/>
@@ -1593,7 +1593,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="ComponentProceduralBlockComponent" data="ProceduralBlockComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -1635,7 +1635,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="Bench1Color"/>
 				</userData>
 			</item>
@@ -1665,7 +1665,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="BricksColor"/>
 				</userData>
 			</item>
@@ -1696,14 +1696,14 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="M_metal_01"/>
 					<property type="7" name="DataBlock1" data="M_CLR_yellow_E"/>
 					<property type="7" name="ComponentLightPointComponent" data="LightPointComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="9" name="Diffuse" data="0.686997 0.914062 0.12854"/>
+					<property type="9" name="Diffuse" data="0.687 0.91406 0.12854"/>
 					<property type="9" name="Specular" data="1 1 1"/>
 					<property type="6" name="PowerScale" data="3.14159"/>
 					<property type="7" name="AttenuationMode" data="Radius"/>
@@ -1713,7 +1713,7 @@
 					<property type="6" name="AttenuationQuadratic" data="0.5"/>
 					<property type="6" name="AttenuationRadius" data="10"/>
 					<property type="6" name="AttenuationLumThreshold" data="0.00192"/>
-					<property type="12" name="CastShadows" data="true"/>
+					<property type="12" name="CastShadows" data="false"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
 				</userData>
 			</item>
@@ -1893,7 +1893,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="FlowersColor"/>
 				</userData>
 			</item>
@@ -1923,7 +1923,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="FlowersColor"/>
 				</userData>
 			</item>
@@ -1953,7 +1953,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="FlowersColor"/>
 				</userData>
 			</item>
@@ -1983,7 +1983,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="FlowersColor"/>
 				</userData>
 			</item>
@@ -2013,7 +2013,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="FlowersColor"/>
 				</userData>
 			</item>
@@ -2043,7 +2043,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="FlowersColor"/>
 				</userData>
 			</item>
@@ -2073,7 +2073,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="FlowersColor"/>
 				</userData>
 			</item>
@@ -2103,7 +2103,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="FlowersColor"/>
 				</userData>
 			</item>
@@ -2133,7 +2133,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="FlowersColor"/>
 				</userData>
 			</item>
@@ -2163,7 +2163,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="FlowersColor"/>
 				</userData>
 			</item>
@@ -2193,7 +2193,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="FlowersColor"/>
 				</userData>
 			</item>
@@ -2224,7 +2224,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="rocks_boulder"/>
 					<property type="7" name="DataBlock1" data="grass_clean"/>
 				</userData>
@@ -2256,7 +2256,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="rocks_boulder"/>
 					<property type="7" name="DataBlock1" data="grass_clean"/>
 				</userData>
@@ -2287,7 +2287,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="rocks_boulder"/>
 				</userData>
 			</item>
@@ -2317,7 +2317,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="rocks_boulder"/>
 				</userData>
 			</item>
@@ -2347,7 +2347,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="M_MasterMaterial"/>
 					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
 					<property type="7" name="Name" data=""/>
