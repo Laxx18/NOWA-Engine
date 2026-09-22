@@ -21,6 +21,7 @@ namespace NOWA
     {
     public:
         friend class PathFollowState3D;
+        friend class WalkingStateJumpNRun;
         typedef boost::shared_ptr<PlayerControllerComponent> PlayerControllerCompPtr;
 
     public:
@@ -213,11 +214,26 @@ namespace NOWA
 
         void standUp(void);
 
-        void setWallSeparationMode(const Ogre::String& wallSeparationMode);
+        void setUseWallSeparationMode(bool useWallSeparationMode);
 
-        Ogre::String getWallSeparationMode(void) const;
+        bool getUseWallSeparationMode(void) const;
 
         void reactOnAnimationFinished(luabind::object closureFunction, bool oneTime);
+
+        /**
+         * @brief Sets the lua closure called whenever the player touches a wall.
+         *
+         * The closure receives the game object that was hit and the horizontal wall normal.
+         * It is called regardless of 'Use Wall Separation Mode': that flag only decides
+         * whether the BUILT-IN reaction runs, which cancels the movement input pointing into
+         * the wall. Switch it off to handle the contact entirely in lua - for a metroid
+         * style ledge grab, say - and leave it on for the plain "cannot walk into walls"
+         * behavior.
+         *
+         * @param[in] closureFunction The closure to set. Calling this again REPLACES the
+         *        previous one, so it is safe to call from a per frame script function.
+         */
+        void reactOnWallContact(luabind::object closureFunction);
 
     protected:
         virtual void internalShowDebugData(void);
@@ -256,7 +272,7 @@ namespace NOWA
         }
         static const Ogre::String AttrWallSeparationMode(void)
         {
-            return "Wall Separation Mode";
+            return "Use Wall Separation Mode";
         }
 
     protected:
@@ -267,8 +283,14 @@ namespace NOWA
         Variant* acceleration;
         Variant* categories;
         Variant* useStandUp;
-        Variant* wallSeparationMode;
+        Variant* useWallSeparationMode;
         std::vector<Variant*> animations;
+
+        /**
+         * @brief Gets the wall normal currently blocking the player, or ZERO when nothing is
+         *        in the way. Fed by the physics contact callback, not by rays.
+         */
+        Ogre::Vector3 getBlockedWallNormal(void) const;
 
         PhysicsActiveComponent* physicsActiveComponent;
         CameraBehaviorComponent* cameraBehaviorComponent;
@@ -292,8 +314,20 @@ namespace NOWA
         GameObject* hitGameObjectFront;
         GameObject* hitGameObjectUp;
         Ogre::Vector3 frontNormal;
-        Ogre::Vector3 lastWallPushForces[6];
-        Ogre::Vector3 lastWallPushForce;
+
+        // Wall normal reported by the physics CONTACT callback, so no extra rays are needed
+        // to know that a wall is in the way. The walking state uses it to drop the part of
+        // the movement input pointing into that wall: holding the right arrow key against a
+        // right hand wall then produces no force at all, instead of pressing into the wall
+        // and being fought with an opposing separation force afterwards.
+        Ogre::Vector3 blockedWallNormal;
+        // Fired on every wall contact, no matter what useWallSeparationMode is set to, so a
+        // script can implement its own reaction - a ledge grab that keeps the player hanging
+        // and lets him push off again, for instance.
+        luabind::object wallContactClosureFunction;
+        // Contacts arrive deferred on the logic thread, so the normal is kept alive for a
+        // short moment rather than only for the exact frame it came in.
+        Ogre::Real blockedWallTimer;
 
         Ogre::Real timeFallen;
         bool isFallen;

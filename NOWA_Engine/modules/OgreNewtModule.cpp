@@ -296,7 +296,7 @@ namespace NOWA
                 {
                     if (true == isTeleport)
                     {
-						// Dynamic node, but explicit desired teleport (Respawn, editor drag). So no interpolation
+                        // Dynamic node, but explicit desired teleport (Respawn, editor drag). So no interpolation
                         NOWA::GraphicsModule::getInstance()->teleportNodePosition(node, pos, false);
                         if (updateRot)
                         {

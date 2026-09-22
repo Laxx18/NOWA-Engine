@@ -5292,35 +5292,39 @@ namespace NOWA
         // though the component registry, and every camera behavior subclass, also calls it.
         NOWA::CameraBehaviorComponent::createStaticApiForLua(lua, gameObjectClass, gameObjectControllerClass);
 
-        module(lua)[class_<PlayerControllerComponent, GameObjectComponent>("PlayerControllerComponent")
-                // .def("getClassName", &PlayerControllerComponent::getClassName)
-                // .def("clone", &PlayerControllerComponent::clone)
-                // .def("getClassId", &PlayerControllerComponent::getClassId)
-                .def("getAnimationBlender", &PlayerControllerComponent::getAnimationBlender)
-                .def("setRotationSpeed", &PlayerControllerComponent::setRotationSpeed)
-                .def("getRotationSpeed", &PlayerControllerComponent::getRotationSpeed)
-                .def("setAnimationSpeed", &PlayerControllerComponent::setAnimationSpeed)
-                .def("getAnimationSpeed", &PlayerControllerComponent::getAnimationSpeed)
-                .def("setMoveWeight", &PlayerControllerComponent::setMoveWeight)
-                .def("lockMovement", &PlayerControllerComponent::lockMovement)
-                .def("getMoveWeight", &PlayerControllerComponent::getMoveWeight)
-                .def("setJumpWeight", &PlayerControllerComponent::setJumpWeight)
-                .def("getJumpWeight", &PlayerControllerComponent::getJumpWeight)
-                .def("setIdle", &PlayerControllerComponent::setIdle)
-                .def("isIdle", &PlayerControllerComponent::isIdle)
-                .def("getPhysicsComponent", &PlayerControllerComponent::getPhysicsComponent)
-                .def("getPhysicsRagDollComponent", &PlayerControllerComponent::getPhysicsRagDollComponent)
-                .def("getCameraBehaviorComponent", &PlayerControllerComponent::getCameraBehaviorComponent)
-                .def("setAcceleration", &PlayerControllerComponent::setAcceleration)
-                .def("getAcceleration", &PlayerControllerComponent::getAcceleration)
-                .def("getNormal", &PlayerControllerComponent::getNormal)
-                .def("getHeight", &PlayerControllerComponent::getHeight)
-                .def("getSlope", &PlayerControllerComponent::getSlope)
-                .def("getHitGameObjectBelow", &PlayerControllerComponent::getHitGameObjectBelow)
-                .def("getHitGameObjectFront", &PlayerControllerComponent::getHitGameObjectFront)
-                .def("getHitGameObjectUp", &PlayerControllerComponent::getHitGameObjectUp)
-                .def("getIsFallen", &PlayerControllerComponent::getIsFallen)
-                .def("reactOnAnimationFinished", &PlayerControllerComponent::reactOnAnimationFinished)];
+        module(lua)
+        [
+            class_<PlayerControllerComponent, GameObjectComponent>("PlayerControllerComponent")
+            // .def("getClassName", &PlayerControllerComponent::getClassName)
+            // .def("clone", &PlayerControllerComponent::clone)
+            // .def("getClassId", &PlayerControllerComponent::getClassId)
+            .def("getAnimationBlender", &PlayerControllerComponent::getAnimationBlender)
+            .def("setRotationSpeed", &PlayerControllerComponent::setRotationSpeed)
+            .def("getRotationSpeed", &PlayerControllerComponent::getRotationSpeed)
+            .def("setAnimationSpeed", &PlayerControllerComponent::setAnimationSpeed)
+            .def("getAnimationSpeed", &PlayerControllerComponent::getAnimationSpeed)
+            .def("setMoveWeight", &PlayerControllerComponent::setMoveWeight)
+            .def("lockMovement", &PlayerControllerComponent::lockMovement)
+            .def("getMoveWeight", &PlayerControllerComponent::getMoveWeight)
+            .def("setJumpWeight", &PlayerControllerComponent::setJumpWeight)
+            .def("getJumpWeight", &PlayerControllerComponent::getJumpWeight)
+            .def("setIdle", &PlayerControllerComponent::setIdle)
+            .def("isIdle", &PlayerControllerComponent::isIdle)
+            .def("getPhysicsComponent", &PlayerControllerComponent::getPhysicsComponent)
+            .def("getPhysicsRagDollComponent", &PlayerControllerComponent::getPhysicsRagDollComponent)
+            .def("getCameraBehaviorComponent", &PlayerControllerComponent::getCameraBehaviorComponent)
+            .def("setAcceleration", &PlayerControllerComponent::setAcceleration)
+            .def("getAcceleration", &PlayerControllerComponent::getAcceleration)
+            .def("getNormal", &PlayerControllerComponent::getNormal)
+            .def("getHeight", &PlayerControllerComponent::getHeight)
+            .def("getSlope", &PlayerControllerComponent::getSlope)
+            .def("getHitGameObjectBelow", &PlayerControllerComponent::getHitGameObjectBelow)
+            .def("getHitGameObjectFront", &PlayerControllerComponent::getHitGameObjectFront)
+            .def("getHitGameObjectUp", &PlayerControllerComponent::getHitGameObjectUp)
+            .def("getIsFallen", &PlayerControllerComponent::getIsFallen)
+            .def("reactOnAnimationFinished", &PlayerControllerComponent::reactOnAnimationFinished)
+            .def("reactOnWallContact", &PlayerControllerComponent::reactOnWallContact)
+        ];
 
         AddClassToCollection("PlayerControllerComponent", "class inherits GameObjectComponent", PlayerControllerComponent::getStaticInfoText());
         AddClassToCollection("PlayerControllerComponent", "void setDefaultDirection(Vector3 direction)", "Sets the direction the player is modelled.");
@@ -5355,6 +5359,9 @@ namespace NOWA
         AddClassToCollection("PlayerControllerComponent", "bool getIsFallen()", "Gets whether the player is fallen, that is: Player has usually its upright posture, but if he fels down due to some forces, this will be detected for reaction.");
 
         AddClassToCollection("PlayerControllerComponent", "void reactOnAnimationFinished(func closureFunction, bool oneTime)", "Sets whether to react when the given animation has finished.");
+        AddClassToCollection("PlayerControllerComponent", "void reactOnWallContact(func closureFunction)",
+            "Sets the closure function which is called whenever the player touches a wall. The closure receives the hit game object and the horizontal wall normal. It is called regardless of 'Use Wall Separation Mode' - that flag only decides "
+            "whether the built-in reaction runs, which cancels the movement input pointing into the wall. Switch it off to handle the contact entirely in lua, e.g. for a metroid style ledge grab.");
 
         // Declarations missing
         // ...

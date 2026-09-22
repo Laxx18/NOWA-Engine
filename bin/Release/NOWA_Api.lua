@@ -29562,6 +29562,14 @@ return {
 				args = "(func closureFunction, boolean oneTime)",
 				returns = "(nil)",
 				valuetype = "nil"
+			},
+			reactOnWallContact =
+			{
+				type = "method",
+				description = "Sets the closure function which is called whenever the player touches a wall. The closure receives the hit game object and the horizontal wall normal. It is called regardless of 'Use Wall Separation Mode' - that flag only decides whether the built-in reaction runs, which cancels the movement input pointing into the wall. Switch it off to handle the contact entirely in lua, e.g. for a metroid style ledge grab.",
+				args = "(func closureFunction)",
+				returns = "(nil)",
+				valuetype = "nil"
 			}
 		}
 	},

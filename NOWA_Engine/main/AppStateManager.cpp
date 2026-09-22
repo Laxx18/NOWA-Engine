@@ -622,6 +622,7 @@ namespace NOWA
             Ogre::WindowEventUtilities::messagePump();
 
             const double newTime = static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
+            // const double newTime = static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMicroseconds()) * 0.000001;
             double frameTime = newTime - currentTime;
             currentTime = newTime;
 

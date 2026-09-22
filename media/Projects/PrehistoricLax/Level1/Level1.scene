@@ -41,8 +41,8 @@
 	</OgreNewt>
 	<nodes>
 		<node name="MainCamera" id="4010617415">
-			<position x="22.8114" y="6.54455" z="7.90348"/>
-			<rotation qw="0.984972" qx="-0.165266" qy="0.0501779" qz="4.25357e-05"/>
+			<position x="23.7203" y="6.65811" z="11.5622"/>
+			<rotation qw="0.994119" qx="-0.104262" qy="-0.0269444" qz="-0.0114119"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -72,8 +72,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="22.9252 6.36207 7.38223"/>
-					<property type="9" name="CameraOrientation" data="-19.4347 6.38122 -1.31501"/>
+					<property type="9" name="CameraPosition" data="23.7203 6.65811 11.5622"/>
+					<property type="9" name="CameraOrientation" data="-11.5701 -3.08104 -1.24232"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -207,6 +207,27 @@
 					<property type="7" name="FadeMode" data="FadeOut"/>
 					<property type="6" name="Duration" data="2"/>
 					<property type="7" name="EaseFunction" data="easeOutSine"/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="Category1" data="Player"/>
+					<property type="7" name="Category2" data="Platform"/>
+					<property type="8" name="Friction" data="0.8 0.4"/>
+					<property type="6" name="Softness" data="0.1"/>
+					<property type="6" name="Elasticity" data="0"/>
+					<property type="6" name="SurfaceThickness" data="0.125"/>
+					<property type="12" name="Collideable" data="true"/>
+					<property type="7" name="ContactBehavior" data="WallSlide"/>
+					<property type="6" name="ContactSpeed" data="10"/>
+					<property type="9" name="ContactDirection" data="0 0 -1"/>
+					<property type="7" name="OneWayAxis" data="Y"/>
+					<property type="7" name="OneWayAllowedDirection" data="Positive"/>
+					<property type="6" name="WallSlideAngle" data="68"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data=""/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -656,7 +677,7 @@
 		</node>
 		<node name="Fence1_3" id="3220600583">
 			<position x="65.785" y="1" z="-14.3505"/>
-			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Fence1_3" meshFile="Fence1.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="WoodPlanks"/>
@@ -994,7 +1015,7 @@
 					<property type="7" name="Ground Datablock" data="rockClif_D"/>
 					<property type="8" name="Surface UV Tiling" data="1 5"/>
 					<property type="8" name="Ground UV Tiling" data="1 1"/>
-					<property type="7" name="Path Data" data="AgAAAAQAAACkRL1ATaaYQQAAIMEAAAAAAAIAAACkRL1AAAAAAAAAIMFNpphBTaaYQQGMDkEAAAAAAAAgwWA/Z0FgP2dBAAAAAAACAAAAAYwOQQAAAAAAACDBYD9nQWA/Z0Er7zlBAAAAAAAAIMGgXj5BoF4+QQAAAAAAAgAAACvvOUEAAAAAAAAgwaBePkGgXj5BSFWFQQAAAAAAACDBZn8vQWZ/L0EAAAAAAAIAAABIVYVBAAAAAAAAIMFmfy9BZn8vQTO4zUEAAAAAAAAgwR6UCkEelApB"/>
+					<property type="7" name="Path Data" data="AgAAAAUAAACkRL1ATaaYQQAAIMEAAAAAAAIAAACkRL1AAAAAAAAAIMFNpphBTaaYQQGMDkEAAAAAAAAgwWA/Z0FgP2dBAAAAAAACAAAAAYwOQQAAAAAAACDBYD9nQWA/Z0Er7zlBAAAAAAAAIMGgXj5BoF4+QQAAAAAAAgAAACvvOUEAAAAAAAAgwaBePkGgXj5BSFWFQQAAAAAAACDBZn8vQWZ/L0EAAAAAAAIAAABIVYVBAAAAAAAAIMFmfy9BZn8vQTO4zUEAAAAAAAAgwR6UCkEelApBAAAAAAACAAAAM7jNQQAAAAAAACDBHpQKQR6UCkFN0t9BAAAAAAAAIMHUye9A1MnvQA=="/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>

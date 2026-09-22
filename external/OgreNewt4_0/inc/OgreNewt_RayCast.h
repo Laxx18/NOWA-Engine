@@ -22,6 +22,13 @@ namespace OgreNewt
 
         void go(const OgreNewt::World* world, const Ogre::Vector3& startpt, const Ogre::Vector3& endpt, int threadIndex = 0);
 
+        /**
+         * @brief	Sets a body the ray must ignore, typically the body the ray originates
+         *			from. A ray starting inside its own collision hull would otherwise report
+         *			that hull as the closest hit and never reach whatever is behind it.
+         */
+        void setIgnoreBody(const OgreNewt::Body* ignoreBody);
+
         virtual bool userCallback(OgreNewt::Body* body, OgreNewt::CollisionPtr collision, Ogre::Real distance, const Ogre::Vector3& normal, long collisionID) = 0;
         virtual bool userPreFilterCallback(OgreNewt::Body* body);
 
@@ -46,6 +53,7 @@ namespace OgreNewt
         Ogre::Vector3 mEnd;
 
         RayCastCallback mCallback;
+        const OgreNewt::Body* mIgnoreBody;
     };
 
     class _OgreNewtExport BasicRaycast : public Raycast

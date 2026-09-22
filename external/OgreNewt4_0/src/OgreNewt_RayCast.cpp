@@ -11,7 +11,8 @@ namespace OgreNewt
         mBodyAdded(false),
         mStart(Ogre::Vector3::ZERO),
         mEnd(Ogre::Vector3::ZERO),
-        mCallback(this)
+        mCallback(this),
+        mIgnoreBody(nullptr)
     {
     }
 
@@ -19,8 +20,22 @@ namespace OgreNewt
     {
     }
 
+    void Raycast::setIgnoreBody(const OgreNewt::Body* ignoreBody)
+    {
+        mIgnoreBody = ignoreBody;
+    }
+
     bool Raycast::userPreFilterCallback(OgreNewt::Body* body)
     {
+        // A ray that starts inside its own collision hull reports that hull as the closest
+        // hit, and because OnRayCastAction is a CLOSEST hit callback that shrinks m_param,
+        // nothing behind it is ever reported - mRayList then holds exactly that one self
+        // hit. Filtering here, in the broad phase, is the only place where the body can be
+        // skipped early enough for the ground behind it to still be found.
+        if (nullptr != mIgnoreBody && body == mIgnoreBody)
+        {
+            return false;
+        }
         return true;
     }
 

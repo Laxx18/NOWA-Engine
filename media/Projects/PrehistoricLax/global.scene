@@ -43,12 +43,12 @@
 					<property type="6" name="Density" data="1"/>
 					<property type="9" name="Gravity" data="0 -16.9 0"/>
 					<property type="7" name="GravitySourceCategory" data=""/>
-					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="9" name="ConstraintDirection" data="0 1 0"/>
 					<property type="6" name="Speed" data="5"/>
 					<property type="6" name="MinSpeed" data="1"/>
 					<property type="6" name="MaxSpeed" data="10"/>
 					<property type="7" name="CollisionType" data="Capsule"/>
-					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="9" name="ConstraintAxis" data="0 0 1"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
 					<property type="12" name="Activated" data="true"/>
@@ -87,10 +87,10 @@
 					<property type="6" name="RotationSpeed" data="10"/>
 					<property type="6" name="GoalRadius" data="0.5"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
-					<property type="6" name="Acceleration" data="0.5"/>
+					<property type="6" name="Acceleration" data="0"/>
 					<property type="7" name="Categories" data="All"/>
-					<property type="12" name="UseStandUp" data="false"/>
-					<property type="7" name="Wall Separation Mode" data="MovementDirection2D"/>
+					<property type="12" name="UseStandUp" data="true"/>
+					<property type="12" name="Use Wall Separation Mode" data="true"/>
 					<property type="6" name="JumpForce" data="10"/>
 					<property type="12" name="DoubleJump" data="false"/>
 					<property type="6" name="RunAfterWalkTime" data="0"/>

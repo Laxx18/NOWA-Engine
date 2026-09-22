@@ -98,7 +98,7 @@ namespace NOWA
         acceleration(new Variant(PlayerControllerComponent::AttrAcceleration(), 0.0f, this->attributes)),
         categories(new Variant(PlayerControllerComponent::AttrCategories(), Ogre::String("All"), this->attributes)),
         useStandUp(new Variant(PlayerControllerComponent::AttrUseStandUp(), false, this->attributes)),
-        wallSeparationMode(new Variant(PlayerControllerComponent::AttrWallSeparationMode(), {"None", "Ring3D", "MovementDirection2D"}, this->attributes)),
+        useWallSeparationMode(new Variant(PlayerControllerComponent::AttrWallSeparationMode(), true, this->attributes)),
         physicsActiveComponent(nullptr),
         cameraBehaviorComponent(nullptr),
         inputDeviceComponent(nullptr),
@@ -118,7 +118,6 @@ namespace NOWA
         hitGameObjectFront(nullptr),
         hitGameObjectUp(nullptr),
         frontNormal(Ogre::Vector3::ZERO),
-        lastWallPushForce(Ogre::Vector3::ZERO),
         timeFallen(0.0f),
         isFallen(false),
         fallThreshold(0.7f),
@@ -127,13 +126,7 @@ namespace NOWA
     {
         this->acceleration->setDescription("The acceleration rate, if set to 0, acceleration is disabled and player moves with full speed.");
         this->useStandUp->setDescription("Sets whether to use stand up feature for a player, so that if he fell down, after 2 seconds, he will stand up again.");
-        this->wallSeparationMode->setDescription("Controls how the player is pushed away from walls/obstacles to prevent sticking. 'None' disables it. 'Ring3D' casts probes in a full ring around the player (best for free 3D movement/planet worlds). "
-                                                 "'MovementDirection2D' casts a single probe along the current movement direction (cheaper, best for 2.5D side-scrolling where movement is constrained to left/right).");
-
-        for (int i = 0; i < 6; ++i)
-        {
-            this->lastWallPushForces[i] = Ogre::Vector3::ZERO;
-        }
+        this->useWallSeparationMode->setDescription("Controls how the player is pushed away from walls/obstacles to prevent sticking. The mode casts probes in a full ring around the player (best for free 3D movement/planet worlds).");
     }
 
     PlayerControllerComponent::~PlayerControllerComponent()
@@ -228,7 +221,7 @@ namespace NOWA
         }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == PlayerControllerComponent::AttrWallSeparationMode())
         {
-            this->wallSeparationMode->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
+            this->useWallSeparationMode->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
         }
 
@@ -256,9 +249,92 @@ namespace NOWA
         return true;
     }
 
+    Ogre::Vector3 PlayerControllerComponent::getBlockedWallNormal(void) const
+    {
+        return this->blockedWallNormal;
+    }
+
+    void PlayerControllerComponent::reactOnWallContact(luabind::object closureFunction)
+    {
+        // Replacing, not appending: calling this repeatedly leaves exactly one reaction.
+        this->wallContactClosureFunction = closureFunction;
+    }
+
     bool PlayerControllerComponent::connect(void)
     {
         GameObjectComponent::connect();
+
+        this->blockedWallNormal = Ogre::Vector3::ZERO;
+        this->blockedWallTimer = 0.0f;
+
+        if (nullptr != this->physicsActiveComponent)
+        {
+            // Wall detection through the physics CONTACT callback rather than through rays.
+            //
+            // Rays can only ever sample a handful of directions, and covering a character
+            // properly would need far too many of them to stay cheap. The contact callback on
+            // the other hand reports exactly what the solver already computed - every real
+            // touch, with its true normal, at no extra cost.
+            //
+            // The walking state uses the recorded normal to drop the movement input that
+            // points into the wall, so running into a wall produces no force at all instead
+            // of being fought with an opposing push force.
+            this->physicsActiveComponent->setCppContactCallback(
+                [this](GameObjectPtr otherGameObject, const OgreNewt::ContactSnapshot& contactSnapshot)
+                {
+                    Ogre::Vector3 contactNormal = contactSnapshot.normal;
+                    if (contactNormal.squaredLength() < 0.0001f)
+                    {
+                        return;
+                    }
+                    contactNormal.normalise();
+
+                    // Only steep surfaces count. A floor or a walkable ramp must never block the
+                    // movement input, otherwise the player would stop dead on every slope.
+                    const Ogre::Real upComponent = contactNormal.dotProduct(Ogre::Vector3::UNIT_Y);
+                    if (Ogre::Math::Abs(upComponent) > 0.5f)
+                    {
+                        return;
+                    }
+
+                    Ogre::Vector3 horizontalWallNormal = contactNormal - Ogre::Vector3::UNIT_Y * upComponent;
+                    if (horizontalWallNormal.squaredLength() < 0.0001f)
+                    {
+                        return;
+                    }
+                    horizontalWallNormal.normalise();
+
+                    // The BUILT-IN reaction, gated by the attribute: remember the normal so the
+                    // walking state drops the movement input pointing into the wall. Switched
+                    // off, the player keeps his input and lua decides what happens - which is
+                    // what a ledge grab needs, where he should stay put and push off again.
+                    if (true == this->useWallSeparationMode->getBool())
+                    {
+                        this->blockedWallNormal = horizontalWallNormal;
+
+                        // Contacts arrive deferred, so the normal is held briefly instead of
+                        // being valid for one frame only.
+                        this->blockedWallTimer = 0.1f;
+                    }
+
+                    // Always fired, regardless of the attribute.
+                    if (true == this->wallContactClosureFunction.is_valid())
+                    {
+                        try
+                        {
+                            luabind::call_function<void>(this->wallContactClosureFunction, otherGameObject.get(), horizontalWallNormal);
+                        }
+                        catch (luabind::error& error)
+                        {
+                            luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                            std::stringstream msg;
+                            msg << errorMsg;
+
+                            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PlayerControllerComponent] Caught error in 'reactOnWallContact' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+                        }
+                    }
+                });
+        }
 
         this->setActivated(this->activated->getBool());
 
@@ -275,6 +351,16 @@ namespace NOWA
         }
 
         AppStateManager::getSingletonPtr()->getGameObjectController()->removePlayerController(this->gameObjectPtr->getId());
+
+        // Removed BEFORE the pointer is cleared: the lambda captures 'this', so it must not
+        // outlive this component on a still living physics component.
+        if (nullptr != this->physicsActiveComponent)
+        {
+            this->physicsActiveComponent->removeCppContactCallback();
+        }
+        this->blockedWallNormal = Ogre::Vector3::ZERO;
+        this->blockedWallTimer = 0.0f;
+
         this->cameraBehaviorComponent = nullptr;
         this->physicsActiveComponent = nullptr;
         // Will cause crash in state, input device component shall be existing!
@@ -285,11 +371,6 @@ namespace NOWA
         this->height = 0.0f;
         this->normal = Ogre::Vector3::ZERO;
         this->frontNormal = Ogre::Vector3::ZERO;
-        for (int i = 0; i < 6; ++i)
-        {
-            this->lastWallPushForces[i] = Ogre::Vector3::ZERO;
-        }
-        this->lastWallPushForce = Ogre::Vector3::ZERO;
         this->priorValidHeight = 0.0f;
         this->priorValidNormal = Ogre::Vector3::ZERO;
         this->timeFallen = 0.0f;
@@ -300,12 +381,24 @@ namespace NOWA
         return true;
     }
 
+#if 1
     void PlayerControllerComponent::update(Ogre::Real dt, bool notSimulating)
     {
+        // The recorded wall normal expires on its own. Contacts are only reported while the
+        // bodies actually touch, so without this the last normal would keep blocking the
+        // input long after the player has left the wall.
+        if (this->blockedWallTimer > 0.0f)
+        {
+            this->blockedWallTimer -= dt;
+            if (this->blockedWallTimer <= 0.0f)
+            {
+                this->blockedWallTimer = 0.0f;
+                this->blockedWallNormal = Ogre::Vector3::ZERO;
+            }
+        }
+
         if (false == notSimulating && nullptr != this->physicsActiveComponent /* && true == this->activated->getBool()*/)
         {
-            // auto widget = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow", false);
-
             this->setMoveWeight(1.0f);
             this->setJumpWeight(1.0f);
 
@@ -324,14 +417,9 @@ namespace NOWA
 
             // 1. Check objects that are below the player
             // Use feetY + small epsilon, so the ray starts slightly above the feet
-            PhysicsActiveComponent::ContactData contactsDataBelow1 = this->physicsActiveComponent->getContactBelow(0, Ogre::Vector3(-playerSize.z * fraction, centerBottom.y + 0.2f, 0.0f), showDebugData, this->categoriesId, true); // y is near feet
-
-            PhysicsActiveComponent::ContactData contactsDataBelow2 = this->physicsActiveComponent->getContactBelow(1, Ogre::Vector3(0.0f, centerBottom.y + 0.2f, playerSize.z * fraction), showDebugData, this->categoriesId, true); // y is near feet
-
-            PhysicsActiveComponent::ContactData contactsDataBelow3 = this->physicsActiveComponent->getContactBelow(2, Ogre::Vector3(playerSize.z * fraction, centerBottom.y + 0.2f, 0.0f), showDebugData, this->categoriesId, true); // y is near feet
-
-            /*PhysicsActiveComponent::ContactData contactsDataBelowLine = this->physicsActiveComponent->getContactToDirection(0, Ogre::Vector3::UNIT_X,
-                Ogre::Vector3(0.0f, centerBottom.y + 0.1f, 0.0f), -playerSize.z * fraction, playerSize.z * fraction, showDebugData, this->categoriesId);*/
+            PhysicsActiveComponent::ContactData contactsDataBelow1 = this->physicsActiveComponent->getContactBelow(0, Ogre::Vector3(-playerSize.z * fraction, centerBottom.y + 0.1f, 0.0f), showDebugData, this->categoriesId, true); // y is near feet
+            PhysicsActiveComponent::ContactData contactsDataBelow2 = this->physicsActiveComponent->getContactBelow(1, Ogre::Vector3(0.0f, centerBottom.y + 0.1f, playerSize.z * fraction), showDebugData, this->categoriesId, true);  // y is near feet
+            PhysicsActiveComponent::ContactData contactsDataBelow3 = this->physicsActiveComponent->getContactBelow(2, Ogre::Vector3(playerSize.z * fraction, centerBottom.y + 0.1f, 0.0f), showDebugData, this->categoriesId, true);  // y is near feet
 
             this->hitGameObjectBelow = contactsDataBelow1.getHitGameObject();
             if (nullptr == this->hitGameObjectBelow)
@@ -342,13 +430,6 @@ namespace NOWA
             {
                 this->hitGameObjectBelow = contactsDataBelow3.getHitGameObject();
             }
-            /*if (nullptr == this->hitGameObjectBelow)
-            {
-                this->hitGameObjectBelow = contactsDataBelowLine.getHitGameObject();
-            }*/
-            /*if (widget) widget->setCaption("h1: " + Ogre::StringConverter::toString(std::get<1>(contactsDataBelow1))
-                + " h2: " + Ogre::StringConverter::toString(std::get<1>(contactsDataBelow2))
-                + " h3: " + Ogre::StringConverter::toString(std::get<1>(contactsDataBelow3)));*/
 
             if (500.0f != this->height)
             {
@@ -382,38 +463,275 @@ namespace NOWA
                 this->height = 0.0f;
             }
 
-            /*if (widget)
-                widget->setCaption("Height: " + Ogre::StringConverter::toString(this->height));*/
+            Ogre::Vector3 gravityDirLocal = this->physicsActiveComponent->getGravityDirection();
+            if (gravityDirLocal.isZeroLength())
+            {
+                gravityDirLocal = Ogre::Vector3::NEGATIVE_UNIT_Y;
+            }
+            Ogre::Vector3 upDirLocal = -gravityDirLocal.normalisedCopy();
 
-            // if (widget)
-            // 	widget->setCaption("Normal: " + Ogre::StringConverter::toString(this->normal));
+            const Ogre::Vector3 upDir = Ogre::Vector3::UNIT_Y;
+            const Ogre::Real minWallAngleDegrees = 75.0f;
 
-            // 2. Check all objects that are in front of the player
+            const auto isWallLikeNormal = [minWallAngleDegrees](Ogre::Vector3 normal) -> bool
+            {
+                if (normal.squaredLength() <= Ogre::Real(0.0001f))
+                {
+                    return false;
+                }
 
-            // never change -0.2, because else the rope does not exist anymore and the player gets stuck on a wall
+                normal.normalise();
+                const Ogre::Real angleFromUp = Ogre::Math::ACos(Ogre::Math::Clamp(normal.dotProduct(Ogre::Vector3::UNIT_Y), -1.0f, 1.0f)).valueDegrees();
+
+                return angleFromUp > minWallAngleDegrees;
+            };
 
             Ogre::Vector3 direction = this->physicsActiveComponent->getOrientation() * this->gameObjectPtr->getDefaultDirection();
 
             PhysicsActiveComponent::ContactData contactDataFront[3];
 
-#if 1
             contactDataFront[0] = this->physicsActiveComponent->getContactToDirection(1, direction, Ogre::Vector3(0.0f, centerBottom.y + playerSize.y, playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
-
             contactDataFront[1] = this->physicsActiveComponent->getContactToDirection(2, direction, Ogre::Vector3(0.0f, 0.2f, playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
-
             contactDataFront[2] = this->physicsActiveComponent->getContactToDirection(3, direction, Ogre::Vector3(0.0f, centerBottom.y + (playerSize.y * 0.5f), playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
-#else
-            contactDataFront[0] = this->physicsActiveComponent->getContactAhead(1, Ogre::Vector3(0.0f, centerBottom.y + playerSize.y, playerSize.z - 0.2f), 0.1f, showDebugData, this->categoriesId);
 
-            contactDataFront[1] = this->physicsActiveComponent->getContactAhead(2, Ogre::Vector3(0.0f, 0.2f, playerSize.z - 0.2f), 0.1f, showDebugData, this->categoriesId);
+            this->hitGameObjectFront = nullptr;
+            this->frontNormal = Ogre::Vector3::ZERO;
 
-            contactDataFront[2] = this->physicsActiveComponent->getContactAhead(3, Ogre::Vector3(0.0f, centerBottom.y + (playerSize.y * 0.5f), playerSize.z - 0.2f), 0.1f, showDebugData, this->categoriesId);
+            if (nullptr != contactDataFront[0].getHitGameObject())
+            {
+                this->hitGameObjectFront = contactDataFront[0].getHitGameObject();
+                this->frontNormal = contactDataFront[0].getNormal();
+            }
+            else if (nullptr != contactDataFront[1].getHitGameObject())
+            {
+                this->hitGameObjectFront = contactDataFront[1].getHitGameObject();
+                this->frontNormal = contactDataFront[1].getNormal();
+            }
+            else if (nullptr != contactDataFront[2].getHitGameObject())
+            {
+                this->hitGameObjectFront = contactDataFront[2].getHitGameObject();
+                this->frontNormal = contactDataFront[2].getNormal();
+            }
+            // Wall separation is no longer done with rays.
+            //
+            // The former Ring3D cast six probes around the player every frame plus a ledge
+            // test and a facing fallback, and then fought the wall with push forces - which
+            // alternated between the player sticking to walls and being flung away from them.
+            // Walls are now reported by the physics CONTACT callback registered in connect(),
+            // which is both exact and free: the solver has computed those contacts anyway.
+            //
+            // What happens with that information is decided there: useWallSeparationMode
+            // switches the built-in input blocking on or off, while the lua closure is always
+            // fired so a script can react on its own - a ledge grab animation, for instance.
+
+            if (true == this->bShowDebugData)
+            {
+                /*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlayerController-DEBUG] front hit: " + (nullptr != this->hitGameObjectFront ? this->hitGameObjectFront->getName() : Ogre::String("NONE")) +
+                                                                                        " normal: " + Ogre::StringConverter::toString(this->frontNormal) + " rayDir: " + Ogre::StringConverter::toString(direction) +
+                                                                                        " f0: " + (nullptr != contactDataFront[0].getHitGameObject() ? "HIT" : "miss") + " f1: " + (nullptr != contactDataFront[1].getHitGameObject() ? "HIT" : "miss") +
+                                                                                        " f2: " + (nullptr != contactDataFront[2].getHitGameObject() ? "HIT" : "miss"));*/
+            }
+
+            this->hitGameObjectUp = nullptr;
+            this->hitGameObjectUp = this->physicsActiveComponent->getContactAbove(5, Ogre::Vector3(0.0f, playerSize.y + 0.1f, 0.0f), showDebugData, this->categoriesId, true).getHitGameObject();
+
+            if (true == this->useStandUp->getBool())
+            {
+                // 90° * threshold (0.7 = 63°)
+                Ogre::Real fallThresholdAngle = Ogre::Degree(90.0f * 0.7f).valueDegrees();
+
+                // Gravity up direction (should always be stable)
+                Ogre::Vector3 gravityUp = -this->physicsActiveComponent->getGravityDirection();
+
+                // Player's current up vector based on orientation
+                Ogre::Vector3 currentPlayerUp = this->physicsActiveComponent->getOrientation() * Ogre::Vector3::UNIT_Y;
+
+                // Compute angle deviation between player's up and gravity up
+                Ogre::Real angleDeviation = Ogre::Math::ACos(currentPlayerUp.dotProduct(gravityUp)).valueDegrees();
+
+                // Player is tilted significantly
+                if (angleDeviation > fallThresholdAngle)
+                {
+                    if (false == this->isFallen) // Start counting time
+                    {
+                        this->timeFallen = 0.0f;
+                        this->isFallen = true;
+                    }
+                    else
+                    {
+                        timeFallen += dt;               // Accumulate time
+                        if (timeFallen >= recoveryTime) // If fallen for 2 seconds
+                        {
+                            this->standUp();
+                            this->isFallen = false; // Reset state
+                        }
+                    }
+                }
+                else
+                {
+                    this->isFallen = false; // Reset if player recovers naturally
+                    this->timeFallen = 0.0f;
+                }
+            }
+        }
+    }
 #endif
 
-            //// Build:	T |
-            ////		A | -> Line to check front
-            // contactDataFront[3] = this->physicsActiveComponent->getContactToDirection(4, Ogre::Vector3::UNIT_Y,
-            //	Ogre::Vector3(0.0f, centerBottom.y + 0.1f, playerSize.z * 0.5f), -0.05f, playerSize.y + 0.05f, showDebugData, this->categoriesId); // 0.2 is to much, and player would stuck in certain ground
+#if 0
+    void PlayerControllerComponent::update(Ogre::Real dt, bool notSimulating)
+    {
+        if (false == notSimulating && nullptr != this->physicsActiveComponent /* && true == this->activated->getBool()*/)
+        {
+            this->setMoveWeight(1.0f);
+            this->setJumpWeight(1.0f);
+
+            Ogre::Vector3 playerSize = this->gameObjectPtr->getSize();
+            Ogre::Vector3 bottomOffset = this->gameObjectPtr->getBottomOffset();
+            Ogre::Vector3 centerOffset = this->gameObjectPtr->getCenterOffset();
+            Ogre::Vector3 middleOfPlayer = this->gameObjectPtr->getMiddle();
+
+            // Note on ogrenewt raycast, the startpoint is always the absolute game object position.
+            // The root is in the middle of the game object, so we need to move the ray start down to the FEET.
+            const Ogre::Real halfHeight = bottomOffset.y;                        // e.g. ~1.0 for a 2m player
+            Ogre::Vector3 centerBottom = Ogre::Vector3(0.0f, -halfHeight, 0.0f); // local feet position
+            const Ogre::Real fraction = 0.4f;
+
+            bool showDebugData = false;
+
+            // FIX: moved up from inside the Ring3D/MovementDirection2D branches (was computed
+            // TWICE, identically, in both) so it can also be used to filter the below-ground
+            // probes further down - see the "wall-like" rejection there. Single source of truth
+            // for what counts as a "wall" vs. "ground" surface, by angle from up.
+            Ogre::Vector3 gravityDirLocal = this->physicsActiveComponent->getGravityDirection();
+            if (gravityDirLocal.isZeroLength())
+            {
+                gravityDirLocal = Ogre::Vector3::NEGATIVE_UNIT_Y;
+            }
+            Ogre::Vector3 upDirLocal = -gravityDirLocal.normalisedCopy();
+
+            const Ogre::Vector3 upDir = Ogre::Vector3::UNIT_Y;
+            const Ogre::Real minWallAngleDegrees = 75.0f;
+
+            const auto isWallLikeNormal = [minWallAngleDegrees](Ogre::Vector3 normal) -> bool
+            {
+                if (normal.squaredLength() <= Ogre::Real(0.0001f))
+                {
+                    return false;
+                }
+
+                normal.normalise();
+                const Ogre::Real angleFromUp = Ogre::Math::ACos(Ogre::Math::Clamp(normal.dotProduct(Ogre::Vector3::UNIT_Y), -1.0f, 1.0f)).valueDegrees();
+
+                return angleFromUp > minWallAngleDegrees;
+            };
+
+            // 1. Check objects that are below the player
+            // Use feetY + small epsilon, so the ray starts slightly above the feet
+            PhysicsActiveComponent::ContactData contactsDataBelow1 = this->physicsActiveComponent->getContactBelow(0, Ogre::Vector3(-playerSize.z * fraction, centerBottom.y + 0.1f, 0.0f), showDebugData, this->categoriesId, true); // y is near feet
+            PhysicsActiveComponent::ContactData contactsDataBelow2 = this->physicsActiveComponent->getContactBelow(1, Ogre::Vector3(0.0f, centerBottom.y + 0.1f, playerSize.z * fraction), showDebugData, this->categoriesId, true);  // y is near feet
+            PhysicsActiveComponent::ContactData contactsDataBelow3 = this->physicsActiveComponent->getContactBelow(2, Ogre::Vector3(playerSize.z * fraction, centerBottom.y + 0.1f, 0.0f), showDebugData, this->categoriesId, true);  // y is near feet
+
+            // FIX (root cause candidate for "player rotates 90 degrees and sticks to the wall
+            // like a spider"): a below-probe whose normal is wall-like (>75 degrees from up) is
+            // now rejected as ground entirely - both for hitGameObjectBelow and for the
+            // height/normal/slope selection below. Right at an outside corner (a 90-degree
+            // brick, exactly the case the old inline comment joked about), one of the three
+            // laterally-offset below-probes can graze the WALL's near-vertical face instead of
+            // the floor. Unfiltered, that wall normal used to leak into this->normal, and
+            // wherever downstream code aligns the player's up-vector to this->normal, that is
+            // exactly what would rotate the player 90 degrees onto the wall.
+            bool below1Valid = nullptr != contactsDataBelow1.getHitGameObject() && false == isWallLikeNormal(contactsDataBelow1.getNormal());
+            bool below2Valid = nullptr != contactsDataBelow2.getHitGameObject() && false == isWallLikeNormal(contactsDataBelow2.getNormal());
+            bool below3Valid = nullptr != contactsDataBelow3.getHitGameObject() && false == isWallLikeNormal(contactsDataBelow3.getNormal());
+
+            this->hitGameObjectBelow = nullptr;
+            if (true == below1Valid)
+            {
+                this->hitGameObjectBelow = contactsDataBelow1.getHitGameObject();
+            }
+            if (nullptr == this->hitGameObjectBelow && true == below2Valid)
+            {
+                this->hitGameObjectBelow = contactsDataBelow2.getHitGameObject();
+            }
+            if (nullptr == this->hitGameObjectBelow && true == below3Valid)
+            {
+                this->hitGameObjectBelow = contactsDataBelow3.getHitGameObject();
+            }
+
+            if (500.0f != this->height)
+            {
+                this->priorValidHeight = this->height;
+            }
+
+            if (Ogre::Vector3::UNIT_SCALE * 100.0f != this->normal)
+            {
+                this->priorValidNormal = this->normal;
+            }
+
+            // FIX: replaces both the old std::min-across-all-three selection AND the old
+            // "nothing found below" pre-check (which had a genuine, separate typo bug: the
+            // third condition was "contactsDataBelow3.getHitGameObject()" instead of
+            // "nullptr == contactsDataBelow3.getHitGameObject()", so it fired on the wrong
+            // case in an edge scenario where only probe 3 had a hit - silently overwritten by
+            // the correct "nullptr == this->hitGameObjectBelow" check right after it anyway, so
+            // removing it here changes nothing observable, just removes dead/wrong logic).
+            // Selection now only considers probes that passed the wall-rejection above.
+            bool anyBelowValid = true == below1Valid || true == below2Valid || true == below3Valid;
+
+            if (true == anyBelowValid)
+            {
+                Ogre::Real bestHeight = 0.0f;
+                Ogre::Vector3 bestNormal = Ogre::Vector3::ZERO;
+                Ogre::Real bestSlope = 0.0f;
+                bool haveBest = false;
+
+                if (true == below1Valid && (false == haveBest || contactsDataBelow1.getHeight() < bestHeight))
+                {
+                    bestHeight = contactsDataBelow1.getHeight();
+                    bestNormal = contactsDataBelow1.getNormal();
+                    bestSlope = contactsDataBelow1.getSlope();
+                    haveBest = true;
+                }
+                if (true == below2Valid && (false == haveBest || contactsDataBelow2.getHeight() < bestHeight))
+                {
+                    bestHeight = contactsDataBelow2.getHeight();
+                    bestNormal = contactsDataBelow2.getNormal();
+                    bestSlope = contactsDataBelow2.getSlope();
+                    haveBest = true;
+                }
+                if (true == below3Valid && (false == haveBest || contactsDataBelow3.getHeight() < bestHeight))
+                {
+                    bestHeight = contactsDataBelow3.getHeight();
+                    bestNormal = contactsDataBelow3.getNormal();
+                    bestSlope = contactsDataBelow3.getSlope();
+                    haveBest = true;
+                }
+
+                this->height = bestHeight;
+                this->normal = bestNormal;
+                this->slope = bestSlope;
+            }
+            else
+            {
+                // Nothing usable below (either truly airborne, or the only nearby surface was
+                // wall-like and got rejected) - fall back to the last known-good ground values,
+                // exactly like the original "nothing found below" handling.
+                this->height = this->priorValidHeight;
+                this->normal = this->priorValidNormal;
+            }
+
+            if (this->height >= 500.0f)
+            {
+                this->height = 0.0f;
+            }
+
+            Ogre::Vector3 direction = this->physicsActiveComponent->getOrientation() * this->gameObjectPtr->getDefaultDirection();
+
+            PhysicsActiveComponent::ContactData contactDataFront[3];
+
+            contactDataFront[0] = this->physicsActiveComponent->getContactToDirection(1, direction, Ogre::Vector3(0.0f, centerBottom.y + playerSize.y, playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
+            contactDataFront[1] = this->physicsActiveComponent->getContactToDirection(2, direction, Ogre::Vector3(0.0f, 0.2f, playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
+            contactDataFront[2] = this->physicsActiveComponent->getContactToDirection(3, direction, Ogre::Vector3(0.0f, centerBottom.y + (playerSize.y * 0.5f), playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
 
             this->hitGameObjectFront = nullptr;
             this->frontNormal = Ogre::Vector3::ZERO;
@@ -457,240 +775,9 @@ namespace NOWA
             // wall nearby produces no probes and no push force -- avoiding the
             // jitter that came from probing while at rest.
             // -------------------------------------------------------------------------
-            Ogre::String currentWallSeparationMode = this->wallSeparationMode->getListSelectedValue();
-
-            if (currentWallSeparationMode == "Ring3D")
-            {
-                Ogre::Real currentSpeed = this->physicsActiveComponent->getVelocity().length();
-                const Ogre::Real wallSeparationSpeedThreshold = 0.1f; // m/s, tune to taste
-
-                if (currentSpeed > wallSeparationSpeedThreshold)
-                {
-                    Ogre::Vector3 gravityDirLocal = this->physicsActiveComponent->getGravityDirection();
-                    if (gravityDirLocal.isZeroLength())
-                    {
-                        gravityDirLocal = Ogre::Vector3::NEGATIVE_UNIT_Y;
-                    }
-                    Ogre::Vector3 upDirLocal = -gravityDirLocal.normalisedCopy();
-
-                    // Build a stable tangent basis perpendicular to "up" for this planet/gravity orientation.
-                    Ogre::Vector3 tangentA = upDirLocal.crossProduct(Ogre::Vector3::UNIT_X);
-                    if (tangentA.squaredLength() < 0.001f)
-                    {
-                        tangentA = upDirLocal.crossProduct(Ogre::Vector3::UNIT_Z);
-                    }
-                    tangentA.normalise();
-                    Ogre::Vector3 tangentB = upDirLocal.crossProduct(tangentA);
-                    tangentB.normalise();
-
-                    Ogre::Real wallMass = 0.0f;
-                    Ogre::Vector3 wallInertia = Ogre::Vector3::ZERO;
-                    this->physicsActiveComponent->getBody()->getMassMatrix(wallMass, wallInertia);
-
-                    const Ogre::Real wallPushStrength = 3000.0f;
-                    const Ogre::Real probeDistance = this->gameObjectPtr->getMovableObject()->getLocalAabb().getRadius() + 0.25f; // tune to player radius + small buffer
-
-                    Ogre::Vector3 totalPushForce = Ogre::Vector3::ZERO;
-
-                    for (int i = 0; i < 6; ++i)
-                    {
-                        Ogre::Radian ringAngle(Ogre::Math::TWO_PI * static_cast<Ogre::Real>(i) / static_cast<Ogre::Real>(6));
-                        Ogre::Vector3 probeDir = tangentA * Ogre::Math::Cos(ringAngle) + tangentB * Ogre::Math::Sin(ringAngle);
-
-                        PhysicsActiveComponent::ContactData ringContact =
-                            this->physicsActiveComponent->getContactToDirection(10 + i, probeDir, Ogre::Vector3(0.0f, centerBottom.y + (playerSize.y * 0.5f), 0.0f), 0.0f, probeDistance, false, this->categoriesId);
-
-                        Ogre::Vector3 targetPushForce = Ogre::Vector3::ZERO;
-
-                        GameObject* hitGameObject = ringContact.getHitGameObject();
-                        if (nullptr != hitGameObject)
-                        {
-                            auto hitPhysicsActiveComponent = NOWA::makeStrongPtr(hitGameObject->getComponent<PhysicsActiveComponent>());
-                            if (nullptr == hitPhysicsActiveComponent)
-                            {
-                                // Static obstacle only -- dynamic props (e.g. a movable
-                                // barrel) are skipped for this probe, pushing against them
-                                // needs its own handling rather than treating them like a
-                                // static wall. Skipping just leaves targetPushForce at
-                                // zero for this probe and continues the loop normally.
-                                Ogre::Vector3 wallNormal = ringContact.getNormal();
-                                if (Ogre::Vector3::ZERO != wallNormal)
-                                {
-                                    // How much is THIS probe direction driving into the wall.
-                                    Ogre::Real intoWallFactor = std::max(0.0f, -probeDir.dotProduct(wallNormal));
-                                    targetPushForce = wallNormal * wallPushStrength * wallMass * intoWallFactor;
-
-                                    // Strip any vertical component. Flat walls always produce a
-                                    // horizontal normal, but round/curved geometry can return a
-                                    // normal with a real vertical component depending on exact
-                                    // hit height -- without this, that component gets scaled
-                                    // by wallPushStrength and launches the player upward on
-                                    // contact. The push must only ever separate horizontally.
-                                    Ogre::Real upComponent = targetPushForce.dotProduct(upDirLocal);
-                                    targetPushForce -= upDirLocal * upComponent;
-                                }
-                            }
-                        }
-
-                        // Independent low-pass per probe direction to remove jitter from
-                        // small raycast/normal fluctuations between frames.
-                        this->lastWallPushForces[i].x = NOWA::MathHelper::getInstance()->lowPassFilter(targetPushForce.x, this->lastWallPushForces[i].x, 0.08f);
-                        this->lastWallPushForces[i].y = NOWA::MathHelper::getInstance()->lowPassFilter(targetPushForce.y, this->lastWallPushForces[i].y, 0.08f);
-                        this->lastWallPushForces[i].z = NOWA::MathHelper::getInstance()->lowPassFilter(targetPushForce.z, this->lastWallPushForces[i].z, 0.08f);
-
-                        if (nullptr != hitGameObject && true == this->bShowDebugData)
-                        {
-                            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WallRing-DEBUG] probe " + Ogre::StringConverter::toString(i) + " hit: " + hitGameObject->getName() +
-                                                                                                    " normal: " + Ogre::StringConverter::toString(ringContact.getNormal()) + " push: " + Ogre::StringConverter::toString(this->lastWallPushForces[i]));
-                        }
-
-                        totalPushForce += this->lastWallPushForces[i];
-                    }
-
-                    if (Ogre::Vector3::ZERO != totalPushForce)
-                    {
-                        this->physicsActiveComponent->applyForce(totalPushForce);
-                    }
-                }
-                else
-                {
-                    // Player at rest: decay all per-probe smoothed forces back to zero
-                    // instead of leaving stale values sitting in the array. Prevents a
-                    // leftover push force from snapping back in abruptly the moment
-                    // movement resumes and the ring starts running again.
-                    for (int i = 0; i < 6; ++i)
-                    {
-                        this->lastWallPushForces[i].x = NOWA::MathHelper::getInstance()->lowPassFilter(0.0f, this->lastWallPushForces[i].x, 0.08f);
-                        this->lastWallPushForces[i].y = NOWA::MathHelper::getInstance()->lowPassFilter(0.0f, this->lastWallPushForces[i].y, 0.08f);
-                        this->lastWallPushForces[i].z = NOWA::MathHelper::getInstance()->lowPassFilter(0.0f, this->lastWallPushForces[i].z, 0.08f);
-                    }
-                }
-            }
-            else if (currentWallSeparationMode == "MovementDirection2D")
-            {
-                Ogre::Vector3 currentVelocity = this->physicsActiveComponent->getVelocity();
-                Ogre::Real currentSpeed = currentVelocity.length();
-                const Ogre::Real wallSeparationSpeedThreshold = 0.1f; // m/s, tune to taste
-
-                bool hasMotionSignal = currentSpeed > wallSeparationSpeedThreshold;
-                bool hasFacingContact = nullptr != this->hitGameObjectFront && Ogre::Vector3::ZERO != this->frontNormal;
-
-                if (true == hasMotionSignal || true == hasFacingContact)
-                {
-                    Ogre::Vector3 gravityDirLocal = this->physicsActiveComponent->getGravityDirection();
-                    if (gravityDirLocal.isZeroLength())
-                    {
-                        gravityDirLocal = Ogre::Vector3::NEGATIVE_UNIT_Y;
-                    }
-                    Ogre::Vector3 upDirLocal = -gravityDirLocal.normalisedCopy();
-
-                    // Project velocity onto the horizontal (gravity-tangent) plane --
-                    // only the direction of horizontal travel matters, not whether the
-                    // player is currently rising/falling.
-                    Ogre::Vector3 moveDir = currentVelocity - upDirLocal * currentVelocity.dotProduct(upDirLocal);
-                    bool hasMoveDir = moveDir.squaredLength() > 0.0001f;
-                    if (true == hasMoveDir)
-                    {
-                        moveDir.normalise();
-                    }
-
-                    Ogre::Real wallMass = 0.0f;
-                    Ogre::Vector3 wallInertia = Ogre::Vector3::ZERO;
-                    this->physicsActiveComponent->getBody()->getMassMatrix(wallMass, wallInertia);
-
-                    const Ogre::Real wallPushStrength = 3000.0f;
-                    const Ogre::Real probeDistance = this->gameObjectPtr->getMovableObject()->getLocalAabb().getRadius() + 0.25f; // tune to player radius + small buffer
-
-                    Ogre::Vector3 targetPushForce = Ogre::Vector3::ZERO;
-                    GameObject* pushSourceGameObject = nullptr;
-                    Ogre::Vector3 pushSourceNormal = Ogre::Vector3::ZERO;
-
-                    if (true == hasMoveDir)
-                    {
-                        PhysicsActiveComponent::ContactData moveContact =
-                            this->physicsActiveComponent->getContactToDirection(20, moveDir, Ogre::Vector3(0.0f, centerBottom.y + (playerSize.y * 0.5f), 0.0f), 0.0f, probeDistance, false, this->categoriesId);
-
-                        GameObject* hitGameObject = moveContact.getHitGameObject();
-                        if (nullptr != hitGameObject)
-                        {
-                            auto hitPhysicsActiveComponent = NOWA::makeStrongPtr(hitGameObject->getComponent<PhysicsActiveComponent>());
-                            if (nullptr == hitPhysicsActiveComponent)
-                            {
-                                // Static obstacle only -- dynamic props (e.g. a movable
-                                // barrel) are skipped here, pushing against them needs
-                                // its own handling rather than treating them like a
-                                // static wall.
-                                Ogre::Vector3 wallNormal = moveContact.getNormal();
-                                if (Ogre::Vector3::ZERO != wallNormal)
-                                {
-                                    Ogre::Real intoWallFactor = std::max(0.0f, -moveDir.dotProduct(wallNormal));
-                                    if (intoWallFactor > 0.01f)
-                                    {
-                                        pushSourceGameObject = hitGameObject;
-                                        pushSourceNormal = wallNormal;
-                                        targetPushForce = wallNormal * wallPushStrength * wallMass * intoWallFactor;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Fallback: movement-direction probe found nothing usable (either
-                    // no velocity signal, or the wall already killed it) -- but the
-                    // always-live facing probe says we're touching a wall. Push using
-                    // that contact's normal with a fixed base factor, since we can no
-                    // longer measure "how hard are we driving into it" from velocity.
-                    if (Ogre::Vector3::ZERO == targetPushForce && true == hasFacingContact)
-                    {
-                        auto hitPhysicsActiveComponent = NOWA::makeStrongPtr(this->hitGameObjectFront->getComponent<PhysicsActiveComponent>());
-                        if (nullptr == hitPhysicsActiveComponent)
-                        {
-                            const Ogre::Real fallbackIntoWallFactor = 0.5f; // fixed, since velocity no longer indicates approach strength
-                            pushSourceGameObject = this->hitGameObjectFront;
-                            pushSourceNormal = this->frontNormal;
-                            targetPushForce = this->frontNormal * wallPushStrength * wallMass * fallbackIntoWallFactor;
-                        }
-                    }
-
-                    if (Ogre::Vector3::ZERO != targetPushForce)
-                    {
-                        // Strip any vertical component. Flat walls always produce a
-                        // horizontal normal, but round/curved geometry can return a
-                        // normal with a real vertical component depending on exact hit
-                        // height -- without this, that component gets scaled by
-                        // wallPushStrength and launches the player upward on contact.
-                        // The push must only ever separate horizontally.
-                        Ogre::Real upComponent = targetPushForce.dotProduct(upDirLocal);
-                        targetPushForce -= upDirLocal * upComponent;
-                    }
-
-                    // Single low-pass filter, since there is only one effective probe
-                    // result per frame (movement-based or facing-based fallback).
-                    this->lastWallPushForce.x = NOWA::MathHelper::getInstance()->lowPassFilter(targetPushForce.x, this->lastWallPushForce.x, 0.08f);
-                    this->lastWallPushForce.y = NOWA::MathHelper::getInstance()->lowPassFilter(targetPushForce.y, this->lastWallPushForce.y, 0.08f);
-                    this->lastWallPushForce.z = NOWA::MathHelper::getInstance()->lowPassFilter(targetPushForce.z, this->lastWallPushForce.z, 0.08f);
-
-                    if (nullptr != pushSourceGameObject && true == this->bShowDebugData)
-                    {
-                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WallMove-DEBUG] hasMoveDir: " + Ogre::StringConverter::toString(hasMoveDir) + " hasFacingContact: " + Ogre::StringConverter::toString(hasFacingContact) +
-                                                                                                " hit: " + pushSourceGameObject->getName() + " normal: " + Ogre::StringConverter::toString(pushSourceNormal) +
-                                                                                                " push: " + Ogre::StringConverter::toString(this->lastWallPushForce));
-                    }
-
-                    if (Ogre::Vector3::ZERO != this->lastWallPushForce)
-                    {
-                        this->physicsActiveComponent->applyForce(this->lastWallPushForce);
-                    }
-                }
-                else
-                {
-                    // No motion and no facing contact: decay the smoothed force back
-                    // to zero instead of leaving a stale value sitting there.
-                    this->lastWallPushForce.x = NOWA::MathHelper::getInstance()->lowPassFilter(0.0f, this->lastWallPushForce.x, 0.08f);
-                    this->lastWallPushForce.y = NOWA::MathHelper::getInstance()->lowPassFilter(0.0f, this->lastWallPushForce.y, 0.08f);
-                    this->lastWallPushForce.z = NOWA::MathHelper::getInstance()->lowPassFilter(0.0f, this->lastWallPushForce.z, 0.08f);
-                }
-            }
+            // The ray based wall separation was removed here as well - see the note in the
+            // other controller: walls now come from the physics contact callback instead of
+            // from six probes plus push forces.
             // else "None": wall separation fully disabled, no probes, no force.
 
             if (true == this->bShowDebugData)
@@ -744,6 +831,7 @@ namespace NOWA
             }
         }
     }
+#endif
 
     void PlayerControllerComponent::actualizeValue(Variant* attribute)
     {
@@ -779,7 +867,7 @@ namespace NOWA
         }
         else if (PlayerControllerComponent::AttrWallSeparationMode() == attribute->getName())
         {
-            this->setWallSeparationMode(attribute->getListSelectedValue());
+            this->setUseWallSeparationMode(attribute->getBool());
         }
     }
 
@@ -837,9 +925,9 @@ namespace NOWA
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(node_element, "property");
-        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
         propertyXML->append_attribute(doc.allocate_attribute("name", doc.allocate_string(PlayerControllerComponent::AttrWallSeparationMode().c_str())));
-        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->wallSeparationMode->getListSelectedValue())));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useWallSeparationMode->getBool())));
         propertiesXML->append_node(propertyXML);
     }
 
@@ -865,7 +953,7 @@ namespace NOWA
         clonedCompPtr->setAcceleration(this->acceleration->getReal());
         clonedCompPtr->setCategories(this->categories->getString());
         clonedCompPtr->setUseStandUp(this->useStandUp->getBool());
-        clonedCompPtr->setWallSeparationMode(this->wallSeparationMode->getListSelectedValue());
+        clonedCompPtr->setUseWallSeparationMode(this->useWallSeparationMode->getBool());
 
         for (unsigned int i = 0; i < static_cast<unsigned int>(this->animations.size()); i++)
         {
@@ -1233,14 +1321,14 @@ namespace NOWA
 #endif
     }
 
-    void PlayerControllerComponent::setWallSeparationMode(const Ogre::String& wallSeparationMode)
+    void PlayerControllerComponent::setUseWallSeparationMode(bool useWallSeparationMode)
     {
-        this->wallSeparationMode->setListSelectedValue(wallSeparationMode);
+        this->useWallSeparationMode->setValue(useWallSeparationMode);
     }
 
-    Ogre::String PlayerControllerComponent::getWallSeparationMode(void) const
+    bool PlayerControllerComponent::getUseWallSeparationMode(void) const
     {
-        return this->wallSeparationMode->getListSelectedValue();
+        return this->useWallSeparationMode->getBool();
     }
 
     void PlayerControllerComponent::reactOnAnimationFinished(luabind::object closureFunction, bool oneTime)
@@ -2848,7 +2936,7 @@ namespace NOWA
             else
             {
                 // No movement input, but keep facing where we are turning to.
-            this->keyDirection = Ogre::Vector3::ZERO;
+                this->keyDirection = Ogre::Vector3::ZERO;
             }
 
             if (false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_1) && false == this->inAir)
@@ -2862,7 +2950,7 @@ namespace NOWA
             // Resetting to NONE restarted the turn detection on the next key press.
             if (false == this->playerController->getIsFor2D())
             {
-            this->direction = Direction::NONE;
+                this->direction = Direction::NONE;
             }
 
             if (0.0f == this->playerController->getAcceleration())
@@ -3131,8 +3219,7 @@ namespace NOWA
                     this->accelerationTimer = 0.0f;
                     this->lastReportedSpeed = 0.0f;
 
-                    enqueuePlayerClosure(this->playerController->getDirectionChangedClosure(), "reactOnDirectionChanged",
-                        static_cast<int>(this->oldDirection), static_cast<int>(this->direction));
+                    enqueuePlayerClosure(this->playerController->getDirectionChangedClosure(), "reactOnDirectionChanged", static_cast<int>(this->oldDirection), static_cast<int>(this->direction));
                 }
 
                 // Running into a wall stops the acceleration as well - the player is no
@@ -3352,7 +3439,13 @@ namespace NOWA
         // -------------------------------------------------------------------------
         Ogre::Vector3 desiredAngularVelocity = -gravityDir * yawAtSpeed;
 
-        if (false == this->hasPhysicsPlayerControllerComponent)
+        // Skipped entirely in 2D: the dedicated 2D turning block below is the ONLY place
+        // allowed to drive the rotation there. Running both meant two competing angular
+        // commands were written into omegaForceCommand in the same frame - this one
+        // (applyOmegaForceKeepUpright) and then applyOmegaForceRotateTo - and the body was
+        // pulled between them every frame, which is the flickering while walking. In 3D
+        // nothing changes, this branch stays the only rotation source.
+        if (false == this->hasPhysicsPlayerControllerComponent && false == this->playerController->getIsFor2D())
         {
             if (yawAtSpeed != 0.0f)
             {
@@ -3363,7 +3456,6 @@ namespace NOWA
                 this->playerController->getPhysicsComponent()->applyOmegaForceKeepUpright(10.0f);
             }
         }
-
 
         // -------------------------------------------------------------------------
         // 2D turning -- runs EVERY frame, independent of the movement branch above.
@@ -3395,23 +3487,30 @@ namespace NOWA
                 // and could be overshot within a single frame, leaving directionChanged
                 // stuck true forever.
                 if (Ogre::Math::Abs(currentDegree - targetDegree) <= 2.0f)
-                    {
-                        this->directionChanged = false;
+                {
+                    this->directionChanged = false;
                     this->playerController->getPhysicsComponent()->applyOmegaForce(Ogre::Vector3::ZERO);
-                    }
+                }
                 else
                 {
                     const Ogre::Real turnSpeed = (Direction::RIGHT == this->direction) ? this->playerController->getRotationSpeed() : -this->playerController->getRotationSpeed();
                     this->playerController->getPhysicsComponent()->applyOmegaForce(Ogre::Vector3(0.0f, turnSpeed, 0.0f));
-                    }
                 }
+            }
 
             else if (Direction::NONE != this->direction)
             {
                 // Holds the facing against collisions and ragdoll disturbances, driven by
-                // the physics instead of forcing the transform.
-                const Ogre::Quaternion targetOrientation(Ogre::Degree(targetDegree), Ogre::Vector3::UNIT_Y);
-                this->playerController->getPhysicsComponent()->applyOmegaForceRotateTo(targetOrientation, Ogre::Vector3::UNIT_Y, 10.0f);
+                // the physics instead of forcing the transform - but only once it has
+                // actually drifted. Issuing a rotation command on every single frame keeps
+                // overwriting omegaForceCommand and never lets the body settle.
+                const Ogre::Real currentDegree = this->playerController->getPhysicsComponent()->getOrientation().getYaw().valueDegrees();
+
+                if (Ogre::Math::Abs(currentDegree - targetDegree) > 2.0f)
+                {
+                    const Ogre::Quaternion targetOrientation(Ogre::Degree(targetDegree), Ogre::Vector3::UNIT_Y);
+                    this->playerController->getPhysicsComponent()->applyOmegaForceRotateTo(targetOrientation, Ogre::Vector3::UNIT_Y, 10.0f);
+                }
             }
         }
 
@@ -3421,6 +3520,26 @@ namespace NOWA
         // -------------------------------------------------------------------------
         Ogre::Vector3 verticalVelocity = gravityDir * currentVelocity.dotProduct(gravityDir);
         Ogre::Vector3 directionMove = this->keyDirection * tempSpeed * this->acceleration;
+
+        // The movement input that points INTO a wall is simply dropped.
+        //
+        // This is where holding the right arrow key against a right hand wall stops
+        // producing force at all - far cleaner than letting the input press into the wall
+        // and then fighting it with an opposing separation force, which is what made the
+        // player alternately stick and get flung away. The wall normal comes from the
+        // physics contact callback, so it costs no rays.
+        const Ogre::Vector3 blockedWallNormal = this->playerController->getBlockedWallNormal();
+        if (blockedWallNormal.squaredLength() > 0.0001f)
+        {
+            const Ogre::Real intoWall = directionMove.dotProduct(-blockedWallNormal);
+            if (intoWall > 0.0f)
+            {
+                // Only the component into the wall is removed; moving along it or away from
+                // it stays untouched, so the player can still walk parallel to the wall and
+                // turn around freely.
+                directionMove += blockedWallNormal * intoWall;
+            }
+        }
 
         // While airborne the horizontal velocity the player had when taking off must be
         // CARRIED OVER, not replaced. Without this, keyDirection is zero the moment the
@@ -3469,6 +3588,112 @@ namespace NOWA
 
         if (false == this->hasPhysicsPlayerControllerComponent)
         {
+            // TEMPORARY DIAGNOSTICS - remove once the jitter is understood.
+            //
+            // Measures the ACTUAL per frame movement instead of any internal physics value.
+            // With a constant walking speed every frame must advance the node by the same
+            // distance; any spread between the smallest and the largest step IS the jitter,
+            // expressed as a number. Collected over half a second and summarised, so the log
+            // stays readable and the logging itself cannot cause the stutter it measures.
+            //
+            // All statics are function local, so this test needs no header change and
+            // therefore no full rebuild.
+            {
+                static Ogre::Vector3 lastLoggedPosition = Ogre::Vector3::ZERO;
+                static bool hasLastLoggedPosition = false;
+                static Ogre::Real diagAccumulator = 0.0f;
+                static Ogre::Real minStep = 1000.0f;
+                static Ogre::Real maxStep = 0.0f;
+                static Ogre::Real sumStep = 0.0f;
+                static unsigned int stepCount = 0;
+                static Ogre::Real minVelocity = 1000.0f;
+                static Ogre::Real maxVelocity = 0.0f;
+                static Ogre::Vector3 lastLoggedBodyPosition = Ogre::Vector3::ZERO;
+                static Ogre::Real minBodyStep = 1000.0f;
+                static Ogre::Real maxBodyStep = 0.0f;
+
+                // TWO positions are compared side by side on purpose.
+                //
+                // getOwner()->getPosition() reads the SCENE NODE, which the render thread
+                // writes with interpolated values at render rate while this samples it at
+                // logic rate - two uncoupled clocks, which produces beating in the measured
+                // deltas all by itself, even when nothing actually stutters.
+                //
+                // getPhysicsComponent()->getPosition() is Newton's own body position and
+                // advances strictly with the physics step. If THAT one is even while the
+                // node one is not, the unevenness is introduced by the node update path, not
+                // by the simulation.
+                const Ogre::Vector3 currentPosition = this->playerController->getOwner()->getPosition();
+                const Ogre::Vector3 currentBodyPosition = this->playerController->getPhysicsComponent()->getPosition();
+
+                if (true == hasLastLoggedPosition)
+                {
+                    const Ogre::Real bodyStep = (currentBodyPosition - lastLoggedBodyPosition).length();
+                    if (bodyStep < minBodyStep)
+                    {
+                        minBodyStep = bodyStep;
+                    }
+                    if (bodyStep > maxBodyStep)
+                    {
+                        maxBodyStep = bodyStep;
+                    }
+
+                    const Ogre::Real step = (currentPosition - lastLoggedPosition).length();
+                    if (step < minStep)
+                    {
+                        minStep = step;
+                    }
+                    if (step > maxStep)
+                    {
+                        maxStep = step;
+                    }
+                    sumStep += step;
+                    stepCount++;
+
+                    const Ogre::Real speed = currentVelocity.length();
+                    if (speed < minVelocity)
+                    {
+                        minVelocity = speed;
+                    }
+                    if (speed > maxVelocity)
+                    {
+                        maxVelocity = speed;
+                    }
+                }
+                lastLoggedPosition = currentPosition;
+                lastLoggedBodyPosition = currentBodyPosition;
+                hasLastLoggedPosition = true;
+
+                diagAccumulator += dt;
+                if (diagAccumulator > 0.5f && stepCount > 0)
+                {
+                    const Ogre::Real averageStep = sumStep / static_cast<Ogre::Real>(stepCount);
+
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Jitter-DIAG] frames: " + Ogre::StringConverter::toString(stepCount)
+                        + " stepMin: " + Ogre::StringConverter::toString(minStep)
+                        + " stepMax: " + Ogre::StringConverter::toString(maxStep)
+                        + " stepAvg: " + Ogre::StringConverter::toString(averageStep)
+                        + " spread: " + Ogre::StringConverter::toString(maxStep - minStep)
+                        + " | bodyStepMin: " + Ogre::StringConverter::toString(minBodyStep)
+                        + " bodyStepMax: " + Ogre::StringConverter::toString(maxBodyStep)
+                        + " bodySpread: " + Ogre::StringConverter::toString(maxBodyStep - minBodyStep)
+                        + " expectedStep: " + Ogre::StringConverter::toString(currentVelocity.length() * dt)
+                        + " velMin: " + Ogre::StringConverter::toString(minVelocity)
+                        + " velMax: " + Ogre::StringConverter::toString(maxVelocity)
+                        + " pos: " + Ogre::StringConverter::toString(currentPosition));
+
+                    diagAccumulator = 0.0f;
+                    minStep = 1000.0f;
+                    maxStep = 0.0f;
+                    sumStep = 0.0f;
+                    stepCount = 0;
+                    minVelocity = 1000.0f;
+                    maxVelocity = 0.0f;
+                    minBodyStep = 1000.0f;
+                    maxBodyStep = 0.0f;
+                }
+            }
+
             this->playerController->getPhysicsComponent()->applyRequiredForceForVelocity(newVelocity);
         }
         else

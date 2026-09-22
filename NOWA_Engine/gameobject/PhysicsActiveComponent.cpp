@@ -732,8 +732,13 @@ namespace NOWA
             collisionOrientation = MathHelper::getInstance()->degreesToQuat(this->collisionDirection->getVector3());
         }
 
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::createDynamicCollisionForCompound", _4(&inertia, &compoundCollisionList, &collisionOrientation, &cumMassOrigin),
-            { compoundCollisionList.emplace_back(this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(), collisionOrientation, cumMassOrigin, this->gameObjectPtr->getCategoryId())); });
+        // Replaced the legacy ENQUEUE_RENDER_COMMAND_MULTI_WAIT macro: the captured values are
+        // spelled out here rather than hidden behind the macro's _4(...) argument list.
+        NOWA::GraphicsModule::RenderCommand compoundCollisionCommand = [this, &inertia, &compoundCollisionList, &collisionOrientation, &cumMassOrigin]()
+        {
+            compoundCollisionList.emplace_back(this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(), collisionOrientation, cumMassOrigin, this->gameObjectPtr->getCategoryId()));
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(compoundCollisionCommand), "PhysicsActiveComponent::createDynamicCollisionForCompound");
 
         // Children (chairs etc.)
         for (PhysicsActiveComponent* partComp : physicsComponentList)
@@ -785,8 +790,11 @@ namespace NOWA
 
         OgreNewt::CollisionPrimitives::CompoundCollision* col;
 
-        ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::createDynamicCollision", _2(&col, &compoundCollisionList),
-            { col = new OgreNewt::CollisionPrimitives::CompoundCollision(this->ogreNewt, compoundCollisionList, this->gameObjectPtr->getCategoryId()); });
+        NOWA::GraphicsModule::RenderCommand collisionCommand = [this, &col, &compoundCollisionList]()
+        {
+            col = new OgreNewt::CollisionPrimitives::CompoundCollision(this->ogreNewt, compoundCollisionList, this->gameObjectPtr->getCategoryId());
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(collisionCommand), "PhysicsActiveComponent::createDynamicCollision");
         // Compound collision/body
         this->collisionPtr = OgreNewt::CollisionPtr(col);
 
@@ -2051,8 +2059,16 @@ namespace NOWA
         // Create ray along the rotated downward direction
         // OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
 
-        OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
-        OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
+        // The own body is excluded here. A ray that starts inside its own collision hull
+        // reports that hull as the closest hit, and since OgreNewt's ray callback is a
+        // CLOSEST hit callback that shrinks the clip parameter, nothing behind it is ever
+        // reported - the ground was simply never found. Measured with the 2D player: his
+        // capsule has radius 0.3 while the ground rays spread only 0.224 sideways once he is
+        // yawed by 90 degrees, so every ray started inside the capsule and returned the
+        // player himself.
+        OgreNewt::BasicRaycast ray;
+        ray.setIgnoreBody(this->physicsBody);
+        ray.go(this->ogreNewt, charPoint, rayEndPoint, true);
 
         if (this->bShowDebugData || forceDrawLine)
         {
@@ -2099,64 +2115,43 @@ namespace NOWA
             }
         }
 
-        // OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
-        const unsigned long ownGameObjectId = (nullptr != this->gameObjectPtr) ? this->gameObjectPtr->getId() : 0;
-
-        const int hitCount = ray.getHitCount();
-        for (int hitIndex = 0; hitIndex < hitCount; hitIndex++)
+        // Back to the plain closest hit: the self exclusion now happens in the ray's own
+        // prefilter (see setIgnoreBody above), so the nearest hit reported here can no
+        // longer be this body. Walking multiple hits was pointless anyway - OgreNewt's
+        // BasicRaycast stores at most ONE entry, because its ray callback shrinks the clip
+        // parameter to the closest contact and Newton stops reporting anything behind it.
+        OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
+        if (info.mBody)
         {
-            OgreNewt::BasicRaycast::BasicRaycastInfo currentInfo = ray.getInfoAt(hitIndex);
-            if (nullptr == currentInfo.mBody)
-            {
-                continue;
-            }
-
-            unsigned int type = currentInfo.mBody->getType();
+            unsigned int type = info.mBody->getType();
             unsigned int finalType = type & categoryIds;
-            if (type != finalType)
-            {
-                continue;
-            }
 
-            Ogre::SceneNode* tempNode = static_cast<Ogre::SceneNode*>(currentInfo.mBody->getOgreNode());
-            if (nullptr == tempNode)
+            if (type == finalType)
             {
-                continue;
-            }
+                height = info.mDistance * 500.0f;
 
-            const Ogre::Any& userAny = tempNode->getUserObjectBindings().getUserAny();
-            if (true == userAny.isEmpty())
-            {
-                continue;
-            }
+                normal = info.mNormal;
+                slope = Ogre::Math::ACos(-targetDir.dotProduct(normal) / (targetDir.length() * normal.length())).valueDegrees();
 
-            GameObject* hitGameObject = nullptr;
-            try
-            {
-                hitGameObject = Ogre::any_cast<GameObject*>(userAny);
-            }
-            catch (Ogre::Exception&)
-            {
-                continue;
-            }
+                Ogre::SceneNode* tempNode = static_cast<Ogre::SceneNode*>(info.mBody->getOgreNode());
+                if (nullptr == tempNode)
+                {
+                    return PhysicsActiveComponent::ContactData(nullptr, height, normal, slope);
+                }
 
-            if (nullptr == hitGameObject)
-            {
-                continue;
+                const Ogre::Any& userAny = tempNode->getUserObjectBindings().getUserAny();
+                if (!userAny.isEmpty())
+                {
+                    try
+                    {
+                        gameObject = Ogre::any_cast<GameObject*>(userAny);
+                    }
+                    catch (Ogre::Exception&)
+                    {
+                        return PhysicsActiveComponent::ContactData(nullptr, height, normal, slope);
+                    }
+                }
             }
-
-            // The own body - including every ragdoll bone body, because they all share this
-            // game object - is never a valid ground contact.
-            if (ownGameObjectId == hitGameObject->getId())
-            {
-                continue;
-            }
-
-            gameObject = hitGameObject;
-            height = currentInfo.mDistance * 500.0f;
-            normal = currentInfo.mNormal;
-            slope = Ogre::Math::ACos(-targetDir.dotProduct(normal) / (targetDir.length() * normal.length())).valueDegrees();
-            break;
         }
 
         return PhysicsActiveComponent::ContactData(gameObject, height, normal, slope);
@@ -2220,7 +2215,16 @@ namespace NOWA
 
         // Create ray along the adjusted forward direction
         // OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
-        OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
+        // The own body is excluded here. A ray that starts inside its own collision hull
+        // reports that hull as the closest hit, and since OgreNewt's ray callback is a
+        // CLOSEST hit callback that shrinks the clip parameter, nothing behind it is ever
+        // reported - the ground was simply never found. Measured with the 2D player: his
+        // capsule has radius 0.3 while the ground rays spread only 0.224 sideways once he is
+        // yawed by 90 degrees, so every ray started inside the capsule and returned the
+        // player himself.
+        OgreNewt::BasicRaycast ray;
+        ray.setIgnoreBody(this->physicsBody);
+        ray.go(this->ogreNewt, charPoint, rayEndPoint, true);
         OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
 
         if (true == this->bShowDebugData || true == forceDrawLine)
@@ -2230,7 +2234,8 @@ namespace NOWA
             auto it = this->drawLineMap.find(key);
             if (it == this->drawLineMap.cend())
             {
-                ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContactAhead", _3(key, charPoint, rayEndPoint), {
+                NOWA::GraphicsModule::RenderCommand debugLineCommand = [this, key, charPoint, rayEndPoint]()
+                {
                     Ogre::SceneNode* debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
                     debugLineNode->setName("getContactAhead");
                     Ogre::ManualObject* debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
@@ -2246,7 +2251,8 @@ namespace NOWA
                     debugLineObject->position(rayEndPoint);
                     debugLineObject->index(1);
                     debugLineObject->end();
-                });
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(debugLineCommand), "PhysicsActiveComponent::debugLine");
             }
             else
             {
@@ -2351,7 +2357,16 @@ namespace NOWA
 
         // Create ray along the rotated downward direction
         // OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
-        OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
+        // The own body is excluded here. A ray that starts inside its own collision hull
+        // reports that hull as the closest hit, and since OgreNewt's ray callback is a
+        // CLOSEST hit callback that shrinks the clip parameter, nothing behind it is ever
+        // reported - the ground was simply never found. Measured with the 2D player: his
+        // capsule has radius 0.3 while the ground rays spread only 0.224 sideways once he is
+        // yawed by 90 degrees, so every ray started inside the capsule and returned the
+        // player himself.
+        OgreNewt::BasicRaycast ray;
+        ray.setIgnoreBody(this->physicsBody);
+        ray.go(this->ogreNewt, charPoint, rayEndPoint, true);
         OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
 
         // Debug drawing
@@ -2364,7 +2379,8 @@ namespace NOWA
             auto it = this->drawLineMap.find(key);
             if (it == this->drawLineMap.cend())
             {
-                ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContactAbove", _3(key, fromPosition, toPosition), {
+                NOWA::GraphicsModule::RenderCommand debugLineCommand = [this, key, fromPosition, toPosition]()
+                {
                     Ogre::SceneNode* debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
                     debugLineNode->setName("getContactAbove");
                     Ogre::ManualObject* debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
@@ -2381,7 +2397,8 @@ namespace NOWA
                     debugLineObject->position(toPosition);
                     debugLineObject->index(1);
                     debugLineObject->end();
-                });
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(debugLineCommand), "PhysicsActiveComponent::debugLine");
             }
             else
             {
@@ -2493,7 +2510,16 @@ namespace NOWA
 
         // Create ray
         // OgreNewt::BasicRaycast ray(this->ogreNewt, fromPosition, toPosition, true);
-        OgreNewt::BasicRaycast ray(this->ogreNewt, fromPosition, toPosition, true);
+        // The own body is excluded here. A ray that starts inside its own collision hull
+        // reports that hull as the closest hit, and since OgreNewt's ray callback is a
+        // CLOSEST hit callback that shrinks the clip parameter, nothing behind it is ever
+        // reported - the ground was simply never found. Measured with the 2D player: his
+        // capsule has radius 0.3 while the ground rays spread only 0.224 sideways once he is
+        // yawed by 90 degrees, so every ray started inside the capsule and returned the
+        // player himself.
+        OgreNewt::BasicRaycast ray;
+        ray.setIgnoreBody(this->physicsBody);
+        ray.go(this->ogreNewt, fromPosition, toPosition, true);
         OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
 
         if (true == this->bShowDebugData || true == forceDrawLine)
@@ -2503,7 +2529,8 @@ namespace NOWA
             auto it = this->drawLineMap.find(key);
             if (it == this->drawLineMap.cend())
             {
-                ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContactToDirection", _3(key, fromPosition, toPosition), {
+                NOWA::GraphicsModule::RenderCommand debugLineCommand = [this, key, fromPosition, toPosition]()
+                {
                     Ogre::SceneNode* debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
                     debugLineNode->setName("getContactToDirection");
                     Ogre::ManualObject* debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
@@ -2519,7 +2546,8 @@ namespace NOWA
                     debugLineObject->position(toPosition);
                     debugLineObject->index(1);
                     debugLineObject->end();
-                });
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(debugLineCommand), "PhysicsActiveComponent::debugLine");
             }
             else
             {
@@ -2633,7 +2661,16 @@ namespace NOWA
 
         // Create ray
         // OgreNewt::BasicRaycast ray(this->ogreNewt, fromPosition, toPosition, true);
-        OgreNewt::BasicRaycast ray(this->ogreNewt, fromPosition, toPosition, true);
+        // The own body is excluded here. A ray that starts inside its own collision hull
+        // reports that hull as the closest hit, and since OgreNewt's ray callback is a
+        // CLOSEST hit callback that shrinks the clip parameter, nothing behind it is ever
+        // reported - the ground was simply never found. Measured with the 2D player: his
+        // capsule has radius 0.3 while the ground rays spread only 0.224 sideways once he is
+        // yawed by 90 degrees, so every ray started inside the capsule and returned the
+        // player himself.
+        OgreNewt::BasicRaycast ray;
+        ray.setIgnoreBody(this->physicsBody);
+        ray.go(this->ogreNewt, fromPosition, toPosition, true);
         OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
 
         if (true == forceDrawLine)
@@ -2643,7 +2680,11 @@ namespace NOWA
             auto it = this->drawLineMap.find(key);
             if (it == this->drawLineMap.cend())
             {
-                ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContact", _1(key), {
+                // Only 'key' is captured: unlike the other three debug blocks this one just
+                // creates the node and registers it, the line itself is drawn by the tracked
+                // closure in the else branch below. The original macro passed _1(key) only.
+                NOWA::GraphicsModule::RenderCommand debugLineCommand = [this, key]()
+                {
                     Ogre::SceneNode* debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
                     debugLineNode->setName("getContact");
                     Ogre::ManualObject* debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
@@ -2652,7 +2693,8 @@ namespace NOWA
                     debugLineObject->setCastShadows(false);
                     debugLineNode->attachObject(debugLineObject);
                     this->drawLineMap.emplace(key, std::make_pair(debugLineNode, debugLineObject));
-                });
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(debugLineCommand), "PhysicsActiveComponent::getContact");
             }
             else
             {
@@ -2759,7 +2801,16 @@ namespace NOWA
         // get contact result
         // OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
 
-        OgreNewt::BasicRaycast ray(this->ogreNewt, fromPosition, toPosition, true);
+        // The own body is excluded here. A ray that starts inside its own collision hull
+        // reports that hull as the closest hit, and since OgreNewt's ray callback is a
+        // CLOSEST hit callback that shrinks the clip parameter, nothing behind it is ever
+        // reported - the ground was simply never found. Measured with the 2D player: his
+        // capsule has radius 0.3 while the ground rays spread only 0.224 sideways once he is
+        // yawed by 90 degrees, so every ray started inside the capsule and returned the
+        // player himself.
+        OgreNewt::BasicRaycast ray;
+        ray.setIgnoreBody(this->physicsBody);
+        ray.go(this->ogreNewt, fromPosition, toPosition, true);
         OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
         if (info.mBody)
         {
@@ -2817,7 +2868,16 @@ namespace NOWA
         // Create ray along the rotated downward direction
         // OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
         // OgreNewt::BasicRaycast::BasicRaycastInfo& info = ray.getFirstHit();
-        OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
+        // The own body is excluded here. A ray that starts inside its own collision hull
+        // reports that hull as the closest hit, and since OgreNewt's ray callback is a
+        // CLOSEST hit callback that shrinks the clip parameter, nothing behind it is ever
+        // reported - the ground was simply never found. Measured with the 2D player: his
+        // capsule has radius 0.3 while the ground rays spread only 0.224 sideways once he is
+        // yawed by 90 degrees, so every ray started inside the capsule and returned the
+        // player himself.
+        OgreNewt::BasicRaycast ray;
+        ray.setIgnoreBody(this->physicsBody);
+        ray.go(this->ogreNewt, charPoint, rayEndPoint, true);
         OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
 
         if (info.mBody)
@@ -2831,7 +2891,10 @@ namespace NOWA
                 Ogre::Vector3 charPoint = this->physicsBody->getPosition() + (this->physicsBody->getOrientation() * defaultRot * positionOffset2);
 
                 // ray = OgreNewt::BasicRaycast(this->ogreNewt, charPoint, charPoint + rayEndPoint, true);
-                OgreNewt::BasicRaycast ray2(this->ogreNewt, charPoint, charPoint + rayEndPoint, true);
+                // Same self exclusion as for the primary ray above.
+                OgreNewt::BasicRaycast ray2;
+                ray2.setIgnoreBody(this->physicsBody);
+                ray2.go(this->ogreNewt, charPoint, charPoint + rayEndPoint, true);
                 info = ray2.getFirstHit();
                 if (info.mBody)
                 {
@@ -3214,6 +3277,29 @@ namespace NOWA
         if (true == this->hasLatchedVelocity && false == this->jumpForceCommand.pending.load())
         {
             Ogre::Vector3 velocityError = this->latchedVelocity - body->getVelocity();
+
+            //// TEMPORARY DIAGNOSTICS - remove once the walking jitter is understood.
+            ////
+            //// Shows how often this callback runs per logic frame and what the latch does to
+            //// the VERTICAL velocity. If the callback fires several times between two
+            //// setVelocity() calls from the controller, the latch is enforcing a snapshot of
+            //// the vertical velocity taken at the start of the frame while gravity and the
+            //// ground contact keep changing it - the three then fight over the same value,
+            //// which is what a vertical oscillation looks like.
+            //if (true == this->bShowDebugData)
+            //{
+            //    static unsigned int moveCallbackCounter = 0;
+            //    moveCallbackCounter++;
+
+            //    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MoveCallback-DIAG] '" + this->gameObjectPtr->getName()
+            //        + "' call: " + Ogre::StringConverter::toString(moveCallbackCounter)
+            //        + " timeStep: " + Ogre::StringConverter::toString(timeStep)
+            //        + " latched: " + Ogre::StringConverter::toString(this->latchedVelocity)
+            //        + " bodyVelocity: " + Ogre::StringConverter::toString(body->getVelocity())
+            //        + " error: " + Ogre::StringConverter::toString(velocityError)
+            //        + " force: " + Ogre::StringConverter::toString(velocityError * mass / timeStep));
+            //}
+
             body->setForce(velocityError * mass / timeStep);
         }
 
