@@ -103,6 +103,7 @@ namespace NOWA
         currentTrackedDatablockIdx(0),
         interpolationWeight(0.0f),
         accumTimeSinceLastLogicFrame(0.0f),
+        lastLogicFrameMicroseconds(0),
         frameTime(1.0f / 60.0f),
         currentRenderDt(0.0f),
         debugVisualization(false),
@@ -370,7 +371,11 @@ namespace NOWA
                 NOWA::InputDeviceCore::getSingletonPtr()->capture(deltaTime);
                 this->advanceFrameAndDestroyOld();
 
-                const float alpha = this->consumeInterpolationAlpha();
+                // Computed HERE, on the render thread, from the time elapsed since the last
+                // logic snapshot - not read from a value the logic thread publishes once per
+                // iteration. That is what lets the node advance with every render frame
+                // instead of standing still for three of them and then jumping.
+                const float alpha = this->computeInterpolationAlpha();
                 this->setInterpolationWeight(alpha);
                 this->updateAllTransforms();
 
@@ -627,6 +632,39 @@ namespace NOWA
     {
         // Acquire pairs with logic release stores
         return m_interpolationAlpha.load(std::memory_order_acquire);
+    }
+
+    float GraphicsModule::computeInterpolationAlpha() const
+    {
+        const unsigned long long lastLogicFrame = this->lastLogicFrameMicroseconds.load(std::memory_order_acquire);
+        if (0 == lastLogicFrame)
+        {
+            // No logic snapshot yet - fall back to whatever the logic thread published.
+            return this->consumeInterpolationAlpha();
+        }
+
+        if (this->frameTime <= 0.0f)
+        {
+            return 0.0f;
+        }
+
+        const unsigned long long nowMicroseconds = static_cast<unsigned long long>(Core::getSingletonPtr()->getOgreTimer()->getMicroseconds());
+
+        // Unsigned subtraction stays correct across a counter wrap, so the microsecond
+        // counter rolling over does not produce a garbage alpha.
+        const unsigned long long elapsedMicroseconds = nowMicroseconds - lastLogicFrame;
+
+        const float elapsedSeconds = static_cast<float>(elapsedMicroseconds) * 0.000001f;
+        float alpha = elapsedSeconds / this->frameTime;
+
+        if (!(alpha == alpha))
+        {
+            alpha = 0.0f;
+        }
+
+        // Clamped rather than wrapped: if the logic thread falls behind, holding the newest
+        // snapshot is far less noticeable than snapping back to its start.
+        return std::clamp(alpha, 0.0f, 1.0f);
     }
 
     uint64_t GraphicsModule::getLogicFrameId() const
@@ -3214,6 +3252,17 @@ namespace NOWA
         // must be published every outer loop iteration (even when no fixed steps ran),
         // whereas endLogicFrame() is only called when at least one step ran.
         this->publishLogicFrame();
+
+        // Timestamp of the moment this logic snapshot became current.
+        //
+        // The render thread derives its own interpolation alpha from it, instead of reading
+        // a value the logic thread publishes once per outer loop iteration. With logic at
+        // 120 Hz and rendering at 300 to 370 fps, that published value stayed unchanged for
+        // three or four render frames in a row - the interpolated node stood still and then
+        // jumped by the full step. Measured: the physics body advanced by exactly 0.0827808
+        // every frame with a spread of 0, while the scene node varied between 0.0596 and
+        // 0.3240, i.e. by the very ratio of render rate to logic rate.
+        this->lastLogicFrameMicroseconds.store(static_cast<unsigned long long>(Core::getSingletonPtr()->getOgreTimer()->getMicroseconds()), std::memory_order_release);
     }
 
     void GraphicsModule::setLogLevel(Ogre::LogMessageLevel level)

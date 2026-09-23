@@ -6,7 +6,7 @@
 		<ambient>
 			<ambientLightUpperHemisphere r="0.3" g="0.5" b="0.7"/>
 			<ambientLightLowerHemisphere r="0.6" g="0.45" b="0.3" a="1"/>
-			<hemisphereDir x="0.57735" y="0.577351" z="0.57735"/>
+			<hemisphereDir x="0.57735" y="0.57735" z="0.57735"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -35,7 +35,7 @@
 		<fog mode="none" start="0" end="0" density="0"/>
 		<bounds mostLeftNearPosition="0 0 -16.5203" mostRightFarPosition="100 21.08 -5"/>
 	</environment>
-	<OgreNewt solverModel="4" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
+	<OgreNewt solverModel="4" threadCount="4" desiredFps="144" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
 		<globalGravity x="0" y="-19.8" z="0"/>
 	</OgreNewt>
@@ -677,7 +677,7 @@
 		</node>
 		<node name="Fence1_3" id="3220600583">
 			<position x="65.785" y="1" z="-14.3505"/>
-			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Fence1_3" meshFile="Fence1.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="WoodPlanks"/>

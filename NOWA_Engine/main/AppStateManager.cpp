@@ -478,111 +478,6 @@ namespace NOWA
         }
     }
 
-#if 0
-	void AppStateManager::multiThreadedRendering(void)
-    {
-        this->markCurrentThreadAsLogicThread();
-
-#ifdef _DEBUG
-        const double fixedDt = 1.0 / 60.0; // 60Hz in debug — gives more headroom
-        const double maxDeltaTime = fixedDt * 8.0; // allow up to 8 steps of catch-up
-        const int maxStepsPerFrame = 4;
-#else
-        const double fixedDt = 1.0 / static_cast<double>(Core::getSingletonPtr()->getOptionDesiredSimulationUpdates());
-        const double maxDeltaTime = fixedDt * 2.0;
-        const int maxStepsPerFrame = 2;
-#endif
-        // const double maxDeltaTime = 0.25;
-        // const int maxStepsPerFrame = 5;
-
-        Ogre::Window* renderWindow = Core::getSingletonPtr()->getOgreRenderWindow();
-        this->setDesiredUpdates(Core::getSingletonPtr()->getOptionDesiredFramesUpdates());
-
-        double currentTime = static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
-        double accumulator = 0.0;
-
-        NOWA::GraphicsModule* graphicsModule = NOWA::GraphicsModule::getInstance();
-        graphicsModule->setFrameTime(static_cast<Ogre::Real>(fixedDt));
-
-        while (false == this->bShutdown)
-        {
-            Ogre::WindowEventUtilities::messagePump();
-
-            const double newTime = static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
-            double frameTime = newTime - currentTime;
-            currentTime = newTime;
-
-            frameTime = std::min(frameTime, maxDeltaTime);
-            accumulator += frameTime;
-
-            if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->bSceneLoading)
-            {
-                this->activeStateStack.back()->renderUpdate(static_cast<Ogre::Real>(frameTime));
-            }
-
-            bool didUpdate = false;
-            int steps = 0;
-
-            while (accumulator >= fixedDt && steps < maxStepsPerFrame)
-            {
-                if (!didUpdate)
-                {
-                    graphicsModule->beginLogicFrame();
-                    didUpdate = true;
-                }
-
-                this->processAll();
-
-                if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->bSceneLoading)
-                {
-                    // The outer loop already steps time in fixedDt increments.
-                    // AppState::update() must call ogreNewt->update(fixedDt), NOT
-                    // updateWithInternalAccumulator() — that function owns its own
-                    // accumulator and must never be driven from inside this loop.
-                    this->activeStateStack.back()->update(static_cast<Ogre::Real>(fixedDt));
-                }
-
-                Core::getSingletonPtr()->updateFrameStats(static_cast<Ogre::Real>(fixedDt));
-                Core::getSingletonPtr()->update(static_cast<Ogre::Real>(fixedDt));
-
-                accumulator -= fixedDt;
-                ++steps;
-            }
-
-//#ifdef _DEBUG
-//            // In debug, let accumulator grow freely — don't bleed time
-//            // (bleeding causes slow motion when debug overhead is high)
-//#else
-//            if (accumulator >= fixedDt)
-//            {
-//                accumulator = fixedDt * 0.5;
-//            }
-//#endif
-
-            const float alpha = (fixedDt > 0.0) ? static_cast<float>(accumulator / fixedDt) : 0.0f;
-            graphicsModule->publishInterpolationAlpha(alpha);
-
-            if (false == renderWindow->isVisible() && this->renderWhenInactive)
-            {
-                Ogre::Threads::Sleep(500);
-            }
-        }
-
-        this->bStall = true;
-
-		// Drain the queue before this thread exits.
-        // moodycamel::ConcurrentQueue stores per-thread producer state that is
-        // cleaned up in ThreadExitNotifier::~ThreadExitNotifier() when this thread
-        // exits. If any commands are still enqueued at that point, the cleanup
-        // callback tries to return tokens to the queue object which may already
-        // be in an inconsistent state — causing a deadlock.
-        // Draining here while the thread is still alive and the queue is fully
-        // valid avoids that entirely.
-        this->clearLogicQueue();
-    }
-#endif
-
-#if 1
     void AppStateManager::multiThreadedRendering(void)
     {
         this->markCurrentThreadAsLogicThread();
@@ -693,7 +588,6 @@ namespace NOWA
         // pushes its teardown command into this very queue afterwards.
         // this->clearLogicQueue();
     }
-#endif
 
     void AppStateManager::internalChangeAppState(AppState* state, bool initial)
     {

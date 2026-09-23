@@ -3278,28 +3278,6 @@ namespace NOWA
         {
             Ogre::Vector3 velocityError = this->latchedVelocity - body->getVelocity();
 
-            //// TEMPORARY DIAGNOSTICS - remove once the walking jitter is understood.
-            ////
-            //// Shows how often this callback runs per logic frame and what the latch does to
-            //// the VERTICAL velocity. If the callback fires several times between two
-            //// setVelocity() calls from the controller, the latch is enforcing a snapshot of
-            //// the vertical velocity taken at the start of the frame while gravity and the
-            //// ground contact keep changing it - the three then fight over the same value,
-            //// which is what a vertical oscillation looks like.
-            //if (true == this->bShowDebugData)
-            //{
-            //    static unsigned int moveCallbackCounter = 0;
-            //    moveCallbackCounter++;
-
-            //    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MoveCallback-DIAG] '" + this->gameObjectPtr->getName()
-            //        + "' call: " + Ogre::StringConverter::toString(moveCallbackCounter)
-            //        + " timeStep: " + Ogre::StringConverter::toString(timeStep)
-            //        + " latched: " + Ogre::StringConverter::toString(this->latchedVelocity)
-            //        + " bodyVelocity: " + Ogre::StringConverter::toString(body->getVelocity())
-            //        + " error: " + Ogre::StringConverter::toString(velocityError)
-            //        + " force: " + Ogre::StringConverter::toString(velocityError * mass / timeStep));
-            //}
-
             body->setForce(velocityError * mass / timeStep);
         }
 

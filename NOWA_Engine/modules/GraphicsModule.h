@@ -791,6 +791,8 @@ namespace NOWA
         // Calculate interpolation weight based on time since last logic frame
         void calculateInterpolationWeight(void);
 
+        float computeInterpolationAlpha() const;
+
         // Set the accumulated time since the last logic frame
         void setAccumTimeSinceLastLogicFrame(Ogre::Real time);
 
@@ -1012,6 +1014,10 @@ namespace NOWA
 
         // alpha = accumulator / fixedDt  (clamped 0..1)
         std::atomic<float> m_interpolationAlpha{0.0f};
+
+        // Timestamp of the last completed logic snapshot, used by the render thread to
+        // derive its own interpolation alpha.
+        std::atomic<unsigned long long> lastLogicFrameMicroseconds;
 
         // increments when logic produces a new snapshot (endLogicFrame)
         std::atomic<uint64_t> m_logicFrameId{0};

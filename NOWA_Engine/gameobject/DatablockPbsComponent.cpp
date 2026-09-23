@@ -2831,15 +2831,15 @@ namespace NOWA
             {
                 ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setTransparency", _1(transparency),
                     { this->datablock->setTransparency(transparency, this->mapStringToTransparencyMode(this->transparencyMode->getListSelectedValue()), this->useAlphaFromTextures->getBool()); });
-                // Change render queue index, so that other game objects can be rendered correctly after this transparent game object
-                if (this->transparency->getReal() < 1.0f)
-                {
-                    this->gameObjectPtr->setRenderQueueIndex(NOWA::RENDER_QUEUE_V2_MESH);
-                }
-                else
-                {
-                    this->gameObjectPtr->setRenderQueueIndex(NOWA::RENDER_QUEUE_V2_TRANSPARENT);
-                }
+                //// Change render queue index, so that other game objects can be rendered correctly after this transparent game object
+                //if (this->transparency->getReal() < 1.0f)
+                //{
+                //    this->gameObjectPtr->setRenderQueueIndex(NOWA::RENDER_QUEUE_V2_MESH);
+                //}
+                //else
+                //{
+                //    this->gameObjectPtr->setRenderQueueIndex(NOWA::RENDER_QUEUE_V2_TRANSPARENT);
+                //}
             }
             else
             {

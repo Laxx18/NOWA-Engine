@@ -41,7 +41,7 @@
 					<property type="6" name="LinearDamping" data="0.1"/>
 					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
 					<property type="6" name="Density" data="1"/>
-					<property type="9" name="Gravity" data="0 -16.9 0"/>
+					<property type="9" name="Gravity" data="0 -29.9 0"/>
 					<property type="7" name="GravitySourceCategory" data=""/>
 					<property type="9" name="ConstraintDirection" data="0 1 0"/>
 					<property type="6" name="Speed" data="5"/>
@@ -87,11 +87,11 @@
 					<property type="6" name="RotationSpeed" data="10"/>
 					<property type="6" name="GoalRadius" data="0.5"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
-					<property type="6" name="Acceleration" data="0"/>
+					<property type="6" name="Acceleration" data="1"/>
 					<property type="7" name="Categories" data="All"/>
 					<property type="12" name="UseStandUp" data="true"/>
 					<property type="12" name="Use Wall Separation Mode" data="true"/>
-					<property type="6" name="JumpForce" data="10"/>
+					<property type="6" name="JumpForce" data="15"/>
 					<property type="12" name="DoubleJump" data="false"/>
 					<property type="6" name="RunAfterWalkTime" data="0"/>
 					<property type="12" name="For2D" data="true"/>
