@@ -492,7 +492,20 @@ namespace NOWA
         Ogre::Window* renderWindow = Core::getSingletonPtr()->getOgreRenderWindow();
         this->setDesiredUpdates(Core::getSingletonPtr()->getOptionDesiredFramesUpdates());
 
-        double currentTime = static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
+        // Attention: std::chrono::steady_clock with sub-microsecond resolution instead of the Ogre timer
+        // in MILLISECONDS. The millisecond clock quantised every frame time to whole milliseconds, which
+        // at 144 Hz (6.944 ms per step) made the begin of consecutive logic steps wander between about
+        // 5.4 and 7.5 ms (measured with NOWA_JITTER_DIAG). GraphicsModule stamps the interpolation alpha
+        // at the begin of each step, so this wander went straight into the displayed motion as a
+        // position error of up to roughly 20 percent of one step. It is also no longer the Ogre timer
+        // that the render thread used to read concurrently.
+        const auto clockStart = std::chrono::steady_clock::now();
+        auto clockSeconds = [clockStart]() -> double
+        {
+            return std::chrono::duration<double>(std::chrono::steady_clock::now() - clockStart).count();
+        };
+
+        double currentTime = clockSeconds();
         double accumulator = 0.0;
 
         NOWA::GraphicsModule* graphicsModule = NOWA::GraphicsModule::getInstance();
@@ -516,8 +529,7 @@ namespace NOWA
         {
             Ogre::WindowEventUtilities::messagePump();
 
-            const double newTime = static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
-            // const double newTime = static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMicroseconds()) * 0.000001;
+            const double newTime = clockSeconds();
             double frameTime = newTime - currentTime;
             currentTime = newTime;
 
@@ -560,7 +572,14 @@ namespace NOWA
                 accumulator = std::fmod(accumulator, fixedDt); // keep phase instead of an arbitrary half-step
             }
 
-            const float alpha = (fixedDt > 0.0) ? static_cast<float>(accumulator / fixedDt) : 0.0f;
+            // Only a fallback nowadays: the render thread derives its alpha itself from the step
+            // timestamp (GraphicsModule::computeInterpolationAlpha()) and reads this value only
+            // before the very first logic step.
+            float alpha = 0.0f;
+            if (fixedDt > 0.0)
+            {
+                alpha = static_cast<float>(accumulator / fixedDt);
+            }
             graphicsModule->publishInterpolationAlpha(alpha);
 
             if (false == renderWindow->isVisible() && this->renderWhenInactive)

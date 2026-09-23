@@ -1862,8 +1862,8 @@ void DesignState::update(Ogre::Real dt)
             // by Lua this frame are consumed by Newton in the same frame.
             // OnTransform fires here and writes the NEW m_curRotation —
             // Lua will read it next frame, which is the correct order.
-            // this->ogreNewt->update(dt);
-            this->ogreNewt->updateFixed(dt);
+            this->ogreNewt->update(dt);
+            // this->ogreNewt->updateFixed(dt);
 
             // Newton has stepped, interalPostUpdate has set m_nodePosit.
             // Camera reads the correct interpolated position and writes

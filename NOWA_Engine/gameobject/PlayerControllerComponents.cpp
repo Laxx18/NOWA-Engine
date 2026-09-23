@@ -3307,16 +3307,24 @@ namespace NOWA
             else if (Direction::NONE != this->direction)
             {
                 // Holds the facing against collisions and ragdoll disturbances, driven by
-                // the physics instead of forcing the transform - but only once it has
-                // actually drifted. Issuing a rotation command on every single frame keeps
-                // overwriting omegaForceCommand and never lets the body settle.
-                const Ogre::Real currentDegree = this->playerController->getPhysicsComponent()->getOrientation().getYaw().valueDegrees();
-
-                if (Ogre::Math::Abs(currentDegree - targetDegree) > 2.0f)
-                {
-                    const Ogre::Quaternion targetOrientation(Ogre::Degree(targetDegree), Ogre::Vector3::UNIT_Y);
-                    this->playerController->getPhysicsComponent()->applyOmegaForceRotateTo(targetOrientation, Ogre::Vector3::UNIT_Y, 10.0f);
-                }
+                // the physics instead of forcing the transform.
+                //
+                // Attention: this is issued on EVERY frame now, the former '> 2 degrees' gate is gone.
+                // moveCallback() LATCHES the omega command and only releases the latch when it
+                // receives a zero omega. applyOmegaForceRotateTo() sends that zero itself, but only
+                // when it is called with an error below its own 0.5 degree tolerance. With the gate,
+                // it was never called between 0.5 and 2 degrees: the last non-zero omega stayed
+                // latched, kept turning the body past the target until the error exceeded 2 degrees
+                // on the other side, and the correction started over with the opposite sign - a
+                // permanent back and forth rotation while walking.
+                //
+                // Called every frame, applyOmegaForceRotateTo() acts as a plain proportional
+                // controller (omega = error * strength, refreshed each logic step) and releases the
+                // latch itself once the error is below 0.5 degrees. The old concern that a command
+                // per frame never lets the body settle no longer applies, because of exactly that
+                // tolerance inside applyOmegaForceRotateTo().
+                const Ogre::Quaternion targetOrientation(Ogre::Degree(targetDegree), Ogre::Vector3::UNIT_Y);
+                this->playerController->getPhysicsComponent()->applyOmegaForceRotateTo(targetOrientation, Ogre::Vector3::UNIT_Y, 10.0f);
             }
         }
 
@@ -3369,23 +3377,15 @@ namespace NOWA
             {
                 jumpDiagAccumulator = 0.0f;
 
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WalkingStateJumpNRun][DIAG2D] inAir: " + Ogre::StringConverter::toString(this->inAir)
-                    + " isJumping: " + Ogre::StringConverter::toString(this->isJumping)
-                    + " jumpKeyPressed: " + Ogre::StringConverter::toString(this->jumpKeyPressed)
-                    + " tryJump: " + Ogre::StringConverter::toString(this->tryJump)
-                    + " jumpCount: " + Ogre::StringConverter::toString(this->jumpCount)
-                    + " canDoubleJump: " + Ogre::StringConverter::toString(this->canDoubleJump)
-                    + " height: " + Ogre::StringConverter::toString(height)
-                    + " direction: " + Ogre::StringConverter::toString(static_cast<int>(this->direction))
-                    + " keyDirection: " + Ogre::StringConverter::toString(this->keyDirection)
-                    + " tempSpeed: " + Ogre::StringConverter::toString(tempSpeed)
-                    + " acceleration: " + Ogre::StringConverter::toString(this->acceleration)
-                    + " directionMove: " + Ogre::StringConverter::toString(directionMove)
-                    + " currentVelocity: " + Ogre::StringConverter::toString(currentVelocity)
-                    + " newVelocity: " + Ogre::StringConverter::toString(newVelocity)
-                    + " jumpVelocity: " + Ogre::StringConverter::toString(jumpVelocity)
-                    + " hitBelow: " + Ogre::String(nullptr != this->playerController->getHitGameObjectBelow() ? this->playerController->getHitGameObjectBelow()->getName() : "<none>")
-                    + " hitFront: " + Ogre::String(nullptr != this->playerController->getHitGameObjectFront() ? this->playerController->getHitGameObjectFront()->getName() : "<none>"));
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[WalkingStateJumpNRun][DIAG2D] inAir: " + Ogre::StringConverter::toString(this->inAir) + " isJumping: " + Ogre::StringConverter::toString(this->isJumping) +
+                        " jumpKeyPressed: " + Ogre::StringConverter::toString(this->jumpKeyPressed) + " tryJump: " + Ogre::StringConverter::toString(this->tryJump) + " jumpCount: " + Ogre::StringConverter::toString(this->jumpCount) +
+                        " canDoubleJump: " + Ogre::StringConverter::toString(this->canDoubleJump) + " height: " + Ogre::StringConverter::toString(height) + " direction: " + Ogre::StringConverter::toString(static_cast<int>(this->direction)) +
+                        " keyDirection: " + Ogre::StringConverter::toString(this->keyDirection) + " tempSpeed: " + Ogre::StringConverter::toString(tempSpeed) + " acceleration: " + Ogre::StringConverter::toString(this->acceleration) +
+                        " directionMove: " + Ogre::StringConverter::toString(directionMove) + " currentVelocity: " + Ogre::StringConverter::toString(currentVelocity) + " newVelocity: " + Ogre::StringConverter::toString(newVelocity) +
+                        " jumpVelocity: " + Ogre::StringConverter::toString(jumpVelocity) +
+                        " hitBelow: " + Ogre::String(nullptr != this->playerController->getHitGameObjectBelow() ? this->playerController->getHitGameObjectBelow()->getName() : "<none>") +
+                        " hitFront: " + Ogre::String(nullptr != this->playerController->getHitGameObjectFront() ? this->playerController->getHitGameObjectFront()->getName() : "<none>"));
             }
         }
 
@@ -3408,7 +3408,7 @@ namespace NOWA
         // direction-dependent jitter. Folding the push into newVelocity itself
         // keeps everything driven by the same single target-velocity computation.
         // -------------------------------------------------------------------------
-        //if (nullptr != this->playerController->getHitGameObjectFront())
+        // if (nullptr != this->playerController->getHitGameObjectFront())
         //{
         //    const Ogre::Vector3 wallNormal = this->playerController->getFrontNormal();
         //    if (Ogre::Vector3::ZERO != wallNormal)

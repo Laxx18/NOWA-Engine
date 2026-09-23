@@ -28,8 +28,710 @@ namespace
     std::chrono::steady_clock::time_point g_renderLoopLastHeartbeat = std::chrono::steady_clock::now();
 }
 #endif
+#include <algorithm>
+#include <atomic>
+#include <limits>
 #include <mutex>
 #include <sstream>
+#include <unordered_map>
+#include <vector>
+
+// Attention: EXPERIMENT for the physics jitter investigation.
+// 1: the timestamp the render thread derives its interpolation alpha from is taken in
+//    beginLogicFrame(), right after the transform buffer advanced, instead of in endLogicFrame().
+// 0: former behaviour (timestamp taken in endLogicFrame()).
+// See the comment in GraphicsModule::beginLogicFrame() for the full rationale.
+#define NOWA_ALPHA_STAMP_AT_BEGIN 1
+
+// Attention: EXPERIMENT for the physics jitter investigation.
+// 1: both sides of the interpolation alpha (logic stamp and render read) use
+//    std::chrono::steady_clock.
+// 0: former behaviour, the Ogre::Timer owned by Core. That timer is read concurrently from the
+//    logic and the render thread although it mutates internal state on every read (see the note
+//    on lastFrameTime in renderThreadFunction()).
+#define NOWA_ALPHA_STEADY_CLOCK 1
+
+// Diagnostic for interpolation jitter of physics driven nodes. Disabled by default, enable it by
+// uncommenting the define below.
+// Watches exactly ONE scene node (see g_jitterDiagNodeName below; if no node with that name is
+// written, the node that moves the farthest is selected automatically) and writes an aggregated
+// report about every two seconds, once for the logic side and once for the render side. Raw per
+// step / per frame lines are only written for a report window in which an anomaly was detected
+// (reversal, stall, multiple writes per step, warps, out-of-step writes), so the log is not
+// flooded while everything is fine.
+// This is how the publish-before-copy race in advanceTransformBuffer() was found.
+// #define NOWA_JITTER_DIAG
+
+namespace
+{
+    unsigned long long steadyClockMicroseconds(void)
+    {
+        return static_cast<unsigned long long>(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
+    }
+
+    // Single clock source for the interpolation alpha. Used by the logic stamp AND by the render
+    // read, so both sides always measure against the same clock.
+    unsigned long long alphaClockMicroseconds(void)
+    {
+#if NOWA_ALPHA_STEADY_CLOCK
+        return steadyClockMicroseconds();
+#else
+        return static_cast<unsigned long long>(NOWA::Core::getSingletonPtr()->getOgreTimer()->getMicroseconds());
+#endif
+    }
+}
+
+#ifdef NOWA_JITTER_DIAG
+namespace
+{
+    // Exact name of the scene node to watch. A node with this name always wins, even if another node
+    // was already selected automatically before.
+    // Fallback, if no node with this name is written (e.g. the scene node name differs from the
+    // GameObject name, or the name is left empty): during a selection window of
+    // g_jitterDiagSelectionSteps logic steps the diagnostic sums up the distance every written node
+    // travelled and locks onto the one that moved the farthest. The selection is logged together
+    // with the runner-up candidates, so it can be verified.
+    const Ogre::String g_jitterDiagNodeName = "PrehistoricLax";
+
+    // Logic steps resp. render frames per report, about two seconds at 144 Hz.
+    const unsigned int g_jitterDiagReportInterval = 288;
+
+    // Automatic selection: window length, minimum travelled distance and how many logic steps the
+    // locked node may stay silent (no write, e.g. after a scene reload) before a new selection starts.
+    const unsigned int g_jitterDiagSelectionSteps = 144;
+    const Ogre::Real g_jitterDiagSelectionMinDistance = 0.05f;
+    const unsigned int g_jitterDiagReselectAfterSilentSteps = 1440;
+
+    // Written on the logic thread when a node gets locked. Read on the render thread for a pointer
+    // comparison only - it is never dereferenced there.
+    std::atomic<Ogre::Node*> g_jitterDiagNode{nullptr};
+
+    // Where the logic thread currently is, as seen from the render thread:
+    // 0 = between two steps (after endLogicFrame),
+    // 1 = inside a step, the watched node has not been written yet,
+    // 2 = inside a step, the watched node has already been written.
+    std::atomic<int> g_jitterDiagLogicPhase{0};
+
+    struct JitterDiagCandidate
+    {
+        Ogre::Real distance = 0.0f;
+        Ogre::String name;
+        Ogre::Vector3 lastPosition = Ogre::Vector3::ZERO;
+    };
+
+    // Logic thread only.
+    struct JitterDiagLogic
+    {
+        // Selection
+        Ogre::Node* lockedNode = nullptr;
+        bool lockedByName = false;
+        bool lockedNodeWrittenThisStep = false;
+        unsigned int silentSteps = 0;
+        unsigned int selectionSteps = 0;
+        std::unordered_map<Ogre::Node*, JitterDiagCandidate> candidates;
+
+        bool inStep = false;
+        unsigned long long stepBeginUs = 0;
+        unsigned long long lastStepBeginUs = 0;
+
+        // Per step
+        unsigned int positionWrites = 0;
+        unsigned int orientationWrites = 0;
+        unsigned int warps = 0;
+        unsigned long long firstWriteOffsetUs = 0;
+        unsigned long long lastWriteOffsetUs = 0;
+        Ogre::Vector3 lastWrittenPosition = Ogre::Vector3::ZERO;
+        Ogre::Real lastWrittenStepDistance = 0.0f;
+        std::string warpNames;
+
+        // Aggregated per report
+        unsigned int steps = 0;
+        unsigned int stepsWithWrite = 0;
+        unsigned int multiWriteSteps = 0;
+        unsigned int warpSteps = 0;
+        unsigned int outOfStepWrites = 0;
+        unsigned long long maxStepUs = 0;
+        unsigned long long sumStepUs = 0;
+        unsigned long long maxWriteToEndUs = 0;
+        unsigned long long sumWriteToEndUs = 0;
+        unsigned long long maxBeginGapUs = 0;
+        unsigned long long minBeginGapUs = std::numeric_limits<unsigned long long>::max();
+        Ogre::Real minWrittenStepDistance = std::numeric_limits<Ogre::Real>::max();
+        Ogre::Real maxWrittenStepDistance = 0.0f;
+        bool anomaly = false;
+        std::string rawLines;
+    };
+
+    JitterDiagLogic g_jitterDiagLogic;
+
+    // Render thread only.
+    struct JitterDiagRender
+    {
+        bool hasLast = false;
+        Ogre::Vector3 lastOutput = Ogre::Vector3::ZERO;
+        Ogre::Vector3 lastMovingDelta = Ogre::Vector3::ZERO;
+        Ogre::Real lastFrameStep = 0.0f;
+        int lastPhase = 0;
+
+        // Node position relative to the first tracked camera, i.e. what actually moves on screen.
+        bool hasLastRelative = false;
+        Ogre::Vector3 lastRelative = Ogre::Vector3::ZERO;
+        Ogre::Vector3 lastMovingRelativeDelta = Ogre::Vector3::ZERO;
+
+        // Pending values of the current updateAllTransforms() pass. The node loop runs before the
+        // camera loop, so the frame is evaluated once both are known.
+        bool pendingNode = false;
+        Ogre::Vector3 pendingPrev = Ogre::Vector3::ZERO;
+        Ogre::Vector3 pendingCurr = Ogre::Vector3::ZERO;
+        Ogre::Vector3 pendingOutput = Ogre::Vector3::ZERO;
+        bool pendingCamera = false;
+        Ogre::Vector3 pendingCameraPosition = Ogre::Vector3::ZERO;
+        size_t pendingIdx = 0;
+
+        // Aggregated per report
+        unsigned int frames = 0;
+        unsigned int reversals = 0;
+        unsigned int reversalsAfterPhase2 = 0;
+        unsigned int relativeReversals = 0;
+        unsigned int stalls = 0;
+        unsigned int framesInPhase2 = 0;
+        unsigned int framesWithCamera = 0;
+        Ogre::Real maxStep = 0.0f;
+        Ogre::Real minMovingStep = std::numeric_limits<Ogre::Real>::max();
+        Ogre::Real maxRelativeStep = 0.0f;
+        std::string rawLines;
+    };
+
+    JitterDiagRender g_jitterDiagRender;
+
+    Ogre::String jitterDiagVector(const Ogre::Vector3& v)
+    {
+        std::ostringstream ss;
+        ss.setf(std::ios::fixed);
+        ss.precision(5);
+        ss << v.x << " " << v.y << " " << v.z;
+        return ss.str();
+    }
+
+    Ogre::String jitterDiagNodeLabel(const Ogre::String& name, Ogre::Node* node)
+    {
+        std::ostringstream ss;
+        if (true == name.empty())
+        {
+            ss << "<unnamed>";
+        }
+        else
+        {
+            ss << "'" << name << "'";
+        }
+        ss << " (" << static_cast<const void*>(node) << ")";
+        return ss.str();
+    }
+
+    void jitterDiagLockNode(Ogre::Node* node, const Ogre::String& name, bool byName)
+    {
+        JitterDiagLogic& d = g_jitterDiagLogic;
+
+        d.lockedNode = node;
+        d.lockedByName = byName;
+        d.silentSteps = 0;
+        d.selectionSteps = 0;
+        d.candidates.clear();
+
+        g_jitterDiagNode.store(node, std::memory_order_release);
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JitterDiag] Watching scene node " + jitterDiagNodeLabel(name, node));
+    }
+
+    // Logic thread. 'previousPosition' is the value of the previous buffer slot, used for the
+    // automatic selection.
+    void jitterDiagOnPositionWrite(Ogre::Node* node, const Ogre::Vector3& position, const Ogre::Vector3& previousPosition)
+    {
+        if (nullptr == node)
+        {
+            return;
+        }
+
+        JitterDiagLogic& d = g_jitterDiagLogic;
+
+        // The configured name always wins, also over a node that was selected automatically.
+        if (false == d.lockedByName && false == g_jitterDiagNodeName.empty() && node != d.lockedNode && node->getName() == g_jitterDiagNodeName)
+        {
+            jitterDiagLockNode(node, node->getName(), true);
+        }
+
+        if (nullptr == d.lockedNode)
+        {
+            if (false == d.inStep)
+            {
+                return;
+            }
+
+            // Automatic selection fallback: collect the travelled distance per node.
+            JitterDiagCandidate& candidate = d.candidates[node];
+            candidate.distance += (position - previousPosition).length();
+            candidate.lastPosition = position;
+            if (true == candidate.name.empty())
+            {
+                candidate.name = node->getName();
+            }
+            return;
+        }
+
+        if (node != d.lockedNode)
+        {
+            return;
+        }
+
+        if (false == d.inStep)
+        {
+            // Written between endLogicFrame() and the next beginLogicFrame(), e.g. from renderUpdate().
+            // Such a write lands in a slot that is already published and is a jitter source of its own.
+            ++d.outOfStepWrites;
+            d.anomaly = true;
+            d.rawLines += "  L out-of-step position write " + jitterDiagVector(position) + "\n";
+            return;
+        }
+
+        const unsigned long long offsetUs = steadyClockMicroseconds() - d.stepBeginUs;
+
+        if (0 == d.positionWrites)
+        {
+            d.firstWriteOffsetUs = offsetUs;
+        }
+
+        d.lastWriteOffsetUs = offsetUs;
+        d.lastWrittenPosition = position;
+        d.lastWrittenStepDistance = (position - previousPosition).length();
+        d.lockedNodeWrittenThisStep = true;
+        ++d.positionWrites;
+
+        g_jitterDiagLogicPhase.store(2, std::memory_order_relaxed);
+    }
+
+    void jitterDiagOnOrientationWrite(Ogre::Node* node)
+    {
+        if (nullptr == node || node != g_jitterDiagLogic.lockedNode)
+        {
+            return;
+        }
+
+        ++g_jitterDiagLogic.orientationWrites;
+    }
+
+    void jitterDiagOnWarp(Ogre::Node* node, const char* what)
+    {
+        if (nullptr == node || node != g_jitterDiagLogic.lockedNode)
+        {
+            return;
+        }
+
+        JitterDiagLogic& d = g_jitterDiagLogic;
+        ++d.warps;
+        d.warpNames += " ";
+        d.warpNames += what;
+    }
+
+    void jitterDiagOnBeginLogicFrame(void)
+    {
+        JitterDiagLogic& d = g_jitterDiagLogic;
+
+        const unsigned long long nowUs = steadyClockMicroseconds();
+
+        if (0 != d.lastStepBeginUs)
+        {
+            const unsigned long long gapUs = nowUs - d.lastStepBeginUs;
+            if (gapUs > d.maxBeginGapUs)
+            {
+                d.maxBeginGapUs = gapUs;
+            }
+            if (gapUs < d.minBeginGapUs)
+            {
+                d.minBeginGapUs = gapUs;
+            }
+        }
+
+        d.lastStepBeginUs = nowUs;
+        d.stepBeginUs = nowUs;
+        d.inStep = true;
+
+        d.positionWrites = 0;
+        d.orientationWrites = 0;
+        d.warps = 0;
+        d.firstWriteOffsetUs = 0;
+        d.lastWriteOffsetUs = 0;
+        d.lastWrittenStepDistance = 0.0f;
+        d.lockedNodeWrittenThisStep = false;
+        d.warpNames.clear();
+
+        g_jitterDiagLogicPhase.store(1, std::memory_order_relaxed);
+    }
+
+    void jitterDiagRunSelection(void)
+    {
+        JitterDiagLogic& d = g_jitterDiagLogic;
+
+        ++d.selectionSteps;
+        if (d.selectionSteps < g_jitterDiagSelectionSteps)
+        {
+            return;
+        }
+
+        std::vector<std::pair<Ogre::Node*, JitterDiagCandidate>> sorted(d.candidates.begin(), d.candidates.end());
+        std::sort(sorted.begin(), sorted.end(),
+            [](const std::pair<Ogre::Node*, JitterDiagCandidate>& a, const std::pair<Ogre::Node*, JitterDiagCandidate>& b)
+            {
+                return a.second.distance > b.second.distance;
+            });
+
+        if (false == sorted.empty() && sorted[0].second.distance >= g_jitterDiagSelectionMinDistance)
+        {
+            std::ostringstream ss;
+            ss << "[JitterDiag] Automatic selection over " << d.selectionSteps << " steps, travelled distance per written node:";
+            const size_t maxCandidatesToLog = 6;
+            for (size_t i = 0; i < sorted.size() && i < maxCandidatesToLog; ++i)
+            {
+                ss << "\n  " << jitterDiagNodeLabel(sorted[i].second.name, sorted[i].first) << " distance=" << sorted[i].second.distance << " lastPos=" << jitterDiagVector(sorted[i].second.lastPosition);
+            }
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, ss.str());
+
+            jitterDiagLockNode(sorted[0].first, sorted[0].second.name, false);
+        }
+        else
+        {
+            // Nothing moved far enough (player not walking yet) - start a new window.
+            d.selectionSteps = 0;
+            d.candidates.clear();
+        }
+    }
+
+    void jitterDiagOnEndLogicFrame(uint64_t logicFrameId)
+    {
+        JitterDiagLogic& d = g_jitterDiagLogic;
+
+        g_jitterDiagLogicPhase.store(0, std::memory_order_relaxed);
+
+        if (false == d.inStep)
+        {
+            return;
+        }
+
+        d.inStep = false;
+
+        const unsigned long long stepUs = steadyClockMicroseconds() - d.stepBeginUs;
+
+        // Selection resp. release of a node that stopped being written (scene reload, destroyed node).
+        if (nullptr == d.lockedNode)
+        {
+            jitterDiagRunSelection();
+        }
+        else
+        {
+            if (true == d.lockedNodeWrittenThisStep)
+            {
+                d.silentSteps = 0;
+            }
+            else
+            {
+                ++d.silentSteps;
+                if (d.silentSteps >= g_jitterDiagReselectAfterSilentSteps)
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JitterDiag] Watched node was not written for " + Ogre::StringConverter::toString(d.silentSteps) + " steps, releasing it.");
+                    d.lockedNode = nullptr;
+                    d.lockedByName = false;
+                    d.silentSteps = 0;
+                    g_jitterDiagNode.store(nullptr, std::memory_order_release);
+                }
+            }
+        }
+
+        ++d.steps;
+        d.sumStepUs += stepUs;
+        if (stepUs > d.maxStepUs)
+        {
+            d.maxStepUs = stepUs;
+        }
+
+        if (d.positionWrites > 0)
+        {
+            ++d.stepsWithWrite;
+
+            unsigned long long writeToEndUs = 0;
+            if (stepUs > d.lastWriteOffsetUs)
+            {
+                writeToEndUs = stepUs - d.lastWriteOffsetUs;
+            }
+
+            d.sumWriteToEndUs += writeToEndUs;
+            if (writeToEndUs > d.maxWriteToEndUs)
+            {
+                d.maxWriteToEndUs = writeToEndUs;
+            }
+
+            if (d.lastWrittenStepDistance > d.maxWrittenStepDistance)
+            {
+                d.maxWrittenStepDistance = d.lastWrittenStepDistance;
+            }
+            if (d.lastWrittenStepDistance > 0.000001f && d.lastWrittenStepDistance < d.minWrittenStepDistance)
+            {
+                d.minWrittenStepDistance = d.lastWrittenStepDistance;
+            }
+        }
+
+        if (d.positionWrites > 1)
+        {
+            ++d.multiWriteSteps;
+            d.anomaly = true;
+        }
+
+        if (d.warps > 0)
+        {
+            ++d.warpSteps;
+            d.anomaly = true;
+        }
+
+        if (nullptr != d.lockedNode)
+        {
+            std::ostringstream ss;
+            ss << "  L lf=" << logicFrameId << " t=" << d.stepBeginUs << " stepUs=" << stepUs << " posW=" << d.positionWrites << " oriW=" << d.orientationWrites << " firstW=" << d.firstWriteOffsetUs << " lastW=" << d.lastWriteOffsetUs
+               << " warps=" << d.warps << d.warpNames << " pos=" << jitterDiagVector(d.lastWrittenPosition) << " stepDist=" << d.lastWrittenStepDistance << "\n";
+            d.rawLines += ss.str();
+        }
+
+        if (d.steps >= g_jitterDiagReportInterval)
+        {
+            std::ostringstream ss;
+            ss << "[JitterDiag][LOGIC] steps=" << d.steps << " stepsWithWrite=" << d.stepsWithWrite << " multiWriteSteps=" << d.multiWriteSteps << " warpSteps=" << d.warpSteps << " outOfStepWrites=" << d.outOfStepWrites
+               << " avgStepUs=" << (d.sumStepUs / d.steps) << " maxStepUs=" << d.maxStepUs;
+
+            if (d.stepsWithWrite > 0)
+            {
+                ss << " avgWriteToEndUs=" << (d.sumWriteToEndUs / d.stepsWithWrite) << " maxWriteToEndUs=" << d.maxWriteToEndUs << " maxStepDist=" << d.maxWrittenStepDistance;
+
+                if (d.minWrittenStepDistance != std::numeric_limits<Ogre::Real>::max())
+                {
+                    ss << " minMovingStepDist=" << d.minWrittenStepDistance;
+                }
+            }
+
+            if (d.minBeginGapUs != std::numeric_limits<unsigned long long>::max())
+            {
+                ss << " beginGapUs(min/max)=" << d.minBeginGapUs << "/" << d.maxBeginGapUs;
+            }
+
+            if (true == d.anomaly)
+            {
+                ss << "\n" << d.rawLines;
+            }
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, ss.str());
+
+            d.steps = 0;
+            d.stepsWithWrite = 0;
+            d.multiWriteSteps = 0;
+            d.warpSteps = 0;
+            d.outOfStepWrites = 0;
+            d.maxStepUs = 0;
+            d.sumStepUs = 0;
+            d.maxWriteToEndUs = 0;
+            d.sumWriteToEndUs = 0;
+            d.maxBeginGapUs = 0;
+            d.minBeginGapUs = std::numeric_limits<unsigned long long>::max();
+            d.minWrittenStepDistance = std::numeric_limits<Ogre::Real>::max();
+            d.maxWrittenStepDistance = 0.0f;
+            d.anomaly = false;
+            d.rawLines.clear();
+        }
+    }
+
+    // Render thread. Called once per updateAllTransforms() pass, after the node AND the camera loop.
+    void jitterDiagOnRenderFrame(Ogre::Real alpha, size_t currentIdx, uint64_t logicFrameId)
+    {
+        JitterDiagRender& r = g_jitterDiagRender;
+
+        if (false == r.pendingNode)
+        {
+            r.pendingCamera = false;
+            return;
+        }
+
+        const Ogre::Vector3 output = r.pendingOutput;
+        const int phase = g_jitterDiagLogicPhase.load(std::memory_order_relaxed);
+
+        Ogre::Vector3 delta = Ogre::Vector3::ZERO;
+        if (true == r.hasLast)
+        {
+            delta = output - r.lastOutput;
+        }
+
+        const Ogre::Real step = delta.length();
+        const Ogre::Real lastMovingStep = r.lastMovingDelta.length();
+
+        bool reversal = false;
+        bool stall = false;
+
+        if (true == r.hasLast)
+        {
+            // Reversal: the displayed node moves against the direction of its last real movement.
+            if (step > 0.00001f && lastMovingStep > 0.00001f && delta.dotProduct(r.lastMovingDelta) < 0.0f)
+            {
+                reversal = true;
+            }
+            // Stall: it moved in the previous frame and stands exactly still in this one.
+            else if (step < 0.000001f && r.lastFrameStep > 0.0001f)
+            {
+                stall = true;
+            }
+        }
+
+        // Screen space: node relative to the first tracked camera.
+        bool relativeReversal = false;
+        Ogre::Real relativeStep = 0.0f;
+        Ogre::Vector3 relative = Ogre::Vector3::ZERO;
+        if (true == r.pendingCamera)
+        {
+            ++r.framesWithCamera;
+            relative = output - r.pendingCameraPosition;
+
+            if (true == r.hasLastRelative)
+            {
+                const Ogre::Vector3 relativeDelta = relative - r.lastRelative;
+                relativeStep = relativeDelta.length();
+
+                // 0.5 mm threshold, so that plain float noise of a perfectly following camera is ignored.
+                if (relativeStep > 0.0005f && r.lastMovingRelativeDelta.length() > 0.0005f && relativeDelta.dotProduct(r.lastMovingRelativeDelta) < 0.0f)
+                {
+                    relativeReversal = true;
+                }
+
+                if (relativeStep > 0.0005f)
+                {
+                    r.lastMovingRelativeDelta = relativeDelta;
+                }
+            }
+
+            r.lastRelative = relative;
+            r.hasLastRelative = true;
+        }
+
+        ++r.frames;
+
+        if (2 == phase)
+        {
+            ++r.framesInPhase2;
+        }
+
+        if (true == reversal)
+        {
+            ++r.reversals;
+
+            if (2 == r.lastPhase)
+            {
+                ++r.reversalsAfterPhase2;
+            }
+        }
+
+        if (true == relativeReversal)
+        {
+            ++r.relativeReversals;
+        }
+
+        if (true == stall)
+        {
+            ++r.stalls;
+        }
+
+        if (step > r.maxStep)
+        {
+            r.maxStep = step;
+        }
+
+        if (step > 0.000001f && step < r.minMovingStep)
+        {
+            r.minMovingStep = step;
+        }
+
+        if (relativeStep > r.maxRelativeStep)
+        {
+            r.maxRelativeStep = relativeStep;
+        }
+
+        {
+            std::ostringstream ss;
+            ss.setf(std::ios::fixed);
+            ss.precision(5);
+            ss << "  R t=" << steadyClockMicroseconds() << " lf=" << logicFrameId << " idx=" << currentIdx << " ph=" << phase << " a=" << alpha << " prev=" << jitterDiagVector(r.pendingPrev) << " cur=" << jitterDiagVector(r.pendingCurr)
+               << " out=" << jitterDiagVector(output) << " step=" << step;
+
+            if (true == r.pendingCamera)
+            {
+                ss << " cam=" << jitterDiagVector(r.pendingCameraPosition) << " rel=" << jitterDiagVector(relative) << " relStep=" << relativeStep;
+            }
+
+            if (true == reversal)
+            {
+                ss << " REVERSAL";
+            }
+
+            if (true == relativeReversal)
+            {
+                ss << " REL_REVERSAL";
+            }
+
+            if (true == stall)
+            {
+                ss << " STALL";
+            }
+
+            ss << "\n";
+            r.rawLines += ss.str();
+        }
+
+        r.lastOutput = output;
+        r.lastFrameStep = step;
+        if (step > 0.000001f)
+        {
+            r.lastMovingDelta = delta;
+        }
+        r.lastPhase = phase;
+        r.hasLast = true;
+
+        r.pendingNode = false;
+        r.pendingCamera = false;
+
+        if (r.frames >= g_jitterDiagReportInterval)
+        {
+            std::ostringstream ss;
+            ss << "[JitterDiag][RENDER] frames=" << r.frames << " reversals=" << r.reversals << " reversalsAfterPhase2=" << r.reversalsAfterPhase2 << " relativeReversals=" << r.relativeReversals << " stalls=" << r.stalls
+               << " framesInPhase2=" << r.framesInPhase2 << " framesWithCamera=" << r.framesWithCamera << " maxStep=" << r.maxStep << " maxRelativeStep=" << r.maxRelativeStep;
+
+            if (r.minMovingStep != std::numeric_limits<Ogre::Real>::max())
+            {
+                ss << " minMovingStep=" << r.minMovingStep;
+            }
+
+            if (r.reversals > 0 || r.relativeReversals > 0 || r.stalls > 0)
+            {
+                ss << "\n" << r.rawLines;
+            }
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, ss.str());
+
+            r.frames = 0;
+            r.reversals = 0;
+            r.reversalsAfterPhase2 = 0;
+            r.relativeReversals = 0;
+            r.stalls = 0;
+            r.framesInPhase2 = 0;
+            r.framesWithCamera = 0;
+            r.maxStep = 0.0f;
+            r.minMovingStep = std::numeric_limits<Ogre::Real>::max();
+            r.maxRelativeStep = 0.0f;
+            r.rawLines.clear();
+        }
+    }
+}
+#endif
 
 namespace
 {
@@ -648,7 +1350,9 @@ namespace NOWA
             return 0.0f;
         }
 
-        const unsigned long long nowMicroseconds = static_cast<unsigned long long>(Core::getSingletonPtr()->getOgreTimer()->getMicroseconds());
+        // Attention: same clock as the stamp in beginLogicFrame() resp. endLogicFrame(), see
+        // alphaClockMicroseconds() and NOWA_ALPHA_STEADY_CLOCK.
+        const unsigned long long nowMicroseconds = alphaClockMicroseconds();
 
         // Unsigned subtraction stays correct across a counter wrap, so the microsecond
         // counter rolling over does not produce a garbage alpha.
@@ -2005,6 +2709,13 @@ namespace NOWA
         nodeTransforms->active.store(true, std::memory_order_relaxed);
         nodeTransforms->useDerived.store(useDerived, std::memory_order_relaxed);
 
+#ifdef NOWA_JITTER_DIAG
+        if (false == this->isRenderThread())
+        {
+            jitterDiagOnPositionWrite(node, position, nodeTransforms->transforms[this->getPreviousTransformNodeIdx()].position);
+        }
+#endif
+
         if (true == this->debugVisualization)
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
@@ -2023,6 +2734,13 @@ namespace NOWA
         nodeTransforms->transforms[this->currentTransformNodeIdx].orientation = orientation;
         nodeTransforms->active.store(true, std::memory_order_relaxed);
         nodeTransforms->useDerived.store(useDerived, std::memory_order_relaxed);
+
+#ifdef NOWA_JITTER_DIAG
+        if (false == this->isRenderThread())
+        {
+            jitterDiagOnOrientationWrite(node);
+        }
+#endif
 
         if (true == this->debugVisualization)
         {
@@ -2062,6 +2780,14 @@ namespace NOWA
         nodeTransforms->transforms[this->currentTransformNodeIdx].scale = tempScale;
         nodeTransforms->active.store(true, std::memory_order_relaxed);
         nodeTransforms->useDerived.store(useDerived, std::memory_order_relaxed);
+
+#ifdef NOWA_JITTER_DIAG
+        if (false == this->isRenderThread())
+        {
+            jitterDiagOnPositionWrite(node, position, nodeTransforms->transforms[this->getPreviousTransformNodeIdx()].position);
+            jitterDiagOnOrientationWrite(node);
+        }
+#endif
     }
 
     // =========================================================================
@@ -2074,6 +2800,13 @@ namespace NOWA
 
     void GraphicsModule::setNodePosition(Ogre::Node* node, const Ogre::Vector3& position, bool useDerived)
     {
+#ifdef NOWA_JITTER_DIAG
+        if (false == this->isRenderThread())
+        {
+            jitterDiagOnWarp(node, "setNodePosition");
+        }
+#endif
+
         if (true == this->isRenderThread())
         {
             this->setNodePositionOnRenderThread(node, position, useDerived);
@@ -2120,6 +2853,13 @@ namespace NOWA
 
     void GraphicsModule::setNodeOrientation(Ogre::Node* node, const Ogre::Quaternion& orientation, bool useDerived)
     {
+#ifdef NOWA_JITTER_DIAG
+        if (false == this->isRenderThread())
+        {
+            jitterDiagOnWarp(node, "setNodeOrientation");
+        }
+#endif
+
         if (true == this->isRenderThread())
         {
             this->setNodeOrientationOnRenderThread(node, orientation, useDerived);
@@ -2189,6 +2929,13 @@ namespace NOWA
 
     void GraphicsModule::setNodeTransform(Ogre::Node* node, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale, bool useDerived)
     {
+#ifdef NOWA_JITTER_DIAG
+        if (false == this->isRenderThread())
+        {
+            jitterDiagOnWarp(node, "setNodeTransform");
+        }
+#endif
+
         if (true == this->isRenderThread())
         {
             this->setNodeTransformOnRenderThread(node, position, orientation, scale, useDerived);
@@ -2205,6 +2952,13 @@ namespace NOWA
 
     void GraphicsModule::teleportNodePosition(Ogre::Node* node, const Ogre::Vector3& position, bool useDerived)
     {
+#ifdef NOWA_JITTER_DIAG
+        if (false == this->isRenderThread())
+        {
+            jitterDiagOnWarp(node, "teleportNodePosition");
+        }
+#endif
+
         GraphicsModule::NodeTransforms* nodeTransforms = this->acquireNodeSlot(node);
 
         // Writes all values to all buffers and permits interpolation so its a real teleport
@@ -2218,6 +2972,13 @@ namespace NOWA
 
     void GraphicsModule::teleportNodeOrientation(Ogre::Node* node, const Ogre::Quaternion& orientation)
     {
+#ifdef NOWA_JITTER_DIAG
+        if (false == this->isRenderThread())
+        {
+            jitterDiagOnWarp(node, "teleportNodeOrientation");
+        }
+#endif
+
         GraphicsModule::NodeTransforms* nodeTransforms = this->acquireNodeSlot(node);
 
         // Writes all values to all buffers and permits interpolation so its a real teleport
@@ -2911,18 +3672,28 @@ namespace NOWA
     void GraphicsModule::advanceTransformBuffer(void)
     {
         // Runs in Main thread.
+        //
+        // Attention: every category prepares its NEW slot completely (carry-forward copy resp.
+        // baseline of new entries) and only THEN publishes the new index with release semantics.
+        //
+        // The former code published the index FIRST and copied the previous value into the new slot
+        // afterwards, inside a loop over the whole pool (NODE_POOL_CAPACITY = 8192 entries, each with
+        // an atomic load). During that loop the render thread already interpolated towards the new
+        // slot, which still held the value from NUM_TRANSFORM_BUFFERS steps ago. NOWA_JITTER_DIAG
+        // caught it red-handed: 'cur' lay 2 to 3 physics steps BEHIND 'prev' (e.g. prev=15.80510
+        // cur=15.59867 at 0.0688 per step), the player jumped back by about 0.2 units relative to the
+        // camera for one frame and forward again in the next - the flicker. Bones, cameras and
+        // datablocks had the same ordering and therefore the same race.
+        //
+        // With 4 buffers the new slot (current + 1) is neither the current nor the previous slot the
+        // render thread reads, so preparing it before the publish is race free.
 
         // =========================================================================
-        // Node transforms — NO MUTEX in the loop body
+        // Node transforms - NO MUTEX in the loop body
         // =========================================================================
         {
-            size_t prevIdx = this->currentTransformNodeIdx;
-            this->currentTransformNodeIdx = (this->currentTransformNodeIdx + 1) % NUM_TRANSFORM_BUFFERS;
-
-            if (true == this->debugVisualization)
-            {
-                this->logCommandEvent("[RenderCommandQueueModule]: Advanced buffer from " + Ogre::StringConverter::toString(prevIdx) + " to " + Ogre::StringConverter::toString(this->currentTransformNodeIdx), Ogre::LML_TRIVIAL);
-            }
+            const size_t prevIdx = this->currentTransformNodeIdx.load(std::memory_order_relaxed);
+            const size_t nextIdx = (prevIdx + 1) % NUM_TRANSFORM_BUFFERS;
 
             for (auto& nodeTransform : this->nodePool)
             {
@@ -2958,11 +3729,18 @@ namespace NOWA
                 }
                 else if (true == nodeTransform.active.load(std::memory_order_relaxed))
                 {
-                    // Carry the last value forward into the new current slot. A node
-                    // that genuinely is not being updated this tick simply keeps
-
-                    nodeTransform.transforms[this->currentTransformNodeIdx] = nodeTransform.transforms[prevIdx];
+                    // Carry the last value forward into the new slot. A node that genuinely is not
+                    // being updated this tick simply keeps showing its last value.
+                    nodeTransform.transforms[nextIdx] = nodeTransform.transforms[prevIdx];
                 }
+            }
+
+            // Publish only now - the new slot is complete.
+            this->currentTransformNodeIdx.store(nextIdx, std::memory_order_release);
+
+            if (true == this->debugVisualization)
+            {
+                this->logCommandEvent("[RenderCommandQueueModule]: Advanced buffer from " + Ogre::StringConverter::toString(prevIdx) + " to " + Ogre::StringConverter::toString(nextIdx), Ogre::LML_TRIVIAL);
             }
         }
 
@@ -2970,8 +3748,8 @@ namespace NOWA
         // Camera transforms
         // =========================================================================
         {
-            size_t prevCameraIdx = this->currentTransformCameraIdx;
-            this->currentTransformCameraIdx = (this->currentTransformCameraIdx + 1) % NUM_TRANSFORM_BUFFERS;
+            const size_t prevCameraIdx = this->currentTransformCameraIdx.load(std::memory_order_relaxed);
+            const size_t nextCameraIdx = (prevCameraIdx + 1) % NUM_TRANSFORM_BUFFERS;
 
             for (auto& cameraTransform : this->cameraPool)
             {
@@ -2997,17 +3775,19 @@ namespace NOWA
                 }
                 else if (true == cameraTransform.active.load(std::memory_order_relaxed))
                 {
-                    cameraTransform.transforms[this->currentTransformCameraIdx] = cameraTransform.transforms[prevCameraIdx];
+                    cameraTransform.transforms[nextCameraIdx] = cameraTransform.transforms[prevCameraIdx];
                 }
             }
+
+            this->currentTransformCameraIdx.store(nextCameraIdx, std::memory_order_release);
         }
 
         // =========================================================================
         // Bone transforms
         // =========================================================================
         {
-            size_t prevBoneIdx = this->currentTransformBoneIdx;
-            this->currentTransformBoneIdx = (this->currentTransformBoneIdx + 1) % NUM_TRANSFORM_BUFFERS;
+            const size_t prevBoneIdx = this->currentTransformBoneIdx.load(std::memory_order_relaxed);
+            const size_t nextBoneIdx = (prevBoneIdx + 1) % NUM_TRANSFORM_BUFFERS;
 
             for (auto& boneTransform : this->bonePool)
             {
@@ -3033,33 +3813,39 @@ namespace NOWA
                 }
                 else if (true == boneTransform.active.load(std::memory_order_relaxed))
                 {
-                    boneTransform.transforms[this->currentTransformBoneIdx] = boneTransform.transforms[prevBoneIdx];
+                    boneTransform.transforms[nextBoneIdx] = boneTransform.transforms[prevBoneIdx];
                 }
             }
+
+            this->currentTransformBoneIdx.store(nextBoneIdx, std::memory_order_release);
         }
 
         // =========================================================================
         // Datablock transforms (no eviction)
         // =========================================================================
         {
-            size_t prevDatablockIdx = this->currentTrackedDatablockIdx;
-            this->currentTrackedDatablockIdx = (this->currentTrackedDatablockIdx + 1) % NUM_TRANSFORM_BUFFERS;
+            const size_t prevDatablockIdx = this->currentTrackedDatablockIdx.load(std::memory_order_relaxed);
+            const size_t nextDatablockIdx = (prevDatablockIdx + 1) % NUM_TRANSFORM_BUFFERS;
 
             for (auto& datablock : this->datablockPool)
             {
                 if (datablock.isNew)
                 {
+                    // Same source slot as before the reordering (the former code read the slot
+                    // at the already advanced index, which is nextDatablockIdx).
                     for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
                     {
-                        datablock.values[i] = datablock.values[this->currentTrackedDatablockIdx];
+                        datablock.values[i] = datablock.values[nextDatablockIdx];
                     }
                     datablock.isNew = false;
                 }
                 else if (datablock.active.load(std::memory_order_relaxed))
                 {
-                    datablock.values[this->currentTrackedDatablockIdx] = datablock.values[prevDatablockIdx];
+                    datablock.values[nextDatablockIdx] = datablock.values[prevDatablockIdx];
                 }
             }
+
+            this->currentTrackedDatablockIdx.store(nextDatablockIdx, std::memory_order_release);
         }
 
         this->accumTimeSinceLastLogicFrame = 0.0f;
@@ -3067,11 +3853,18 @@ namespace NOWA
 
     void GraphicsModule::updateAllTransforms(void)
     {
-        // Get the previous buffer index
-        size_t prevIdx = this->getPreviousTransformNodeIdx();
+        // Attention: each index is loaded ONCE per pass (acquire, pairs with the release publish in
+        // advanceTransformBuffer()) and 'previous' is derived from that very value. The former code
+        // derived prevIdx once but re-read the atomic current index for every single entry, so an
+        // advance in the middle of the loop paired an old 'previous' with a new 'current' slot.
+        // The two slots are additionally copied by value before interpolating, so position,
+        // orientation and scale of one entry always come from the same snapshot.
 
         // Update all active nodes
         {
+            const size_t currIdx = this->currentTransformNodeIdx.load(std::memory_order_acquire);
+            const size_t prevIdx = (currIdx + NUM_TRANSFORM_BUFFERS - 1) % NUM_TRANSFORM_BUFFERS;
+
             for (const auto& nodeTransform : this->nodePool)
             {
                 if (true == nodeTransform.active.load(std::memory_order_relaxed))
@@ -3083,8 +3876,8 @@ namespace NOWA
                     }
 
                     // Get previous and current transforms
-                    const GraphicsModule::TransformData& prevTransform = nodeTransform.transforms[prevIdx];
-                    const GraphicsModule::TransformData& currTransform = nodeTransform.transforms[this->currentTransformNodeIdx];
+                    const GraphicsModule::TransformData prevTransform = nodeTransform.transforms[prevIdx];
+                    const GraphicsModule::TransformData currTransform = nodeTransform.transforms[currIdx];
 
                     // Interpolate position
                     Ogre::Vector3 interpPos = Ogre::Math::lerp(prevTransform.position, currTransform.position, this->interpolationWeight);
@@ -3094,6 +3887,17 @@ namespace NOWA
 
                     // Interpolate scale
                     Ogre::Vector3 interpScale = Ogre::Math::lerp(prevTransform.scale, currTransform.scale, this->interpolationWeight);
+
+#ifdef NOWA_JITTER_DIAG
+                    if (node == g_jitterDiagNode.load(std::memory_order_acquire))
+                    {
+                        g_jitterDiagRender.pendingNode = true;
+                        g_jitterDiagRender.pendingPrev = prevTransform.position;
+                        g_jitterDiagRender.pendingCurr = currTransform.position;
+                        g_jitterDiagRender.pendingOutput = interpPos;
+                        g_jitterDiagRender.pendingIdx = currIdx;
+                    }
+#endif
 
                     // Apply to scene node
                     if (false == nodeTransform.useDerived.load(std::memory_order_relaxed))
@@ -3112,13 +3916,11 @@ namespace NOWA
             }
         }
 
-        // Update camera transforms
-
-        // Get the previous buffer index
-        size_t prevCameraIdx = this->getPreviousTransformCameraIdx();
-
         // Update all active cameras
         {
+            const size_t currCameraIdx = this->currentTransformCameraIdx.load(std::memory_order_acquire);
+            const size_t prevCameraIdx = (currCameraIdx + NUM_TRANSFORM_BUFFERS - 1) % NUM_TRANSFORM_BUFFERS;
+
             for (const auto& cameraTransform : this->cameraPool)
             {
                 if (true == cameraTransform.active.load(std::memory_order_relaxed))
@@ -3130,14 +3932,23 @@ namespace NOWA
                     }
 
                     // Get previous and current transforms
-                    const GraphicsModule::CameraTransformData& prevTransform = cameraTransform.transforms[prevCameraIdx];
-                    const GraphicsModule::CameraTransformData& currTransform = cameraTransform.transforms[this->currentTransformCameraIdx];
+                    const GraphicsModule::CameraTransformData prevTransform = cameraTransform.transforms[prevCameraIdx];
+                    const GraphicsModule::CameraTransformData currTransform = cameraTransform.transforms[currCameraIdx];
 
                     // Interpolate position
                     Ogre::Vector3 interpPos = Ogre::Math::lerp(prevTransform.position, currTransform.position, this->interpolationWeight);
 
                     // Interpolate orientation
                     Ogre::Quaternion interpRot = Ogre::Quaternion::nlerp(this->interpolationWeight, prevTransform.orientation, currTransform.orientation, true);
+
+#ifdef NOWA_JITTER_DIAG
+                    // First tracked camera only.
+                    if (false == g_jitterDiagRender.pendingCamera)
+                    {
+                        g_jitterDiagRender.pendingCamera = true;
+                        g_jitterDiagRender.pendingCameraPosition = interpPos;
+                    }
+#endif
 
                     // Apply to scene camera
                     camera->setOrientation(interpRot);
@@ -3147,10 +3958,10 @@ namespace NOWA
         }
 
         // Update bone transforms
-
-        size_t prevBoneIdx = this->getPreviousTransformBoneIdx();
-
         {
+            const size_t currBoneIdx = this->currentTransformBoneIdx.load(std::memory_order_acquire);
+            const size_t prevBoneIdx = (currBoneIdx + NUM_TRANSFORM_BUFFERS - 1) % NUM_TRANSFORM_BUFFERS;
+
             for (const auto& boneTransform : this->bonePool)
             {
                 if (true == boneTransform.active.load(std::memory_order_relaxed))
@@ -3161,8 +3972,8 @@ namespace NOWA
                         continue;
                     }
 
-                    const GraphicsModule::TransformData& prevTransform = boneTransform.transforms[prevBoneIdx];
-                    const GraphicsModule::TransformData& currTransform = boneTransform.transforms[this->currentTransformBoneIdx];
+                    const GraphicsModule::TransformData prevTransform = boneTransform.transforms[prevBoneIdx];
+                    const GraphicsModule::TransformData currTransform = boneTransform.transforms[currBoneIdx];
 
                     Ogre::Vector3 interpPos = Ogre::Math::lerp(prevTransform.position, currTransform.position, this->interpolationWeight);
                     Ogre::Quaternion interpRot = Ogre::Quaternion::nlerp(this->interpolationWeight, prevTransform.orientation, currTransform.orientation, true);
@@ -3174,11 +3985,10 @@ namespace NOWA
         }
 
         // Update datablock colours
-
-        // Get the previous buffer index
-        size_t prevTrackedDatablockIdx = this->getPreviousTrackedDatablockIdx();
-
         {
+            const size_t currTrackedDatablockIdx = this->currentTrackedDatablockIdx.load(std::memory_order_acquire);
+            const size_t prevTrackedDatablockIdx = (currTrackedDatablockIdx + NUM_TRANSFORM_BUFFERS - 1) % NUM_TRANSFORM_BUFFERS;
+
             for (const auto& trackedDatablock : this->datablockPool)
             {
                 if (false == trackedDatablock.active.load(std::memory_order_relaxed))
@@ -3191,14 +4001,18 @@ namespace NOWA
                     continue;
                 }
 
-                const Ogre::ColourValue& prev = trackedDatablock.values[prevTrackedDatablockIdx];
-                const Ogre::ColourValue& curr = trackedDatablock.values[this->currentTrackedDatablockIdx];
+                const Ogre::ColourValue prev = trackedDatablock.values[prevTrackedDatablockIdx];
+                const Ogre::ColourValue curr = trackedDatablock.values[currTrackedDatablockIdx];
 
                 Ogre::ColourValue result = trackedDatablock.interpolateFunc(prev, curr, this->interpolationWeight);
 
                 trackedDatablock.applyFunc(result);
             }
         }
+
+#ifdef NOWA_JITTER_DIAG
+        jitterDiagOnRenderFrame(this->interpolationWeight, g_jitterDiagRender.pendingIdx, this->getLogicFrameId());
+#endif
 
         // Note: updateAndExecuteClosures() is no longer called here.
         // It is called explicitly after renderOneFrame() in the render loop
@@ -3235,6 +4049,28 @@ namespace NOWA
         // Advance the transform buffer to the next buffer
         // This is called at the start of each logic frame
         this->advanceTransformBuffer();
+
+#if NOWA_ALPHA_STAMP_AT_BEGIN
+        // EXPERIMENT (physics jitter): the alpha reference is taken HERE instead of in endLogicFrame().
+        //
+        // updateAllTransforms() interpolates between the previous slot and the CURRENT slot, and the
+        // current slot is exactly the one this logic step is about to write into. With the stamp in
+        // endLogicFrame(), a render frame that fell between the physics write (interalPostUpdate ->
+        // updateNodePosition) and endLogicFrame() still saw the stamp of the PREVIOUS step, i.e. an
+        // alpha close to 1, and therefore already displayed the new value. Right after endLogicFrame()
+        // alpha dropped back to 0 and the node was displayed at the previous value again: one full
+        // step forward, one full step back, forward again.
+        //
+        // Stamped here, alpha restarts at 0 in the very moment the slot is reopened. At that moment
+        // the slot still holds the carried-forward copy of the previous value, so the displayed
+        // position is continuous, and any write during this step can only move the output forward.
+        // The node may hold briefly until the physics write arrives, but it never jumps back.
+        this->lastLogicFrameMicroseconds.store(alphaClockMicroseconds(), std::memory_order_release);
+#endif
+
+#ifdef NOWA_JITTER_DIAG
+        jitterDiagOnBeginLogicFrame();
+#endif
     }
 
     void GraphicsModule::endLogicFrame(void)
@@ -3262,7 +4098,13 @@ namespace NOWA
         // jumped by the full step. Measured: the physics body advanced by exactly 0.0827808
         // every frame with a spread of 0, while the scene node varied between 0.0596 and
         // 0.3240, i.e. by the very ratio of render rate to logic rate.
-        this->lastLogicFrameMicroseconds.store(static_cast<unsigned long long>(Core::getSingletonPtr()->getOgreTimer()->getMicroseconds()), std::memory_order_release);
+#if !NOWA_ALPHA_STAMP_AT_BEGIN
+        this->lastLogicFrameMicroseconds.store(alphaClockMicroseconds(), std::memory_order_release);
+#endif
+
+#ifdef NOWA_JITTER_DIAG
+        jitterDiagOnEndLogicFrame(this->getLogicFrameId());
+#endif
     }
 
     void GraphicsModule::setLogLevel(Ogre::LogMessageLevel level)
