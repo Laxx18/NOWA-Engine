@@ -5,6 +5,8 @@ require("init");
 
 local prehistoricLax = nil;
 local cameraComponent = nil;
+local areaOfInterestComponent = nil;
+local attributesComponent = nil;
 
 PrehistoricLax = {}
 
@@ -20,6 +22,21 @@ PrehistoricLax["connect"] = function(gameObject)
     cameraComponent:setActivated(true);
     
     AppStateManager:getGameObjectController():activatePlayerController(true, prehistoricLax:getId(), true);
+    
+    areaOfInterestComponent = prehistoricLax:getAreaOfInterestComponent();
+    attributesComponent = prehistoricLax:getAttributesComponent();
+    
+    areaOfInterestComponent:reactOnEnter(function(otherGameObject) 
+        otherGameObject = AppStateManager:getGameObjectController():castGameObject(otherGameObject);
+        if (otherGameObject:getCategory() == "Item") then
+             if (otherGameObject:getTagName() == "Coin") then
+                AppStateManager:getGameObjectController():deleteGameObject(otherGameObject:getId());
+                attributesComponent:addAttributeNumber("Coins", 1);
+            end
+        elseif (otherGameObject:getCategory() == "Quester") then
+           
+        end
+    end);
 end
 
 PrehistoricLax["disconnect"] = function()

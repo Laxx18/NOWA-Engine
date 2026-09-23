@@ -1027,8 +1027,6 @@ namespace NOWA
 
 		Ogre::HlmsDatablock* cloneDatablockUnique(Ogre::HlmsDatablock* originalDatablock, const Ogre::String& originalDatablockName, unsigned long gameObjectId, size_t subIndex);
 
-		bool isProceduralMeshComponent(const Ogre::String& className);
-
 		void registerSharedWidget(const Ogre::String& className, const Ogre::String& style, MyGUI::Widget* widget);
 
         void unregisterSharedWidget(const Ogre::String& className, const Ogre::String& style);

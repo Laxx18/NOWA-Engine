@@ -745,7 +745,7 @@ namespace NOWA
         }
 
         this->blockItem = sceneManager->createItem(mesh, this->gameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC);
-        this->blockItem->setName("ProceduralBlockItem_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
+        this->blockItem->setName(this->gameObjectPtr->getName());
         this->blockItem->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
         this->blockItem->setQueryFlags(this->gameObjectPtr->getCategoryId());
         this->blockItem->setCastShadows(true);

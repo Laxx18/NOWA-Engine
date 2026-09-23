@@ -120,6 +120,35 @@
 					<property type="6" name="Strength" data="0.8"/>
 					<property type="7" name="Offset Position" data="0 0 0"/>
 					<property type="7" name="Offset Orientation" data="0 0 0"/>
+					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="12" name="ShortTimeActivation" data="false"/>
+					<property type="6" name="UpdateThreshold" data="0.5"/>
+					<property type="12" name="TriggerPermanentely" data="false"/>
+					<property type="2" name="AreaCount" data="1"/>
+					<property type="6" name="Radius0" data="1.2"/>
+					<property type="7" name="Categories0" data="Item"/>
+					<property type="7" name="TagName0" data="Coin"/>
+					<property type="7" name="ComponentAttributesComponent" data="AttributesComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="AttributesCount" data="4"/>
+					<property type="7" name="AttributeName0" data="Energy"/>
+					<property type="7" name="AttributeType0" data="Int"/>
+					<property type="7" name="AttributeValue0" data="100"/>
+					<property type="7" name="AttributeName1" data="Strength"/>
+					<property type="7" name="AttributeType1" data="Int"/>
+					<property type="7" name="AttributeValue1" data="10"/>
+					<property type="7" name="AttributeName2" data="Experience"/>
+					<property type="7" name="AttributeType2" data="Int"/>
+					<property type="7" name="AttributeValue2" data=""/>
+					<property type="7" name="AttributeName3" data="Coins"/>
+					<property type="7" name="AttributeType3" data="Int"/>
+					<property type="7" name="AttributeValue3" data=""/>
 				</userData>
 			</item>
 		</node>

@@ -583,7 +583,7 @@
 			}
 		},
 		
-		"des" :
+		"SOLID/TEX/thorn.png" :
 		{
 			"macroblock" : "Objects_Macroblock_0",
 			"blendblock" : "Objects_Blendblock_0",

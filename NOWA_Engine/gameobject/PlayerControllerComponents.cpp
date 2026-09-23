@@ -752,6 +752,28 @@ namespace NOWA
                 this->physicsActiveComponent->setCppContactCallback(
                     [this](GameObjectPtr otherGameObject, const OgreNewt::ContactSnapshot& contactSnapshot)
                     {
+                        // Stale contacts are rejected by comparing the CONTACT POINT with
+                        // where the player is right now.
+                        //
+                        // PhysicsActiveComponent::contactCallback() enqueues one deferred
+                        // logic command per contact POINT, and a capsule against a building
+                        // wall produces many of them per physics step - measured around 30
+                        // per logic frame. That backlog keeps arriving for about a second
+                        // after the player has already walked away, and every one of those
+                        // old reports refreshed the wall normal again. Which is exactly why
+                        // backing off and walking forward again left the movement blocked
+                        // "for a while": the normal was never stale by the clock, it was
+                        // refreshed by a queue that had not drained yet.
+                        //
+                        // A contact that genuinely touches the player is within roughly his
+                        // own size of him; anything further away comes from a position he
+                        // has long since left.
+                        const Ogre::Real maxContactDistance = this->gameObjectPtr->getSize().length();
+                        if (contactSnapshot.position.squaredDistance(this->gameObjectPtr->getSceneNode()->getPosition()) > maxContactDistance * maxContactDistance)
+                        {
+                            return;
+                        }
+
                         Ogre::Vector3 contactNormal = contactSnapshot.normal;
                         if (contactNormal.squaredLength() < 0.0001f)
                         {

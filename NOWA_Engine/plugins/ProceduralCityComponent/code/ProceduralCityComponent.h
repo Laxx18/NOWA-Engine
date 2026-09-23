@@ -221,15 +221,23 @@ namespace NOWA
          */
         virtual Ogre::String getParentClassName(void) const override;
 
-        void onOtherComponentRemoved(unsigned int index) override;
+        virtual void onOtherComponentRemoved(unsigned int index) override;
 
-        void onOtherComponentAdded(unsigned int index) override;
+        virtual void onOtherComponentAdded(unsigned int index) override;
 
-        void update(Ogre::Real dt, bool notSimulating) override;
+        virtual void update(Ogre::Real dt, bool notSimulating) override;
 
-        void actualizeValue(Variant* attribute) override;
+        virtual void actualizeValue(Variant* attribute) override;
 
-        void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+        virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+
+        /**
+         * @see GameObjectComponent::isProcedural
+         */
+        virtual bool isProcedural(void) const override
+        {
+            return true;
+        }
 
         bool executeAction(const Ogre::String& actionId, NOWA::Variant* attribute) override;
 

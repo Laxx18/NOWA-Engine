@@ -3706,17 +3706,6 @@ namespace NOWA
         }
     }
 
-    bool GameObjectController::isProceduralMeshComponent(const Ogre::String& className)
-    {
-        // Centralized list of procedural mesh component names
-        static const std::vector<Ogre::String> proceduralComponents = {
-            "ProceduralRoadComponent", "ProceduralWallComponent", "ProceduralMazeComponent"
-            // Add more here as needed
-        };
-
-        return std::find(proceduralComponents.begin(), proceduralComponents.end(), className) != proceduralComponents.end();
-    }
-
     void GameObjectController::registerSharedWidget(const Ogre::String& className, const Ogre::String& style, MyGUI::Widget* widget)
     {
         if (className.empty() || style.empty() || nullptr == widget)

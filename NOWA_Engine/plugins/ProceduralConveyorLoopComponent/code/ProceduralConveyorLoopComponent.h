@@ -132,6 +132,14 @@ namespace NOWA
          */
         virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
+        /**
+         * @see GameObjectComponent::isProcedural
+         */
+        virtual bool isProcedural(void) const override
+        {
+            return true;
+        }
+
         virtual Ogre::String getClassName(void) const override
         {
             return "ProceduralConveyorLoopComponent";

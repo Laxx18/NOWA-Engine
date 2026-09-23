@@ -5471,6 +5471,7 @@ namespace NOWA
         this->platformMesh->_setBoundingSphereRadius(bounds.getRadius());
 
         this->platformItem = this->gameObjectPtr->getSceneManager()->createItem(this->platformMesh, this->gameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC);
+        this->platformItem->setName(this->gameObjectPtr->getName());
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralPlatformComponent] Created platform item with " + Ogre::StringConverter::toString(this->platformMesh->getNumSubMeshes()) + " submeshes");
 
