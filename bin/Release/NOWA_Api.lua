@@ -29475,6 +29475,14 @@ return {
 				returns = "(nil)",
 				valuetype = "nil"
 			},
+			lockMovement =
+			{
+				type = "method",
+				description = "Locks or releases the player's movement for the given owner name. Only the owner that locked the movement can release it again, so two independent scripts cannot accidentally unlock each other. E.g. lock it while a pickup animation plays and release it in the animation finished closure.",
+				args = "(string ownerName, boolean lock)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
 			requestMoveWeight =
 			{
 				type = "method",
@@ -29547,6 +29555,22 @@ return {
 				returns = "(GameObject)",
 				valuetype = "GameObject"
 			},
+			getHitGameObjectUp =
+			{
+				type = "function",
+				description = "Gets the game object, that has been hit up the player. Note: Always check against nil.",
+				args = "()",
+				returns = "(GameObject)",
+				valuetype = "GameObject"
+			},
+			getFrontNormal =
+			{
+				type = "function",
+				description = "Gets the surface normal of whatever the front rays hit, or Vector3.ZERO when there is nothing in front of the player.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
 			getIsFallen =
 			{
 				type = "function",
@@ -29570,6 +29594,54 @@ return {
 				args = "(func closureFunction)",
 				returns = "(nil)",
 				valuetype = "nil"
+			},
+			getBlockedWallNormal =
+			{
+				type = "function",
+				description = "Gets the horizontal normal of the wall that currently blocks the player, or Vector3.ZERO when nothing is in the way. The value comes from the physics contact callback and is only valid for the frame it was reported in, so read it per frame instead of storing it.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setActionKey =
+			{
+				type = "method",
+				description = "Sets which input action counts as the action key, e.g. NOWA_A_ATTACK_1. There is no default on purpose, so the key can be remapped per game. A negative value switches the detection off, which is also the initial state.",
+				args = "(number actionId)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getActionKey =
+			{
+				type = "function",
+				description = "Gets the action id set via setActionKey, or -1 when the action key is switched off.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			reactOnActionPressed =
+			{
+				type = "method",
+				description = "Sets the closure function which is called on the RISING EDGE of the action key, so holding the key fires exactly once. The closure receives the game object currently in front of the player, or nil when there is nothing. Deciding what that object is - a rope, a lever, a boulder - is left to the script. Example: reactOnActionPressed(function(other) ... end).",
+				args = "(func closureFunction)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setInteractionGameObject =
+			{
+				type = "method",
+				description = "Remembers the game object the player is interacting with, so a state entered afterwards knows what it is working on. Pass nil to clear it.",
+				args = "(GameObject gameObject)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getInteractionGameObject =
+			{
+				type = "function",
+				description = "Gets the game object set via setInteractionGameObject. The id is resolved on every call, so a deleted game object is reported as nil instead of crashing. Note: Always check against nil.",
+				args = "()",
+				returns = "(GameObject)",
+				valuetype = "GameObject"
 			}
 		}
 	},
@@ -29595,6 +29667,190 @@ return {
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
+			},
+			setDoubleJump =
+			{
+				type = "method",
+				description = "Sets whether the player may jump a second time while airborne.",
+				args = "(boolean doubleJump)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDoubleJump =
+			{
+				type = "function",
+				description = "Gets whether the double jump is enabled.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setXJump =
+			{
+				type = "method",
+				description = "Sets whether the player may jump again on EVERY press while airborne, without any limit (metroid style). This overrides the double jump, which stops after the second jump.",
+				args = "(boolean xJump)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getXJump =
+			{
+				type = "function",
+				description = "Gets whether the unlimited air jump is enabled.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setRunAfterWalkTime =
+			{
+				type = "method",
+				description = "Sets after how many seconds of uninterrupted walking the player switches to running. Only used when 'UseAcceleration' is off, which replaces this hard switch with a continuous ramp.",
+				args = "(number runAfterWalkTime)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRunAfterWalkTime =
+			{
+				type = "function",
+				description = "Gets the seconds of walking after which the player starts running.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setFor2D =
+			{
+				type = "method",
+				description = "Sets whether the player is controlled in a 2.5D jump 'n' run, that is: only left and right, and a 180 degree turn when the direction changes.",
+				args = "(boolean for2D)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getIsFor2D =
+			{
+				type = "function",
+				description = "Gets whether the player is controlled in 2.5D mode.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setUseAcceleration =
+			{
+				type = "method",
+				description = "Sets whether the speed ramps continuously from the physics component's speed up to its max speed while running. A direction change or hitting something in front resets the ramp, jumping does not.",
+				args = "(boolean useAcceleration)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getUseAcceleration =
+			{
+				type = "function",
+				description = "Gets whether the continuous speed ramp is used.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setAccelerationDuration =
+			{
+				type = "method",
+				description = "Sets how many seconds of uninterrupted running the speed ramp needs to reach the max speed.",
+				args = "(number accelerationDuration)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getAccelerationDuration =
+			{
+				type = "function",
+				description = "Gets the duration in seconds the speed ramp needs to reach the max speed.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			reactOnDirectionChanged =
+			{
+				type = "method",
+				description = "Sets the closure function which is called when the player reverses his walking direction in 2.5D mode. The closure receives the old and the new direction as numbers (0 = none, 1 = up, 2 = down, 3 = left, 4 = right). Example: reactOnDirectionChanged(function(oldDirection, newDirection) ... end).",
+				args = "(func closureFunction)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			reactOnJump =
+			{
+				type = "method",
+				description = "Sets the closure function which is called on every successful jump. The closure receives the jump count, so an air jump can be told apart from a jump off the ground. Example: reactOnJump(function(jumpCount) ... end).",
+				args = "(func closureFunction)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			reactOnLand =
+			{
+				type = "method",
+				description = "Sets the closure function which is called when the player touches the ground again. The closure receives how long the player had been falling, in seconds, so dust, camera shake or fall damage can be scaled by the drop height. Example: reactOnLand(function(fallTime) ... end).",
+				args = "(func closureFunction)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			reactOnAccelerationChanged =
+			{
+				type = "method",
+				description = "Sets the closure function which is called whenever the speed ramp changes. The closure receives the current speed and the maximum speed. Only called on a real change, not once per frame. Example: reactOnAccelerationChanged(function(currentSpeed, maxSpeed) ... end).",
+				args = "(func closureFunction)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			registerLuaState =
+			{
+				type = "method",
+				description = "Makes a lua state table addressable by name, so it can live in the same state machine as the built in C++ walking state. The table may have an 'enter(gameObject)', an 'execute(gameObject, dt)' and an 'exit(gameObject)' entry, all optional. Registering does NOT switch to the state, use requestState for that. Registering the same name twice only swaps the table, which is what a script reload needs. Example: registerLuaState("AttackState", AttackState).",
+				args = "(string stateName, table stateTable)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			requestState =
+			{
+				type = "method",
+				description = "Requests a state change by name. The name may address the built in state 'WalkingStateJumpNRun' or any state registered via registerLuaState. The change is applied at the TOP of the next update and never immediately, so it is safe to call from a closure that runs while the current state is still updating. An unknown name is reported in the log and ignored.",
+				args = "(string stateName)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			requestPreviousState =
+			{
+				type = "method",
+				description = "Requests the state that was active before the current one. Does nothing when there is none yet.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCurrentStateName =
+			{
+				type = "function",
+				description = "Gets the name of the currently active state.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			getPreviousStateName =
+			{
+				type = "function",
+				description = "Gets the name of the state that was active before the current one, or an empty string when there is none.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			isInState =
+			{
+				type = "function",
+				description = "Gets whether the given state is the currently active one.",
+				args = "(string stateName)",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			reactOnStateChanged =
+			{
+				type = "method",
+				description = "Sets the closure function which is called after every state change. The closure receives the old and the new state name as strings. Example: reactOnStateChanged(function(oldName, newName) ... end).",
+				args = "(func closureFunction)",
+				returns = "(nil)",
+				valuetype = "nil"
 			}
 		}
 	},

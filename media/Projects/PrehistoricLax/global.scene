@@ -1,8 +1,71 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <scene formatVersion="1.1.0" generator="NOWA-Engine">
 	<nodes>
+		<node name="WeaponStick" id="3232914531">
+			<position x="1.52416" y="1.86157" z="-6.35161"/>
+			<rotation qw="0.791965" qx="-0.548356" qy="0.152852" qz="-0.220757"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="WeaponStick" meshFile="monster_item_cudgel.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="items_mat.004"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1141940358"/>
+					<property type="7" name="Category" data="Weapon"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="true"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="items_mat.004"/>
+					<property type="7" name="ComponentPhysicsActiveKinematicComponent" data="PhysicsActiveKinematicComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0 0 0"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 0"/>
+					<property type="6" name="Mass" data="10"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0.1"/>
+					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
+					<property type="6" name="Density" data="1"/>
+					<property type="9" name="Gravity" data="0 0 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="5"/>
+					<property type="7" name="CollisionType" data="ConvexHull"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="OnKinematicContactFunctionName" data="onKinematicContact"/>
+					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="ScriptFile" data="WeaponStick.lua"/>
+					<property type="12" name="CloneScript" data="false"/>
+					<property type="12" name="HasCommonScript" data="false"/>
+					<property type="2" name="OrderIndex" data="3"/>
+				</userData>
+			</item>
+		</node>
 		<node name="PrehistoricLax" id="3286738008">
-			<position x="1.27965" y="1.00369" z="-7"/>
+			<position x="1.37091" y="1.00369" z="-7"/>
 			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="PrehistoricLax" meshFile="PrehistoricLaxBoy.mesh" castShadows="true" visible="true">
@@ -132,23 +195,14 @@
 					<property type="6" name="Radius0" data="1.2"/>
 					<property type="7" name="Categories0" data="Item"/>
 					<property type="7" name="TagName0" data="Coin"/>
-					<property type="7" name="ComponentAttributesComponent" data="AttributesComponent"/>
+					<property type="7" name="ComponentTagPointComponent" data="TagPointComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="AttributesCount" data="4"/>
-					<property type="7" name="AttributeName0" data="Energy"/>
-					<property type="7" name="AttributeType0" data="Int"/>
-					<property type="7" name="AttributeValue0" data="100"/>
-					<property type="7" name="AttributeName1" data="Strength"/>
-					<property type="7" name="AttributeType1" data="Int"/>
-					<property type="7" name="AttributeValue1" data="10"/>
-					<property type="7" name="AttributeName2" data="Experience"/>
-					<property type="7" name="AttributeType2" data="Int"/>
-					<property type="7" name="AttributeValue2" data=""/>
-					<property type="7" name="AttributeName3" data="Coins"/>
-					<property type="7" name="AttributeType3" data="Int"/>
-					<property type="7" name="AttributeValue3" data=""/>
+					<property type="7" name="TagPointName" data="Boy 1 R Hand"/>
+					<property type="6" name="SourceId" data="1141940358"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetOrientation" data="0 0 0"/>
 				</userData>
 			</item>
 		</node>

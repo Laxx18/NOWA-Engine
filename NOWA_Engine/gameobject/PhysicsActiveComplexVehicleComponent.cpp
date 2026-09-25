@@ -451,6 +451,7 @@ namespace NOWA
 
         // set user data for ogrenewt
         this->physicsBody->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this)));
+
         this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
 
         this->setPosition(this->initialPosition);

@@ -164,8 +164,6 @@ namespace NOWA
                 }
 
                 // Send event and set bounds for current scene
-                boost::shared_ptr<EventDataBoundsUpdated> eventDataBoundsUpdated(boost::make_shared<EventDataBoundsUpdated>(this->mostLeftNearPosition, this->mostRightFarPosition));
-                AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataBoundsUpdated);
                 Core::getSingletonPtr()->setCurrentSceneBounds(this->mostLeftNearPosition, this->mostRightFarPosition);
             }
 
@@ -469,8 +467,6 @@ namespace NOWA
                 }
 
                 // Send event and set bounds for current scene
-                boost::shared_ptr<EventDataBoundsUpdated> eventDataBoundsUpdated(boost::make_shared<EventDataBoundsUpdated>(this->mostLeftNearPosition, this->mostRightFarPosition));
-                AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataBoundsUpdated);
                 Core::getSingletonPtr()->setCurrentSceneBounds(this->mostLeftNearPosition, this->mostRightFarPosition);
             }
 
@@ -1270,6 +1266,8 @@ namespace NOWA
             if ("Node.mesh" != meshName && "Missing.mesh" != meshName && "LightSpot.mesh" != meshName && "LightPoint.mesh" != meshName && "LightDirectional.mesh" != meshName && "Camera.mesh" != meshName)
             {
                 this->calculateBounds(item->getWorldAabbUpdated());
+                // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                //     "-->bounds: " + meshName + " name: " + gameObject->getName() + " mostLeftNearPosition: " + Ogre::StringConverter::toString(this->mostLeftNearPosition) + " mostRightFarPosition: " + Ogre::StringConverter::toString(this->mostRightFarPosition));
             }
 
             // Check if GameObject has a procedural mesh component

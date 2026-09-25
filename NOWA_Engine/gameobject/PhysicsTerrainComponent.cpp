@@ -127,8 +127,6 @@ namespace NOWA
 				// this->setOrientation(this->gameObjectPtr->getSceneNode()->getOrientation());
 
 				this->physicsBody->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this)));
-
-				// here can be the gameobjectPtr be involved
 				this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
 
 				this->physicsBody->setType(gameObjectPtr->getCategoryId());

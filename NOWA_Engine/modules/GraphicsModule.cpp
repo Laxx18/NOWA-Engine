@@ -30,6 +30,7 @@ namespace
 #endif
 #include <algorithm>
 #include <atomic>
+#include <deque>
 #include <limits>
 #include <mutex>
 #include <sstream>
@@ -50,6 +51,14 @@ namespace
 //    logic and the render thread although it mutates internal state on every read (see the note
 //    on lastFrameTime in renderThreadFunction()).
 #define NOWA_ALPHA_STEADY_CLOCK 1
+
+// 1: advanceTransformBuffer() prepares the new slot completely (carry-forward copy, baseline of new
+//    entries) and publishes the new index only afterwards. This is the fix for the flicker of
+//    physics driven nodes: with the former order the render thread interpolated towards a slot
+//    that still held the value from NUM_TRANSFORM_BUFFERS steps ago.
+// 0: former order (publish the index first, copy afterwards). For A/B tests only - brings the
+//    flicker back.
+#define NOWA_ADVANCE_PUBLISH_AFTER_COPY 1
 
 // Diagnostic for interpolation jitter of physics driven nodes. Disabled by default, enable it by
 // uncommenting the define below.
@@ -95,6 +104,14 @@ namespace
 
     // Logic steps resp. render frames per report, about two seconds at 144 Hz.
     const unsigned int g_jitterDiagReportInterval = 288;
+
+    // Raw lines are only written around an anomaly (plus a few lines of context) and for the first
+    // steps / frames after a node got locked (to catch a jump right at connect). Hard cap per report,
+    // so a burst of anomalies can never flood the log again.
+    const unsigned int g_jitterDiagMaxRawLinesPerReport = 40;
+    const unsigned int g_jitterDiagContextLines = 3;
+    const unsigned int g_jitterDiagFirstStepsToLog = 20;
+    const unsigned int g_jitterDiagFirstFramesToLog = 40;
 
     // Automatic selection: window length, minimum travelled distance and how many logic steps the
     // locked node may stay silent (no write, e.g. after a scene reload) before a new selection starts.
@@ -160,6 +177,9 @@ namespace
         Ogre::Real maxWrittenStepDistance = 0.0f;
         bool anomaly = false;
         std::string rawLines;
+        unsigned int rawLineCount = 0;
+        bool rawLinesTruncated = false;
+        unsigned int firstStepsToLog = 0;
     };
 
     JitterDiagLogic g_jitterDiagLogic;
@@ -200,9 +220,65 @@ namespace
         Ogre::Real minMovingStep = std::numeric_limits<Ogre::Real>::max();
         Ogre::Real maxRelativeStep = 0.0f;
         std::string rawLines;
+        unsigned int rawLineCount = 0;
+        bool rawLinesTruncated = false;
+
+        // Context handling: the last few unremarkable lines are kept here and only flushed when an
+        // anomaly follows; after an anomaly a few more lines are kept.
+        std::deque<std::string> contextLines;
+        unsigned int postContextLines = 0;
+
+        // Detects a new lock, so the first frames after it are always logged.
+        Ogre::Node* lastSeenNode = nullptr;
+        unsigned int firstFramesToLog = 0;
     };
 
     JitterDiagRender g_jitterDiagRender;
+
+    // Appends one raw line to a report buffer, respecting the per report cap.
+    void jitterDiagAppendCapped(std::string& rawLines, unsigned int& rawLineCount, bool& truncated, const std::string& line)
+    {
+        if (rawLineCount < g_jitterDiagMaxRawLinesPerReport)
+        {
+            rawLines += line;
+            ++rawLineCount;
+        }
+        else if (false == truncated)
+        {
+            rawLines += "  ... further raw lines of this report suppressed\n";
+            truncated = true;
+        }
+    }
+
+    // Slot life cycle events of the watched node (by name, so it also works before the node is locked,
+    // e.g. while connect() re-registers it). Logged immediately, these events are rare.
+    void jitterDiagOnSlotEvent(Ogre::Node* node, const char* what, const Ogre::Vector3& position, size_t index, bool renderThread)
+    {
+        if (nullptr == node)
+        {
+            return;
+        }
+
+        if (node != g_jitterDiagNode.load(std::memory_order_relaxed) && node->getName() != g_jitterDiagNodeName)
+        {
+            return;
+        }
+
+        std::ostringstream ss;
+        ss.setf(std::ios::fixed);
+        ss.precision(5);
+        ss << "[JitterDiag][SLOT] " << what << " node='" << node->getName() << "' (" << static_cast<const void*>(node) << ") slotIndex=" << index << " position=" << position.x << " " << position.y << " " << position.z
+           << " nodeLocalPos=" << node->getPosition().x << " " << node->getPosition().y << " " << node->getPosition().z << " thread=";
+        if (true == renderThread)
+        {
+            ss << "render";
+        }
+        else
+        {
+            ss << "logic";
+        }
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, ss.str());
+    }
 
     Ogre::String jitterDiagVector(const Ogre::Vector3& v)
     {
@@ -234,6 +310,7 @@ namespace
 
         d.lockedNode = node;
         d.lockedByName = byName;
+        d.firstStepsToLog = g_jitterDiagFirstStepsToLog;
         d.silentSteps = 0;
         d.selectionSteps = 0;
         d.candidates.clear();
@@ -289,7 +366,7 @@ namespace
             // Such a write lands in a slot that is already published and is a jitter source of its own.
             ++d.outOfStepWrites;
             d.anomaly = true;
-            d.rawLines += "  L out-of-step position write " + jitterDiagVector(position) + "\n";
+            jitterDiagAppendCapped(d.rawLines, d.rawLineCount, d.rawLinesTruncated, "  L out-of-step position write " + jitterDiagVector(position) + "\n");
             return;
         }
 
@@ -319,17 +396,42 @@ namespace
         ++g_jitterDiagLogic.orientationWrites;
     }
 
-    void jitterDiagOnWarp(Ogre::Node* node, const char* what)
+    // Warps (setNode* / teleportNode*) bypass the interpolation buffers. For the watched node they are
+    // logged IMMEDIATELY with their value - matched by name as well, so a warp that happens before the
+    // node got locked (e.g. inside connect(), before the first physics write) is caught too.
+    // 'position' may be null for pure orientation warps.
+    void jitterDiagOnWarp(Ogre::Node* node, const char* what, const Ogre::Vector3* position, bool useDerived)
     {
-        if (nullptr == node || node != g_jitterDiagLogic.lockedNode)
+        if (nullptr == node)
         {
             return;
         }
 
         JitterDiagLogic& d = g_jitterDiagLogic;
-        ++d.warps;
-        d.warpNames += " ";
-        d.warpNames += what;
+
+        const bool isLocked = (node == d.lockedNode);
+        if (false == isLocked && node->getName() != g_jitterDiagNodeName)
+        {
+            return;
+        }
+
+        if (true == isLocked)
+        {
+            ++d.warps;
+            d.warpNames += " ";
+            d.warpNames += what;
+        }
+
+        std::ostringstream ss;
+        ss.setf(std::ios::fixed);
+        ss.precision(5);
+        ss << "[JitterDiag][WARP] " << what << " node='" << node->getName() << "' (" << static_cast<const void*>(node) << ")";
+        if (nullptr != position)
+        {
+            ss << " position=" << position->x << " " << position->y << " " << position->z;
+        }
+        ss << " useDerived=" << useDerived << " inStep=" << d.inStep << " stepBeginUs=" << d.stepBeginUs << " nowUs=" << steadyClockMicroseconds();
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, ss.str());
     }
 
     void jitterDiagOnBeginLogicFrame(void)
@@ -490,12 +592,20 @@ namespace
             d.anomaly = true;
         }
 
-        if (nullptr != d.lockedNode)
+        const bool stepAnomaly = (d.positionWrites > 1 || d.warps > 0);
+        bool logThisStep = stepAnomaly;
+        if (nullptr != d.lockedNode && d.firstStepsToLog > 0)
+        {
+            --d.firstStepsToLog;
+            logThisStep = true;
+        }
+
+        if (nullptr != d.lockedNode && true == logThisStep)
         {
             std::ostringstream ss;
             ss << "  L lf=" << logicFrameId << " t=" << d.stepBeginUs << " stepUs=" << stepUs << " posW=" << d.positionWrites << " oriW=" << d.orientationWrites << " firstW=" << d.firstWriteOffsetUs << " lastW=" << d.lastWriteOffsetUs
                << " warps=" << d.warps << d.warpNames << " pos=" << jitterDiagVector(d.lastWrittenPosition) << " stepDist=" << d.lastWrittenStepDistance << "\n";
-            d.rawLines += ss.str();
+            jitterDiagAppendCapped(d.rawLines, d.rawLineCount, d.rawLinesTruncated, ss.str());
         }
 
         if (d.steps >= g_jitterDiagReportInterval)
@@ -519,7 +629,7 @@ namespace
                 ss << " beginGapUs(min/max)=" << d.minBeginGapUs << "/" << d.maxBeginGapUs;
             }
 
-            if (true == d.anomaly)
+            if (false == d.rawLines.empty())
             {
                 ss << "\n" << d.rawLines;
             }
@@ -541,6 +651,8 @@ namespace
             d.maxWrittenStepDistance = 0.0f;
             d.anomaly = false;
             d.rawLines.clear();
+            d.rawLineCount = 0;
+            d.rawLinesTruncated = false;
         }
     }
 
@@ -553,6 +665,19 @@ namespace
         {
             r.pendingCamera = false;
             return;
+        }
+
+        {
+            Ogre::Node* lockedNode = g_jitterDiagNode.load(std::memory_order_acquire);
+            if (lockedNode != r.lastSeenNode)
+            {
+                r.lastSeenNode = lockedNode;
+                r.firstFramesToLog = g_jitterDiagFirstFramesToLog;
+                r.hasLast = false;
+                r.hasLastRelative = false;
+                r.contextLines.clear();
+                r.postContextLines = 0;
+            }
         }
 
         const Ogre::Vector3 output = r.pendingOutput;
@@ -684,7 +809,45 @@ namespace
             }
 
             ss << "\n";
-            r.rawLines += ss.str();
+
+            const bool anomalyLine = (true == reversal || true == relativeReversal || true == stall);
+            bool keepLine = false;
+
+            if (r.firstFramesToLog > 0)
+            {
+                --r.firstFramesToLog;
+                keepLine = true;
+            }
+
+            if (true == anomalyLine)
+            {
+                // Flush the context that led up to the anomaly.
+                for (const std::string& contextLine : r.contextLines)
+                {
+                    jitterDiagAppendCapped(r.rawLines, r.rawLineCount, r.rawLinesTruncated, contextLine);
+                }
+                r.contextLines.clear();
+                r.postContextLines = g_jitterDiagContextLines;
+                keepLine = true;
+            }
+            else if (r.postContextLines > 0)
+            {
+                --r.postContextLines;
+                keepLine = true;
+            }
+
+            if (true == keepLine)
+            {
+                jitterDiagAppendCapped(r.rawLines, r.rawLineCount, r.rawLinesTruncated, ss.str());
+            }
+            else
+            {
+                r.contextLines.push_back(ss.str());
+                if (r.contextLines.size() > g_jitterDiagContextLines)
+                {
+                    r.contextLines.pop_front();
+                }
+            }
         }
 
         r.lastOutput = output;
@@ -710,7 +873,7 @@ namespace
                 ss << " minMovingStep=" << r.minMovingStep;
             }
 
-            if (r.reversals > 0 || r.relativeReversals > 0 || r.stalls > 0)
+            if (false == r.rawLines.empty())
             {
                 ss << "\n" << r.rawLines;
             }
@@ -728,6 +891,8 @@ namespace
             r.minMovingStep = std::numeric_limits<Ogre::Real>::max();
             r.maxRelativeStep = 0.0f;
             r.rawLines.clear();
+            r.rawLineCount = 0;
+            r.rawLinesTruncated = false;
         }
     }
 }
@@ -1469,6 +1634,10 @@ namespace NOWA
 
     void GraphicsModule::clearSceneResources(void)
     {
+#ifdef NOWA_JITTER_DIAG
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JitterDiag][SLOT] clearSceneResources: all node slots tombstoned, buffer indices reset to 0");
+#endif
+
         // IMPORTANT: this tombstones every slot in place - it must NOT call clear()
         // on a pool's deque. Doing so would physically free chunk memory that some
         // thread's thread_local cache might still hold a raw pointer into; the next
@@ -2447,6 +2616,10 @@ namespace NOWA
 
         this->nodeToIndexMap[node] = index;
 
+#ifdef NOWA_JITTER_DIAG
+        jitterDiagOnSlotEvent(node, "slot acquired, baseline taken from node local position:", baseline.position, index, this->isRenderThread());
+#endif
+
         if (true == this->debugVisualization)
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RenderCommandQueueModule]: Added tracked node: " + node->getName());
@@ -2676,6 +2849,10 @@ namespace NOWA
         size_t index = it->second;
         NodeTransforms& slot = this->nodePool[index];
 
+#ifdef NOWA_JITTER_DIAG
+        jitterDiagOnSlotEvent(node, "slot removed (removeTrackedNode), last current value:", slot.transforms[this->currentTransformNodeIdx.load()].position, index, this->isRenderThread());
+#endif
+
         if (true == this->debugVisualization)
         {
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RenderCommandQueueModule]: Removed tracked node: " + node->getName());
@@ -2803,7 +2980,7 @@ namespace NOWA
 #ifdef NOWA_JITTER_DIAG
         if (false == this->isRenderThread())
         {
-            jitterDiagOnWarp(node, "setNodePosition");
+            jitterDiagOnWarp(node, "setNodePosition", &position, useDerived);
         }
 #endif
 
@@ -2856,7 +3033,7 @@ namespace NOWA
 #ifdef NOWA_JITTER_DIAG
         if (false == this->isRenderThread())
         {
-            jitterDiagOnWarp(node, "setNodeOrientation");
+            jitterDiagOnWarp(node, "setNodeOrientation", nullptr, useDerived);
         }
 #endif
 
@@ -2932,7 +3109,7 @@ namespace NOWA
 #ifdef NOWA_JITTER_DIAG
         if (false == this->isRenderThread())
         {
-            jitterDiagOnWarp(node, "setNodeTransform");
+            jitterDiagOnWarp(node, "setNodeTransform", &position, useDerived);
         }
 #endif
 
@@ -2955,7 +3132,7 @@ namespace NOWA
 #ifdef NOWA_JITTER_DIAG
         if (false == this->isRenderThread())
         {
-            jitterDiagOnWarp(node, "teleportNodePosition");
+            jitterDiagOnWarp(node, "teleportNodePosition", &position, useDerived);
         }
 #endif
 
@@ -2975,7 +3152,7 @@ namespace NOWA
 #ifdef NOWA_JITTER_DIAG
         if (false == this->isRenderThread())
         {
-            jitterDiagOnWarp(node, "teleportNodeOrientation");
+            jitterDiagOnWarp(node, "teleportNodeOrientation", nullptr, false);
         }
 #endif
 
@@ -3695,6 +3872,10 @@ namespace NOWA
             const size_t prevIdx = this->currentTransformNodeIdx.load(std::memory_order_relaxed);
             const size_t nextIdx = (prevIdx + 1) % NUM_TRANSFORM_BUFFERS;
 
+#if !NOWA_ADVANCE_PUBLISH_AFTER_COPY
+            this->currentTransformNodeIdx.store(nextIdx, std::memory_order_release);
+#endif
+
             for (auto& nodeTransform : this->nodePool)
             {
                 Ogre::Node* node = nodeTransform.node.load(std::memory_order_acquire);
@@ -3725,6 +3906,10 @@ namespace NOWA
                         nodeTransform.transforms[b] = currentTransform;
                     }
 
+#ifdef NOWA_JITTER_DIAG
+                    jitterDiagOnSlotEvent(node, "isNew rebaseline in advanceTransformBuffer, all buffers set to:", currentTransform.position, nextIdx, false);
+#endif
+
                     nodeTransform.isNew = false;
                 }
                 else if (true == nodeTransform.active.load(std::memory_order_relaxed))
@@ -3736,7 +3921,9 @@ namespace NOWA
             }
 
             // Publish only now - the new slot is complete.
+#if NOWA_ADVANCE_PUBLISH_AFTER_COPY
             this->currentTransformNodeIdx.store(nextIdx, std::memory_order_release);
+#endif
 
             if (true == this->debugVisualization)
             {
@@ -3750,6 +3937,10 @@ namespace NOWA
         {
             const size_t prevCameraIdx = this->currentTransformCameraIdx.load(std::memory_order_relaxed);
             const size_t nextCameraIdx = (prevCameraIdx + 1) % NUM_TRANSFORM_BUFFERS;
+
+#if !NOWA_ADVANCE_PUBLISH_AFTER_COPY
+            this->currentTransformCameraIdx.store(nextCameraIdx, std::memory_order_release);
+#endif
 
             for (auto& cameraTransform : this->cameraPool)
             {
@@ -3779,7 +3970,9 @@ namespace NOWA
                 }
             }
 
+#if NOWA_ADVANCE_PUBLISH_AFTER_COPY
             this->currentTransformCameraIdx.store(nextCameraIdx, std::memory_order_release);
+#endif
         }
 
         // =========================================================================
@@ -3788,6 +3981,10 @@ namespace NOWA
         {
             const size_t prevBoneIdx = this->currentTransformBoneIdx.load(std::memory_order_relaxed);
             const size_t nextBoneIdx = (prevBoneIdx + 1) % NUM_TRANSFORM_BUFFERS;
+
+#if !NOWA_ADVANCE_PUBLISH_AFTER_COPY
+            this->currentTransformBoneIdx.store(nextBoneIdx, std::memory_order_release);
+#endif
 
             for (auto& boneTransform : this->bonePool)
             {
@@ -3817,7 +4014,9 @@ namespace NOWA
                 }
             }
 
+#if NOWA_ADVANCE_PUBLISH_AFTER_COPY
             this->currentTransformBoneIdx.store(nextBoneIdx, std::memory_order_release);
+#endif
         }
 
         // =========================================================================
@@ -3826,6 +4025,10 @@ namespace NOWA
         {
             const size_t prevDatablockIdx = this->currentTrackedDatablockIdx.load(std::memory_order_relaxed);
             const size_t nextDatablockIdx = (prevDatablockIdx + 1) % NUM_TRANSFORM_BUFFERS;
+
+#if !NOWA_ADVANCE_PUBLISH_AFTER_COPY
+            this->currentTrackedDatablockIdx.store(nextDatablockIdx, std::memory_order_release);
+#endif
 
             for (auto& datablock : this->datablockPool)
             {
@@ -3845,7 +4048,9 @@ namespace NOWA
                 }
             }
 
+#if NOWA_ADVANCE_PUBLISH_AFTER_COPY
             this->currentTrackedDatablockIdx.store(nextDatablockIdx, std::memory_order_release);
+#endif
         }
 
         this->accumTimeSinceLastLogicFrame = 0.0f;

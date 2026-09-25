@@ -116,8 +116,10 @@ namespace NOWA
                 }
                 else
                 {
-                    sourcePhysicsActiveKinematicComponent->setOrientation(this->realNode->_getDerivedOrientationUpdated());
-                    sourcePhysicsActiveKinematicComponent->setPosition(this->realNode->_getDerivedPositionUpdated());
+                    // Same reason as in updateV2PhysicsFromTagPoint(): a KinematicBody is only
+                    // moved by setKinematicPositionOrientation(), and both values must go in
+                    // with one call.
+                    sourcePhysicsActiveKinematicComponent->setKinematicPositionOrientation(this->realNode->_getDerivedPositionUpdated(), this->realNode->_getDerivedOrientationUpdated());
                 }
             }
         }
@@ -309,6 +311,11 @@ namespace NOWA
     {
         NOWA::GraphicsModule::RenderCommand renderCommand = [this, item]()
         {
+            // TEMPORARY DIAGNOSTICS - remove once the kinematic contact is understood.
+            // Every branch below used to fail silently.
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TagPoint-DIAG] connectV2Item RUNNING for: " + this->gameObjectPtr->getName() + " skeletonInstance: " + Ogre::String(nullptr != this->skeletonInstance ? "ok" : "NULL") +
+                                                                                    " sourceId: " + Ogre::StringConverter::toString(this->sourceId->getULong()) + " boneName: '" + this->tagPoints->getListSelectedValue() + "'");
+
             if (nullptr != this->skeletonInstance)
             {
                 GameObjectPtr sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->sourceId->getULong());
@@ -444,16 +451,22 @@ namespace NOWA
                             }
                         }
 
-                        // Register physics update closure (render thread, every frame)
+                        // Attention: only the ID is built here, the closure itself is NOT
+                        // registered from this render command.
+                        //
+                        // GraphicsModule::updateTrackedClosure() is meant to be called from an
+                        // update() function, once per frame - that is how every other caller in
+                        // the engine uses it. When it is called FROM the render thread it takes
+                        // its documented shortcut: run the closure once with dt = 0 and return,
+                        // without adding it to the tracked list. And connectV2Item() runs as a
+                        // RenderCommand.
+                        //
+                        // So this used to register the physics update exactly once. The attached
+                        // object's body was driven to the bone a single time and then stayed
+                        // frozen at that transform forever, while the mesh kept following the
+                        // bone - body and visual drifted apart with no error anywhere. The
+                        // registration now happens in update(), see there.
                         this->updateClosureId = this->gameObjectPtr->getName() + this->getClassName() + "::updateTagPointV2Physics" + Ogre::StringConverter::toString(this->index);
-
-                        NOWA::GraphicsModule::getInstance()->updateTrackedClosure(
-                            this->updateClosureId,
-                            [this](Ogre::Real /*renderDt*/)
-                            {
-                                this->updateV2PhysicsFromTagPoint();
-                            },
-                            false);
                     }
                 }
 
@@ -465,28 +478,79 @@ namespace NOWA
 
     void TagPointComponent::updateV2PhysicsFromTagPoint(void)
     {
-        // The Ogre::TagPoint (v2) is a SceneNode child of a Bone, so Ogre-Next
-        // updates its derived world transform automatically every frame.
-        if (nullptr == this->tagPointV2 || nullptr == this->sourcePhysicsActiveComponent)
+        // Runs on the render thread (tracked closure, after renderOneFrame).
+
+        // attachedBone and the character's scene node are dereferenced below now, so they are
+        // part of the guard.
+        if (nullptr == this->tagPointV2 || nullptr == this->sourcePhysicsActiveComponent || nullptr == this->attachedBone || nullptr == this->gameObjectPtr->getSceneNode())
         {
             return;
         }
 
-        const Ogre::Vector3 tagPointWorldPosition = this->tagPointV2->_getDerivedPosition();
-        const Ogre::Quaternion tagPointWorldOrientation = this->tagPointV2->_getDerivedOrientation();
+        // Attention: the TagPoint's own derived transform is NOT usable here, in neither variant.
+        //
+        // An Ogre::TagPoint attached to a bone gets its world transform written by the SKELETON
+        // pass, straight from the bone - not through the node parent chain. _getDerivedPositionUpdated()
+        // however calls _updateFromParent(), which recomputes from mParent, and that is not the bone.
+        // So the call does not resolve the transform, it OVERWRITES the correct one with garbage, and
+        // every later _getDerivedPosition() then reads that clobbered cache. Measured: both variants
+        // returned 0 0 0 while the mesh was visibly rendering in the character's hand, and the weapon
+        // body was driven to the world origin every single frame.
+        //
+        // The bone's world transform is therefore computed by hand, exactly the way getBonePosition()
+        // and getBoneOrientation() in this file do it - bone LOCAL space combined with the character's
+        // own node world transform - and the tag point's local offset is applied on top of it. That
+        // local offset is what connectV2Item() stored: the source's original pose relative to the bone
+        // plus the designer's offset.
+        Ogre::Vector3 boneLocalPosition;
+        Ogre::Quaternion boneLocalOrientation;
+        extractBoneLocalTransform(this->attachedBone, boneLocalPosition, boneLocalOrientation);
 
-        Ogre::SceneNode* sourceSceneNode = this->gameObjectPtr->getSceneNode();
-        if (nullptr != sourceSceneNode)
-        {
-            NOWA::GraphicsModule::getInstance()->updateNodeTransform(sourceSceneNode, tagPointWorldPosition, tagPointWorldOrientation);
-        }
+        Ogre::SceneNode* characterSceneNode = this->gameObjectPtr->getSceneNode();
+
+        const Ogre::Vector3 characterWorldPosition = characterSceneNode->_getDerivedPositionUpdated();
+        const Ogre::Quaternion characterWorldOrientation = characterSceneNode->_getDerivedOrientationUpdated();
+        const Ogre::Vector3 characterWorldScale = characterSceneNode->_getDerivedScale();
+
+        const Ogre::Quaternion boneWorldOrientation = characterWorldOrientation * boneLocalOrientation;
+        const Ogre::Vector3 boneWorldPosition = characterWorldOrientation * (boneLocalPosition * characterWorldScale) + characterWorldPosition;
+
+        // The tag point's LOCAL transform is untouched by the problem above - it is plain member data
+        // that connectV2Item() wrote and nothing recomputes it.
+        const Ogre::Vector3 tagPointLocalPosition = this->tagPointV2->getPosition();
+        const Ogre::Quaternion tagPointLocalOrientation = this->tagPointV2->getOrientation();
+
+        const Ogre::Quaternion tagPointWorldOrientation = boneWorldOrientation * tagPointLocalOrientation;
+        const Ogre::Vector3 tagPointWorldPosition = boneWorldPosition + boneWorldOrientation * (tagPointLocalPosition * characterWorldScale);
+
+        // Attention: the former code wrote this transform into this->gameObjectPtr->getSceneNode() via
+        // GraphicsModule::updateNodeTransform(). But this->gameObjectPtr is the CHARACTER that owns the
+        // skeleton (this component lives on the character), not the attached source (weapon). So every
+        // render frame the tag point's world transform - 0 0 0 on the very first call - was written into
+        // the character's own interpolation slot, additionally with useDerived = false, which fought
+        // against the physics writes (useDerived = true) for the same node. That was the jump of the
+        // player to the world origin on connect.
+        //
+        // No node write is needed here at all: the source's movable objects were moved onto the tag point
+        // in connectV2Item(), so Ogre-Next draws them at the bone automatically. The source's own scene
+        // node only follows its physics body, and that is already handled by the body's render callback
+        // (OgreNewtModule::registerRenderCallbackForBody) once the body is driven below.
 
         auto sourcePhysicsActiveKinematicComponent = dynamic_cast<PhysicsActiveKinematicComponent*>(this->sourcePhysicsActiveComponent);
         if (nullptr != sourcePhysicsActiveKinematicComponent)
         {
-            // Directly drive the kinematic body to follow the TagPoint world transform
-            sourcePhysicsActiveKinematicComponent->setOrientation(tagPointWorldOrientation);
-            sourcePhysicsActiveKinematicComponent->setPosition(tagPointWorldPosition);
+            // Attention: setKinematicPositionOrientation, NOT setPosition/setOrientation.
+            //
+            // PhysicsComponent::setPosition() forwards to OgreNewt::Body::setPositionOrientation(),
+            // which does not move a KinematicBody at all - OgreNewt has a separate
+            // setKinematicPositionOrientation() for those, which translate() and rotate() in
+            // PhysicsComponent already use. With the wrong setter the weapon's collision hull
+            // stayed where the body was created while the mesh followed the hand, so the body
+            // never came near anything and its contact map stayed empty.
+            //
+            // One call for both values on purpose: set separately, the second call reads the
+            // other value back out of the body and writes the stale one.
+            sourcePhysicsActiveKinematicComponent->setKinematicPositionOrientation(tagPointWorldPosition, tagPointWorldOrientation);
         }
         else
         {
@@ -546,6 +610,21 @@ namespace NOWA
     {
         if (false == notSimulating)
         {
+            // The physics update closure is (re)registered from HERE, on the logic thread,
+            // every frame - the way updateTrackedClosure() is meant to be used. Registering it
+            // from connectV2Item() did not work, see the comment there.
+            //
+            // Calling this every frame is cheap and intended: addPersistentClosure() is
+            // idempotent, so repeated calls from the same caller are no-ops once the closure
+            // sits in the list.
+            if (false == this->updateClosureId.empty() && nullptr != this->tagPointV2 && nullptr != this->sourcePhysicsActiveComponent)
+            {
+                NOWA::GraphicsModule::getInstance()->updateTrackedClosure(this->updateClosureId,  [this](Ogre::Real /*renderDt*/)
+                    {
+                        this->updateV2PhysicsFromTagPoint();
+                    }, false);
+            }
+
             if (true == this->bShowDebugData && nullptr != this->debugGeometryArrowNode)
             {
                 Ogre::Vector3 worldPosition;

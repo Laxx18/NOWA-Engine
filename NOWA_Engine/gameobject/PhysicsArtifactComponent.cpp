@@ -463,6 +463,7 @@ namespace NOWA
 
         this->physicsBody->setCollidable(this->collidable->getBool());
         this->physicsBody->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this)));
+
         this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
 
         this->setPosition(this->initialPosition);

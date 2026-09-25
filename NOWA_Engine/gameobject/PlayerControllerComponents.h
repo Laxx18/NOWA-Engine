@@ -9,6 +9,9 @@
 #include "modules/OgreALModule.h"
 #include "utilities/AnimationBlenderV2.h"
 
+#include <map>
+#include <set>
+
 namespace NOWA
 {
     class PhysicsActiveComponent;
@@ -16,6 +19,7 @@ namespace NOWA
     class CameraBehaviorComponent;
     class InputDeviceComponent;
     class OgreRecastModule;
+    class LuaPlayerState;
 
     class EXPORTED PlayerControllerComponent : public GameObjectComponent
     {
@@ -221,6 +225,12 @@ namespace NOWA
         void reactOnAnimationFinished(luabind::object closureFunction, bool oneTime);
 
         /**
+         * @brief Gets the wall normal currently blocking the player, or ZERO when nothing is
+         *        in the way. Fed by the physics contact callback, not by rays.
+         */
+        Ogre::Vector3 getBlockedWallNormal(void) const;
+
+        /**
          * @brief Sets the lua closure called whenever the player touches a wall.
          *
          * The closure receives the game object that was hit and the horizontal wall normal.
@@ -234,6 +244,50 @@ namespace NOWA
          *        previous one, so it is safe to call from a per frame script function.
          */
         void reactOnWallContact(luabind::object closureFunction);
+
+        /**
+         * @brief Sets which input action counts as the "action" key, e.g. NOWA_A_ATTACK_1.
+         *
+         * There is deliberately no default: the action id is handed in from lua, so the key
+         * can be remapped per game without touching the engine. A negative value switches
+         * the whole detection off, which is also the initial state.
+         *
+         * @param[in] actionId The action id, taken from the NOWA_A_... constants.
+         */
+        void setActionKey(int actionId);
+
+        int getActionKey(void) const;
+
+        /**
+         * @brief Sets the lua closure called on the RISING EDGE of the action key.
+         *
+         * The closure receives the game object currently in front of the player, or nil when
+         * there is nothing. Deciding WHAT that object is - a rope, a lever, a boulder - is
+         * left to the script: the engine only reports what the front rays found.
+         *
+         * @param[in] closureFunction The closure to set. Calling this again REPLACES the
+         *        previous one.
+         */
+        void reactOnActionPressed(luabind::object closureFunction);
+
+        /**
+         * @brief Remembers the game object the player is currently interacting with.
+         *
+         * A state entered from lua - climbing a rope, pushing a boulder - needs to know WHICH
+         * object it is working on, and a state has no arguments. The id is stored rather than
+         * the pointer, so a deleted game object reports itself as nil instead of dangling.
+         *
+         * @param[in] gameObject The game object, or nullptr to clear it.
+         */
+        void setInteractionGameObject(GameObject* gameObject);
+
+        GameObject* getInteractionGameObject(void) const;
+
+    protected:
+        /**
+         * @brief Fires the action key closure on the rising edge. Called from update().
+         */
+        void internalHandleActionKey(void);
 
     protected:
         virtual void internalShowDebugData(void);
@@ -286,12 +340,6 @@ namespace NOWA
         Variant* useWallSeparationMode;
         std::vector<Variant*> animations;
 
-        /**
-         * @brief Gets the wall normal currently blocking the player, or ZERO when nothing is
-         *        in the way. Fed by the physics contact callback, not by rays.
-         */
-        Ogre::Vector3 getBlockedWallNormal(void) const;
-
         PhysicsActiveComponent* physicsActiveComponent;
         CameraBehaviorComponent* cameraBehaviorComponent;
         InputDeviceComponent* inputDeviceComponent;
@@ -328,6 +376,15 @@ namespace NOWA
         // Contacts arrive deferred on the logic thread, so the normal is kept alive for a
         // short moment rather than only for the exact frame it came in.
         Ogre::Real blockedWallTimer;
+
+        // Action key handling. 'actionId' is negative while no key has been assigned from
+        // lua, which switches the detection off entirely.
+        int actionId;
+        bool actionKeyWasDown;
+        luabind::object actionPressedClosureFunction;
+        // Stored as an ID on purpose: a game object can be deleted while a state is still
+        // running, and a raw pointer would dangle until the state notices.
+        unsigned long interactionGameObjectId;
 
         Ogre::Real timeFallen;
         bool isFallen;
@@ -506,6 +563,81 @@ namespace NOWA
 
         luabind::object getAccelerationChangedClosure(void) const;
 
+        /**
+         * @brief Requests a state change by name, applied at the TOP of the next update.
+         *
+         * Deliberately NOT immediate. A state change is usually triggered from a lua closure,
+         * and those closures run from an area of interest, a contact callback or an attribute
+         * change - that is, potentially from inside the very update() of the state that is
+         * about to be exited. Switching right there would run exit() on a state that is still
+         * in the middle of its own update. Queueing it removes that class of bug entirely.
+         *
+         * The name may address a C++ state registered with the state machine, or a lua state
+         * registered with registerLuaState(). Both live in the SAME state machine, so there
+         * is exactly one current state at any time.
+         *
+         * @param[in] stateName The state to switch to.
+         */
+        void requestState(const Ogre::String& stateName);
+
+        /**
+         * @brief Makes a lua state table addressable by name.
+         *
+         * The table is the same shape the lua state machine has always used: optional
+         * 'enter(gameObject)', 'execute(gameObject, dt)' and 'exit(gameObject)' entries.
+         * Registering does NOT switch to the state, call requestState() for that.
+         * Registering a name twice just swaps the table, which is what a script reload
+         * needs - the instance the state machine may currently point at stays valid.
+         *
+         * @param[in] stateName  The name the state is addressed by.
+         * @param[in] stateTable The lua table holding enter / execute / exit.
+         */
+        void registerLuaState(const Ogre::String& stateName, luabind::object stateTable);
+
+        /**
+         * @brief Requests the state that was active before the current one. Does nothing
+         *        when there is none yet.
+         */
+        void requestPreviousState(void);
+
+        Ogre::String getCurrentStateName(void) const;
+
+        Ogre::String getPreviousStateName(void) const;
+
+        bool isInState(const Ogre::String& stateName) const;
+
+        /**
+         * @brief Lua closure called after every state change. Receives the old and the new
+         *        state name, both as strings.
+         */
+        void reactOnStateChanged(luabind::object closureFunction);
+
+        /**
+         * @brief Requests a state that runs IN PARALLEL to the current one.
+         *
+         * The state machine updates the child state first and the current state afterwards,
+         * so an attack can play while the walking state keeps driving movement, input and
+         * animation. That is the difference to requestState(), which REPLACES the current
+         * state and therefore stops the player dead.
+         *
+         * A child state should not fight the running state: leave the velocity, the facing
+         * and addTime() to it and only do what is genuinely on top - the attack animation,
+         * a timer, an event. Requesting a child state while one is already running ends the
+         * old one properly first.
+         *
+         * Applied at the top of the next update, exactly like requestState().
+         *
+         * @param[in] stateName The state to run in parallel.
+         */
+        void requestChildState(const Ogre::String& stateName);
+
+        /**
+         * @brief Ends the running child state. Does nothing when there is none.
+         */
+        void requestEndChildState(void);
+
+        Ogre::String getCurrentChildStateName(void) const;
+
     public:
         static const Ogre::String AttrJumpForce(void)
         {
@@ -614,6 +746,30 @@ namespace NOWA
         // multi jump can play a different animation than the jump off the ground.
         const unsigned short animationsCount = 15;
         KI::StateMachine<GameObject>* stateMachine;
+
+        // Lua states are owned HERE, not by the state machine. StateMachine::registerState
+        // can only default construct its instances, which a state carrying a lua table
+        // cannot be - but changeState() also accepts a raw IState pointer, and that is the
+        // door these go through. The machine therefore still does all the exit / enter
+        // pairing, and there is only ever one state machine.
+        std::map<Ogre::String, LuaPlayerState*> luaStates;
+        // Names of the states registered with the state machine itself, so requestState()
+        // can report an unknown name instead of tripping the assert inside changeState().
+        std::set<Ogre::String> cppStateNames;
+
+        Ogre::String currentStateName;
+        Ogre::String previousStateName;
+        Ogre::String requestedStateName;
+        bool hasStateRequest;
+        luabind::object stateChangedClosureFunction;
+
+        // Child state: runs in parallel to the current state, see requestChildState().
+        Ogre::String currentChildStateName;
+        Ogre::String requestedChildStateName;
+        bool hasChildStateRequest;
+
+        void internalApplyStateRequest(void);
+        void internalApplyChildStateRequest(void);
     };
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -914,6 +1070,61 @@ namespace NOWA
         LEFT = 2,
         UP = 3,
         DOWN = 4
+    };
+
+    //---------------------------LuaPlayerState-------------------
+
+    /**
+     * @brief A state of the player's state machine whose behavior lives in a lua table.
+     *
+     * This is the bridge that lets hand written C++ states (the locomotion, which has to run
+     * at logic rate and touches the velocity servo, the slope projection and the animation
+     * blender gate) and script authored states (attacking, a portal, a cutscene, a ragdoll
+     * timeout) sit in ONE state machine instead of two competing ones.
+     *
+     * The table has the same shape the lua state machine has always used:
+     * 'enter(gameObject)', 'execute(gameObject, dt)' and 'exit(gameObject)'. All three are
+     * optional - a missing entry is simply skipped.
+     */
+    class EXPORTED LuaPlayerState : public NOWA::KI::IState<GameObject>
+    {
+    public:
+        LuaPlayerState();
+
+        virtual ~LuaPlayerState();
+
+    public:
+        static Ogre::String getName(void)
+        {
+            return "LuaPlayerState";
+        }
+
+        void setStateName(const Ogre::String& stateName);
+
+        Ogre::String getStateName(void) const;
+
+        /**
+         * @brief Sets (or replaces) the lua table backing this state.
+         *
+         * An invalid object switches the state off without destroying it, which is what
+         * disconnect() does: the lua environment is gone by then, but the state machine may
+         * still hold this pointer.
+         */
+        void setStateTable(luabind::object stateTable);
+
+        bool hasStateTable(void) const;
+
+        virtual void enter(GameObject* player) override;
+
+        virtual void update(GameObject* player, Ogre::Real dt) override;
+
+        virtual void exit(GameObject* player) override;
+
+    private:
+        void callStateFunction(const Ogre::String& functionName, GameObject* player);
+
+        luabind::object stateTable;
+        Ogre::String stateName;
     };
 
     //---------------------------WalkingStateJumpNRun-------------------

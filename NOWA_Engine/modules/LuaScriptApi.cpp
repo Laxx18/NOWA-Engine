@@ -5283,130 +5283,239 @@ namespace NOWA
     }
 
     void bindPlayerControllerComponents(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
-    {
-        // Attention: PlayerControllerComponent::getCameraBehaviorComponent() returns
-        // CameraBehaviorComponent*, so luabind needs that type registered before this class is
-        // declared - regardless of where this legacy bind function runs relative to the modern
-        // registry loop. This call is idempotent per lua_State (guarded inside
-        // CameraBehaviorComponent::createStaticApiForLua()), so it is safe to call here even
-        // though the component registry, and every camera behavior subclass, also calls it.
-        NOWA::CameraBehaviorComponent::createStaticApiForLua(lua, gameObjectClass, gameObjectControllerClass);
-
-        module(lua)
-        [
-            class_<PlayerControllerComponent, GameObjectComponent>("PlayerControllerComponent")
-            // .def("getClassName", &PlayerControllerComponent::getClassName)
-            // .def("clone", &PlayerControllerComponent::clone)
-            // .def("getClassId", &PlayerControllerComponent::getClassId)
-            .def("getAnimationBlender", &PlayerControllerComponent::getAnimationBlender)
-            .def("setRotationSpeed", &PlayerControllerComponent::setRotationSpeed)
-            .def("getRotationSpeed", &PlayerControllerComponent::getRotationSpeed)
-            .def("setAnimationSpeed", &PlayerControllerComponent::setAnimationSpeed)
-            .def("getAnimationSpeed", &PlayerControllerComponent::getAnimationSpeed)
-            .def("setMoveWeight", &PlayerControllerComponent::setMoveWeight)
-            .def("lockMovement", &PlayerControllerComponent::lockMovement)
-            .def("getMoveWeight", &PlayerControllerComponent::getMoveWeight)
-            .def("setJumpWeight", &PlayerControllerComponent::setJumpWeight)
-            .def("getJumpWeight", &PlayerControllerComponent::getJumpWeight)
-            .def("setIdle", &PlayerControllerComponent::setIdle)
-            .def("isIdle", &PlayerControllerComponent::isIdle)
-            .def("getPhysicsComponent", &PlayerControllerComponent::getPhysicsComponent)
-            .def("getPhysicsRagDollComponent", &PlayerControllerComponent::getPhysicsRagDollComponent)
-            .def("getCameraBehaviorComponent", &PlayerControllerComponent::getCameraBehaviorComponent)
-            .def("setAcceleration", &PlayerControllerComponent::setAcceleration)
-            .def("getAcceleration", &PlayerControllerComponent::getAcceleration)
-            .def("getNormal", &PlayerControllerComponent::getNormal)
-            .def("getHeight", &PlayerControllerComponent::getHeight)
-            .def("getSlope", &PlayerControllerComponent::getSlope)
-            .def("getHitGameObjectBelow", &PlayerControllerComponent::getHitGameObjectBelow)
-            .def("getHitGameObjectFront", &PlayerControllerComponent::getHitGameObjectFront)
-            .def("getHitGameObjectUp", &PlayerControllerComponent::getHitGameObjectUp)
-            .def("getIsFallen", &PlayerControllerComponent::getIsFallen)
-            .def("reactOnAnimationFinished", &PlayerControllerComponent::reactOnAnimationFinished)
-            .def("reactOnWallContact", &PlayerControllerComponent::reactOnWallContact)
-        ];
-
-        AddClassToCollection("PlayerControllerComponent", "class inherits GameObjectComponent", PlayerControllerComponent::getStaticInfoText());
-        AddClassToCollection("PlayerControllerComponent", "void setDefaultDirection(Vector3 direction)", "Sets the direction the player is modelled.");
-        AddClassToCollection("PlayerControllerComponent", "AnimationBlender getAnimationBlender()", "Gets the used animation blender so that the animations may be manipulated manually.");
-        AddClassToCollection("PlayerControllerComponent", "void setRotationSpeed(float rotationSpeed)", "Sets the rotation speed for the player. Valid values are: [5, 15]. Default is 10.");
-        AddClassToCollection("PlayerControllerComponent", "float getRotationSpeed()", "Gets the player rotation speed.");
-        AddClassToCollection("PlayerControllerComponent", "void setAnimationSpeed(float animationSpeed)", "Sets the animation speed for the player.");
-        AddClassToCollection("PlayerControllerComponent", "float getAnimationSpeed()", "Gets the player animation speed.");
-        AddClassToCollection("PlayerControllerComponent", "Vector3 getNormal()", "Gets the player ground normal vector.");
-        AddClassToCollection("PlayerControllerComponent", "float getHeight()", "Gets the player height from the ground. Note: If the player is in air and there is no ground, the height is always 500. This value can be used for checking.");
-        AddClassToCollection("PlayerControllerComponent", "float getSlope()", "Gets the player slope between the player and the ground.");
-        AddClassToCollection("PlayerControllerComponent", "void setMoveWeight(float moveWeight)", "Sets the move weight for the player.");
-        AddClassToCollection("PlayerControllerComponent", "void requestMoveWeight(string ownerName, float moveWeight)",
-            "Requests a move weight for the given owner name, "
-            "so that the lowest move weight is always present. E.g. when performing a pickup animation, the move weight is set to 0, and only the owner can release the move weight again!");
-        AddClassToCollection("PlayerControllerComponent", "void releaseMoveWeight(string ownerName)",
-            "Release the move weight for the given owner name, "
-            "so that the next higher move weight is present again.");
-        AddClassToCollection("PlayerControllerComponent", "void setJumpWeight(float jumpWeight)", "Sets the jump weight for the player.");
-        AddClassToCollection("PlayerControllerComponent", "void requestJumpWeight(string ownerName, float jumpWeight)",
-            "Requests a jump weight for the given owner name, "
-            "so that the lowest jump weight is always present. E.g. when performing a pickup animation, the jump weight is set to 0, and only the owner can release the jump weight again!");
-        AddClassToCollection("PlayerControllerComponent", "void releaseJumpWeight(string ownerName)",
-            "Release the jump weight for the given owner name, "
-            "so that the next higher jump weight is present again.");
-        AddClassToCollection("PlayerControllerComponent", "PhysicsActiveComponent getPhysicsComponent()", "Gets physics active component for direct manipulation.");
-        AddClassToCollection("PlayerControllerComponent", "PhysicsRagDollComponent getPhysicsRagDollComponent()", "Gets physics ragdoll component for direct manipulation. Note: Only use this function if the game object has a ragdoll created.");
-        AddClassToCollection("PlayerControllerComponent", "GameObject getHitGameObjectBelow()", "Gets the game object, that has been hit below the player. Note: Always check against nil.");
-        AddClassToCollection("PlayerControllerComponent", "GameObject getHitGameObjectFront()", "Gets the game object, that has been hit in front of the player. Note: Always check against nil.");
-        AddClassToCollection("PlayerControllerComponent", "GameObject getHitGameObjectBelow()", "Gets the game object, that has been hit up the player. Note: Always check against nil.");
-
-        AddClassToCollection("PlayerControllerComponent", "bool getIsFallen()", "Gets whether the player is fallen, that is: Player has usually its upright posture, but if he fels down due to some forces, this will be detected for reaction.");
-
-        AddClassToCollection("PlayerControllerComponent", "void reactOnAnimationFinished(func closureFunction, bool oneTime)", "Sets whether to react when the given animation has finished.");
-        AddClassToCollection("PlayerControllerComponent", "void reactOnWallContact(func closureFunction)",
-            "Sets the closure function which is called whenever the player touches a wall. The closure receives the hit game object and the horizontal wall normal. It is called regardless of 'Use Wall Separation Mode' - that flag only decides "
-            "whether the built-in reaction runs, which cancels the movement input pointing into the wall. Switch it off to handle the contact entirely in lua, e.g. for a metroid style ledge grab.");
-
-        // Declarations missing
-        // ...
-        // AddClassToCollection("PlayerControllerComponent", "Vector3 getCenterBottomOfPlayer()", "Gets center of bottom vector of the player.");
-        // AddClassToCollection("PlayerControllerComponent", "Vector3 getCenterBottomOfPlayer()", "Gets middle vector of the player.");
-
-        module(lua)[class_<PlayerControllerJumpNRunComponent, PlayerControllerComponent>("PlayerControllerJumpNRunComponent")
-                .def("setJumpForce", &PlayerControllerJumpNRunComponent::setJumpForce)
-                .def("getJumpForce", &PlayerControllerJumpNRunComponent::getJumpForce)];
-
-        AddClassToCollection("PlayerControllerJumpNRunComponent", "class inherits PlayerControllerComponent", PlayerControllerJumpNRunComponent::getStaticInfoText());
-        AddClassToCollection("PlayerControllerJumpNRunComponent", "void setJumpForce(float jumpForce)", "Sets the jump force for the player.");
-        AddClassToCollection("PlayerControllerJumpNRunComponent", "float getJumpForce()", "Gets the jump force.");
-
-        module(lua)[class_<PlayerControllerJumpNRunLuaComponent, PlayerControllerComponent>("PlayerControllerJumpNRunLuaComponent")
-                .def("setStartStateName", &PlayerControllerJumpNRunLuaComponent::setStartStateName)
-                .def("getStartStateName", &PlayerControllerJumpNRunLuaComponent::getStartStateName)
-                .def("getStateMachine", &PlayerControllerJumpNRunLuaComponent::getStateMachine)];
-
-        AddClassToCollection("PlayerControllerJumpNRunLuaComponent", "class inherits PlayerControllerComponent", PlayerControllerJumpNRunLuaComponent::getStaticInfoText());
-        AddClassToCollection("PlayerControllerJumpNRunLuaComponent", "void setStartStateName(String startName)", "Sets start state name in lua script, that should be executed.");
-        AddClassToCollection("PlayerControllerJumpNRunLuaComponent", "String getStartStateName()", "Gets start state name in lua script, that should be executed.");
-        AddClassToCollection("PlayerControllerJumpNRunLuaComponent", "LuaStateMachine getStateMachine()", "Gets the state machine to switch between states etc. in lua script.");
-
-        module(lua)[class_<PlayerControllerClickToPointComponent, PlayerControllerComponent>("PlayerControllerClickToPointComponent")
-                .def("setCategories", &PlayerControllerClickToPointComponent::setCategories)
-                .def("getCategories", &PlayerControllerClickToPointComponent::getCategories)
-                // .def("getCategoriesId", &PlayerControllerClickToPointComponent::getCategoriesId)
-                .def("getCategoriesId", &getCategoriesId)
-                .def("setRange", &PlayerControllerClickToPointComponent::setRange)
-                .def("getRange", &PlayerControllerClickToPointComponent::getRange)
-                .def("setPathSlot", &PlayerControllerClickToPointComponent::setPathSlot)
-                .def("getPathSlot", &PlayerControllerClickToPointComponent::getPathSlot)
-                .def("getMovingBehavior", &PlayerControllerClickToPointComponent::getMovingBehavior)];
-
-        AddClassToCollection("PlayerControllerClickToPointComponent", "class inherits PlayerControllerComponent", PlayerControllerClickToPointComponent::getStaticInfoText());
-        AddClassToCollection("PlayerControllerClickToPointComponent", "void setCategories(String categories)", "Sets categories (may be composed: e.g. ALL or ALL-House+Floor a new click point can be placed via mouse.");
-        AddClassToCollection("PlayerControllerClickToPointComponent", "String getCategories()", "Gets categories a click point can be placed via mouse.");
-        AddClassToCollection("PlayerControllerClickToPointComponent", "number getCategoryIds()", "Gets category ids a click point can be placed via mouse.");
-        AddClassToCollection("PlayerControllerClickToPointComponent", "void setRange(float range)", "Sets the maximum range a point can be placed away from the player.");
-        AddClassToCollection("PlayerControllerClickToPointComponent", "float getRange()", "Gets the maximum range a point can be placed away from the player.");
-        AddClassToCollection("PlayerControllerClickToPointComponent", "void setPathSlot(int pathSlot)", "Sets path slot, a path should be generated in.");
-        AddClassToCollection("PlayerControllerClickToPointComponent", "float getPathSlot()", "Gets path slot a path is generated.");
-        AddClassToCollection("PlayerControllerClickToPointComponent", "MovingBehavior getMovingBehavior()", "Gets moving behavior for direct ai manipulation.");
-    }
+{
+    // Attention: PlayerControllerComponent::getCameraBehaviorComponent() returns
+    // CameraBehaviorComponent*, so luabind needs that type registered before this class is
+    // declared - regardless of where this legacy bind function runs relative to the modern
+    // registry loop. This call is idempotent per lua_State (guarded inside
+    // CameraBehaviorComponent::createStaticApiForLua()), so it is safe to call here even
+    // though the component registry, and every camera behavior subclass, also calls it.
+    NOWA::CameraBehaviorComponent::createStaticApiForLua(lua, gameObjectClass, gameObjectControllerClass);
+ 
+    module(lua)
+    [
+        class_<PlayerControllerComponent, GameObjectComponent>("PlayerControllerComponent")
+        // .def("getClassName", &PlayerControllerComponent::getClassName)
+        // .def("clone", &PlayerControllerComponent::clone)
+        // .def("getClassId", &PlayerControllerComponent::getClassId)
+        .def("getAnimationBlender", &PlayerControllerComponent::getAnimationBlender)
+        .def("setRotationSpeed", &PlayerControllerComponent::setRotationSpeed)
+        .def("getRotationSpeed", &PlayerControllerComponent::getRotationSpeed)
+        .def("setAnimationSpeed", &PlayerControllerComponent::setAnimationSpeed)
+        .def("getAnimationSpeed", &PlayerControllerComponent::getAnimationSpeed)
+        .def("setMoveWeight", &PlayerControllerComponent::setMoveWeight)
+        .def("lockMovement", &PlayerControllerComponent::lockMovement)
+        .def("getMoveWeight", &PlayerControllerComponent::getMoveWeight)
+        .def("setJumpWeight", &PlayerControllerComponent::setJumpWeight)
+        .def("getJumpWeight", &PlayerControllerComponent::getJumpWeight)
+        .def("setIdle", &PlayerControllerComponent::setIdle)
+        .def("isIdle", &PlayerControllerComponent::isIdle)
+        .def("getPhysicsComponent", &PlayerControllerComponent::getPhysicsComponent)
+        .def("getPhysicsRagDollComponent", &PlayerControllerComponent::getPhysicsRagDollComponent)
+        .def("getCameraBehaviorComponent", &PlayerControllerComponent::getCameraBehaviorComponent)
+        .def("setAcceleration", &PlayerControllerComponent::setAcceleration)
+        .def("getAcceleration", &PlayerControllerComponent::getAcceleration)
+        .def("getNormal", &PlayerControllerComponent::getNormal)
+        .def("getHeight", &PlayerControllerComponent::getHeight)
+        .def("getSlope", &PlayerControllerComponent::getSlope)
+        .def("getHitGameObjectBelow", &PlayerControllerComponent::getHitGameObjectBelow)
+        .def("getHitGameObjectFront", &PlayerControllerComponent::getHitGameObjectFront)
+        .def("getHitGameObjectUp", &PlayerControllerComponent::getHitGameObjectUp)
+        .def("getFrontNormal", &PlayerControllerComponent::getFrontNormal)
+        .def("getIsFallen", &PlayerControllerComponent::getIsFallen)
+        .def("reactOnAnimationFinished", &PlayerControllerComponent::reactOnAnimationFinished)
+        .def("reactOnWallContact", &PlayerControllerComponent::reactOnWallContact)
+        .def("getBlockedWallNormal", &PlayerControllerComponent::getBlockedWallNormal)
+        .def("setActionKey", &PlayerControllerComponent::setActionKey)
+        .def("getActionKey", &PlayerControllerComponent::getActionKey)
+        .def("reactOnActionPressed", &PlayerControllerComponent::reactOnActionPressed)
+        .def("setInteractionGameObject", &PlayerControllerComponent::setInteractionGameObject)
+        .def("getInteractionGameObject", &PlayerControllerComponent::getInteractionGameObject)
+    ];
+ 
+    AddClassToCollection("PlayerControllerComponent", "class inherits GameObjectComponent", PlayerControllerComponent::getStaticInfoText());
+    AddClassToCollection("PlayerControllerComponent", "void setDefaultDirection(Vector3 direction)", "Sets the direction the player is modelled.");
+    AddClassToCollection("PlayerControllerComponent", "AnimationBlender getAnimationBlender()", "Gets the used animation blender so that the animations may be manipulated manually.");
+    AddClassToCollection("PlayerControllerComponent", "void setRotationSpeed(float rotationSpeed)", "Sets the rotation speed for the player. Valid values are: [5, 15]. Default is 10.");
+    AddClassToCollection("PlayerControllerComponent", "float getRotationSpeed()", "Gets the player rotation speed.");
+    AddClassToCollection("PlayerControllerComponent", "void setAnimationSpeed(float animationSpeed)", "Sets the animation speed for the player.");
+    AddClassToCollection("PlayerControllerComponent", "float getAnimationSpeed()", "Gets the player animation speed.");
+    AddClassToCollection("PlayerControllerComponent", "Vector3 getNormal()", "Gets the player ground normal vector.");
+    AddClassToCollection("PlayerControllerComponent", "float getHeight()", "Gets the player height from the ground. Note: If the player is in air and there is no ground, the height is always 500. This value can be used for checking.");
+    AddClassToCollection("PlayerControllerComponent", "float getSlope()", "Gets the player slope between the player and the ground.");
+    AddClassToCollection("PlayerControllerComponent", "void setMoveWeight(float moveWeight)", "Sets the move weight for the player.");
+    AddClassToCollection("PlayerControllerComponent", "void lockMovement(string ownerName, bool lock)",
+        "Locks or releases the player's movement for the given owner name. Only the owner that locked the movement can release it again, "
+        "so two independent scripts cannot accidentally unlock each other. E.g. lock it while a pickup animation plays and release it in the animation finished closure.");
+    AddClassToCollection("PlayerControllerComponent", "void requestMoveWeight(string ownerName, float moveWeight)",
+        "Requests a move weight for the given owner name, "
+        "so that the lowest move weight is always present. E.g. when performing a pickup animation, the move weight is set to 0, and only the owner can release the move weight again!");
+    AddClassToCollection("PlayerControllerComponent", "void releaseMoveWeight(string ownerName)",
+        "Release the move weight for the given owner name, "
+        "so that the next higher move weight is present again.");
+    AddClassToCollection("PlayerControllerComponent", "void setJumpWeight(float jumpWeight)", "Sets the jump weight for the player.");
+    AddClassToCollection("PlayerControllerComponent", "void requestJumpWeight(string ownerName, float jumpWeight)",
+        "Requests a jump weight for the given owner name, "
+        "so that the lowest jump weight is always present. E.g. when performing a pickup animation, the jump weight is set to 0, and only the owner can release the jump weight again!");
+    AddClassToCollection("PlayerControllerComponent", "void releaseJumpWeight(string ownerName)",
+        "Release the jump weight for the given owner name, "
+        "so that the next higher jump weight is present again.");
+    AddClassToCollection("PlayerControllerComponent", "PhysicsActiveComponent getPhysicsComponent()", "Gets physics active component for direct manipulation.");
+    AddClassToCollection("PlayerControllerComponent", "PhysicsRagDollComponent getPhysicsRagDollComponent()", "Gets physics ragdoll component for direct manipulation. Note: Only use this function if the game object has a ragdoll created.");
+    AddClassToCollection("PlayerControllerComponent", "GameObject getHitGameObjectBelow()", "Gets the game object, that has been hit below the player. Note: Always check against nil.");
+    AddClassToCollection("PlayerControllerComponent", "GameObject getHitGameObjectFront()", "Gets the game object, that has been hit in front of the player. Note: Always check against nil.");
+    AddClassToCollection("PlayerControllerComponent", "GameObject getHitGameObjectUp()", "Gets the game object, that has been hit up the player. Note: Always check against nil.");
+    AddClassToCollection("PlayerControllerComponent", "Vector3 getFrontNormal()", "Gets the surface normal of whatever the front rays hit, or Vector3.ZERO when there is nothing in front of the player.");
+ 
+    AddClassToCollection("PlayerControllerComponent", "bool getIsFallen()", "Gets whether the player is fallen, that is: Player has usually its upright posture, but if he fels down due to some forces, this will be detected for reaction.");
+ 
+    AddClassToCollection("PlayerControllerComponent", "void reactOnAnimationFinished(func closureFunction, bool oneTime)", "Sets whether to react when the given animation has finished.");
+    AddClassToCollection("PlayerControllerComponent", "void reactOnWallContact(func closureFunction)",
+        "Sets the closure function which is called whenever the player touches a wall. The closure receives the hit game object and the horizontal wall normal. It is called regardless of 'Use Wall Separation Mode' - that flag only decides "
+        "whether the built-in reaction runs, which cancels the movement input pointing into the wall. Switch it off to handle the contact entirely in lua, e.g. for a metroid style ledge grab.");
+    AddClassToCollection("PlayerControllerComponent", "Vector3 getBlockedWallNormal()",
+        "Gets the horizontal normal of the wall that currently blocks the player, or Vector3.ZERO when nothing is in the way. "
+        "The value comes from the physics contact callback and is only valid for the frame it was reported in, so read it per frame instead of storing it.");
+ 
+    AddClassToCollection("PlayerControllerComponent", "void setActionKey(int actionId)",
+        "Sets which input action counts as the action key, e.g. NOWA_A_ATTACK_1. There is no default on purpose, so the key can be remapped per game. "
+        "A negative value switches the detection off, which is also the initial state.");
+    AddClassToCollection("PlayerControllerComponent", "int getActionKey()", "Gets the action id set via setActionKey, or -1 when the action key is switched off.");
+    AddClassToCollection("PlayerControllerComponent", "void reactOnActionPressed(func closureFunction)",
+        "Sets the closure function which is called on the RISING EDGE of the action key, so holding the key fires exactly once. "
+        "The closure receives the game object currently in front of the player, or nil when there is nothing. "
+        "Deciding what that object is - a rope, a lever, a boulder - is left to the script. Example: reactOnActionPressed(function(other) ... end).");
+    AddClassToCollection("PlayerControllerComponent", "void setInteractionGameObject(GameObject gameObject)",
+        "Remembers the game object the player is interacting with, so a state entered afterwards knows what it is working on. Pass nil to clear it.");
+    AddClassToCollection("PlayerControllerComponent", "GameObject getInteractionGameObject()",
+        "Gets the game object set via setInteractionGameObject. The id is resolved on every call, so a deleted game object is reported as nil instead of crashing. Note: Always check against nil.");
+ 
+    // Declarations missing
+    // ...
+    // AddClassToCollection("PlayerControllerComponent", "Vector3 getCenterBottomOfPlayer()", "Gets center of bottom vector of the player.");
+    // AddClassToCollection("PlayerControllerComponent", "Vector3 getCenterBottomOfPlayer()", "Gets middle vector of the player.");
+ 
+    // Attention: getStateMaschine() is deliberately NOT bound. It hands out a
+    // KI::StateMachine<GameObject>*, which is not a registered luabind type, and going
+    // through it would let a script switch states from inside the update of the state that
+    // is being left. requestState() is the supported way in: it queues the change and it
+    // applies it at the top of the next update.
+    module(lua)
+    [
+        class_<PlayerControllerJumpNRunComponent, PlayerControllerComponent>("PlayerControllerJumpNRunComponent")
+        .def("setJumpForce", &PlayerControllerJumpNRunComponent::setJumpForce)
+        .def("getJumpForce", &PlayerControllerJumpNRunComponent::getJumpForce)
+        .def("setDoubleJump", &PlayerControllerJumpNRunComponent::setDoubleJump)
+        .def("getDoubleJump", &PlayerControllerJumpNRunComponent::getDoubleJump)
+        .def("setXJump", &PlayerControllerJumpNRunComponent::setXJump)
+        .def("getXJump", &PlayerControllerJumpNRunComponent::getXJump)
+        .def("setRunAfterWalkTime", &PlayerControllerJumpNRunComponent::setRunAfterWalkTime)
+        .def("getRunAfterWalkTime", &PlayerControllerJumpNRunComponent::getRunAfterWalkTime)
+        .def("setFor2D", &PlayerControllerJumpNRunComponent::setFor2D)
+        .def("getIsFor2D", &PlayerControllerJumpNRunComponent::getIsFor2D)
+        .def("setUseAcceleration", &PlayerControllerJumpNRunComponent::setUseAcceleration)
+        .def("getUseAcceleration", &PlayerControllerJumpNRunComponent::getUseAcceleration)
+        .def("setAccelerationDuration", &PlayerControllerJumpNRunComponent::setAccelerationDuration)
+        .def("getAccelerationDuration", &PlayerControllerJumpNRunComponent::getAccelerationDuration)
+        .def("reactOnDirectionChanged", &PlayerControllerJumpNRunComponent::reactOnDirectionChanged)
+        .def("reactOnJump", &PlayerControllerJumpNRunComponent::reactOnJump)
+        .def("reactOnLand", &PlayerControllerJumpNRunComponent::reactOnLand)
+        .def("reactOnAccelerationChanged", &PlayerControllerJumpNRunComponent::reactOnAccelerationChanged)
+        .def("registerLuaState", &PlayerControllerJumpNRunComponent::registerLuaState)
+        .def("requestState", &PlayerControllerJumpNRunComponent::requestState)
+        .def("requestPreviousState", &PlayerControllerJumpNRunComponent::requestPreviousState)
+        .def("getCurrentStateName", &PlayerControllerJumpNRunComponent::getCurrentStateName)
+        .def("getPreviousStateName", &PlayerControllerJumpNRunComponent::getPreviousStateName)
+        .def("requestChildState", &PlayerControllerJumpNRunComponent::requestChildState)
+        .def("requestEndChildState", &PlayerControllerJumpNRunComponent::requestEndChildState)
+        .def("getCurrentChildStateName", &PlayerControllerJumpNRunComponent::getCurrentChildStateName)
+        .def("isInState", &PlayerControllerJumpNRunComponent::isInState)
+        .def("reactOnStateChanged", &PlayerControllerJumpNRunComponent::reactOnStateChanged)
+    ];
+ 
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "class inherits PlayerControllerComponent", PlayerControllerJumpNRunComponent::getStaticInfoText());
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "void setJumpForce(float jumpForce)", "Sets the jump force for the player.");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "float getJumpForce()", "Gets the jump force.");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "void setDoubleJump(bool doubleJump)", "Sets whether the player may jump a second time while airborne.");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "bool getDoubleJump()", "Gets whether the double jump is enabled.");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "void setXJump(bool xJump)",
+        "Sets whether the player may jump again on EVERY press while airborne, without any limit (metroid style). This overrides the double jump, which stops after the second jump.");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "bool getXJump()", "Gets whether the unlimited air jump is enabled.");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "void setRunAfterWalkTime(float runAfterWalkTime)",
+        "Sets after how many seconds of uninterrupted walking the player switches to running. Only used when 'UseAcceleration' is off, which replaces this hard switch with a continuous ramp.");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "float getRunAfterWalkTime()", "Gets the seconds of walking after which the player starts running.");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "void setFor2D(bool for2D)",
+        "Sets whether the player is controlled in a 2.5D jump 'n' run, that is: only left and right, and a 180 degree turn when the direction changes.");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "bool getIsFor2D()", "Gets whether the player is controlled in 2.5D mode.");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "void setUseAcceleration(bool useAcceleration)",
+        "Sets whether the speed ramps continuously from the physics component's speed up to its max speed while running. A direction change or hitting something in front resets the ramp, jumping does not.");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "bool getUseAcceleration()", "Gets whether the continuous speed ramp is used.");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "void setAccelerationDuration(float accelerationDuration)", "Sets how many seconds of uninterrupted running the speed ramp needs to reach the max speed.");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "float getAccelerationDuration()", "Gets the duration in seconds the speed ramp needs to reach the max speed.");
+ 
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "void reactOnDirectionChanged(func closureFunction)",
+        "Sets the closure function which is called when the player reverses his walking direction in 2.5D mode. The closure receives the old and the new direction as numbers "
+        "(0 = none, 1 = up, 2 = down, 3 = left, 4 = right). Example: reactOnDirectionChanged(function(oldDirection, newDirection) ... end).");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "void reactOnJump(func closureFunction)",
+        "Sets the closure function which is called on every successful jump. The closure receives the jump count, so an air jump can be told apart from a jump off the ground. "
+        "Example: reactOnJump(function(jumpCount) ... end).");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "void reactOnLand(func closureFunction)",
+        "Sets the closure function which is called when the player touches the ground again. The closure receives how long the player had been falling, in seconds, so dust, "
+        "camera shake or fall damage can be scaled by the drop height. Example: reactOnLand(function(fallTime) ... end).");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "void reactOnAccelerationChanged(func closureFunction)",
+        "Sets the closure function which is called whenever the speed ramp changes. The closure receives the current speed and the maximum speed. Only called on a real change, "
+        "not once per frame. Example: reactOnAccelerationChanged(function(currentSpeed, maxSpeed) ... end).");
+ 
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "void registerLuaState(string stateName, table stateTable)",
+        "Makes a lua state table addressable by name, so it can live in the same state machine as the built in C++ walking state. The table may have an 'enter(gameObject)', "
+        "an 'execute(gameObject, dt)' and an 'exit(gameObject)' entry, all optional. Registering does NOT switch to the state, use requestState for that. Registering the same "
+        "name twice only swaps the table, which is what a script reload needs. Example: registerLuaState(\"AttackState\", AttackState).");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "void requestState(string stateName)",
+        "Requests a state change by name. The name may address the built in state 'WalkingStateJumpNRun' or any state registered via registerLuaState. "
+        "The change is applied at the TOP of the next update and never immediately, so it is safe to call from a closure that runs while the current state is still updating. "
+        "An unknown name is reported in the log and ignored.");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "void requestPreviousState()", "Requests the state that was active before the current one. Does nothing when there is none yet.");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "string getCurrentStateName()", "Gets the name of the currently active state.");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "string getPreviousStateName()", "Gets the name of the state that was active before the current one, or an empty string when there is none.");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "bool isInState(string stateName)", "Gets whether the given state is the currently active one.");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "void reactOnStateChanged(func closureFunction)",
+        "Sets the closure function which is called after every state change. The closure receives the old and the new state name as strings. "
+        "Example: reactOnStateChanged(function(oldName, newName) ... end).");
+ 
+    module(lua)[class_<PlayerControllerJumpNRunLuaComponent, PlayerControllerComponent>("PlayerControllerJumpNRunLuaComponent")
+            .def("setStartStateName", &PlayerControllerJumpNRunLuaComponent::setStartStateName)
+            .def("getStartStateName", &PlayerControllerJumpNRunLuaComponent::getStartStateName)
+            .def("getStateMachine", &PlayerControllerJumpNRunLuaComponent::getStateMachine)];
+ 
+    AddClassToCollection("PlayerControllerJumpNRunLuaComponent", "class inherits PlayerControllerComponent", PlayerControllerJumpNRunLuaComponent::getStaticInfoText());
+    AddClassToCollection("PlayerControllerJumpNRunLuaComponent", "void setStartStateName(String startName)", "Sets start state name in lua script, that should be executed.");
+    AddClassToCollection("PlayerControllerJumpNRunLuaComponent", "String getStartStateName()", "Gets start state name in lua script, that should be executed.");
+    AddClassToCollection("PlayerControllerJumpNRunLuaComponent", "LuaStateMachine getStateMachine()", "Gets the state machine to switch between states etc. in lua script.");
+ 
+    module(lua)
+    [
+        class_<PlayerControllerClickToPointComponent, PlayerControllerComponent>("PlayerControllerClickToPointComponent")
+        .def("setCategories", &PlayerControllerClickToPointComponent::setCategories)
+        .def("getCategories", &PlayerControllerClickToPointComponent::getCategories)
+        // .def("getCategoriesId", &PlayerControllerClickToPointComponent::getCategoriesId)
+        .def("getCategoriesId", &getCategoriesId)
+        .def("setRange", &PlayerControllerClickToPointComponent::setRange)
+        .def("getRange", &PlayerControllerClickToPointComponent::getRange)
+        .def("setPathSlot", &PlayerControllerClickToPointComponent::setPathSlot)
+        .def("getPathSlot", &PlayerControllerClickToPointComponent::getPathSlot)
+        .def("getMovingBehavior", &PlayerControllerClickToPointComponent::getMovingBehavior)
+    ];
+ 
+    AddClassToCollection("PlayerControllerClickToPointComponent", "class inherits PlayerControllerComponent", PlayerControllerClickToPointComponent::getStaticInfoText());
+    AddClassToCollection("PlayerControllerClickToPointComponent", "void setCategories(String categories)", "Sets categories (may be composed: e.g. ALL or ALL-House+Floor a new click point can be placed via mouse.");
+    AddClassToCollection("PlayerControllerClickToPointComponent", "String getCategories()", "Gets categories a click point can be placed via mouse.");
+    AddClassToCollection("PlayerControllerClickToPointComponent", "number getCategoryIds()", "Gets category ids a click point can be placed via mouse.");
+    AddClassToCollection("PlayerControllerClickToPointComponent", "void setRange(float range)", "Sets the maximum range a point can be placed away from the player.");
+    AddClassToCollection("PlayerControllerClickToPointComponent", "float getRange()", "Gets the maximum range a point can be placed away from the player.");
+    AddClassToCollection("PlayerControllerClickToPointComponent", "void setPathSlot(int pathSlot)", "Sets path slot, a path should be generated in.");
+    AddClassToCollection("PlayerControllerClickToPointComponent", "float getPathSlot()", "Gets path slot a path is generated.");
+    AddClassToCollection("PlayerControllerClickToPointComponent", "MovingBehavior getMovingBehavior()", "Gets moving behavior for direct ai manipulation.");
+}
 
     void bindMoveMathFunctionComponent(lua_State* lua)
     {

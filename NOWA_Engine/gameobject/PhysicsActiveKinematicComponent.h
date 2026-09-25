@@ -85,6 +85,24 @@ namespace NOWA
 		*/
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
+		/**
+         * @see		PhysicsComponent::setPosition
+         * @note	Routed to setKinematicPositionOrientation, see the .cpp for why.
+         */
+        virtual void setPosition(const Ogre::Vector3& position) override;
+
+        /**
+         * @see		PhysicsComponent::setOrientation
+         * @note	Routed to setKinematicPositionOrientation, see the .cpp for why.
+         */
+        virtual void setOrientation(const Ogre::Quaternion& orientation) override;
+
+        /**
+         * @see		PhysicsComponent::setPositionOrientation
+         * @note	Routed to setKinematicPositionOrientation, see the .cpp for why.
+         */
+        virtual void setPositionOrientation(const Ogre::Vector3& position, const Ogre::Quaternion& orientation) override;
+
 		static unsigned int getStaticClassId(void)
 		{
 			return NOWA::getIdFromName("PhysicsActiveKinematicComponent");
@@ -139,6 +157,11 @@ namespace NOWA
 		virtual bool createDynamicBody(void);
 	private:
 		Variant* onKinematicContactFunctionName;
+        // Last frame's transform, used to derive the velocity newton needs to see a swept body
+        // instead of a teleport. See update() for why.
+        Ogre::Vector3 previousPosition;
+        Ogre::Quaternion previousOrientation;
+        bool hasPreviousTransform;
 	};
 
 }; //namespace end

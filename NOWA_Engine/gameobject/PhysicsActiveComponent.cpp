@@ -562,6 +562,7 @@ namespace NOWA
 
         // set user data for ogrenewt
         this->physicsBody->setUserData(OgreNewt::Any(static_cast<PhysicsComponent*>(this)));
+
         this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
 
         this->setPosition(this->initialPosition);
@@ -644,7 +645,8 @@ namespace NOWA
 
         this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
 
-        this->physicsBody->setPositionOrientation(this->initialPosition, this->initialOrientation);
+        this->setPosition(this->initialPosition);
+        this->setOrientation(this->initialOrientation);
 
         this->setConstraintAxis(this->constraintAxis->getVector3());
         // Pin the object stand in pose and not fall down
@@ -820,6 +822,16 @@ namespace NOWA
 
         this->physicsBody->setType(this->gameObjectPtr->getCategoryId());
         this->physicsBody->setUserData(OgreNewt::Any(static_cast<PhysicsComponent*>(this)));
+
+        // Attention: the body transform MUST be set BEFORE attachNode(). attachNode() calls
+        // updateNode(1.0, true), which pushes the body's CURRENT transform into the scene node via the
+        // teleport path (GraphicsModule::setNodePosition / setNodeOrientation). A freshly constructed
+        // body still sits at the identity transform, so the node was warped to 0 0 0 with identity
+        // orientation first and only corrected by the following setPosition() / setOrientation() -
+        // with one rendered frame in between, the object visibly flashed at the world origin.
+        // setPositionOrientation() before attachNode() only sets the body (updateNode() returns early
+        // without a node), so attachNode() now pushes the correct transform right away.
+        this->physicsBody->setPositionOrientation(this->initialPosition, this->initialOrientation);
 
         this->physicsBody->attachNode(rootNode);
 
@@ -1708,6 +1720,7 @@ namespace NOWA
         this->physicsBody->setLinearDamping(this->linearDamping->getReal());
         this->physicsBody->setAngularDamping(this->angularDamping->getVector3());
         this->physicsBody->setUserData(OgreNewt::Any(static_cast<PhysicsComponent*>(this)));
+
         this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
         this->setPosition(this->initialPosition);
         this->setOrientation(this->initialOrientation);

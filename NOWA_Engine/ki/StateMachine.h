@@ -58,9 +58,36 @@ namespace NOWA
             {
                 auto it = this->states.find(name);
                 assert(it != this->states.end() && "[stateMachine::setchildState] Illegal state for name!");
+
+                // An already running child state is left properly instead of being dropped,
+                // otherwise its exit() never runs and whatever it locked stays locked.
+                if (this->childState)
+                {
+                    this->childState->exit(this->owner);
+                }
+
                 this->childState = it->second;
 
                 this->childState->enter(this->owner);
+            }
+
+            // Same as above, but for a state this machine does not own - the counterpart to
+            // changeState(IState<Owner>*). This is what lets a lua backed state run IN PARALLEL
+            // to the current state: update() calls the child state first and the current state
+            // afterwards, so an attack can play while the walking state keeps driving movement.
+            void setChildState(IState<Owner>* newState)
+            {
+                if (this->childState)
+                {
+                    this->childState->exit(this->owner);
+                }
+
+                this->childState = newState;
+
+                if (this->childState)
+                {
+                    this->childState->enter(this->owner);
+                }
             }
 
             // Call this to update the FSM
@@ -186,13 +213,18 @@ namespace NOWA
 
             void endChildState(void)
             {
-                // Keep a record of the previous state
-                this->previousState = this->currentState;
+                // Attention: previousState is deliberately NOT touched here anymore.
+                //
+                // It used to be set to currentState, which is wrong twice over: the current
+                // state is not being left at all, and overwriting the record breaks
+                // revertToPreviousState() for whoever set it. A child state is a parallel
+                // state, ending it is not a transition.
+                if (this->childState)
+                {
+                    // Call the exit method of the existing state
+                    this->childState->exit(this->owner);
+                }
 
-                // Call the exit method of the existing state
-                this->childState->exit(this->owner);
-
-                // change state to the new state
                 this->childState = nullptr;
             }
 

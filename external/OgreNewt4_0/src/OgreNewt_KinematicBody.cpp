@@ -54,6 +54,19 @@ void KinematicBody::integrateVelocity(Ogre::Real dt)
 
     getNewtonBody()->IntegrateVelocity(dt);
 
+    // TEMPORARY DIAGNOSTICS - remove once the kinematic contact is understood.
+    //
+    // This is the ONLY place a kinematic contact callback is ever dispatched from, and every
+    // way it can fail is silent: no callback installed, an empty contact map, or contacts
+    // that exist but are not active. The counters below separate those three cases.
+    //
+    // All statics are function local, so this needs no header change. They are shared across
+    // kinematic bodies, which is why the body pointer is logged - with more than one
+    // kinematic body in the scene the lines have to be told apart by hand.
+    int diagContactCount = 0;
+    int diagActiveCount = 0;
+    int diagDispatchedCount = 0;
+
     if (m_kinematicContactCallback)
     {
         ndBodyKinematic::ndContactMap& contacts = getNewtonBody()->GetContactMap();
@@ -62,8 +75,13 @@ void KinematicBody::integrateVelocity(Ogre::Real dt)
         for (it.Begin(); it; it++)
         {
             ndContact* const contact = *it;
+
+            diagContactCount++;
+
             if (contact->IsActive())
             {
+                diagActiveCount++;
+
                 ndBodyKinematic* const body0 = contact->GetBody0();
                 ndBodyKinematic* const body1 = contact->GetBody1();
                 ndBodyKinematic* const other = (body0 == getNewtonBody()) ? body1 : body0;
@@ -80,10 +98,26 @@ void KinematicBody::integrateVelocity(Ogre::Real dt)
                     {
                         if (Body* const otherWrapper = ogreNotify->GetOgreNewtBody())
                         {
+                            diagDispatchedCount++;
                             m_kinematicContactCallback(otherWrapper);
                         }
                     }
                 }
+            }
+        }
+    }
+    else
+    {
+        // Counted separately: an empty contact map and a missing callback look identical
+        // from the outside, and they have completely different causes.
+        ndBodyKinematic::ndContactMap& contacts = getNewtonBody()->GetContactMap();
+        ndBodyKinematic::ndContactMap::Iterator it(contacts);
+        for (it.Begin(); it; it++)
+        {
+            diagContactCount++;
+            if ((*it)->IsActive())
+            {
+                diagActiveCount++;
             }
         }
     }

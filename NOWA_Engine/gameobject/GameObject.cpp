@@ -2144,6 +2144,8 @@ namespace NOWA
         {
             return;
         }*/
+        Ogre::String name = this->name->getString();
+
         this->position->setValue(position);
 
         auto physicsComponent = NOWA::makeStrongPtr(this->getComponent<NOWA::PhysicsComponent>());
@@ -2668,7 +2670,7 @@ namespace NOWA
         }
 
         boost::shared_ptr<EventDataGameObjectMadeGlobal> eventDataGameObjectMadeGlobal(new EventDataGameObjectMadeGlobal(this->id->getULong(), isGlobal));
-        AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectMadeGlobal);
+        AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectMadeGlobal);
     }
 
     void GameObject::setLodLevels(unsigned int lodLevels)

@@ -122,6 +122,9 @@ namespace NOWA
         isFallen(false),
         fallThreshold(0.7f),
         recoveryTime(2.0f),
+        actionId(-1),
+        actionKeyWasDown(false),
+        interactionGameObjectId(0),
         debugWaypointNode(nullptr)
     {
         this->acceleration->setDescription("The acceleration rate, if set to 0, acceleration is disabled and player moves with full speed.");
@@ -292,6 +295,13 @@ namespace NOWA
         this->blockedWallNormal = Ogre::Vector3::ZERO;
         this->blockedWallTimer = 0.0f;
 
+        // The lua environment is torn down after this, so every closure held here must go
+        // with it - a luabind object outliving its lua_State is a crash waiting for the next
+        // call.
+        this->actionPressedClosureFunction = luabind::object();
+        this->actionKeyWasDown = false;
+        this->interactionGameObjectId = 0;
+
         this->cameraBehaviorComponent = nullptr;
         this->physicsActiveComponent = nullptr;
         // Will cause crash in state, input device component shall be existing!
@@ -314,47 +324,14 @@ namespace NOWA
 
     void PlayerControllerComponent::update(Ogre::Real dt, bool notSimulating)
     {
-        // The recorded wall normal is valid for exactly ONE frame and has to be re-reported
-        // by a fresh contact to survive. blockedWallTimer is used as a "was refreshed" FLAG
-        // here, not as a duration.
-        //
-        // It used to be a real countdown, but every arriving contact reloaded it - and a
-        // capsule against a wall produces several contact points per physics step, each
-        // delivered as its own deferred command. The countdown was therefore refreshed
-        // faster than it could run down and effectively never expired: the movement input
-        // stayed cancelled long after leaving the wall, and the building could not be
-        // approached closer than about a metre until the backlog had drained.
-        //
-        // The order in the game loop is what makes the flag work: processAll() delivers the
-        // contacts BEFORE update() runs, so a contact from this frame is already in when it
-        // is consumed here.
-        //
-        //   frame 1: processAll -> contact sets the flag
-        //            update     -> flag is consumed, the normal counts for this frame
-        //   frame 2: no contact
-        //            update     -> flag is gone, so the normal is cleared
-        // TEMPORARY DIAGNOSTICS - remove once the wall blocking is understood. Logs the
-        // TRANSITIONS only, so a normal that never gets cleared shows up as a missing
-        // CLEAR line rather than as a wall of identical entries.
-        const bool hadWallNormalBefore = (this->blockedWallNormal.squaredLength() > 0.0001f);
-
         if (this->blockedWallTimer > 0.0f)
         {
             this->blockedWallTimer = 0.0f;
-
-            if (false == hadWallNormalBefore)
-            {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WallBlock-DIAG] KEEP normal: " + Ogre::StringConverter::toString(this->blockedWallNormal));
-            }
         }
         else
-            {
-            if (true == hadWallNormalBefore)
-            {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WallBlock-DIAG] CLEAR (no fresh contact) was: " + Ogre::StringConverter::toString(this->blockedWallNormal));
-            }
-                this->blockedWallNormal = Ogre::Vector3::ZERO;
-            }
+        {
+            this->blockedWallNormal = Ogre::Vector3::ZERO;
+        }
 
         if (false == notSimulating && nullptr != this->physicsActiveComponent /* && true == this->activated->getBool()*/)
         {
@@ -493,6 +470,11 @@ namespace NOWA
 
             this->hitGameObjectUp = nullptr;
             this->hitGameObjectUp = this->physicsActiveComponent->getContactAbove(5, Ogre::Vector3(0.0f, playerSize.y + 0.1f, 0.0f), showDebugData, this->categoriesId, true).getHitGameObject();
+
+            // Deliberately here in the BASE and right after the front rays, so every state
+            // and every player controller variant gets the action key for free and always
+            // sees this frame's front hit. A state that does not care simply has no closure.
+            this->internalHandleActionKey();
 
             if (true == this->useStandUp->getBool())
             {
@@ -828,20 +810,6 @@ namespace NOWA
                             // Flags the normal as freshly reported; update() consumes it and
                             // keeps the normal for exactly one frame, see the comment there.
                             this->blockedWallTimer = 1.0f;
-
-                            // TEMPORARY DIAGNOSTICS - remove once the wall blocking is understood.
-                            {
-                                static unsigned int wallSetCounter = 0;
-                                wallSetCounter++;
-                                if (wallSetCounter % 30 == 0)
-                                {
-                                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WallBlock-DIAG] SET #" + Ogre::StringConverter::toString(wallSetCounter)
-                                        + " normal: " + Ogre::StringConverter::toString(horizontalWallNormal)
-                                        + " upComponent: " + Ogre::StringConverter::toString(upComponent)
-                                        + " other: " + Ogre::String(nullptr != otherGameObject ? otherGameObject->getName() : "<none>")
-                                        + " playerPos: " + Ogre::StringConverter::toString(this->gameObjectPtr->getPosition()));
-                                }
-                            }
                         }
 
                         // Always fired, regardless of the attribute.
@@ -1170,6 +1138,95 @@ namespace NOWA
         this->animationBlender->addAnimationBlenderObserver(newObserver);
     }
 
+    void PlayerControllerComponent::setActionKey(int actionId)
+    {
+        this->actionId = actionId;
+        this->actionKeyWasDown = false;
+    }
+
+    int PlayerControllerComponent::getActionKey(void) const
+    {
+        return this->actionId;
+    }
+
+    void PlayerControllerComponent::reactOnActionPressed(luabind::object closureFunction)
+    {
+        this->actionPressedClosureFunction = closureFunction;
+    }
+
+    void PlayerControllerComponent::setInteractionGameObject(GameObject* gameObject)
+    {
+        this->interactionGameObjectId = (nullptr != gameObject) ? gameObject->getId() : 0;
+    }
+
+    GameObject* PlayerControllerComponent::getInteractionGameObject(void) const
+    {
+        if (0 == this->interactionGameObjectId)
+        {
+            return nullptr;
+        }
+
+        // Resolved on every call instead of caching the pointer: the object can be deleted
+        // while a state is still running, and this way the state just sees nil.
+        GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->interactionGameObjectId);
+        if (nullptr == gameObjectPtr)
+        {
+            return nullptr;
+        }
+
+        return gameObjectPtr.get();
+    }
+
+    void PlayerControllerComponent::internalHandleActionKey(void)
+    {
+        // Nothing assigned from lua, or nobody listening: no work at all.
+        if (this->actionId < 0 || false == this->actionPressedClosureFunction.is_valid())
+        {
+            this->actionKeyWasDown = false;
+            return;
+        }
+
+        if (nullptr == this->inputDeviceComponent || true == this->inputDeviceComponent->isDeviceLocked())
+        {
+            this->actionKeyWasDown = false;
+            return;
+        }
+
+        InputDeviceModule* inputDeviceModule = this->inputDeviceComponent->getInputDeviceModule();
+        if (nullptr == inputDeviceModule)
+        {
+            this->actionKeyWasDown = false;
+            return;
+        }
+
+        // decltype instead of a hard coded enum name, so the action id can be handed in as a
+        // plain integer from lua without this file having to know the enum's spelling.
+        const bool actionIsDown = inputDeviceModule->isActionDown(static_cast<decltype(NOWA_A_JUMP)>(this->actionId));
+
+        // RISING EDGE only. Holding the key must not fire once per frame - that is the same
+        // trap the jump had, where a held key made the player fly.
+        if (true == actionIsDown && false == this->actionKeyWasDown)
+        {
+            // Called directly rather than enqueued: update() already runs on the logic
+            // thread, which is the only thread allowed to touch lua. A requestState() from
+            // inside this closure is queued anyway, so re-entrancy is not an issue.
+            try
+            {
+                luabind::call_function<void>(this->actionPressedClosureFunction, this->hitGameObjectFront);
+            }
+            catch (luabind::error& error)
+            {
+                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                std::stringstream msg;
+                msg << errorMsg;
+
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PlayerControllerComponent] Caught error in 'reactOnActionPressed' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+            }
+        }
+
+        this->actionKeyWasDown = actionIsDown;
+    }
+
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     PlayerControllerJumpNRunComponent::PlayerControllerJumpNRunComponent() :
@@ -1182,7 +1239,9 @@ namespace NOWA
         for2D(new Variant(PlayerControllerJumpNRunComponent::AttrFor2D(), false, this->attributes)),
         xJump(new Variant(PlayerControllerJumpNRunComponent::AttrXJump(), false, this->attributes)),
         useAcceleration(new Variant(PlayerControllerJumpNRunComponent::AttrUseAcceleration(), false, this->attributes)),
-        accelerationDuration(new Variant(PlayerControllerJumpNRunComponent::AttrAccelerationDuration(), 10.0f, this->attributes))
+        accelerationDuration(new Variant(PlayerControllerJumpNRunComponent::AttrAccelerationDuration(), 10.0f, this->attributes)),
+        hasStateRequest(false),
+        hasChildStateRequest(false)
     {
         this->animations.resize(this->animationsCount);
         this->animations[0] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimIdle1(), std::vector<Ogre::String>(), this->attributes);
@@ -1225,11 +1284,21 @@ namespace NOWA
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlayerControllerJumpNRunComponent] Destructor player controller 3D component for game object: " + this->gameObjectPtr->getName());
 
+        // The state machine deletes the states IT created via registerState. The lua states
+        // were created here and handed in as raw pointers, so they are deleted here - and
+        // only here, never in disconnect(), because the machine may still point at one.
         if (this->stateMachine)
         {
             delete this->stateMachine;
             this->stateMachine = nullptr;
         }
+
+        for (auto it = this->luaStates.begin(); it != this->luaStates.end(); ++it)
+        {
+            delete it->second;
+            it->second = nullptr;
+        }
+        this->luaStates.clear();
     }
 
     bool PlayerControllerJumpNRunComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -1404,6 +1473,10 @@ namespace NOWA
 
         this->stateMachine = new NOWA::KI::StateMachine<GameObject>(this->gameObjectPtr.get());
         this->stateMachine->registerState<WalkingStateJumpNRun>(WalkingStateJumpNRun::getName());
+        // Mirrored here, because StateMachine has no way to ask whether a name is known:
+        // changeState() asserts on an unknown one, and an assert is a poor error message for
+        // a typo in a lua script.
+        this->cppStateNames.insert(WalkingStateJumpNRun::getName());
 
         return PlayerControllerComponent::postInit();
     }
@@ -1455,6 +1528,27 @@ namespace NOWA
             this->stateMachine->getCurrentState()->exit(this->gameObjectPtr.get());
         }
 
+        // The lua states are NOT deleted here, only emptied. The state machine still holds
+        // whatever it had as current and previous state, and deleting those would leave it
+        // with dangling pointers until the next activation. An empty table simply makes the
+        // state a no-op, and a reconnecting script fills it again via registerLuaState().
+        for (auto it = this->luaStates.begin(); it != this->luaStates.end(); ++it)
+        {
+            if (nullptr != it->second)
+            {
+                it->second->setStateTable(luabind::object());
+            }
+        }
+
+        this->stateChangedClosureFunction = luabind::object();
+        this->hasStateRequest = false;
+        this->requestedStateName.clear();
+        this->currentStateName.clear();
+        this->previousStateName.clear();
+        this->hasChildStateRequest = false;
+        this->requestedChildStateName.clear();
+        this->currentChildStateName.clear();
+
         PhysicsPlayerControllerComponent* physicsPlayerControllerComponent = dynamic_cast<PhysicsPlayerControllerComponent*>(this->physicsActiveComponent);
         if (nullptr != physicsPlayerControllerComponent)
         {
@@ -1470,6 +1564,13 @@ namespace NOWA
         PlayerControllerComponent::update(dt, notSimulating);
         if (false == notSimulating /* && true == this->activated->getBool()*/)
         {
+            // Applied BEFORE the state runs, never from inside it. A state change requested
+            // from a lua closure can arrive while the current state is halfway through its
+            // own update, and switching right there would call exit() on a state that is
+            // still running.
+            this->internalApplyStateRequest();
+            this->internalApplyChildStateRequest();
+
             this->stateMachine->update(dt);
         }
     }
@@ -1708,7 +1809,13 @@ namespace NOWA
 
             this->animationBlender->init(NOWA::AnimationBlenderV2::ANIM_IDLE_1);
 
+            // setCurrentState() only enters, it never exits - that is exactly what is wanted
+            // for seeding the machine. Every later switch goes through requestState(), which
+            // uses changeState() and therefore gets a proper exit / enter pair.
             this->stateMachine->setCurrentState(WalkingStateJumpNRun::getName());
+            this->currentStateName = WalkingStateJumpNRun::getName();
+            this->previousStateName.clear();
+            this->hasStateRequest = false;
         }
     }
 
@@ -1832,6 +1939,240 @@ namespace NOWA
     luabind::object PlayerControllerJumpNRunComponent::getAccelerationChangedClosure(void) const
     {
         return this->accelerationChangedClosureFunction;
+    }
+
+    void PlayerControllerJumpNRunComponent::registerLuaState(const Ogre::String& stateName, luabind::object stateTable)
+    {
+        if (true == stateName.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlayerControllerJumpNRunComponent] 'registerLuaState' called with an empty name for game object: " + this->gameObjectPtr->getName());
+            return;
+        }
+
+        if (this->cppStateNames.find(stateName) != this->cppStateNames.cend())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[PlayerControllerJumpNRunComponent] 'registerLuaState' cannot use the name '" + stateName + "', it already belongs to a C++ state. Game object: " + this->gameObjectPtr->getName());
+            return;
+        }
+
+        auto it = this->luaStates.find(stateName);
+        if (it != this->luaStates.cend())
+        {
+            // Only the table is swapped. The instance itself must survive, because the state
+            // machine may be pointing at it right now - and a script reload registers the
+            // very same names again.
+            it->second->setStateTable(stateTable);
+            return;
+        }
+
+        LuaPlayerState* luaPlayerState = new LuaPlayerState();
+        luaPlayerState->setStateName(stateName);
+        luaPlayerState->setStateTable(stateTable);
+
+        this->luaStates.emplace(stateName, luaPlayerState);
+    }
+
+    void PlayerControllerJumpNRunComponent::requestState(const Ogre::String& stateName)
+    {
+        if (true == stateName.empty())
+        {
+            return;
+        }
+
+        // Validated HERE and not when the request is applied, so the error appears while the
+        // calling lua function is still on the stack and the script line is obvious.
+        const bool isLuaState = (this->luaStates.find(stateName) != this->luaStates.cend());
+        const bool isCppState = (this->cppStateNames.find(stateName) != this->cppStateNames.cend());
+
+        if (false == isLuaState && false == isCppState)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[PlayerControllerJumpNRunComponent] 'requestState' got the unknown state name '" + stateName + "'. Register a lua state with 'registerLuaState' first. Game object: " + this->gameObjectPtr->getName());
+            return;
+        }
+
+        this->requestedStateName = stateName;
+        this->hasStateRequest = true;
+    }
+
+    void PlayerControllerJumpNRunComponent::requestPreviousState(void)
+    {
+        if (true == this->previousStateName.empty())
+        {
+            return;
+        }
+
+        // Deliberately not StateMachine::revertToPreviousState(): that one forwards to the
+        // pointer overload of changeState() and dereferences the previous state without a
+        // null check, so it crashes on the very first call after activation.
+        this->requestState(this->previousStateName);
+    }
+
+    Ogre::String PlayerControllerJumpNRunComponent::getCurrentStateName(void) const
+    {
+        return this->currentStateName;
+    }
+
+    Ogre::String PlayerControllerJumpNRunComponent::getPreviousStateName(void) const
+    {
+        return this->previousStateName;
+    }
+
+    bool PlayerControllerJumpNRunComponent::isInState(const Ogre::String& stateName) const
+    {
+        return this->currentStateName == stateName;
+    }
+
+    void PlayerControllerJumpNRunComponent::reactOnStateChanged(luabind::object closureFunction)
+    {
+        this->stateChangedClosureFunction = closureFunction;
+    }
+
+    void PlayerControllerJumpNRunComponent::requestChildState(const Ogre::String& stateName)
+    {
+        if (true == stateName.empty())
+        {
+            return;
+        }
+
+        const bool isLuaState = (this->luaStates.find(stateName) != this->luaStates.cend());
+        const bool isCppState = (this->cppStateNames.find(stateName) != this->cppStateNames.cend());
+
+        if (false == isLuaState && false == isCppState)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[PlayerControllerJumpNRunComponent] 'requestChildState' got the unknown state name '" + stateName + "'. Register a lua state with 'registerLuaState' first. Game object: " + this->gameObjectPtr->getName());
+            return;
+        }
+
+        this->requestedChildStateName = stateName;
+        this->hasChildStateRequest = true;
+    }
+
+    void PlayerControllerJumpNRunComponent::requestEndChildState(void)
+    {
+        // An empty name is the request to end it, which keeps this on the same queued path as
+        // everything else instead of touching the state machine from wherever this was called.
+        this->requestedChildStateName.clear();
+        this->hasChildStateRequest = true;
+    }
+
+    Ogre::String PlayerControllerJumpNRunComponent::getCurrentChildStateName(void) const
+    {
+        return this->currentChildStateName;
+    }
+
+    void PlayerControllerJumpNRunComponent::internalApplyChildStateRequest(void)
+    {
+        if (false == this->hasChildStateRequest)
+        {
+            return;
+        }
+
+        this->hasChildStateRequest = false;
+
+        if (nullptr == this->stateMachine)
+        {
+            return;
+        }
+
+        const Ogre::String newChildStateName = this->requestedChildStateName;
+        if (newChildStateName == this->currentChildStateName)
+        {
+            return;
+        }
+
+        if (true == newChildStateName.empty())
+        {
+            this->stateMachine->endChildState();
+            this->currentChildStateName.clear();
+            return;
+        }
+
+        auto luaIt = this->luaStates.find(newChildStateName);
+        if (luaIt != this->luaStates.cend())
+        {
+            this->stateMachine->setChildState(luaIt->second);
+        }
+        else
+        {
+            this->stateMachine->setChildState(newChildStateName);
+        }
+
+        this->currentChildStateName = newChildStateName;
+    }
+
+    void PlayerControllerJumpNRunComponent::internalApplyStateRequest(void)
+    {
+        if (false == this->hasStateRequest)
+        {
+            return;
+        }
+
+        this->hasStateRequest = false;
+
+        if (nullptr == this->stateMachine)
+        {
+            return;
+        }
+
+        const Ogre::String newStateName = this->requestedStateName;
+        if (newStateName == this->currentStateName)
+        {
+            return;
+        }
+
+        // StateMachine::changeState() calls exit() on the current state without checking it
+        // for null, so the machine has to be running before anything can be switched. It
+        // normally is - setActivated() seeds it - but a request that arrives before that
+        // would otherwise take the whole game down.
+        if (nullptr == this->stateMachine->getCurrentState())
+        {
+            this->stateMachine->setCurrentState(WalkingStateJumpNRun::getName());
+            this->currentStateName = WalkingStateJumpNRun::getName();
+
+            if (newStateName == this->currentStateName)
+            {
+                return;
+            }
+        }
+
+        const Ogre::String oldStateName = this->currentStateName;
+
+        auto luaIt = this->luaStates.find(newStateName);
+        if (luaIt != this->luaStates.cend())
+        {
+            // The pointer overload: this is what lets a lua backed state live in the same
+            // machine as the C++ ones, even though registerState() can only ever default
+            // construct its instances.
+            this->stateMachine->changeState(luaIt->second);
+        }
+        else
+        {
+            this->stateMachine->changeState(newStateName);
+        }
+
+        this->previousStateName = oldStateName;
+        this->currentStateName = newStateName;
+
+        if (true == this->stateChangedClosureFunction.is_valid())
+        {
+            // Called directly: update() is already on the logic thread. A requestState() from
+            // inside this closure is queued for the next frame, so it cannot re-enter here.
+            try
+            {
+                luabind::call_function<void>(this->stateChangedClosureFunction, oldStateName, newStateName);
+            }
+            catch (luabind::error& error)
+            {
+                luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+                std::stringstream msg;
+                msg << errorMsg;
+
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PlayerControllerJumpNRunComponent] Caught error in 'reactOnStateChanged' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+            }
+        }
     }
 
     Ogre::String PlayerControllerJumpNRunComponent::getClassName(void) const
@@ -2582,6 +2923,105 @@ namespace NOWA
         }
     }
 
+    //---------------------------LuaPlayerState-------------------
+
+    LuaPlayerState::LuaPlayerState() : stateTable(), stateName("")
+    {
+    }
+
+    LuaPlayerState::~LuaPlayerState()
+    {
+    }
+
+    void LuaPlayerState::setStateName(const Ogre::String& stateName)
+    {
+        this->stateName = stateName;
+    }
+
+    Ogre::String LuaPlayerState::getStateName(void) const
+    {
+        return this->stateName;
+    }
+
+    void LuaPlayerState::setStateTable(luabind::object stateTable)
+    {
+        this->stateTable = stateTable;
+    }
+
+    bool LuaPlayerState::hasStateTable(void) const
+    {
+        return this->stateTable.is_valid();
+    }
+
+    void LuaPlayerState::callStateFunction(const Ogre::String& functionName, GameObject* player)
+    {
+        NOWA_ASSERT_LOGIC_THREAD();
+
+        // An empty table is the normal state after disconnect(): the lua environment is gone
+        // but the state machine may still point here. Doing nothing is exactly right.
+        if (false == this->stateTable.is_valid())
+        {
+            return;
+        }
+
+        try
+        {
+            auto stateFunction = this->stateTable[functionName.c_str()];
+            if (stateFunction)
+            {
+                stateFunction(player);
+            }
+        }
+        catch (luabind::error& error)
+        {
+            luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+            std::stringstream msg;
+            msg << errorMsg;
+
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaPlayerState] Caught error in '" + functionName + "' of state '" + this->stateName + "' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+        }
+    }
+
+    void LuaPlayerState::enter(GameObject* player)
+    {
+        this->callStateFunction("enter", player);
+    }
+
+    void LuaPlayerState::exit(GameObject* player)
+    {
+        this->callStateFunction("exit", player);
+    }
+
+    void LuaPlayerState::update(GameObject* player, Ogre::Real dt)
+    {
+        NOWA_ASSERT_LOGIC_THREAD();
+
+        if (false == this->stateTable.is_valid())
+        {
+            return;
+        }
+
+        // Not routed through callStateFunction, because 'execute' is the only one taking dt.
+        try
+        {
+            auto stateFunction = this->stateTable["execute"];
+            if (stateFunction)
+            {
+                stateFunction(player, dt);
+            }
+        }
+        catch (luabind::error& error)
+        {
+            luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+            std::stringstream msg;
+            msg << errorMsg;
+
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaPlayerState] Caught error in 'execute' of state '" + this->stateName + "' Error: " + Ogre::String(error.what()) + " details: " + msg.str());
+        }
+    }
+
+    //---------------------------WalkingStateJumpNRun-------------------
+
     WalkingStateJumpNRun::WalkingStateJumpNRun() :
         playerController(nullptr),
         direction(Direction::NONE),
@@ -2638,8 +3078,69 @@ namespace NOWA
         this->jumpSound->setGain(0.5f);
 
         this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_IDLE_1, NOWA::AnimationBlenderV2::BlendThenAnimate, 0.2f, true);
+
+        // -------------------------------------------------------------------------
+        // Full reset of this state's own data.
+        //
+        // The state INSTANCE belongs to the state machine and survives disconnect/connect and
+        // every trip through another state. Without this, everything from the previous run
+        // leaks into the new one - and the most visible one is 'direction': it still held
+        // LEFT or RIGHT, so the 2D turning block below snapped the player around on the very
+        // first update after connecting, before any key had been touched.
+        //
+        // The same goes for the rest: a stale walkCount started the run animation straight
+        // away, a stale jumpCount allowed an air jump off the ground, and a stale
+        // directionChanged rotated the player towards a direction he was no longer heading in.
+        // -------------------------------------------------------------------------
+        this->direction = Direction::NONE;
+        this->oldDirection = Direction::NONE;
+        this->directionChanged = false;
+        this->keyDirection = Ogre::Vector3::ZERO;
+
+        // In 2D the facing is seeded from the orientation the game object was PLACED with,
+        // instead of being left at NONE.
+        //
+        // Two reasons. With NONE the 2D block further down issues no rotation command at all,
+        // so nothing holds the yaw and the first ground contact spins the player. And seeding
+        // it from the current orientation means there is nothing to correct on the first
+        // frame, so the player does not snap around the moment the simulation starts.
+        if (true == this->playerController->getIsFor2D())
+        {
+            const Ogre::Real currentDegree = this->playerController->getPhysicsComponent()->getOrientation().getYaw().valueDegrees();
+            this->direction = (currentDegree < 0.0f) ? Direction::LEFT : Direction::RIGHT;
+            this->oldDirection = this->direction;
+        }
+
+        // Anything the previous run left latched in the PHYSICS COMPONENT is released here, not
+        // just the copy this state keeps.
+        //
+        // resetForce() rather than applyOmegaForce(ZERO): it clears BOTH latches through
+        // clearLatchedValues() and it acts on the body straight away instead of queueing a
+        // command that is only consumed in the next moveCallback. The velocity latch matters
+        // just as much as the omega one - RagDollState ends with
+        // applyRequiredForceForVelocity(Vector3(-4, 0, 0)), and this state would otherwise
+        // inherit it and slide off on entry.
+        this->playerController->getPhysicsComponent()->resetForce();
+
         this->boringTimer = 0.0f;
         this->noMoveTimer = 0.0f;
+        this->walkCount = 0.0f;
+        this->acceleration = 1.0f;
+        this->accelerationTimer = 0.0f;
+        this->lastReportedSpeed = 0.0f;
+
+        this->inAir = false;
+        this->isJumping = false;
+        this->tryJump = false;
+        this->jumpKeyPressed = false;
+        this->jumpCount = 0;
+        this->canDoubleJump = true;
+        this->highFalling = false;
+        this->fallTimer = 0.0f;
+        this->groundedOnce = false;
+        this->duckedOnce = false;
+        this->isAttacking = false;
+        this->isOnRope = false;
         // acquire the jump force from attributes
         // this->jumpForce = this->playerController->getAttributesComponent()->getAttribute("AttributeJumpForce")->getValueReal();
         this->jumpForce = this->playerController->getJumpForce();
@@ -2700,6 +3201,13 @@ namespace NOWA
         // on flat Y-up worlds and break on spherical planet surfaces.
         const bool isFalling = currentVelocity.dotProduct(gravityDir) > 1.0f;
 
+        // Rising = moving AGAINST gravity, i.e. the take off of a jump is still in
+        // progress. ANIM_JUMP_START is held for the whole flight, so the movement blend is
+        // allowed to interrupt it only once the player is no longer going up - otherwise
+        // the take off animation would be wiped out one frame after the jump, while the
+        // feet are still close enough to the ground for 'inAir' to read false.
+        const bool isTouchedDown = currentVelocity.dotProduct(gravityDir) > -0.5f;
+
         Ogre::Real yawAtSpeed = 0.0f;
         Ogre::Real tempSpeed = 0.0f;
         Ogre::Real tempAnimationSpeed = this->playerController->getAnimationSpeed();
@@ -2746,6 +3254,18 @@ namespace NOWA
         const bool movingRight = inputDeviceModule->isActionDown(NOWA_A_RIGHT);
         const bool anyMove = movingUp || movingDown || movingLeft || movingRight;
 
+        // -------------------------------------------------------------------------
+        // While a CHILD state is running it owns the animation - an attack, a pickup, a
+        // gesture. This state keeps doing everything else (input, velocity, facing, addTime),
+        // but it must not blend over that clip, or the child's animation is wiped out on the
+        // frame after it started.
+        //
+        // Deliberately a question about OWNERSHIP and not about which animation happens to be
+        // active: a whitelist of interruptible animation ids does not contain the locomotion
+        // clips, so it would also block the way back from walking to idle.
+        // -------------------------------------------------------------------------
+        const bool childStateOwnsAnimation = (false == this->playerController->getCurrentChildStateName().empty());
+
         if (false == anyMove && false == this->jumpKeyPressed && false == this->isJumping)
         {
             // ------------------------------------------------------------------
@@ -2767,7 +3287,7 @@ namespace NOWA
                 this->keyDirection = Ogre::Vector3::ZERO;
             }
 
-            if (false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_1) && false == this->inAir)
+            if (false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_1) && false == this->inAir && false == childStateOwnsAnimation)
             {
                 this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_IDLE_1, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.2f, true);
             }
@@ -2820,7 +3340,7 @@ namespace NOWA
                 }
 
                 if (true == this->playerController->getAnimationBlender()->hasAnimation(animID) && true == this->playerController->getAnimationBlender()->isComplete() &&
-                    false == this->playerController->getAnimationBlender()->isAnimationActive(animID))
+                    false == this->playerController->getAnimationBlender()->isAnimationActive(animID) && false == childStateOwnsAnimation)
                 {
                     tempAnimationSpeed = this->playerController->getAnimationSpeed();
                     this->playerController->getAnimationBlender()->blend(animID, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.2f, true);
@@ -3065,9 +3585,19 @@ namespace NOWA
 
             // Blend to the movement animation -- only if not already active and
             // the player is on the ground and not in a jump transition.
+            //
+            // The landing and take off clips are interruptible on purpose. They do not loop,
+            // so 'isComplete()' stays false until they have played all the way through, and
+            // this blend used to wait for that: landing while a movement key was held left the
+            // player standing in the landing pose, sliding across the ground, until
+            // ANIM_JUMP_END had finished.
+            const bool blenderIsInterruptible = (true == this->playerController->getAnimationBlender()->isComplete()) || this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_1) ||
+                                                this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_2) ||
+                                                this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_3) ||
+                                                this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_JUMP_END) ||
+                                                (true == isTouchedDown && this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_JUMP_START));
             if (animId != NOWA::AnimationBlenderV2::AnimID::ANIM_NONE && false == this->playerController->getAnimationBlender()->isAnimationActive(animId) && false == this->inAir && false == this->jumpKeyPressed && false == this->isJumping &&
-                (true == this->playerController->getAnimationBlender()->isComplete() || this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_1) ||
-                    this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_2) || this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_3)))
+                true == blenderIsInterruptible && false == childStateOwnsAnimation)
             {
                 tempAnimationSpeed = this->playerController->getAnimationSpeed();
                 this->playerController->getAnimationBlender()->blend(animId, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.2f, true);
@@ -3170,7 +3700,12 @@ namespace NOWA
         // groundedOnce prevents the landing animation from retriggering every frame.
         if (false == this->inAir && true == isFalling && false == this->groundedOnce)
         {
-            if (false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_JUMP_END))
+            // The landing clip is only played when the player actually comes to a stop.
+            // Landing while a movement key is held must not insert a stop-and-recover
+            // animation at all - the movement branch above already blended straight into
+            // walking or running on this very frame, and blending JUMP_END over it here
+            // would put the slide right back in.
+            if (false == anyMove && false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_JUMP_END))
             {
                 this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_JUMP_END, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, false);
             }
@@ -3329,24 +3864,29 @@ namespace NOWA
             else if (Direction::NONE != this->direction)
             {
                 // Holds the facing against collisions and ragdoll disturbances, driven by
-                // the physics instead of forcing the transform.
-                //
-                // Attention: this is issued on EVERY frame now, the former '> 2 degrees' gate is gone.
-                // moveCallback() LATCHES the omega command and only releases the latch when it
-                // receives a zero omega. applyOmegaForceRotateTo() sends that zero itself, but only
-                // when it is called with an error below its own 0.5 degree tolerance. With the gate,
-                // it was never called between 0.5 and 2 degrees: the last non-zero omega stayed
-                // latched, kept turning the body past the target until the error exceeded 2 degrees
-                // on the other side, and the correction started over with the opposite sign - a
-                // permanent back and forth rotation while walking.
-                //
-                // Called every frame, applyOmegaForceRotateTo() acts as a plain proportional
-                // controller (omega = error * strength, refreshed each logic step) and releases the
-                // latch itself once the error is below 0.5 degrees. The old concern that a command
-                // per frame never lets the body settle no longer applies, because of exactly that
-                // tolerance inside applyOmegaForceRotateTo().
-                const Ogre::Quaternion targetOrientation(Ogre::Degree(targetDegree), Ogre::Vector3::UNIT_Y);
-                this->playerController->getPhysicsComponent()->applyOmegaForceRotateTo(targetOrientation, Ogre::Vector3::UNIT_Y, 10.0f);
+                // the physics instead of forcing the transform - but only once it has
+                // actually drifted. Issuing a rotation command on every single frame keeps
+                // overwriting omegaForceCommand and never lets the body settle.
+                const Ogre::Real currentDegree = this->playerController->getPhysicsComponent()->getOrientation().getYaw().valueDegrees();
+
+                if (Ogre::Math::Abs(currentDegree - targetDegree) > 2.0f)
+                {
+                    const Ogre::Quaternion targetOrientation(Ogre::Degree(targetDegree), Ogre::Vector3::UNIT_Y);
+                    this->playerController->getPhysicsComponent()->applyOmegaForceRotateTo(targetOrientation, Ogre::Vector3::UNIT_Y, 10.0f);
+                }
+                else
+                {
+                    // Attention: the dead zone MUST command a zero omega, it cannot just stop
+                    // commanding.
+                    //
+                    // PhysicsActiveComponent::moveCallback latches the last omega and keeps
+                    // applying it on every substep; the latch is only released by a command of
+                    // ZERO. Falling silent here therefore left the previous rotation running:
+                    // the player turned into the dead zone, kept spinning on the old omega,
+                    // overshot, got a fresh command, overshot again - an endless wobble that
+                    // looks like the player spinning on the spot.
+                    this->playerController->getPhysicsComponent()->applyOmegaForce(Ogre::Vector3::ZERO);
+                }
             }
         }
 
@@ -3354,25 +3894,11 @@ namespace NOWA
         // Velocity decomposition -- preserve vertical (gravity) component, apply
         // horizontal movement in the key direction.
         // -------------------------------------------------------------------------
-        Ogre::Vector3 verticalVelocity = gravityDir * currentVelocity.dotProduct(gravityDir);
-        Ogre::Vector3 directionMove = this->keyDirection * tempSpeed * this->acceleration;
+        // Positive = moving WITH gravity (falling), negative = moving against it (rising).
+        const Ogre::Real verticalSpeedAlongGravity = currentVelocity.dotProduct(gravityDir);
 
-        // The movement input that points INTO a wall is simply dropped.
-        //
-        // This is where holding the right arrow key against a right hand wall stops
-        // producing force at all - far cleaner than letting the input press into the wall
-        // and then fighting it with an opposing separation force, which is what made the
-        // player alternately stick and get flung away. The wall normal comes from the
-        // physics contact callback, so it costs no rays.
-        const Ogre::Vector3 blockedWallNormal = this->playerController->getBlockedWallNormal();
-        if (blockedWallNormal.squaredLength() > 0.0001f)
-        {
-            const Ogre::Real intoWall = directionMove.dotProduct(-blockedWallNormal);
-            if (intoWall > 0.0f)
-            {
-                directionMove += blockedWallNormal * intoWall;
-            }
-        }
+        Ogre::Vector3 verticalVelocity = gravityDir * verticalSpeedAlongGravity;
+        Ogre::Vector3 directionMove = this->keyDirection * tempSpeed * this->acceleration;
 
         // While airborne the horizontal velocity the player had when taking off must be
         // CARRIED OVER, not replaced. Without this, keyDirection is zero the moment the
@@ -3385,32 +3911,125 @@ namespace NOWA
             directionMove = currentVelocity - gravityDir * currentVelocity.dotProduct(gravityDir);
         }
 
-        Ogre::Vector3 newVelocity = verticalVelocity + directionMove;
-
-        // TEMPORARY DIAGNOSTICS - remove once the 2D jump is understood. Throttled to twice
-        // a second, and only while airborne or jumping, so walking does not flood the log.
-        // Function local static instead of a member, so this needs no header change and
-        // therefore no full rebuild.
-        if (true == this->playerController->getIsFor2D() && (true == this->inAir || true == this->jumpKeyPressed || true == this->isJumping))
+        // The movement input that points INTO a wall is simply dropped.
+        //
+        // This is where holding the right arrow key against a right hand wall stops
+        // producing force at all - far cleaner than letting the input press into the wall
+        // and then fighting it with an opposing separation force, which is what made the
+        // player alternately stick and get flung away. The wall normal comes from the
+        // physics contact callback, so it costs no rays.
+        //
+        // Attention: this must run AFTER the airborne carry-over above, not before it.
+        //
+        // The carry-over triggers on directionMove being zero - and cancelling the input
+        // against a wall produces exactly that. Running first, the cancellation was therefore
+        // undone one line later by the carry-over, which refilled directionMove from the
+        // body's own velocity INCLUDING the part pointing into the wall. The servo then kept
+        // pressing the player against it, the contact friction held him, and he stuck to the
+        // wall in mid air. On the ground it looked correct, because there is no carry-over
+        // there.
+        const Ogre::Vector3 blockedWallNormal = this->playerController->getBlockedWallNormal();
+        if (blockedWallNormal.squaredLength() > 0.0001f)
         {
-            static Ogre::Real jumpDiagAccumulator = 0.0f;
-            jumpDiagAccumulator += dt;
-            if (jumpDiagAccumulator > 0.5f)
+            const Ogre::Real intoWall = directionMove.dotProduct(-blockedWallNormal);
+            if (intoWall > 0.0f)
             {
-                jumpDiagAccumulator = 0.0f;
-
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                    "[WalkingStateJumpNRun][DIAG2D] inAir: " + Ogre::StringConverter::toString(this->inAir) + " isJumping: " + Ogre::StringConverter::toString(this->isJumping) +
-                        " jumpKeyPressed: " + Ogre::StringConverter::toString(this->jumpKeyPressed) + " tryJump: " + Ogre::StringConverter::toString(this->tryJump) + " jumpCount: " + Ogre::StringConverter::toString(this->jumpCount) +
-                        " canDoubleJump: " + Ogre::StringConverter::toString(this->canDoubleJump) + " height: " + Ogre::StringConverter::toString(height) + " direction: " + Ogre::StringConverter::toString(static_cast<int>(this->direction)) +
-                        " keyDirection: " + Ogre::StringConverter::toString(this->keyDirection) + " tempSpeed: " + Ogre::StringConverter::toString(tempSpeed) + " acceleration: " + Ogre::StringConverter::toString(this->acceleration) +
-                        " directionMove: " + Ogre::StringConverter::toString(directionMove) + " currentVelocity: " + Ogre::StringConverter::toString(currentVelocity) + " newVelocity: " + Ogre::StringConverter::toString(newVelocity) +
-                        " jumpVelocity: " + Ogre::StringConverter::toString(jumpVelocity) +
-                        " hitBelow: " + Ogre::String(nullptr != this->playerController->getHitGameObjectBelow() ? this->playerController->getHitGameObjectBelow()->getName() : "<none>") +
-                        " hitFront: " + Ogre::String(nullptr != this->playerController->getHitGameObjectFront() ? this->playerController->getHitGameObjectFront()->getName() : "<none>"));
+                // Only the component into the wall is removed; moving along it or away from
+                // it stays untouched, so the player can still walk parallel to the wall, turn
+                // around freely and slide DOWN it while airborne.
+                directionMove += blockedWallNormal * intoWall;
             }
         }
 
+        // -------------------------------------------------------------------------
+        // Slope handling while standing on the ground.
+        //
+        // The vertical part of the velocity used to be carried over unconditionally. On
+        // flat ground that is harmless, but on a ramp the contact solver pushes the body
+        // UP while the player walks up the slope, and that upward speed is read back here
+        // on the next frame and re-commanded by the velocity servo in
+        // PhysicsActiveComponent::moveCallback - so it never decays. Gravity is only added
+        // on top of the servo target, which means it can shave off one physics substep
+        // worth of speed per frame and no more.
+        //
+        // Reversing the walking direction on a ramp therefore kept the full upward speed
+        // while the horizontal speed flipped: the player left the ramp surface and sailed
+        // through the air instead of walking back down. That is the reported "no gravity
+        // while turning" effect.
+        //
+        // On the ground the vertical speed is now REBUILT from the surface instead of
+        // being remembered: the movement input is projected onto the ground plane, which
+        // yields the correct climbing speed for whatever direction the player is heading
+        // in RIGHT NOW, and the stale upward carry-over is dropped. Falling speed (along
+        // gravity) is always kept, so the player still settles onto the ground.
+        //
+        // Nothing here touches the airborne case, and a jump is explicitly recognised and
+        // left alone - see the ramp plausibility test below.
+        // -------------------------------------------------------------------------
+        if (false == this->inAir && nullptr != this->playerController->getHitGameObjectBelow())
+        {
+            Ogre::Vector3 groundNormal = this->playerController->getNormal();
+            if (groundNormal.squaredLength() > 0.0001f)
+            {
+                groundNormal.normalise();
+
+                const Ogre::Real normalDotUp = groundNormal.dotProduct(upDir);
+
+                // Walkable ground only - 60 degrees or flatter. Anything steeper is a wall
+                // and must never be treated as a ramp.
+                if (normalDotUp > 0.2f)
+                {
+                    // Project the movement onto the ground plane ALONG the up axis. Doing
+                    // it this way keeps the horizontal speed exactly as it was and only
+                    // adds the vertical part, so walking up a ramp does not slow the player
+                    // down and walking down one does not speed him up.
+                    const Ogre::Real horizontalSpeed = directionMove.length();
+
+                    Ogre::Real slopeSpeed = directionMove.dotProduct(groundNormal) / normalDotUp;
+
+                    // HARD CLAMP, and the reason the first version of this catapulted the
+                    // player into the air on a direction change.
+                    //
+                    // The ground normal comes from three downward rays that are offset in
+                    // the player's LOCAL frame, so one of them sits ahead of him in walking
+                    // direction. Near the foot or the crest of a ramp that ray catches the
+                    // FACE of the ramp instead of the ground, and a face-on normal makes
+                    // 'normalDotUp' tiny - the division then produced several times the
+                    // walking speed as vertical speed and launched him.
+                    //
+                    // A ramp a character can actually walk up never needs more vertical
+                    // speed than the horizontal speed he is walking with (that is a 45
+                    // degree ramp), so that is the ceiling.
+                    if (slopeSpeed > horizontalSpeed)
+                    {
+                        slopeSpeed = horizontalSpeed;
+                    }
+                    else if (slopeSpeed < -horizontalSpeed)
+                    {
+                        slopeSpeed = -horizontalSpeed;
+                    }
+
+                    directionMove -= upDir * slopeSpeed;
+
+                    const Ogre::Real upwardSpeed = -verticalSpeedAlongGravity;
+                    if (upwardSpeed > 0.0f)
+                    {
+                        // A ramp can never push the body upwards faster than the player is
+                        // walking along it. Anything clearly above that is a jump that was
+                        // started while the feet were still close enough to the ground for
+                        // 'inAir' to read false, and it MUST survive - zeroing it here is
+                        // exactly what would cut the jump height short.
+                        const Ogre::Real maxRampUpSpeed = horizontalSpeed + 0.5f;
+                        if (upwardSpeed <= maxRampUpSpeed)
+                        {
+                            verticalVelocity = Ogre::Vector3::ZERO;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ogre::Vector3 newVelocity = verticalVelocity + directionMove;
         if (false == this->hasPhysicsPlayerControllerComponent)
         {
 
@@ -3430,18 +4049,32 @@ namespace NOWA
         // direction-dependent jitter. Folding the push into newVelocity itself
         // keeps everything driven by the same single target-velocity computation.
         // -------------------------------------------------------------------------
-        // if (nullptr != this->playerController->getHitGameObjectFront())
-        //{
-        //    const Ogre::Vector3 wallNormal = this->playerController->getFrontNormal();
-        //    if (Ogre::Vector3::ZERO != wallNormal)
-        //    {
-        //        const Ogre::Real wallPushSpeed = 0.3f; // small outward speed in m/s, tune to taste
-        //        newVelocity += wallNormal * wallPushSpeed;
-        //    }
-        //}
+        if (nullptr != this->playerController->getHitGameObjectFront())
+        {
+            const Ogre::Vector3 wallNormal = this->playerController->getFrontNormal();
+            if (Ogre::Vector3::ZERO != wallNormal)
+            {
+                const Ogre::Real wallPushSpeed = 0.3f; // small outward speed in m/s, tune to taste
+                newVelocity += wallNormal * wallPushSpeed;
+            }
+        }
 
-        // Walk sound -- only when grounded and actually moving.
-        if (false == this->inAir && this->direction != Direction::NONE)
+        // Walk sound -- only when grounded and actually TRANSLATING.
+        //
+        // Not 'direction': in 2D that carries the FACING and deliberately survives releasing
+        // the key, so it was true forever once the player had walked once and the step sound
+        // ran permanently.
+        //
+        // Not 'anyMove' either: that is true for any of the four direction keys, and in 2D up
+        // and down move the player nowhere - yet the steps were heard. The honest test is the
+        // movement this frame actually produced: keyDirection is only filled for the keys that
+        // really translate, and tempSpeed is zero while the player is held in place.
+        //
+        // A 180 degree turn still does not count: while 'directionChanged' is set the player
+        // is rotating on the spot.
+        const bool isTranslating = (this->keyDirection.squaredLength() > 0.0001f) && (Ogre::Math::Abs(tempSpeed) > 0.0001f);
+
+        if (false == this->inAir && true == isTranslating && false == this->directionChanged)
         {
             this->walkSound->play();
             this->walkSound->setVelocity(newVelocity);

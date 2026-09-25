@@ -240,7 +240,8 @@ namespace NOWA
             // Single write, position only, current orientation preserved - see the header comment
             // on trackedCameraPosition, and the class-wide BUGFIX note below, for why this used to
             // be two conflicting writes and why orientation must never come from the scene node.
-            const Ogre::Vector3 initialPosition = this->sceneNode->_getDerivedPositionUpdated() + this->offset;
+            Ogre::Vector3 targetNodePosition = this->sceneNode->_getDerivedPositionUpdated();
+            const Ogre::Vector3 initialPosition = targetNodePosition + this->offset;
             GraphicsModule::getInstance()->setCameraTransform(this->camera, initialPosition, this->camera->getOrientation());
 
             // BUGFIX: this class used to have no memory of where it had last told the camera to be,
