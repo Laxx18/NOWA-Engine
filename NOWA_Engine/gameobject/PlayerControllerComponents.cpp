@@ -33,6 +33,16 @@
 
 namespace NOWA
 {
+    namespace
+    {
+        // [PlayerDIAG] TEMPORARY. The contact callback knows which game object reported the wall
+        // normal, the walking state does not - it only ever receives the normal itself. Keeping
+        // the name here rather than on the component avoids a header change for something that
+        // is going to be deleted again.
+        Ogre::String diagLastWallObjectName = "none";
+        Ogre::Vector3 diagLastWallContactPosition = Ogre::Vector3::ZERO;
+    }
+
     using namespace rapidxml;
     using namespace luabind;
 
@@ -324,6 +334,25 @@ namespace NOWA
 
     void PlayerControllerComponent::update(Ogre::Real dt, bool notSimulating)
     {
+        // The recorded wall normal is valid for exactly ONE frame and has to be re-reported
+        // by a fresh contact to survive. blockedWallTimer is used as a "was refreshed" FLAG
+        // here, not as a duration.
+        //
+        // It used to be a real countdown, but every arriving contact reloaded it - and a
+        // capsule against a wall produces several contact points per physics step, each
+        // delivered as its own deferred command. The countdown was therefore refreshed
+        // faster than it could run down and effectively never expired: the movement input
+        // stayed cancelled long after leaving the wall, and the building could not be
+        // approached closer than about a metre until the backlog had drained.
+        //
+        // The order in the game loop is what makes the flag work: processAll() delivers the
+        // contacts BEFORE update() runs, so a contact from this frame is already in when it
+        // is consumed here.
+        //
+        //   frame 1: processAll -> contact sets the flag
+        //            update     -> flag is consumed, the normal counts for this frame
+        //   frame 2: no contact
+        //            update     -> flag is gone, so the normal is cleared
         if (this->blockedWallTimer > 0.0f)
         {
             this->blockedWallTimer = 0.0f;
@@ -378,11 +407,35 @@ namespace NOWA
             }
 
             this->height = std::min(contactsDataBelow2.getHeight(), std::min(contactsDataBelow1.getHeight(), contactsDataBelow3.getHeight()));
-            this->normal = std::min(contactsDataBelow2.getNormal(), std::min(contactsDataBelow1.getNormal(), contactsDataBelow3.getNormal()));
             this->slope = std::min(contactsDataBelow2.getSlope(), std::min(contactsDataBelow1.getSlope(), contactsDataBelow3.getSlope()));
 
+            // The ground normal is picked from a ray that ACTUALLY HIT something.
+            //
+            // std::min on Ogre::Vector3 does not do what it looks like: Vector3::operator<
+            // only returns true when ALL three components are smaller, which is almost never
+            // the case for two surface normals - so std::min simply returned its first
+            // argument. A ray that missed reports Vector3::ZERO, and that zero won just as
+            // often as a real normal. The slope handling in WalkingStateJumpNRun reads this
+            // value, so a wrong normal there sends the player flying off a ramp.
+            this->normal = Ogre::Vector3::ZERO;
+            if (nullptr != contactsDataBelow1.getHitGameObject())
+            {
+                this->normal = contactsDataBelow1.getNormal();
+            }
+            else if (nullptr != contactsDataBelow2.getHitGameObject())
+            {
+                this->normal = contactsDataBelow2.getNormal();
+            }
+            else if (nullptr != contactsDataBelow3.getHitGameObject())
+            {
+                this->normal = contactsDataBelow3.getNormal();
+            }
+
             // Nothing found below, player must be in air!
-            if (nullptr == contactsDataBelow1.getHitGameObject() && nullptr == contactsDataBelow2.getHitGameObject() && contactsDataBelow3.getHitGameObject())
+            // Attention: the third test was missing its 'nullptr ==', so this branch fired
+            // whenever rays 1 and 2 missed but ray 3 HIT - it then threw away the perfectly
+            // valid height and normal of ray 3 and replaced them with the previous frame's.
+            if (nullptr == contactsDataBelow1.getHitGameObject() && nullptr == contactsDataBelow2.getHitGameObject() && nullptr == contactsDataBelow3.getHitGameObject())
             {
                 this->height = this->priorValidHeight; // in in air in any case!
                 this->normal = this->priorValidNormal;
@@ -751,7 +804,7 @@ namespace NOWA
                         // own size of him; anything further away comes from a position he
                         // has long since left.
                         const Ogre::Real maxContactDistance = this->gameObjectPtr->getSize().length();
-                        if (contactSnapshot.position.squaredDistance(this->gameObjectPtr->getSceneNode()->getPosition()) > maxContactDistance * maxContactDistance)
+                        if (contactSnapshot.position.squaredDistance(this->gameObjectPtr->getPosition()) > maxContactDistance * maxContactDistance)
                         {
                             return;
                         }
@@ -805,8 +858,6 @@ namespace NOWA
                         {
                             this->blockedWallNormal = horizontalWallNormal;
 
-                            // Flags the normal as freshly reported. update() consumes this and keeps
-                            // the normal for exactly one frame, see the comment there.
                             // Flags the normal as freshly reported; update() consumes it and
                             // keeps the normal for exactly one frame, see the comment there.
                             this->blockedWallTimer = 1.0f;
@@ -2078,11 +2129,16 @@ namespace NOWA
         }
 
         const Ogre::String newChildStateName = this->requestedChildStateName;
-        if (newChildStateName == this->currentChildStateName)
-        {
-            return;
-        }
 
+        // Attention: requesting the state that is ALREADY running is deliberately not skipped
+        // here, unlike in internalApplyStateRequest().
+        //
+        // A child state is a one shot by nature - a swing, a gesture - and re-requesting it
+        // means "do it again", not "nothing to do". It is restarted properly, so exit() runs
+        // before enter() and whatever the state locked or announced is released first.
+        //
+        // This is only reached through an explicit requestChildState() call, so nothing
+        // restarts the state behind the caller's back.
         if (true == newChildStateName.empty())
         {
             this->stateMachine->endChildState();
@@ -3596,6 +3652,7 @@ namespace NOWA
                                                 this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_3) ||
                                                 this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_JUMP_END) ||
                                                 (true == isTouchedDown && this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_JUMP_START));
+
             if (animId != NOWA::AnimationBlenderV2::AnimID::ANIM_NONE && false == this->playerController->getAnimationBlender()->isAnimationActive(animId) && false == this->inAir && false == this->jumpKeyPressed && false == this->isJumping &&
                 true == blenderIsInterruptible && false == childStateOwnsAnimation)
             {
@@ -3977,7 +4034,7 @@ namespace NOWA
 
                 // Walkable ground only - 60 degrees or flatter. Anything steeper is a wall
                 // and must never be treated as a ramp.
-                if (normalDotUp > 0.2f)
+                if (normalDotUp > 0.5f)
                 {
                     // Project the movement onto the ground plane ALONG the up axis. Doing
                     // it this way keeps the horizontal speed exactly as it was and only
@@ -4009,18 +4066,65 @@ namespace NOWA
                         slopeSpeed = -horizontalSpeed;
                     }
 
-                    directionMove -= upDir * slopeSpeed;
-
                     const Ogre::Real upwardSpeed = -verticalSpeedAlongGravity;
-                    if (upwardSpeed > 0.0f)
+
+                    // A ramp a character walks up can never lift him faster than he is walking
+                    // along it - that is a 45 degree ramp, and the clamp above is the same
+                    // ceiling. Anything clearly above this is NOT the ramp: it is a jump, or the
+                    // contact solver pushing the body out of a surface it sank into.
+                    const Ogre::Real maxRampUpSpeed = horizontalSpeed + 0.5f;
+
+                    if (upwardSpeed > maxRampUpSpeed)
                     {
-                        // A ramp can never push the body upwards faster than the player is
-                        // walking along it. Anything clearly above that is a jump that was
-                        // started while the feet were still close enough to the ground for
-                        // 'inAir' to read false, and it MUST survive - zeroing it here is
-                        // exactly what would cut the jump height short.
-                        const Ogre::Real maxRampUpSpeed = horizontalSpeed + 0.5f;
-                        if (upwardSpeed <= maxRampUpSpeed)
+                        // Rising too fast to be explained by this ramp, so the vertical speed is
+                        // left exactly as it is - and, crucially, the ramp climb is NOT added on
+                        // top of it.
+                        //
+                        // That addition was the bug in both earlier versions of this block:
+                        //
+                        //   frame n   : the solver pushes the body out of a steep ramp,
+                        //               upwardSpeed crosses maxRampUpSpeed
+                        //   frame n+1 : still above it, so the speed is kept - and slopeSpeed,
+                        //               up to a full walking speed, is added to it
+                        //   frame n+2 : faster again, kept again, added to again
+                        //
+                        // Every frame fed the next one and the player shot off the ramp. The
+                        // steeper the ramp, the harder the solver pushes, which is why only the
+                        // steep ones did it.
+                        //
+                        // Leaving the speed untouched breaks that loop on its own: nothing adds
+                        // to it any more, and gravity - which PhysicsActiveComponent::moveCallback
+                        // adds on top of the servo target every substep - brings it back down
+                        // within a few frames. Once it is plausible again the branch below takes
+                        // over and rebuilds the vertical speed from the surface.
+                        //
+                        // This is also what keeps a jump intact. The previous attempt asked
+                        // 'this->isJumping || this->tryJump' instead, and those two flags do not
+                        // mean what they read like:
+                        //
+                        //   - isJumping is set ONLY in the else branch of the jump block, i.e.
+                        //     when a jump was REFUSED because the player was already rising too
+                        //     fast. A successful jump never sets it.
+                        //   - both are cleared the moment the jump key is RELEASED, which on a
+                        //     tap is one or two frames after the press - long before the player
+                        //     has cleared the 0.4 unit ground threshold that makes 'inAir' true.
+                        //
+                        // So on a normal tap jump both flags read false while the player was
+                        // still grounded and rising, the vertical speed was zeroed, and the
+                        // velocity servo turned the difference into
+                        // 'setForce(velocityError * mass / timeStep)' - one physics timestep worth
+                        // of force against the full jump speed. That is the slam into the ground
+                        // that felt like a gravity of -100, and at a ledge it is also why the
+                        // player hung there: he never rose, so he never got 'inAir', while the
+                        // wall separation kept cancelling his horizontal input.
+                    }
+                    else
+                    {
+                        // Project the movement onto the ground plane and rebuild the vertical
+                        // speed from the surface instead of remembering it.
+                        directionMove -= upDir * slopeSpeed;
+
+                        if (upwardSpeed > 0.0f)
                         {
                             verticalVelocity = Ogre::Vector3::ZERO;
                         }
@@ -4030,9 +4134,9 @@ namespace NOWA
         }
 
         Ogre::Vector3 newVelocity = verticalVelocity + directionMove;
+
         if (false == this->hasPhysicsPlayerControllerComponent)
         {
-
             this->playerController->getPhysicsComponent()->applyRequiredForceForVelocity(newVelocity);
         }
         else

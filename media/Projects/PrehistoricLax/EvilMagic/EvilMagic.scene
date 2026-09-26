@@ -239,6 +239,7 @@
 					<property type="7" name="FadeMode" data="FadeOut"/>
 					<property type="6" name="Duration" data="2"/>
 					<property type="7" name="EaseFunction" data="easeOutSine"/>
+					<property type="7" name="ComponentMyGUIButtonComponent" data="MyGUIButtonComponent"/>
 					<property type="7" name="Name" data="SkipButton"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>

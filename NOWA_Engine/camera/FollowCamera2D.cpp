@@ -9,43 +9,6 @@
 
 namespace NOWA
 {
-    namespace
-    {
-        // Attention: the closure id MUST be unique per instance. It used to be the constant
-        // string "FollowCamera2D::moveCamera", shared by every FollowCamera2D that ever exists.
-        // Two instances then fight over the same slot: registering in one overwrites the other,
-        // and the destructor of one removes the closure belonging to the other. That is exactly
-        // what happens on a stop/start cycle, where the old behavior is deleted while a new one
-        // is already being created. The instance address is unique for as long as the object
-        // lives, which is precisely the lifetime the closure has to match.
-        Ogre::String buildMoveCameraClosureId(const FollowCamera2D* instance)
-        {
-            return "FollowCamera2D::moveCamera_" + Ogre::StringConverter::toString(reinterpret_cast<size_t>(instance));
-        }
-
-        // Attention: removeTrackedClosure() is ASYNCHRONOUS when called from the logic thread.
-        // It only posts a removal command which the render thread processes at its next safe
-        // point. CameraManager::removeCameraBehavior() does
-        //
-        //     cameraBehavior->onClearData();
-        //     delete cameraBehavior;
-        //
-        // with nothing in between, so the render thread can still execute the closure - and
-        // therefore dereference 'this' - after the object has already been freed. That is the
-        // crash: it disappears as soon as the closure is not registered at all.
-        //
-        // Routing the removal through enqueueAndWait puts us ON the render thread, where
-        // removeTrackedClosure() takes its direct path, and blocks until the closure is
-        // provably gone. Only then may the object be destroyed.
-        void removeMoveCameraClosureBlocking(const Ogre::String& closureId)
-        {
-            NOWA::GraphicsModule::RenderCommand removeCommand = [closureId]()
-            {
-                NOWA::GraphicsModule::getInstance()->removeTrackedClosure(closureId);
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(removeCommand), "FollowCamera2D::removeMoveCameraClosure");
-        }
-    }
 
     FollowCamera2D::FollowCamera2D(unsigned int id, Ogre::SceneNode* sceneNode, const Ogre::Vector3& offsetPosition, Ogre::Real smoothValue) :
         BaseCamera(id, 0, 0, smoothValue),
@@ -73,10 +36,6 @@ namespace NOWA
 
     FollowCamera2D::~FollowCamera2D()
     {
-        // Attention: this must be the FIRST statement and it must block. Everything below
-        // starts tearing the object down, and the closure captures 'this'.
-        removeMoveCameraClosureBlocking(buildMoveCameraClosureId(this));
-
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &FollowCamera2D::handleUpdateBounds), EventDataBoundsUpdated::getStaticEventType());
         this->sceneNode = nullptr;
         if (this->raySceneQuery)
@@ -93,20 +52,11 @@ namespace NOWA
     {
         BaseCamera::onSetData();
         this->firstTimeMoveValueSet = true;
-
-        // Drop any closure left over from a previous activation before moveCamera() registers
-        // a fresh one, so the two can never overlap.
-        removeMoveCameraClosureBlocking(buildMoveCameraClosureId(this));
     }
 
     void FollowCamera2D::onClearData(void)
     {
         BaseCamera::onClearData();
-
-        // Attention: CameraManager::removeCameraBehavior() calls this immediately before
-        // 'delete cameraBehavior'. The removal therefore has to be finished when we return,
-        // not merely queued - see removeMoveCameraClosureBlocking().
-        removeMoveCameraClosureBlocking(buildMoveCameraClosureId(this));
     }
 
     void FollowCamera2D::setOffset(const Ogre::Vector3& offset)
@@ -267,88 +217,82 @@ namespace NOWA
             playerPosition = this->sceneNode->getPosition();
         }
 
-        // Always use closure functions in update functions to prevent graphical flickering
-        auto closureFunction = [this, playerPosition](Ogre::Real renderDt)
+        // Attention: a persistent closure keeps running on the render thread until it is
+        // explicitly removed. The camera may be destroyed in between - re-check on every
+        // execution, not just when the closure is registered.
+        if (nullptr == this->camera)
         {
-            // Attention: a persistent closure keeps running on the render thread until it is
-            // explicitly removed. The camera may be destroyed in between - re-check on every
-            // execution, not just when the closure is registered.
-            if (nullptr == this->camera)
+            return;
+        }
+
+        const Ogre::Vector3 cameraPosition = this->trackedCameraPosition;
+
+        Ogre::Vector3 velocity = Ogre::Vector3::ZERO;
+
+        if (playerPosition.x + this->offset.x - this->mostRightUp.x > this->minimumBounds.x && playerPosition.x + this->offset.x + this->mostRightUp.x < this->maximumBounds.x)
+        {
+            velocity.x = playerPosition.x - cameraPosition.x + this->offset.x;
+
+            if (Ogre::Math::RealEqual(velocity.x, 0.0f))
             {
-                return;
+                velocity.x = 0.0f;
             }
+        }
 
-            const Ogre::Vector3 cameraPosition = this->trackedCameraPosition;
-
-            Ogre::Vector3 velocity = Ogre::Vector3::ZERO;
-
-            if (playerPosition.x + this->offset.x - this->mostRightUp.x > this->minimumBounds.x && playerPosition.x + this->offset.x + this->mostRightUp.x < this->maximumBounds.x)
+        if (playerPosition.y + this->offset.y - this->mostRightUp.y > this->minimumBounds.y && playerPosition.y + this->offset.y + this->mostRightUp.y < this->maximumBounds.y)
+        {
+            velocity.y = playerPosition.y - cameraPosition.y + this->offset.y;
+            if (Ogre::Math::RealEqual(velocity.y, 0.0f))
             {
-                velocity.x = playerPosition.x - cameraPosition.x + this->offset.x;
-
-                if (Ogre::Math::RealEqual(velocity.x, 0.0f))
-                {
-                    velocity.x = 0.0f;
-                }
+                velocity.y = 0.0f;
             }
+        }
 
-            if (playerPosition.y + this->offset.y - this->mostRightUp.y > this->minimumBounds.y && playerPosition.y + this->offset.y + this->mostRightUp.y < this->maximumBounds.y)
-            {
-                velocity.y = playerPosition.y - cameraPosition.y + this->offset.y;
-                if (Ogre::Math::RealEqual(velocity.y, 0.0f))
-                {
-                    velocity.y = 0.0f;
-                }
-            }
+        velocity.x = NOWA::MathHelper::getInstance()->lowPassFilter(velocity.x, this->lastMoveValue.x, this->smoothValue);
+        velocity.y = NOWA::MathHelper::getInstance()->lowPassFilter(velocity.y, this->lastMoveValue.y, this->smoothValue);
 
-            velocity.x = NOWA::MathHelper::getInstance()->lowPassFilter(velocity.x, this->lastMoveValue.x, this->smoothValue);
-            velocity.y = NOWA::MathHelper::getInstance()->lowPassFilter(velocity.y, this->lastMoveValue.y, this->smoothValue);
+        this->lastMoveValue = velocity;
 
-            this->lastMoveValue = velocity;
+        // BUGFIX: bounds clamping used to be up to FOUR separate updateCameraPosition() calls in
+        // this one function - the main movement write, then an X clamp, then a Y clamp, each of
+        // them queued independently and each computed from a DIFFERENT position snapshot:
+        //   - The main write used `cameraPosition` (this frame's starting point) plus `velocity`.
+        //   - The X clamp reused the SAME `cameraPosition` for the axes it was not correcting -
+        //     meaning if it fired, it reset Y and Z back to where they were BEFORE this frame's
+        //     movement, silently discarding whatever Y motion the main write had just computed.
+        //   - The Y clamp did the same to X, and read this->camera->getPosition().y freshly rather
+        //     than using `cameraPosition.y` at all - a THIRD independent, and possibly differently
+        //     stale, read of the camera's position within the same function call.
+        //   - All four were queued render commands; whichever one the render thread happened to
+        //     apply LAST for a given frame silently won, with no ordering guarantee visible from
+        //     this thread.
+        //
+        // Folded into one vector, adjusted in place, with exactly ONE write issued at the end - a
+        // clamp on one axis can no longer step on a movement just computed for another, and there
+        // is only ever one answer to "where does the camera end up this frame".
+        Ogre::Vector3 finalPosition = cameraPosition + (velocity * this->moveCameraWeight);
 
-            // BUGFIX: bounds clamping used to be up to FOUR separate updateCameraPosition() calls in
-            // this one function - the main movement write, then an X clamp, then a Y clamp, each of
-            // them queued independently and each computed from a DIFFERENT position snapshot:
-            //   - The main write used `cameraPosition` (this frame's starting point) plus `velocity`.
-            //   - The X clamp reused the SAME `cameraPosition` for the axes it was not correcting -
-            //     meaning if it fired, it reset Y and Z back to where they were BEFORE this frame's
-            //     movement, silently discarding whatever Y motion the main write had just computed.
-            //   - The Y clamp did the same to X, and read this->camera->getPosition().y freshly rather
-            //     than using `cameraPosition.y` at all - a THIRD independent, and possibly differently
-            //     stale, read of the camera's position within the same function call.
-            //   - All four were queued render commands; whichever one the render thread happened to
-            //     apply LAST for a given frame silently won, with no ordering guarantee visible from
-            //     this thread.
-            //
-            // Folded into one vector, adjusted in place, with exactly ONE write issued at the end - a
-            // clamp on one axis can no longer step on a movement just computed for another, and there
-            // is only ever one answer to "where does the camera end up this frame".
-            Ogre::Vector3 finalPosition = cameraPosition + (velocity * this->moveCameraWeight);
+        if (finalPosition.x + this->mostRightUp.x > this->maximumBounds.x)
+        {
+            finalPosition.x = this->maximumBounds.x - this->mostRightUp.x;
+        }
+        else if (finalPosition.x - this->mostRightUp.x < this->minimumBounds.x)
+        {
+            finalPosition.x = this->minimumBounds.x + this->mostRightUp.x;
+        }
 
-            if (finalPosition.x + this->mostRightUp.x > this->maximumBounds.x)
-            {
-                finalPosition.x = this->maximumBounds.x - this->mostRightUp.x;
-            }
-            else if (finalPosition.x - this->mostRightUp.x < this->minimumBounds.x)
-            {
-                finalPosition.x = this->minimumBounds.x + this->mostRightUp.x;
-            }
+        if (finalPosition.y + this->mostRightUp.y > this->maximumBounds.y)
+        {
+            finalPosition.y = this->maximumBounds.y - this->mostRightUp.y;
+        }
+        else if (finalPosition.y - this->mostRightUp.y < this->minimumBounds.y)
+        {
+            finalPosition.y = this->minimumBounds.y + this->mostRightUp.y;
+        }
 
-            if (finalPosition.y + this->mostRightUp.y > this->maximumBounds.y)
-            {
-                finalPosition.y = this->maximumBounds.y - this->mostRightUp.y;
-            }
-            else if (finalPosition.y - this->mostRightUp.y < this->minimumBounds.y)
-            {
-                finalPosition.y = this->minimumBounds.y + this->mostRightUp.y;
-            }
-
-            // Even closure is used and we are already on render thread, never the less this interpolation method still must be used to prevent graphical object jitter!
-            GraphicsModule::getInstance()->updateCameraPosition(this->camera, finalPosition);
-            this->trackedCameraPosition = finalPosition;
-        };
-
-        NOWA::GraphicsModule::getInstance()->updateTrackedClosure(buildMoveCameraClosureId(this), closureFunction);
+        // Even closure is used and we are already on render thread, never the less this interpolation method still must be used to prevent graphical object jitter!
+        GraphicsModule::getInstance()->updateCameraPosition(this->camera, finalPosition);
+        this->trackedCameraPosition = finalPosition;
     }
 
     void FollowCamera2D::rotateCamera(Ogre::Real dt, bool forJoyStick)

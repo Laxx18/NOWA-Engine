@@ -464,39 +464,51 @@ namespace NOWA
         PhysicsComponent* otherPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(otherBody->getUserData());
         if (nullptr == otherPhysicsComponent)
         {
-            // TEMPORARY DIAGNOSTICS - a body without a physics component has no owning game
-            // object. Normal for ragdoll bones, suspicious for anything else.
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsActiveKinematicComponent-DIAG] Contact DROPPED: other body has no physics component.");
             return;
         }
 
-        GameObjectPtr otherGameObjectPtr = otherPhysicsComponent->getOwner();
-        if (nullptr == otherGameObjectPtr)
+        GameObject* otherGameObject = otherPhysicsComponent->getOwner().get();
+        if (nullptr == otherGameObject)
         {
-            // TEMPORARY DIAGNOSTICS
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsActiveKinematicComponent-DIAG] Contact DROPPED: other physics component has no owner.");
             return;
         }
 
         if (nullptr == this->gameObjectPtr->getLuaScript())
         {
-            // TEMPORARY DIAGNOSTICS
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsActiveKinematicComponent-DIAG] Contact DROPPED: no lua script on " + this->gameObjectPtr->getName() + ".");
             return;
         }
 
-        // Resolved NOW rather than inside the command: this callback runs on a physics worker
-        // thread while the command runs later on the logic thread, so anything read at
-        // execution time may already have changed. The owner is captured as a shared pointer,
-        // which additionally keeps the other game object alive until the call has happened.
+        // Everything the command needs is resolved NOW and captured BY VALUE as plain data.
+        // This callback runs on a physics worker thread while the command runs later on the
+        // logic thread, so anything read at execution time may already have changed.
         const Ogre::String capturedFunctionName = this->onKinematicContactFunctionName->getString();
+
+        // Attention: the OTHER game object is captured as its ID, never as a GameObjectPtr.
+        //
+        // The previous version captured the shared pointer and handed that very shared pointer
+        // to lua. Both halves of that are wrong.
+        //
+        // Capturing it kept the other game object alive for as long as the command sat in the
+        // queue - a deleted object was resurrected by the queue and the command then worked on
+        // a corpse.
+        //
+        // Handing it to lua is worse: luabind stores the shared pointer in the lua object, so
+        // the reference count is now owned by the lua garbage collector. The game object then
+        // outlives disconnect() and the whole game object controller, and is released whenever
+        // lua happens to collect it - which is after the scene manager and the physics world
+        // are gone. That is the crash on leaving the editor after a start, connect, disconnect
+        // cycle. Only ever the RAW GameObject* may cross into lua.
+        //
+        // The id is also the honest thing to capture: it is resolved again on the logic thread,
+        // so an object deleted in the meantime simply resolves to nothing instead of dangling.
+        const unsigned long otherGameObjectId = otherGameObject->getId();
 
         // The weak pointer covers this component being destroyed between enqueueing and
         // execution - the command's first line used to touch this->gameObjectPtr before any
         // check could run.
         boost::weak_ptr<GameObjectComponent> weakThis = this->shared_from_this();
 
-        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, otherGameObjectPtr, capturedFunctionName]()
+        NOWA::AppStateManager::LogicCommand logicCommand = [this, weakThis, otherGameObjectId, capturedFunctionName]()
         {
             boost::shared_ptr<GameObjectComponent> strongThis = weakThis.lock();
             if (nullptr == strongThis)
@@ -512,7 +524,17 @@ namespace NOWA
                 return;
             }
 
-            luaScript->callTableFunction(capturedFunctionName, otherGameObjectPtr);
+            // Resolved again on the logic thread. Gone in the meantime means nothing to report.
+            GameObjectPtr resolvedGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(otherGameObjectId);
+            if (nullptr == resolvedGameObjectPtr)
+            {
+                return;
+            }
+
+            // RAW pointer into lua. The local shared pointer above keeps the object alive for
+            // the duration of the call and releases it right afterwards, which is exactly the
+            // lifetime lua is allowed to see.
+            luaScript->callTableFunction(capturedFunctionName, resolvedGameObjectPtr.get());
         };
         NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
     }
@@ -545,35 +567,21 @@ namespace NOWA
 
     void PhysicsActiveKinematicComponent::setKinematicContactSolvingEnabled(bool enable)
     {
-        // TEMPORARY DIAGNOSTICS - remove once the kinematic contact is understood.
-        //
-        // This guard used to return silently, and it is the most likely reason for a contact
-        // function that is never called: connect() calls this, and if the lua script is not
-        // attached to the game object YET at that moment, the callback is simply never
-        // installed and nothing in the log says so. Every other lua driven component in the
-        // engine (AiLuaComponent, PlayerControllerJumpNRunLuaComponent) waits for
-        // EventDataLuaScriptConnected instead of relying on connect() ordering.
-        if (nullptr == this->gameObjectPtr)
+        // Attention: this returns silently when the lua script is not attached to the game
+        // object YET. connect() calls this, so the ordering decides whether the callback is
+        // installed at all. Should that ever bite again, the fix is to wait for
+        // EventDataLuaScriptConnected like AiLuaComponent and PlayerControllerJumpNRunLuaComponent
+        // do, instead of relying on connect() ordering.
+        if (nullptr == this->gameObjectPtr || nullptr == this->gameObjectPtr->getLuaScript())
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsActiveKinematicComponent-DIAG] setKinematicContactSolvingEnabled ABORTED: no game object.");
-            return;
-        }
-        if (nullptr == this->gameObjectPtr->getLuaScript())
-        {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsActiveKinematicComponent-DIAG] setKinematicContactSolvingEnabled ABORTED for game object: " + this->gameObjectPtr->getName() +
-                                                                                    " because there is NO LUA SCRIPT on it (yet). Function name was: '" + this->onKinematicContactFunctionName->getString() + "'.");
             return;
         }
         if (true == this->onKinematicContactFunctionName->getString().empty())
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                "[PhysicsActiveKinematicComponent-DIAG] setKinematicContactSolvingEnabled ABORTED for game object: " + this->gameObjectPtr->getName() + " because 'OnKinematicContactFunctionName' is EMPTY.");
             return;
         }
         if (nullptr == this->physicsBody)
         {
-            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                "[PhysicsActiveKinematicComponent-DIAG] setKinematicContactSolvingEnabled ABORTED for game object: " + this->gameObjectPtr->getName() + " because there is no physics body.");
             return;
         }
 

@@ -28,7 +28,12 @@ namespace NOWA
         overlaySource(nullptr),
         overlayTimeleft(0.0f),
         overlayDuration(0.0f),
-        overlayBlendingOut(false)
+        overlayBlendingOut(false),
+        overlayLoop(false),
+        overlayBlendOutTime(0.2f),
+        overlaySpeed(1.0f),
+        overlayChainInfluence(1.0f),
+        overlayOutsideInfluence(0.0f)
     {
         this->uniqueId = NOWA::makeUniqueID();
 
@@ -694,57 +699,6 @@ namespace NOWA
                             {
                                 this->source->mFrameRate = it->second * this->currentSpeed;
                             }
-
-                            // ---- Overlay animation driving ----
-                            if (nullptr != this->overlaySource)
-                            {
-                                // BUG FIX (NEW BUG A for overlay): use the same frame-based
-                                // threshold for the overlay completion check as for the main source.
-                                const Ogre::Real overlayThreshold = 0.5f / this->overlaySource->mFrameRate;
-
-                                if (false == this->overlayBlendingOut)
-                                {
-                                    // Blend-in phase: weight 0 -> 1
-                                    if (this->overlayTimeleft > 0.0f)
-                                    {
-                                        this->overlayTimeleft -= renderDt;
-                                        this->overlaySource->mWeight = (this->overlayTimeleft <= 0.0f) ? 1.0f : 1.0f - (this->overlayTimeleft / this->overlayDuration);
-                                    }
-
-                                    // Advance the overlay animation
-                                    this->overlaySource->addTime(renderDt);
-
-                                    // Non-looping overlay finished on its own — auto-clear
-                                    if (false == this->overlaySource->mLoop && this->overlaySource->getCurrentTime() >= this->overlaySource->getDuration() - overlayThreshold)
-                                    {
-                                        this->overlaySource->setOverrideBoneWeightsOnAllAnimations(1.0f, true);
-                                        this->overlaySource->setEnabled(false);
-                                        this->overlaySource->mWeight = 0.0f;
-                                        this->overlaySource = nullptr;
-                                    }
-                                }
-                                else
-                                {
-                                    // Blend-out phase: weight 1 -> 0
-                                    if (this->overlayTimeleft > 0.0f)
-                                    {
-                                        this->overlayTimeleft -= renderDt;
-
-                                        if (this->overlayTimeleft <= 0.0f)
-                                        {
-                                            // Fully blended out — shut down
-                                            this->overlaySource->setEnabled(false);
-                                            this->overlaySource->mWeight = 0.0f;
-                                            this->overlaySource = nullptr;
-                                        }
-                                        else
-                                        {
-                                            this->overlaySource->mWeight = this->overlayTimeleft / this->overlayDuration;
-                                            this->overlaySource->addTime(renderDt);
-                                        }
-                                    }
-                                }
-                            }
                         }
 
                         // Notify once per completion. Never fires for loop=true (see above).
@@ -763,6 +717,18 @@ namespace NOWA
                 // Advance the source. For looping animations Ogre's addFrame() wraps
                 // automatically because setLoop(true) was called before this point.
                 this->source->addTime(renderDt);
+
+                // BUG FIX (overlay never ran): the overlay driving code used to sit INSIDE the
+                // non looping completion branch above, nested in 'if (nullptr != previousSource)'.
+                // It therefore only ever ran on the single frame on which a NON LOOPING main clip
+                // reached its end while a blendAndContinue was pending. For a walking character,
+                // whose main clip loops, that branch is never entered at all, so the overlay was
+                // enabled with weight 0, had its bones zeroed on every other animation by
+                // setOverrideBoneWeightsOnAllAnimations(0.0f, true), and was then never advanced:
+                // the masked bones simply froze in the bind pose and the overlay never cleared
+                // itself again. An overlay is a layer of its own - it has to be driven on EVERY
+                // frame, independently of what the main animation is doing.
+                this->internalUpdateOverlay(renderDt);
 
                 if (true == this->debugLog)
                 {
@@ -902,7 +868,7 @@ namespace NOWA
         {
             return;
         }
-        this->internalSetOverlayAnimation(it->second, blendInTime);
+        this->internalSetOverlayAnimation(it->second, "", blendInTime, false);
     }
 
     void AnimationBlenderV2::setOverlayAnimation(const Ogre::String& animationName, Ogre::Real blendInTime)
@@ -911,12 +877,204 @@ namespace NOWA
         {
             return;
         }
-        this->internalSetOverlayAnimation(animationName, blendInTime);
+        this->internalSetOverlayAnimation(animationName, "", blendInTime, false);
     }
 
-    void AnimationBlenderV2::internalSetOverlayAnimation(const Ogre::String& animationName, Ogre::Real blendInTime)
+    void AnimationBlenderV2::setOverlayAnimation(AnimID animationId, Ogre::Real blendInTime, bool loop)
+    {
+        auto it = this->mappedAnimations.find(animationId);
+        if (it == this->mappedAnimations.end())
+        {
+            return;
+        }
+        this->internalSetOverlayAnimation(it->second, "", blendInTime, loop);
+    }
+
+    void AnimationBlenderV2::setOverlayAnimation(const Ogre::String& animationName, Ogre::Real blendInTime, bool loop)
+    {
+        if (animationName.empty())
+        {
+            return;
+        }
+        this->internalSetOverlayAnimation(animationName, "", blendInTime, loop);
+    }
+
+    void AnimationBlenderV2::setOverlayAnimationForBoneChain(AnimID animationId, const Ogre::String& rootBoneName, Ogre::Real blendInTime, bool loop)
+    {
+        auto it = this->mappedAnimations.find(animationId);
+        if (it == this->mappedAnimations.end())
+        {
+            return;
+        }
+        this->internalSetOverlayAnimation(it->second, rootBoneName, blendInTime, loop);
+    }
+
+    void AnimationBlenderV2::setOverlayAnimationForBoneChain(const Ogre::String& animationName, const Ogre::String& rootBoneName, Ogre::Real blendInTime, bool loop)
+    {
+        if (animationName.empty())
+        {
+            return;
+        }
+        this->internalSetOverlayAnimation(animationName, rootBoneName, blendInTime, loop);
+    }
+
+    void AnimationBlenderV2::internalCollectBoneChain(Ogre::Bone* bone, std::vector<Ogre::String>& outBoneNames)
+    {
+        if (nullptr == bone)
+        {
+            return;
+        }
+
+        outBoneNames.emplace_back(bone->getName());
+
+        for (Ogre::Bone* child : bone->getChildren())
+        {
+            this->internalCollectBoneChain(child, outBoneNames);
+        }
+    }
+
+    void AnimationBlenderV2::internalSetOverlayOwnBoneWeights(bool restore)
+    {
+        // The overlay clip itself: full weight on the chain it owns, zero everywhere else, so a
+        // full body punch cannot drive the legs. On restore everything goes back to 1, otherwise
+        // the clip would stay crippled the next time it is used as a normal animation.
+        //
+        // Attention: RENDER THREAD only.
+        if (nullptr == this->overlaySource)
+        {
+            return;
+        }
+
+        if (true == this->overlayChainBoneIds.empty())
+        {
+            return;
+        }
+
+        for (const Ogre::IdString& boneId : this->overlayChainBoneIds)
+        {
+            this->overlaySource->setBoneWeight(boneId, restore ? 1.0f : this->overlayChainInfluence);
+        }
+
+        for (const Ogre::IdString& boneId : this->overlayOtherBoneIds)
+        {
+            this->overlaySource->setBoneWeight(boneId, restore ? 1.0f : this->overlayOutsideInfluence);
+        }
+    }
+
+    void AnimationBlenderV2::internalDriveOverlayChainWeight(Ogre::Real overlayAuthority)
+    {
+        // Hands the chain over to the overlay and back again, CONTINUOUSLY.
+        //
+        // Attention: this has to follow the overlay's own weight every frame, it cannot be a
+        // one off switch. Ogre-Next accumulates every enabled animation onto the same bone with
+        // 'animation weight * bone weight'. If the others are muted the moment the overlay starts,
+        // the chain is driven by nothing but an overlay that is still fading in from 0 - the upper
+        // body sags towards the bind pose at the start of every swing. And if the others are handed
+        // the chain back the moment the clip ends, the chain is driven TWICE for the length of the
+        // fade out, by the locomotion clip at full weight and by the punch at almost full weight.
+        // That is what made the idle look chopped up and threw the character backwards on every
+        // punch. The two weights have to add up to one at all times.
+        //
+        // Only the animations that can actually be enabled are touched - source, target and the
+        // previous source. Sweeping all 38 clips of a character every frame would cost far more
+        // than it buys, and every clip that IS touched is remembered so it can be restored.
+        //
+        // Attention: RENDER THREAD only.
+        if (true == this->overlayChainBoneIds.empty())
+        {
+            return;
+        }
+
+        // The overlay's own bone weight already carries the influence, so what is left for the
+        // others is whatever the overlay does not take. Both always add up to one.
+        Ogre::Real chainWeightForOthers = 1.0f - overlayAuthority * this->overlayChainInfluence;
+        if (chainWeightForOthers < 0.0f)
+        {
+            chainWeightForOthers = 0.0f;
+        }
+        else if (chainWeightForOthers > 1.0f)
+        {
+            chainWeightForOthers = 1.0f;
+        }
+
+        Ogre::Real outsideWeightForOthers = 1.0f - overlayAuthority * this->overlayOutsideInfluence;
+        if (outsideWeightForOthers < 0.0f)
+        {
+            outsideWeightForOthers = 0.0f;
+        }
+        else if (outsideWeightForOthers > 1.0f)
+        {
+            outsideWeightForOthers = 1.0f;
+        }
+
+        // Only worth walking the second, much longer list when the overlay actually reaches
+        // outside its chain.
+        const bool driveOutsideBones = (this->overlayOutsideInfluence > 0.0f);
+
+        Ogre::SkeletonAnimation* candidates[3] = {this->source, this->target, this->previousSource};
+
+        for (Ogre::SkeletonAnimation* animation : candidates)
+        {
+            if (nullptr == animation || animation == this->overlaySource)
+            {
+                continue;
+            }
+
+            for (const Ogre::IdString& boneId : this->overlayChainBoneIds)
+            {
+                animation->setBoneWeight(boneId, chainWeightForOthers);
+            }
+
+            if (true == driveOutsideBones)
+            {
+                for (const Ogre::IdString& boneId : this->overlayOtherBoneIds)
+                {
+                    animation->setBoneWeight(boneId, outsideWeightForOthers);
+                }
+            }
+
+            if (std::find(this->overlayMutedAnimations.cbegin(), this->overlayMutedAnimations.cend(), animation) == this->overlayMutedAnimations.cend())
+            {
+                this->overlayMutedAnimations.push_back(animation);
+            }
+        }
+    }
+
+    void AnimationBlenderV2::internalRestoreOverlayChainWeight(void)
+    {
+        // Everything that was ever muted for this overlay gets its bones back. An animation that
+        // was the source two seconds ago and has been blended away since would otherwise keep a
+        // muted spine forever and come back crippled the next time it is blended in.
+        //
+        // Attention: RENDER THREAD only.
+        for (Ogre::SkeletonAnimation* animation : this->overlayMutedAnimations)
+        {
+            if (nullptr == animation)
+            {
+                continue;
+            }
+
+            for (const Ogre::IdString& boneId : this->overlayChainBoneIds)
+            {
+                animation->setBoneWeight(boneId, 1.0f);
+            }
+
+            for (const Ogre::IdString& boneId : this->overlayOtherBoneIds)
+            {
+                animation->setBoneWeight(boneId, 1.0f);
+            }
+        }
+        this->overlayMutedAnimations.clear();
+    }
+
+    void AnimationBlenderV2::internalSetOverlayAnimation(const Ogre::String& animationName, const Ogre::String& maskRootBoneName, Ogre::Real blendInTime, bool loop)
     {
         if (false == this->canAnimate)
+        {
+            return;
+        }
+
+        if (nullptr == this->skeleton)
         {
             return;
         }
@@ -927,42 +1085,219 @@ namespace NOWA
             return;
         }
 
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this, animationName, blendInTime]()
+        if (false == maskRootBoneName.empty() && false == this->skeleton->hasBone(maskRootBoneName))
         {
-            // Clean up any existing overlay first
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationBlenderV2] setOverlayAnimation: bone '" + maskRootBoneName + "' not found, falling back to the animated bones of the clip itself.");
+        }
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, animationName, maskRootBoneName, blendInTime, loop]()
+        {
+            // Clean up any existing overlay first. The bones it had taken away have to go back
+            // BEFORE the mask of the new overlay is computed, otherwise a chain that the old
+            // overlay muted and the new one does not touch would stay muted forever.
             if (nullptr != this->overlaySource)
             {
-                // Restore all animations' bone weights before replacing
-                this->overlaySource->setOverrideBoneWeightsOnAllAnimations(1.0f, true);
+                this->internalRestoreOverlayChainWeight();
+                this->internalSetOverlayOwnBoneWeights(true);
                 this->overlaySource->setEnabled(false);
                 this->overlaySource->mWeight = 0.0f;
                 this->overlaySource = nullptr;
             }
+            this->overlayMaskBoneNames.clear();
+            this->overlayAllBoneNames.clear();
+            this->overlayChainBoneIds.clear();
+            this->overlayOtherBoneIds.clear();
 
             this->overlaySource = this->skeleton->getAnimation(animationName);
             this->overlaySource->setEnabled(true);
             this->overlaySource->mWeight = 0.0f; // will be driven by addTime
             this->overlaySource->setTime(0.0f);
-            this->overlaySource->setLoop(false);
+            this->overlaySource->setLoop(loop);
 
-            // Apply current playback speed
+            // BUG FIX (swing took two to three times as long as the clip): the overlay used to
+            // inherit currentSpeed, the LOCOMOTION speed multiplier. The player controller drives
+            // that from the walking speed to keep the feet in sync with the movement, so it sits
+            // well below 1.0 most of the time - at 0.35 a 0.87 second punch took two and a half
+            // seconds. An upper body action has nothing to do with how fast the legs move, so the
+            // overlay gets a speed of its own, 1.0 by default.
             auto it = this->baseFrameRates.find(animationName);
             if (it != this->baseFrameRates.end())
             {
-                this->overlaySource->mFrameRate = it->second * this->currentSpeed;
+                this->overlaySource->mFrameRate = it->second * this->overlaySpeed;
             }
 
-            // Key call: read which bones THIS animation uses and zero those exact
-            // bones on ALL other animations (active and inactive).
-            // Using the AllAnimations variant so any animation blended in later
-            // while the overlay is still active also gets the correct bone weights.
-            this->overlaySource->setOverrideBoneWeightsOnAllAnimations(0.0f, true);
+            if (false == maskRootBoneName.empty() && true == this->skeleton->hasBone(maskRootBoneName))
+            {
+                Ogre::Bone* chainRoot = this->skeleton->getBone(maskRootBoneName);
 
+                // The chain the overlay owns.
+                this->internalCollectBoneChain(chainRoot, this->overlayMaskBoneNames);
+
+                // And the whole skeleton, reached by climbing to the topmost ancestor of that
+                // chain and walking down from there. Every bone outside the chain has to be muted
+                // on the overlay, otherwise the punch drives the legs too.
+                Ogre::Bone* skeletonRoot = chainRoot;
+                while (nullptr != skeletonRoot->getParent())
+                {
+                    skeletonRoot = skeletonRoot->getParent();
+                }
+                this->internalCollectBoneChain(skeletonRoot, this->overlayAllBoneNames);
+
+                // The ids are hashed ONCE here. Doing it per frame would mean hashing every bone
+                // name of the chain on every one of the 38 clips, every frame.
+                for (const Ogre::String& boneName : this->overlayAllBoneNames)
+                {
+                    const bool isInChain = (std::find(this->overlayMaskBoneNames.cbegin(), this->overlayMaskBoneNames.cend(), boneName) != this->overlayMaskBoneNames.cend());
+
+                    if (true == isInChain)
+                    {
+                        this->overlayChainBoneIds.emplace_back(Ogre::IdString(boneName));
+                    }
+                    else
+                    {
+                        this->overlayOtherBoneIds.emplace_back(Ogre::IdString(boneName));
+                    }
+                }
+            }
+
+            if (true == this->overlayChainBoneIds.empty())
+            {
+                // No usable chain: fall back to "whatever bones this clip animates".
+                //
+                // Attention: that is only the upper body if the overlay clip really only keys the
+                // upper body. A full body mocap punch keys the legs and the root as well, and then
+                // this takes the ENTIRE skeleton away from the locomotion clip - which looks
+                // exactly like the old full body attack.
+                this->overlaySource->setOverrideBoneWeightsOnAllAnimations(0.0f, true);
+            }
+            else
+            {
+                this->internalSetOverlayOwnBoneWeights(false);
+                // Starts at 0: the overlay has no authority yet, it is still at weight 0. The
+                // handover follows its weight, frame by frame, in internalUpdateOverlay().
+                this->internalDriveOverlayChainWeight(0.0f);
+            }
+
+            if (true == this->debugLog)
+            {
+                Ogre::String message = "[AnimationBlenderV2] Overlay '" + animationName + "' length: " + Ogre::StringConverter::toString(this->overlaySource->getDuration()) +
+                                       "s frameRate: " + Ogre::StringConverter::toString(this->overlaySource->mFrameRate) + " overlaySpeed: " + Ogre::StringConverter::toString(this->overlaySpeed) + " loop: " + Ogre::StringConverter::toString(loop);
+
+                if (true == this->overlayMaskBoneNames.empty())
+                {
+                    message += " mask: NONE (the clip's own bones are used - a full body clip therefore takes the WHOLE skeleton)";
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
+                }
+                else
+                {
+                    message += " mask: " + Ogre::StringConverter::toString(static_cast<int>(this->overlayMaskBoneNames.size())) + " of " + Ogre::StringConverter::toString(static_cast<int>(this->overlayAllBoneNames.size())) + " bones, starting at '" +
+                               maskRootBoneName + "'";
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
+
+                    // The whole hierarchy, indented, with a marker on every bone the overlay owns.
+                    // This is how a wrong or too high a chain root is spotted: if a leg bone comes
+                    // out marked, the player punches with his legs.
+                    Ogre::Bone* skeletonRoot = this->skeleton->getBone(maskRootBoneName);
+                    while (nullptr != skeletonRoot->getParent())
+                    {
+                        skeletonRoot = skeletonRoot->getParent();
+                    }
+                    this->internalLogBoneChain(skeletonRoot, "  ");
+                }
+            }
+
+            this->overlayLoop = loop;
             this->overlayDuration = (blendInTime > 0.0f) ? blendInTime : 0.001f;
             this->overlayTimeleft = this->overlayDuration;
             this->overlayBlendingOut = false;
+
+            // A non looping overlay fades itself out again symmetrically when the clip is over,
+            // instead of popping back to the locomotion pose in a single frame.
+            this->overlayBlendOutTime = (blendInTime > 0.0f) ? blendInTime : 0.001f;
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AnimationBlenderV2::setOverlayAnimation");
+    }
+
+    void AnimationBlenderV2::internalUpdateOverlay(Ogre::Real renderDt)
+    {
+        // Attention: called from inside the addTime closure, so this already runs on the render
+        // thread - no render command here, that would deadlock.
+        if (nullptr == this->overlaySource)
+        {
+            return;
+        }
+
+        // Same frame based threshold as the main source, so a short clip is not cut off.
+        const Ogre::Real overlayThreshold = 0.5f / this->overlaySource->mFrameRate;
+
+        if (false == this->overlayBlendingOut)
+        {
+            // Blend in phase: weight 0 -> 1
+            if (this->overlayTimeleft > 0.0f)
+            {
+                this->overlayTimeleft -= renderDt;
+                this->overlaySource->mWeight = (this->overlayTimeleft <= 0.0f) ? 1.0f : 1.0f - (this->overlayTimeleft / this->overlayDuration);
+            }
+            else
+            {
+                this->overlaySource->mWeight = 1.0f;
+            }
+
+            this->internalDriveOverlayChainWeight(this->overlaySource->mWeight);
+
+            this->overlaySource->addTime(renderDt);
+
+            if (true == this->debugLog)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[AnimationBlenderV2] Overlay: " + this->overlaySource->getName().getFriendlyText() + " timePosition: " + Ogre::StringConverter::toString(this->overlaySource->getCurrentTime()) +
+                        " length: " + Ogre::StringConverter::toString(this->overlaySource->getDuration()) + " weight: " + Ogre::StringConverter::toString(this->overlaySource->mWeight) + " main: " +
+                        (nullptr != this->source ? this->source->getName().getFriendlyText() : Ogre::String("none")) + " mainWeight: " + (nullptr != this->source ? Ogre::StringConverter::toString(this->source->mWeight) : Ogre::String("0")));
+            }
+
+            // A non looping overlay ends itself. A looping one only ever ends on
+            // clearOverlayAnimation().
+            if (false == this->overlayLoop && this->overlaySource->getCurrentTime() >= this->overlaySource->getDuration() - overlayThreshold)
+            {
+                // No bone weights are touched here. The handover happens gradually in the fade out
+                // branch below, in lock step with the overlay's own weight.
+                this->overlayBlendingOut = true;
+                this->overlayDuration = this->overlayBlendOutTime;
+                this->overlayTimeleft = this->overlayBlendOutTime;
+            }
+        }
+        else
+        {
+            // Blend out phase: weight 1 -> 0
+            this->overlayTimeleft -= renderDt;
+
+            if (this->overlayTimeleft <= 0.0f)
+            {
+                this->internalRestoreOverlayChainWeight();
+                this->internalSetOverlayOwnBoneWeights(true);
+
+                if (true == this->overlayChainBoneIds.empty())
+                {
+                    this->overlaySource->setOverrideBoneWeightsOnAllAnimations(1.0f, true);
+                }
+
+                this->overlaySource->setEnabled(false);
+                this->overlaySource->mWeight = 0.0f;
+                this->overlaySource = nullptr;
+                this->overlayMaskBoneNames.clear();
+                this->overlayAllBoneNames.clear();
+                this->overlayChainBoneIds.clear();
+                this->overlayOtherBoneIds.clear();
+                this->overlayBlendingOut = false;
+                this->overlayTimeleft = 0.0f;
+            }
+            else
+            {
+                this->overlaySource->mWeight = this->overlayTimeleft / this->overlayDuration;
+                this->internalDriveOverlayChainWeight(this->overlaySource->mWeight);
+                this->overlaySource->addTime(renderDt);
+            }
+        }
     }
 
     void AnimationBlenderV2::clearOverlayAnimation(Ogre::Real blendOutTime)
@@ -974,15 +1309,153 @@ namespace NOWA
                 return;
             }
 
-            // Restore all animations' bone weights so the main animation
-            // fully controls those bones again during blend-out
-            this->overlaySource->setOverrideBoneWeightsOnAllAnimations(1.0f, true);
+            if (true == this->overlayBlendingOut)
+            {
+                // Already on its way out, do not restart the fade.
+                return;
+            }
 
+            // No bone weights are touched here either - the handover follows the fade out in
+            // internalUpdateOverlay(), so the chain is never driven by two clips at once.
             this->overlayBlendingOut = true;
             this->overlayDuration = (blendOutTime > 0.0f) ? blendOutTime : 0.001f;
             this->overlayTimeleft = this->overlayDuration;
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AnimationBlenderV2::clearOverlayAnimation");
+    }
+
+    Ogre::Real AnimationBlenderV2::getOverlayTimePosition(void) const
+    {
+        if (nullptr != this->overlaySource)
+        {
+            return this->overlaySource->getCurrentTime();
+        }
+        return 0.0f;
+    }
+
+    Ogre::Real AnimationBlenderV2::getOverlayLength(void) const
+    {
+        if (nullptr != this->overlaySource)
+        {
+            return this->overlaySource->getDuration();
+        }
+        return 0.0f;
+    }
+
+    Ogre::Real AnimationBlenderV2::getOverlayProgress(void) const
+    {
+        // 0 at the first frame of the overlay clip, 1 at its last one. This is what a script
+        // times a hit window or a follow up window on - getTimePosition() cannot be used for
+        // that, it reports the MAIN animation, which is the walk cycle while the overlay runs.
+        if (nullptr == this->overlaySource)
+        {
+            return 0.0f;
+        }
+
+        const Ogre::Real length = this->overlaySource->getDuration();
+        if (length <= 0.0f)
+        {
+            return 0.0f;
+        }
+
+        Ogre::Real progress = this->overlaySource->getCurrentTime() / length;
+        if (progress < 0.0f)
+        {
+            progress = 0.0f;
+        }
+        else if (progress > 1.0f)
+        {
+            progress = 1.0f;
+        }
+        return progress;
+    }
+
+    void AnimationBlenderV2::setOverlayTimePosition(Ogre::Real timePosition)
+    {
+        if (nullptr == this->overlaySource)
+        {
+            return;
+        }
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, timePosition]()
+        {
+            if (nullptr != this->overlaySource)
+            {
+                this->overlaySource->setTime(timePosition);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AnimationBlenderV2::setOverlayTimePosition");
+    }
+
+    bool AnimationBlenderV2::isOverlayBlendingOut(void) const
+    {
+        return nullptr != this->overlaySource && true == this->overlayBlendingOut;
+    }
+
+    void AnimationBlenderV2::setOverlayInfluence(Ogre::Real chainInfluence, Ogre::Real outsideChainInfluence)
+    {
+        this->overlayChainInfluence = (chainInfluence < 0.0f) ? 0.0f : ((chainInfluence > 1.0f) ? 1.0f : chainInfluence);
+        this->overlayOutsideInfluence = (outsideChainInfluence < 0.0f) ? 0.0f : ((outsideChainInfluence > 1.0f) ? 1.0f : outsideChainInfluence);
+
+        // Takes effect immediately on a running overlay, so the values can be tried out live.
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            if (nullptr != this->overlaySource && false == this->overlayChainBoneIds.empty())
+            {
+                this->internalSetOverlayOwnBoneWeights(false);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AnimationBlenderV2::setOverlayInfluence");
+    }
+
+    Ogre::Real AnimationBlenderV2::getOverlayChainInfluence(void) const
+    {
+        return this->overlayChainInfluence;
+    }
+
+    Ogre::Real AnimationBlenderV2::getOverlayOutsideInfluence(void) const
+    {
+        return this->overlayOutsideInfluence;
+    }
+
+    void AnimationBlenderV2::setOverlaySpeed(Ogre::Real speed)
+    {
+        this->overlaySpeed = (speed > 0.0f) ? speed : 1.0f;
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            if (nullptr != this->overlaySource)
+            {
+                auto it = this->baseFrameRates.find(this->overlaySource->getName().getFriendlyText());
+                if (it != this->baseFrameRates.end())
+                {
+                    this->overlaySource->mFrameRate = it->second * this->overlaySpeed;
+                }
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AnimationBlenderV2::setOverlaySpeed");
+    }
+
+    Ogre::Real AnimationBlenderV2::getOverlaySpeed(void) const
+    {
+        return this->overlaySpeed;
+    }
+
+    void AnimationBlenderV2::internalLogBoneChain(Ogre::Bone* bone, const Ogre::String& padding)
+    {
+        if (nullptr == bone)
+        {
+            return;
+        }
+
+        const bool isInChain = (std::find(this->overlayMaskBoneNames.cbegin(), this->overlayMaskBoneNames.cend(), bone->getName()) != this->overlayMaskBoneNames.cend());
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationBlenderV2] " + padding + bone->getName() + (isInChain ? "   <- OVERLAY" : ""));
+
+        for (Ogre::Bone* child : bone->getChildren())
+        {
+            this->internalLogBoneChain(child, padding + "  ");
+        }
     }
 
     bool AnimationBlenderV2::isOverlayAnimationActive(void) const
@@ -1388,18 +1861,10 @@ namespace NOWA
                     this->target->mFrameRate = it->second * speed;
                 }
             }
-            // BUG FIX: also apply speed to any active overlay animation.
-            // The old code left the overlay running at its original frame rate
-            // when setAnimationSpeed() was called mid-overlay, causing source and
-            // overlay to desync visually.
-            if (nullptr != this->overlaySource)
-            {
-                auto it = this->baseFrameRates.find(this->overlaySource->getName().getFriendlyText());
-                if (it != this->baseFrameRates.end())
-                {
-                    this->overlaySource->mFrameRate = it->second * speed;
-                }
-            }
+            // Attention: the overlay is deliberately NOT touched here. This speed is the
+            // locomotion speed the player controller drives from the walking speed, and pushing
+            // it onto an upper body action made a punch play at the speed of the legs. The
+            // overlay has setOverlaySpeed() for that.
         };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AnimationBlenderV2::setAnimationSpeed");
     }
@@ -1578,6 +2043,31 @@ namespace NOWA
             this->previousSource->mWeight = 0.0f;
             this->previousSource = nullptr;
         }
+        // The overlay is a layer of its own and survived every reset so far: on disconnect it
+        // stayed enabled with the locomotion clip's bones still muted, so the next connect came
+        // up with a frozen upper body.
+        if (nullptr != this->overlaySource)
+        {
+            this->internalRestoreOverlayChainWeight();
+            this->internalSetOverlayOwnBoneWeights(true);
+
+            if (true == this->overlayChainBoneIds.empty())
+            {
+                this->overlaySource->setOverrideBoneWeightsOnAllAnimations(1.0f, true);
+            }
+
+            this->overlaySource->setEnabled(false);
+            this->overlaySource->mWeight = 0.0f;
+            this->overlaySource = nullptr;
+        }
+        this->overlayMutedAnimations.clear();
+        this->overlayMaskBoneNames.clear();
+        this->overlayAllBoneNames.clear();
+        this->overlayChainBoneIds.clear();
+        this->overlayOtherBoneIds.clear();
+        this->overlayBlendingOut = false;
+        this->overlayTimeleft = 0.0f;
+
         this->timeleft = 0.0f;
         this->complete = false;
         // source is intentionally kept (as a disabled pointer) so internalBlend's

@@ -4906,82 +4906,159 @@ namespace NOWA
         AddClassToCollection("BlendSpaceEntryList", "void clear()", "Removes all entries.");
         AddClassToCollection("BlendSpaceEntryList", "number size()", "Gets the number of entries.");
 
-        module(lua)[class_<AnimationBlenderV2>("AnimationBlender")
-                .enum_("AnimID")[value("ANIM_IDLE_1", AnimationBlenderV2::ANIM_IDLE_1), value("ANIM_IDLE_2", AnimationBlenderV2::ANIM_IDLE_2), value("ANIM_IDLE_3", AnimationBlenderV2::ANIM_IDLE_3),
-                    value("ANIM_IDLE_4", AnimationBlenderV2::ANIM_IDLE_4), value("ANIM_IDLE_5", AnimationBlenderV2::ANIM_IDLE_5), value("ANIM_WALK_NORTH", AnimationBlenderV2::ANIM_WALK_NORTH),
-                    value("ANIM_WALK_SOUTH", AnimationBlenderV2::ANIM_WALK_SOUTH), value("ANIM_WALK_WEST", AnimationBlenderV2::ANIM_WALK_WEST), value("ANIM_WALK_EAST", AnimationBlenderV2::ANIM_WALK_EAST),
-                    value("ANIM_RUN", AnimationBlenderV2::ANIM_RUN), value("ANIM_CLIMB", AnimationBlenderV2::ANIM_CLIMB), value("ANIM_SNEAK", AnimationBlenderV2::ANIM_SNEAK), value("ANIM_HANDS_CLOSED", AnimationBlenderV2::ANIM_HANDS_CLOSED),
-                    value("ANIM_HANDS_RELAXED", AnimationBlenderV2::ANIM_HANDS_RELAXED), value("ANIM_DRAW_WEAPON", AnimationBlenderV2::ANIM_DRAW_WEAPON), value("ANIM_SLICE_VERTICAL", AnimationBlenderV2::ANIM_SLICE_VERTICAL),
-                    value("ANIM_SLICE_HORIZONTAL", AnimationBlenderV2::ANIM_SLICE_HORIZONTAL), value("ANIM_JUMP_START", AnimationBlenderV2::ANIM_JUMP_START), value("ANIM_JUMP_LOOP", AnimationBlenderV2::ANIM_JUMP_LOOP),
-                    value("ANIM_JUMP_END", AnimationBlenderV2::ANIM_JUMP_END), value("ANIM_HIGH_JUMP_END", AnimationBlenderV2::ANIM_HIGH_JUMP_END), value("ANIM_JUMP_WALK", AnimationBlenderV2::ANIM_JUMP_WALK),
-                    value("ANIM_FALL", AnimationBlenderV2::ANIM_FALL), value("ANIM_EAT_1", AnimationBlenderV2::ANIM_EAT_1), value("ANIM_EAT_2", AnimationBlenderV2::ANIM_EAT_2), value("ANIM_PICKUP_1", AnimationBlenderV2::ANIM_PICKUP_1),
-                    value("ANIM_PICKUP_2", AnimationBlenderV2::ANIM_PICKUP_2), value("ANIM_FALL", AnimationBlenderV2::ANIM_FALL), value("ANIM_GETUP", AnimationBlenderV2::ANIM_GETUP), value("ANIM_ATTACK_1", AnimationBlenderV2::ANIM_ATTACK_1),
-                    value("ANIM_ATTACK_2", AnimationBlenderV2::ANIM_ATTACK_2), value("ANIM_ATTACK_3", AnimationBlenderV2::ANIM_ATTACK_3), value("ANIM_ATTACK_4", AnimationBlenderV2::ANIM_ATTACK_4), value("ANIM_SWIM", AnimationBlenderV2::ANIM_SWIM),
-                    value("ANIM_THROW_1", AnimationBlenderV2::ANIM_THROW_1), value("ANIM_THROW_2", AnimationBlenderV2::ANIM_THROW_2), value("ANIM_DEAD_1", AnimationBlenderV2::ANIM_DEAD_1), value("ANIM_DEAD_2", AnimationBlenderV2::ANIM_DEAD_2),
-                    value("ANIM_DEAD_3", AnimationBlenderV2::ANIM_DEAD_3), value("ANIM_SPEAK_1", AnimationBlenderV2::ANIM_SPEAK_1), value("ANIM_SPEAK_2", AnimationBlenderV2::ANIM_SPEAK_2), value("ANIM_SLEEP", AnimationBlenderV2::ANIM_SLEEP),
-                    value("ANIM_DANCE", AnimationBlenderV2::ANIM_DANCE), value("ANIM_DUCK", AnimationBlenderV2::ANIM_DUCK), value("ANIM_CROUCH", AnimationBlenderV2::ANIM_CROUCH), value("ANIM_HALT", AnimationBlenderV2::ANIM_HALT),
-                    value("ANIM_ROAR", AnimationBlenderV2::ANIM_ROAR), value("ANIM_SIGH", AnimationBlenderV2::ANIM_SIGH), value("ANIM_GREETINGS", AnimationBlenderV2::ANIM_GREETINGS), value("ANIM_NO_IDEA", AnimationBlenderV2::ANIM_NO_IDEA),
-                    value("ANIM_ACTION_1", AnimationBlenderV2::ANIM_ACTION_1), value("ANIM_ACTION_2", AnimationBlenderV2::ANIM_ACTION_2), value("ANIM_ACTION_3", AnimationBlenderV2::ANIM_ACTION_3),
-                    value("ANIM_ACTION_4", AnimationBlenderV2::ANIM_ACTION_4), value("ANIM_NONE", AnimationBlenderV2::ANIM_NONE), value("ANIM_PULL", AnimationBlenderV2::ANIM_PULL), value("ANIM_PUSH", AnimationBlenderV2::ANIM_PUSH),
-                    value("ANIM_KNOCK_DOWN", AnimationBlenderV2::ANIM_KNOCK_DOWN), value("ANIM_STAND_UP", AnimationBlenderV2::ANIM_STAND_UP), value("ANIM_TALK_1", AnimationBlenderV2::ANIM_TALK_1),
-                    value("ANIM_TALK_2", AnimationBlenderV2::ANIM_TALK_2), value("ANIM_POINT", AnimationBlenderV2::ANIM_POINT), value("ANIM_LAUGH", AnimationBlenderV2::ANIM_LAUGH), value("ANIM_LAND_1", AnimationBlenderV2::ANIM_LAND_1),
-                    value("ANIM_LAND_2", AnimationBlenderV2::ANIM_LAND_2), value("ANIM_SHOOT", AnimationBlenderV2::ANIM_SHOOT), value("ANIM_START_CLIMB", AnimationBlenderV2::ANIM_START_CLIMB),
-                    value("ANIM_TAKE_DAMAGE", AnimationBlenderV2::ANIM_TAKE_DAMAGE), value("ANIM_SHRUG", AnimationBlenderV2::ANIM_SHRUG), value("ANIM_SALTO", AnimationBlenderV2::ANIM_SALTO), value("ANIM_CRY", AnimationBlenderV2::ANIM_CRY),
-                    value("ANIM_CHEER", AnimationBlenderV2::ANIM_CHEER), value("ANIM_CAST_SPELL_1", AnimationBlenderV2::ANIM_CAST_SPELL_1), value("ANIM_CAST_SPELL_2", AnimationBlenderV2::ANIM_CAST_SPELL_2),
-                    value("ANIM_CAST_SPELL_3", AnimationBlenderV2::ANIM_CAST_SPELL_3)]
-                .enum_("BlendingTransition")[value("BLEND_SWITCH", AnimationBlenderV2::BlendSwitch), value("BLEND_WHILE_ANIMATING", AnimationBlenderV2::BlendWhileAnimating), value("BLEND_THEN_ANIMATE", AnimationBlenderV2::BlendThenAnimate)]
-                .def("init1", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, bool))&AnimationBlenderV2::init)
-                .def("init2", (void (AnimationBlenderV2::*)(const Ogre::String&, bool))&AnimationBlenderV2::init)
-                .def("getAllAvailableAnimationNames", &getAllAvailableAnimationNames)
-                .def("blend1", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, AnimationBlenderV2::BlendingTransition))&AnimationBlenderV2::blend)
-                .def("blend2", (void (AnimationBlenderV2::*)(const Ogre::String&, AnimationBlenderV2::BlendingTransition))&AnimationBlenderV2::blend)
-                .def("blend3", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, AnimationBlenderV2::BlendingTransition, bool))&AnimationBlenderV2::blend)
-                .def("blend4", (void (AnimationBlenderV2::*)(const Ogre::String&, AnimationBlenderV2::BlendingTransition, bool))&AnimationBlenderV2::blend)
-                .def("blend5", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, AnimationBlenderV2::BlendingTransition, Ogre::Real, bool))&AnimationBlenderV2::blend)
-                .def("blend6", (void (AnimationBlenderV2::*)(const Ogre::String&, AnimationBlenderV2::BlendingTransition, Ogre::Real, bool))&AnimationBlenderV2::blend)
-                .def("blendPhaseSynced1", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, AnimationBlenderV2::BlendingTransition, Ogre::Real, bool))&AnimationBlenderV2::blendPhaseSynced)
-                .def("blendPhaseSynced2", (void (AnimationBlenderV2::*)(const Ogre::String&, AnimationBlenderV2::BlendingTransition, Ogre::Real, bool))&AnimationBlenderV2::blendPhaseSynced)
-                .def("blendExclusive1", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, AnimationBlenderV2::BlendingTransition))&AnimationBlenderV2::blendExclusive)
-                .def("blendExclusive2", (void (AnimationBlenderV2::*)(const Ogre::String&, AnimationBlenderV2::BlendingTransition))&AnimationBlenderV2::blendExclusive)
-                .def("blendExclusive3", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, AnimationBlenderV2::BlendingTransition, bool))&AnimationBlenderV2::blendExclusive)
-                .def("blendExclusive4", (void (AnimationBlenderV2::*)(const Ogre::String&, AnimationBlenderV2::BlendingTransition, bool))&AnimationBlenderV2::blendExclusive)
-                .def("blendExclusive5", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, AnimationBlenderV2::BlendingTransition, Ogre::Real, bool))&AnimationBlenderV2::blendExclusive)
-                .def("blendExclusive6", (void (AnimationBlenderV2::*)(const Ogre::String&, AnimationBlenderV2::BlendingTransition, Ogre::Real, bool))&AnimationBlenderV2::blendExclusive)
-                .def("blendAndContinue1", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID))&AnimationBlenderV2::blendAndContinue)
-                .def("blendAndContinue2", (void (AnimationBlenderV2::*)(const Ogre::String&))&AnimationBlenderV2::blendAndContinue)
-                .def("blendAndContinue3", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, Ogre::Real))&AnimationBlenderV2::blendAndContinue)
-                .def("blendAndContinue4", (void (AnimationBlenderV2::*)(const Ogre::String&, Ogre::Real))&AnimationBlenderV2::blendAndContinue)
-                .def("getProgress", &AnimationBlenderV2::getProgress)
-                .def("isComplete", &AnimationBlenderV2::isComplete)
-                .def("registerAnimation", &AnimationBlenderV2::registerAnimation)
-                .def("getAnimationIdFromString", &AnimationBlenderV2::getAnimationIdFromString)
-                .def("hasAnimation", (bool (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID))&AnimationBlenderV2::hasAnimation)
-                .def("hasAnimation", (bool (AnimationBlenderV2::*)(const Ogre::String&))&AnimationBlenderV2::hasAnimation)
-                .def("isAnimationActive", &AnimationBlenderV2::isAnimationActive)
-                // Was bound as "isAnimationActive" a second time, shadowing the AnimID overload
-                // above with a zero argument function of a completely different meaning.
-                .def("isAnyAnimationActive", &AnimationBlenderV2::isAnyAnimationActive)
-                .def("addTime", &AnimationBlenderV2::addTime)
-                .def("setTimePosition", &AnimationBlenderV2::setTimePosition)
-                .def("getTimePosition", &AnimationBlenderV2::getTimePosition)
-                .def("getLength", &AnimationBlenderV2::getLength)
-                .def("setWeight", &AnimationBlenderV2::setWeight)
-                .def("getWeight", &AnimationBlenderV2::getWeight)
-                .def("resetBones", &AnimationBlenderV2::resetBones)
-                .def("setDebugLog", &AnimationBlenderV2::setDebugLog)
-                .def("setOverlayAnimation1", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, Ogre::Real))&AnimationBlenderV2::setOverlayAnimation)
-                .def("setOverlayAnimation2", (void (AnimationBlenderV2::*)(const Ogre::String&, Ogre::Real))&AnimationBlenderV2::setOverlayAnimation)
-                .def("clearOverlayAnimation", &AnimationBlenderV2::clearOverlayAnimation)
-                .def("isOverlayAnimationActive", &AnimationBlenderV2::isOverlayAnimationActive)
-                .def("setAnimationSpeed", &AnimationBlenderV2::setAnimationSpeed)
-                .def("getAnimationSpeed", &AnimationBlenderV2::getAnimationSpeed)
-                .def("driveBlendSpace", &AnimationBlenderV2::driveBlendSpace)
-                // Merged in from the removed second registration block.
-                .def("getSource", &AnimationBlenderV2::getSource)
-                .def("getTarget", &AnimationBlenderV2::getTarget)
-                .def("getBone", &AnimationBlenderV2::getBone)
-                .def("getLocalToWorldPosition", &AnimationBlenderV2::getLocalToWorldPosition)
-                .def("getLocalToWorldOrientation", &AnimationBlenderV2::getLocalToWorldOrientation)];
+        module(lua)
+        [
+            class_<AnimationBlenderV2>("AnimationBlender")
+            .enum_("AnimID")
+            [
+                value("ANIM_IDLE_1", AnimationBlenderV2::ANIM_IDLE_1), 
+                value("ANIM_IDLE_2", AnimationBlenderV2::ANIM_IDLE_2), 
+                value("ANIM_IDLE_3", AnimationBlenderV2::ANIM_IDLE_3),
+                value("ANIM_IDLE_4", AnimationBlenderV2::ANIM_IDLE_4), 
+                value("ANIM_IDLE_5", AnimationBlenderV2::ANIM_IDLE_5), 
+                value("ANIM_WALK_NORTH", AnimationBlenderV2::ANIM_WALK_NORTH),
+                value("ANIM_WALK_SOUTH", AnimationBlenderV2::ANIM_WALK_SOUTH), 
+                value("ANIM_WALK_WEST", AnimationBlenderV2::ANIM_WALK_WEST), 
+                value("ANIM_WALK_EAST", AnimationBlenderV2::ANIM_WALK_EAST),
+                value("ANIM_RUN", AnimationBlenderV2::ANIM_RUN), 
+                value("ANIM_CLIMB", AnimationBlenderV2::ANIM_CLIMB), 
+                value("ANIM_SNEAK", AnimationBlenderV2::ANIM_SNEAK), 
+                value("ANIM_HANDS_CLOSED", AnimationBlenderV2::ANIM_HANDS_CLOSED),
+                value("ANIM_HANDS_RELAXED", AnimationBlenderV2::ANIM_HANDS_RELAXED), 
+                value("ANIM_DRAW_WEAPON", AnimationBlenderV2::ANIM_DRAW_WEAPON), 
+                value("ANIM_SLICE_VERTICAL", AnimationBlenderV2::ANIM_SLICE_VERTICAL),
+                value("ANIM_SLICE_HORIZONTAL", AnimationBlenderV2::ANIM_SLICE_HORIZONTAL), 
+                value("ANIM_JUMP_START", AnimationBlenderV2::ANIM_JUMP_START), 
+                value("ANIM_JUMP_LOOP", AnimationBlenderV2::ANIM_JUMP_LOOP),
+                value("ANIM_JUMP_END", AnimationBlenderV2::ANIM_JUMP_END), 
+                value("ANIM_HIGH_JUMP_END", AnimationBlenderV2::ANIM_HIGH_JUMP_END), 
+                value("ANIM_JUMP_WALK", AnimationBlenderV2::ANIM_JUMP_WALK),
+                value("ANIM_FALL", AnimationBlenderV2::ANIM_FALL), 
+                value("ANIM_EAT_1", AnimationBlenderV2::ANIM_EAT_1), 
+                value("ANIM_EAT_2", AnimationBlenderV2::ANIM_EAT_2), 
+                value("ANIM_PICKUP_1", AnimationBlenderV2::ANIM_PICKUP_1),
+                value("ANIM_PICKUP_2", AnimationBlenderV2::ANIM_PICKUP_2), 
+                value("ANIM_GETUP", AnimationBlenderV2::ANIM_GETUP), 
+                value("ANIM_ATTACK_1", AnimationBlenderV2::ANIM_ATTACK_1), 
+                value("ANIM_ATTACK_2", AnimationBlenderV2::ANIM_ATTACK_2),
+                value("ANIM_ATTACK_3", AnimationBlenderV2::ANIM_ATTACK_3), 
+                value("ANIM_ATTACK_4", AnimationBlenderV2::ANIM_ATTACK_4), 
+                value("ANIM_SWIM", AnimationBlenderV2::ANIM_SWIM), 
+                value("ANIM_THROW_1", AnimationBlenderV2::ANIM_THROW_1),
+                value("ANIM_THROW_2", AnimationBlenderV2::ANIM_THROW_2), 
+                value("ANIM_DEAD_1", AnimationBlenderV2::ANIM_DEAD_1), 
+                value("ANIM_DEAD_2", AnimationBlenderV2::ANIM_DEAD_2), 
+                value("ANIM_DEAD_3", AnimationBlenderV2::ANIM_DEAD_3),
+                value("ANIM_SPEAK_1", AnimationBlenderV2::ANIM_SPEAK_1), 
+                value("ANIM_SPEAK_2", AnimationBlenderV2::ANIM_SPEAK_2), 
+                value("ANIM_SLEEP", AnimationBlenderV2::ANIM_SLEEP), 
+                value("ANIM_DANCE", AnimationBlenderV2::ANIM_DANCE),
+                value("ANIM_DUCK", AnimationBlenderV2::ANIM_DUCK), 
+                value("ANIM_CROUCH", AnimationBlenderV2::ANIM_CROUCH), 
+                value("ANIM_HALT", AnimationBlenderV2::ANIM_HALT), 
+                value("ANIM_ROAR", AnimationBlenderV2::ANIM_ROAR),
+                value("ANIM_SIGH", AnimationBlenderV2::ANIM_SIGH), 
+                value("ANIM_GREETINGS", AnimationBlenderV2::ANIM_GREETINGS), 
+                value("ANIM_NO_IDEA", AnimationBlenderV2::ANIM_NO_IDEA), 
+                value("ANIM_ACTION_1", AnimationBlenderV2::ANIM_ACTION_1),
+                value("ANIM_ACTION_2", AnimationBlenderV2::ANIM_ACTION_2), 
+                value("ANIM_ACTION_3", AnimationBlenderV2::ANIM_ACTION_3), 
+                value("ANIM_ACTION_4", AnimationBlenderV2::ANIM_ACTION_4), 
+                value("ANIM_NONE", AnimationBlenderV2::ANIM_NONE),
+                value("ANIM_PULL", AnimationBlenderV2::ANIM_PULL), 
+                value("ANIM_PUSH", AnimationBlenderV2::ANIM_PUSH), 
+                value("ANIM_KNOCK_DOWN", AnimationBlenderV2::ANIM_KNOCK_DOWN), 
+                value("ANIM_STAND_UP", AnimationBlenderV2::ANIM_STAND_UP),
+                value("ANIM_TALK_1", AnimationBlenderV2::ANIM_TALK_1), 
+                value("ANIM_TALK_2", AnimationBlenderV2::ANIM_TALK_2), 
+                value("ANIM_POINT", AnimationBlenderV2::ANIM_POINT),
+                value("ANIM_LAUGH", AnimationBlenderV2::ANIM_LAUGH),
+                value("ANIM_LAND_1", AnimationBlenderV2::ANIM_LAND_1), 
+                value("ANIM_LAND_2", AnimationBlenderV2::ANIM_LAND_2), 
+                value("ANIM_SHOOT", AnimationBlenderV2::ANIM_SHOOT), 
+                value("ANIM_START_CLIMB", AnimationBlenderV2::ANIM_START_CLIMB),
+                value("ANIM_TAKE_DAMAGE", AnimationBlenderV2::ANIM_TAKE_DAMAGE), 
+                value("ANIM_SHRUG", AnimationBlenderV2::ANIM_SHRUG), 
+                value("ANIM_SALTO", AnimationBlenderV2::ANIM_SALTO), 
+                value("ANIM_CRY", AnimationBlenderV2::ANIM_CRY),
+                value("ANIM_CHEER", AnimationBlenderV2::ANIM_CHEER), 
+                value("ANIM_CAST_SPELL_1", AnimationBlenderV2::ANIM_CAST_SPELL_1),
+                value("ANIM_CAST_SPELL_2", AnimationBlenderV2::ANIM_CAST_SPELL_2),
+                value("ANIM_CAST_SPELL_3", AnimationBlenderV2::ANIM_CAST_SPELL_3)
+            ]
+            .enum_("BlendingTransition")
+            [
+                value("BLEND_SWITCH", AnimationBlenderV2::BlendSwitch),
+                value("BLEND_WHILE_ANIMATING", AnimationBlenderV2::BlendWhileAnimating), 
+                value("BLEND_THEN_ANIMATE", AnimationBlenderV2::BlendThenAnimate)
+        ]
+            .def("init1", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, bool))&AnimationBlenderV2::init)
+            .def("init2", (void (AnimationBlenderV2::*)(const Ogre::String&, bool))&AnimationBlenderV2::init)
+            .def("getAllAvailableAnimationNames", &getAllAvailableAnimationNames)
+            .def("blend1", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, AnimationBlenderV2::BlendingTransition))&AnimationBlenderV2::blend)
+            .def("blend2", (void (AnimationBlenderV2::*)(const Ogre::String&, AnimationBlenderV2::BlendingTransition))&AnimationBlenderV2::blend)
+            .def("blend3", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, AnimationBlenderV2::BlendingTransition, bool))&AnimationBlenderV2::blend)
+            .def("blend4", (void (AnimationBlenderV2::*)(const Ogre::String&, AnimationBlenderV2::BlendingTransition, bool))&AnimationBlenderV2::blend)
+            .def("blend5", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, AnimationBlenderV2::BlendingTransition, Ogre::Real, bool))&AnimationBlenderV2::blend)
+            .def("blend6", (void (AnimationBlenderV2::*)(const Ogre::String&, AnimationBlenderV2::BlendingTransition, Ogre::Real, bool))&AnimationBlenderV2::blend)
+            .def("blendPhaseSynced1", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, AnimationBlenderV2::BlendingTransition, Ogre::Real, bool))&AnimationBlenderV2::blendPhaseSynced)
+            .def("blendPhaseSynced2", (void (AnimationBlenderV2::*)(const Ogre::String&, AnimationBlenderV2::BlendingTransition, Ogre::Real, bool))&AnimationBlenderV2::blendPhaseSynced)
+            .def("blendExclusive1", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, AnimationBlenderV2::BlendingTransition))&AnimationBlenderV2::blendExclusive)
+            .def("blendExclusive2", (void (AnimationBlenderV2::*)(const Ogre::String&, AnimationBlenderV2::BlendingTransition))&AnimationBlenderV2::blendExclusive)
+            .def("blendExclusive3", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, AnimationBlenderV2::BlendingTransition, bool))&AnimationBlenderV2::blendExclusive)
+            .def("blendExclusive4", (void (AnimationBlenderV2::*)(const Ogre::String&, AnimationBlenderV2::BlendingTransition, bool))&AnimationBlenderV2::blendExclusive)
+            .def("blendExclusive5", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, AnimationBlenderV2::BlendingTransition, Ogre::Real, bool))&AnimationBlenderV2::blendExclusive)
+            .def("blendExclusive6", (void (AnimationBlenderV2::*)(const Ogre::String&, AnimationBlenderV2::BlendingTransition, Ogre::Real, bool))&AnimationBlenderV2::blendExclusive)
+            .def("blendAndContinue1", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID))&AnimationBlenderV2::blendAndContinue)
+            .def("blendAndContinue2", (void (AnimationBlenderV2::*)(const Ogre::String&))&AnimationBlenderV2::blendAndContinue)
+            .def("blendAndContinue3", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, Ogre::Real))&AnimationBlenderV2::blendAndContinue)
+            .def("blendAndContinue4", (void (AnimationBlenderV2::*)(const Ogre::String&, Ogre::Real))&AnimationBlenderV2::blendAndContinue)
+            .def("getProgress", &AnimationBlenderV2::getProgress)
+            .def("isComplete", &AnimationBlenderV2::isComplete)
+            .def("registerAnimation", &AnimationBlenderV2::registerAnimation)
+            .def("getAnimationIdFromString", &AnimationBlenderV2::getAnimationIdFromString)
+            .def("hasAnimation", (bool (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID))&AnimationBlenderV2::hasAnimation)
+            .def("hasAnimation", (bool (AnimationBlenderV2::*)(const Ogre::String&))&AnimationBlenderV2::hasAnimation)
+            .def("isAnimationActive", &AnimationBlenderV2::isAnimationActive)
+            // Was bound as "isAnimationActive" a second time, shadowing the AnimID overload
+            // above with a zero argument function of a completely different meaning.
+            .def("isAnyAnimationActive", &AnimationBlenderV2::isAnyAnimationActive)
+            .def("addTime", &AnimationBlenderV2::addTime)
+            .def("setTimePosition", &AnimationBlenderV2::setTimePosition)
+            .def("getTimePosition", &AnimationBlenderV2::getTimePosition)
+            .def("getLength", &AnimationBlenderV2::getLength)
+            .def("setWeight", &AnimationBlenderV2::setWeight)
+            .def("getWeight", &AnimationBlenderV2::getWeight)
+            .def("resetBones", &AnimationBlenderV2::resetBones)
+            .def("setDebugLog", &AnimationBlenderV2::setDebugLog)
+            .def("setOverlayAnimation1", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, Ogre::Real))&AnimationBlenderV2::setOverlayAnimation)
+            .def("setOverlayAnimation2", (void (AnimationBlenderV2::*)(const Ogre::String&, Ogre::Real))&AnimationBlenderV2::setOverlayAnimation)
+            .def("clearOverlayAnimation", &AnimationBlenderV2::clearOverlayAnimation)
+            .def("isOverlayAnimationActive", &AnimationBlenderV2::isOverlayAnimationActive)
+            .def("setOverlayAnimation3", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, Ogre::Real, bool))&AnimationBlenderV2::setOverlayAnimation)
+            .def("setOverlayAnimation4", (void (AnimationBlenderV2::*)(const Ogre::String&, Ogre::Real, bool))&AnimationBlenderV2::setOverlayAnimation)
+            .def("setOverlayAnimationForBoneChain1", (void (AnimationBlenderV2::*)(AnimationBlenderV2::AnimID, const Ogre::String&, Ogre::Real, bool))&AnimationBlenderV2::setOverlayAnimationForBoneChain)
+            .def("setOverlayAnimationForBoneChain2", (void (AnimationBlenderV2::*)(const Ogre::String&, const Ogre::String&, Ogre::Real, bool))&AnimationBlenderV2::setOverlayAnimationForBoneChain)
+            .def("getOverlayTimePosition", &AnimationBlenderV2::getOverlayTimePosition)
+            .def("getOverlayLength", &AnimationBlenderV2::getOverlayLength)
+            .def("getOverlayProgress", &AnimationBlenderV2::getOverlayProgress)
+            .def("setOverlayTimePosition", &AnimationBlenderV2::setOverlayTimePosition)
+            .def("isOverlayBlendingOut", &AnimationBlenderV2::isOverlayBlendingOut)
+            .def("setOverlayInfluence", &AnimationBlenderV2::setOverlayInfluence)
+            .def("getOverlayChainInfluence", &AnimationBlenderV2::getOverlayChainInfluence)
+            .def("getOverlayOutsideInfluence", &AnimationBlenderV2::getOverlayOutsideInfluence)
+            .def("setOverlaySpeed", &AnimationBlenderV2::setOverlaySpeed)
+            .def("getOverlaySpeed", &AnimationBlenderV2::getOverlaySpeed)
+            .def("setAnimationSpeed", &AnimationBlenderV2::setAnimationSpeed)
+            .def("getAnimationSpeed", &AnimationBlenderV2::getAnimationSpeed)
+            .def("driveBlendSpace", &AnimationBlenderV2::driveBlendSpace)
+            // Merged in from the removed second registration block.
+            .def("getSource", &AnimationBlenderV2::getSource)
+            .def("getTarget", &AnimationBlenderV2::getTarget)
+            .def("getBone", &AnimationBlenderV2::getBone)
+            .def("getLocalToWorldPosition", &AnimationBlenderV2::getLocalToWorldPosition)
+            .def("getLocalToWorldOrientation", &AnimationBlenderV2::getLocalToWorldOrientation)
+        ];
 
         AddClassToCollection("AnimationBlender", "class", "This class can be used for more complex animations and transitions between them.");
         AddClassToCollection("AnimationBlender", "BLEND_SWITCH", "Ends the current animation and start a new one.");
@@ -5011,8 +5088,9 @@ namespace NOWA
         AddClassToCollection("AnimationBlender", "ANIM_HIGH_JUMP_END", "High jump end animation.");
         AddClassToCollection("AnimationBlender", "ANIM_JUMP_WALK", "Jump walk animation.");
         AddClassToCollection("AnimationBlender", "ANIM_FALL", "Fall animation.");
+        AddClassToCollection("AnimationBlender", "ANIM_GETUP", "Get up animation.");
         AddClassToCollection("AnimationBlender", "ANIM_EAT_1", "Eat 1 animation.");
-        AddClassToCollection("AnimationBlender", "ANIM_EAT_2", "Eat 1 animation.");
+        AddClassToCollection("AnimationBlender", "ANIM_EAT_2", "Eat 2 animation.");
         AddClassToCollection("AnimationBlender", "ANIM_PICKUP_1", "Pickup 1 animation.");
         AddClassToCollection("AnimationBlender", "ANIM_PICKUP_2", "Pickup 2 animation.");
         AddClassToCollection("AnimationBlender", "ANIM_ATTACK_1", "Attack 1 animation.");
@@ -5087,9 +5165,9 @@ namespace NOWA
             "Blends to the given animation id with a transition exclusively and optionally loops the animation. The animation will only be blend, if it is not active currently.");
         AddClassToCollection("AnimationBlender", "void blendExclusive4(String animationName, BlendingTransition blendingTransition, bool loop)",
             "Blends to the given animation name with a transition exclusively and optionally loops the animation. The animation will only be blend, if it is not active currently.");
-        AddClassToCollection("AnimationBlender", "void blendExclusive5(AnimID animationId, BlendingTransition blendingTransition, float duration)",
+        AddClassToCollection("AnimationBlender", "void blendExclusive5(AnimID animationId, BlendingTransition blendingTransition, float duration, bool loop)",
             "Blends to the given animation id with a transition exclusively. Sets how long the animation should be played. The animation will only be blend, if it is not active currently.");
-        AddClassToCollection("AnimationBlender", "void blendExclusive6(String animationName, BlendingTransition blendingTransition, float duration)",
+        AddClassToCollection("AnimationBlender", "void blendExclusive6(String animationName, BlendingTransition blendingTransition, float duration, bool loop)",
             "Blends to the given animation name with a transition exclusively. Sets how long the animation should be played. The animation will only be blend, if it is not active currently.");
         AddClassToCollection("AnimationBlender", "void blendPhaseSynced1(AnimID animationId, BlendingTransition blendingTransition, float duration, bool loop)",
             "Blends to the given animation id keeping both clips phase synchronised: the incoming animation starts at the same relative position the outgoing one currently has, so a walk cycle blending into a run keeps the feet in step. Use only "
@@ -5097,28 +5175,36 @@ namespace NOWA
             "blend5.");
         AddClassToCollection("AnimationBlender", "void blendPhaseSynced2(String animationName, BlendingTransition blendingTransition, float duration, bool loop)",
             "Blends to the given animation name keeping both clips phase synchronised. See blendPhaseSynced1 for details and caveats.");
+        AddClassToCollection("AnimationBlender", "void addTime(float time, String ownerId)",
+            "Advances the animation. The owner id is the caller's own name, e.g. the component class name: only the FIRST caller of a frame is allowed through, every other one is dropped with a log line, "
+            "so two classes cannot advance the same blender twice in one frame. Passing the same id as the class that already claimed it succeeds as well.");
         AddClassToCollection("AnimationBlender", "float getProgress()", "Gets the progress of the currently played animation in ms.");
-        AddClassToCollection("AnimationBlender", "bool isCompleted()", "Gets whether the currently played animation has completed or not.");
-        AddClassToCollection("AnimationBlender", "void registerAnimation(String animationName, AnimID animationId)", "Registers the animation name and maps it with the given animation id.");
+        AddClassToCollection("AnimationBlender", "bool isComplete()",
+            "Gets whether the currently played animation has completed or not. Attention: for an animation started with blendAndContinue this is never observed as true from the outside - the blender "
+            "reverts to the previous clip and resets the flag in the very same call. Use isAnimationActive to find out whether a one shot is still running.");
+        AddClassToCollection("AnimationBlender", "void registerAnimation(AnimID animationId, String animationName)", "Registers the animation id and maps it to the given animation name.");
         AddClassToCollection("AnimationBlender", "AnimID getAnimationIdFromString(String animationName)", "Gets the mapped animation id from the given animation name.");
+        AddClassToCollection("AnimationBlender", "bool hasAnimation(AnimID animationId)", "Gets whether the given animation id has been registered.");
         AddClassToCollection("AnimationBlender", "bool hasAnimation(String animationName)", "Gets whether the given animation name does exist.");
-        AddClassToCollection("AnimationBlender", "bool isAnimationActive(String animationName)", "Gets whether the given animation name is being currently played.");
+        AddClassToCollection("AnimationBlender", "bool isAnimationActive(AnimID animationId)", "Gets whether the given animation id is being currently played.");
         AddClassToCollection("AnimationBlender", "bool isAnyAnimationActive()", "Gets whether any animation is currently played.");
         AddClassToCollection("AnimationBlender", "void setTimePosition(float timePosition)", "Sets the time position for the animation.");
         AddClassToCollection("AnimationBlender", "float getTimePosition()", "Gets the current animation time position.");
         AddClassToCollection("AnimationBlender", "float getLength()", "Gets the animation length.");
         AddClassToCollection("AnimationBlender", "void setWeight(float weight)", "Sets the animation weight. The more less the weight the more less all bones are moved");
         AddClassToCollection("AnimationBlender", "float getWeight()", "Gets the current animation weight.");
+        AddClassToCollection("AnimationBlender", "void resetBones()", "Resets the skeleton to its bind pose.");
+        AddClassToCollection("AnimationBlender", "void setDebugLog(bool debugLog)",
+            "Switches detailed animation logging on: one line per frame for the source and the target clip, and for a running overlay its clip, time position and weight plus the bone hierarchy with a "
+            "marker on every bone the overlay owns.");
 
         AddClassToCollection("AnimationBlender", "void setOverlayAnimation1(AnimID animationId, float blendInTime)",
-            "Starts an overlay animation on top of the current one using per-bone weights. "
-            "Useful for upper-body actions (attacks, reloads) while legs keep playing locomotion. "
-            "Non-looping overlays auto-clear when they finish.");
+            "Starts a non looping overlay animation on top of the current one, for upper body actions (attacks, reloads) while the legs keep playing locomotion. It fades itself out again when the clip "
+            "is over. Attention: the bones the overlay takes over are the bones the CLIP ITSELF animates - a full body mocap clip therefore takes the whole skeleton away from the locomotion animation, "
+            "and the character stops walking. Use setOverlayAnimationForBoneChain1 for those.");
 
         AddClassToCollection("AnimationBlender", "void setOverlayAnimation2(String animationName, float blendInTime)",
-            "Starts an overlay animation by name on top of the current one using per-bone weights. "
-            "Useful for upper-body actions (attacks, reloads) while legs keep playing locomotion. "
-            "Non-looping overlays auto-clear when they finish.");
+            "Starts a non looping overlay animation by name on top of the current one. See setOverlayAnimation1 for details and for the caveat about full body clips.");
 
         AddClassToCollection("AnimationBlender", "void clearOverlayAnimation(float blendOutTime)",
             "Fades out and removes the current overlay animation over the given blend-out time in seconds. "
@@ -5126,13 +5212,64 @@ namespace NOWA
 
         AddClassToCollection("AnimationBlender", "bool isOverlayAnimationActive()", "Returns true if an overlay animation is currently active (blending in, playing, or blending out).");
 
+        AddClassToCollection("AnimationBlender", "void setOverlayAnimation3(AnimID animationId, float blendInTime, bool loop)",
+            "Starts an overlay animation on top of the current one and optionally loops it. A non looping overlay fades itself out again over blendInTime when the clip is over, a looping one runs until "
+            "clearOverlayAnimation is called. Attention: the bones the overlay takes over are the bones the clip itself animates - a full body clip therefore takes the whole skeleton away from the "
+            "locomotion animation. Use setOverlayAnimationForBoneChain1 for those.");
+
+        AddClassToCollection("AnimationBlender", "void setOverlayAnimation4(String animationName, float blendInTime, bool loop)",
+            "Starts an overlay animation by name on top of the current one and optionally loops it. See setOverlayAnimation3 for details.");
+
+        AddClassToCollection("AnimationBlender", "void setOverlayAnimationForBoneChain1(AnimID animationId, String rootBoneName, float blendInTime, bool loop)",
+            "Starts an overlay animation that only drives the given bone and all of its children, so the rest of the skeleton keeps playing the main animation. This is the 'upper body attack, lower body "
+            "locomotion' case: pass the lowest spine bone as rootBoneName and the legs keep walking while the arms swing. An empty or unknown bone name falls back to the bones of the clip itself. "
+            "Switch setDebugLog on to get the whole hierarchy printed with a marker on every bone the overlay owns - if a leg bone comes out marked, the chain root is too high.");
+
+        AddClassToCollection("AnimationBlender", "void setOverlayAnimationForBoneChain2(String animationName, String rootBoneName, float blendInTime, bool loop)",
+            "Starts an overlay animation by name that only drives the given bone chain. See setOverlayAnimationForBoneChain1 for details.");
+
+        AddClassToCollection("AnimationBlender", "float getOverlayTimePosition()",
+            "Gets the time position of the overlay clip in seconds. Attention: getTimePosition reports the MAIN animation, which is the walk cycle for as long as the overlay runs - it cannot be used to "
+            "time an overlay.");
+
+        AddClassToCollection("AnimationBlender", "float getOverlayLength()", "Gets the length of the overlay clip in seconds, or 0 when no overlay is running.");
+
+        AddClassToCollection("AnimationBlender", "float getOverlayProgress()", "Gets how far the overlay clip has come, 0 at its first frame and 1 at its last. This is what a hit window or a combo follow up window is timed on.");
+
+        AddClassToCollection("AnimationBlender", "void setOverlayTimePosition(float timePosition)", "Sets the time position of the overlay clip, for example to restart a swing from its beginning.");
+
+        AddClassToCollection("AnimationBlender", "bool isOverlayBlendingOut()",
+            "Gets whether the overlay has reached its end and is fading out. isOverlayAnimationActive is still true during that fade, so this is the one to test for 'the action is over'.");
+
+        AddClassToCollection("AnimationBlender", "void setOverlayInfluence(float chainInfluence, float outsideChainInfluence)",
+            "Sets how strongly the overlay takes over, separately for the bone chain it owns and for the rest of the skeleton. chainInfluence is 0 to 1, default 1: how much of the chain the overlay takes, "
+            "1 leaving the locomotion clip no say there at all. outsideChainInfluence is 0 to 1, default 0: how far the overlay reaches into the pelvis and the legs. 0 keeps the locomotion untouched below "
+            "the chain, a small value like 0.3 lets the whole body lean into the action while the legs keep walking, which makes a punch read as much heavier. Attention: the pelvis carries the root motion "
+            "of a mocap clip, so high values pull the character around - 0.4 is about the sensible ceiling. Whatever the overlay takes, the main animation gets the rest, at every moment of the fade.");
+
+        AddClassToCollection("AnimationBlender", "float getOverlayChainInfluence()", "Gets how much of its bone chain the overlay takes over. Default is 1.0.");
+
+        AddClassToCollection("AnimationBlender", "float getOverlayOutsideInfluence()", "Gets how far the overlay reaches into the skeleton outside its bone chain. Default is 0.0.");
+
+        AddClassToCollection("AnimationBlender", "void setOverlaySpeed(float speed)",
+            "Sets the playback speed of the overlay only, 1.0 being the authored speed. Attention: setAnimationSpeed does NOT affect the overlay. That one is the locomotion speed the player controller "
+            "drives from the walking speed - an upper body action must not slow down just because the legs do.");
+
+        AddClassToCollection("AnimationBlender", "float getOverlaySpeed()", "Gets the overlay playback speed multiplier. Default is 1.0.");
+
         AddClassToCollection("AnimationBlender", "void setAnimationSpeed(float speed)",
             "Sets the playback speed multiplier for the current source and target animations. "
             "1.0 = normal speed, 2.0 = double speed, 0.5 = half speed. "
             "The base frame rate per animation is preserved internally so calling this multiple times is safe. "
-            "When using this, pass raw dt to addTime() instead of scaling it manually.");
+            "When using this, pass raw dt to addTime() instead of scaling it manually. Does not affect a running overlay, see setOverlaySpeed.");
 
         AddClassToCollection("AnimationBlender", "float getAnimationSpeed()", "Gets the currently active playback speed multiplier. Default is 1.0.");
+
+        AddClassToCollection("AnimationBlender", "SkeletonAnimation getSource()", "Gets the animation state that is currently the main one. Note: Always check against nil.");
+        AddClassToCollection("AnimationBlender", "SkeletonAnimation getTarget()", "Gets the animation state that is currently being blended to, or nil when no blend is running.");
+        AddClassToCollection("AnimationBlender", "Bone getBone(String boneName)", "Gets the bone with the given name, or nil when the skeleton has none.");
+        AddClassToCollection("AnimationBlender", "Vector3 getLocalToWorldPosition(Bone bone)", "Gets the world position of the given bone, with the scale and the orientation of the whole character applied.");
+        AddClassToCollection("AnimationBlender", "Quaternion getLocalToWorldOrientation(Bone bone)", "Gets the world orientation of the given bone, with the orientation of the whole character applied.");
 
         AddClassToCollection("BlendSpaceEntryList", "class",
             "A sorted list of animation/parameter pairs used to drive a 1D blend space. "

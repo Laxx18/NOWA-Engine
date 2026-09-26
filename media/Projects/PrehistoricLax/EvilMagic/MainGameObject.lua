@@ -91,8 +91,8 @@ end
 
 MainGameObject["FadeOutTimePoint"] = function(timePointSec)
     mainGameObject:getFadeComponentFromIndex(1):setActivated(true);
-	mainGameObject:getFadeComponentFromIndex(1):reactOnFadeCompleted(function() 
-         AppStateManager:changeAppState("Level1");
+    mainGameObject:getFadeComponentFromIndex(1):reactOnFadeCompleted(function() 
+         AppStateManager:changeAppState("GameState");
     end);
 end
 

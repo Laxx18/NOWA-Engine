@@ -143,7 +143,7 @@ MainGameObject["connect"] = function(gameObject)
     agathe:getParticleFxComponent():setActivated(false);
     
     mainGameObject:getMyGUIButtonComponentFromName("SkipButton"):reactOnMouseButtonClick(function()
-        AppStateManager:changeAppState("Level1");
+        AppStateManager:changeAppState("GameState");
     end);
 end
 

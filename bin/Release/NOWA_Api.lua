@@ -1281,6 +1281,10 @@ return {
 			{
 				type = "value"
 			},
+			ANIM_GETUP =
+			{
+				type = "value"
+			},
 			ANIM_EAT_1 =
 			{
 				type = "value"
@@ -1621,7 +1625,7 @@ return {
 			{
 				type = "method",
 				description = "Blends to the given animation id with a transition exclusively. Sets how long the animation should be played. The animation will only be blend, if it is not active currently.",
-				args = "(AnimID animationId, BlendingTransition blendingTransition, number duration)",
+				args = "(AnimID animationId, BlendingTransition blendingTransition, number duration, boolean loop)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
@@ -1629,7 +1633,7 @@ return {
 			{
 				type = "method",
 				description = "Blends to the given animation name with a transition exclusively. Sets how long the animation should be played. The animation will only be blend, if it is not active currently.",
-				args = "(string animationName, BlendingTransition blendingTransition, number duration)",
+				args = "(string animationName, BlendingTransition blendingTransition, number duration, boolean loop)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
@@ -1649,6 +1653,14 @@ return {
 				returns = "(nil)",
 				valuetype = "nil"
 			},
+			addTime =
+			{
+				type = "method",
+				description = "Advances the animation. The owner id is the caller's own name, e.g. the component class name: only the FIRST caller of a frame is allowed through, every other one is dropped with a log line, so two classes cannot advance the same blender twice in one frame. Passing the same id as the class that already claimed it succeeds as well.",
+				args = "(number time, string ownerId)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
 			getProgress =
 			{
 				type = "function",
@@ -1657,10 +1669,10 @@ return {
 				returns = "(number)",
 				valuetype = "number"
 			},
-			isCompleted =
+			isComplete =
 			{
 				type = "function",
-				description = "Gets whether the currently played animation has completed or not.",
+				description = "Gets whether the currently played animation has completed or not. Attention: for an animation started with blendAndContinue this is never observed as true from the outside - the blender reverts to the previous clip and resets the flag in the very same call. Use isAnimationActive to find out whether a one shot is still running.",
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
@@ -1668,8 +1680,8 @@ return {
 			registerAnimation =
 			{
 				type = "method",
-				description = "Registers the animation name and maps it with the given animation id.",
-				args = "(string animationName, AnimID animationId)",
+				description = "Registers the animation id and maps it to the given animation name.",
+				args = "(AnimID animationId, string animationName)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
@@ -1684,6 +1696,14 @@ return {
 			hasAnimation =
 			{
 				type = "function",
+				description = "Gets whether the given animation id has been registered.",
+				args = "(AnimID animationId)",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			hasAnimation =
+			{
+				type = "function",
 				description = "Gets whether the given animation name does exist.",
 				args = "(string animationName)",
 				returns = "(boolean)",
@@ -1692,8 +1712,8 @@ return {
 			isAnimationActive =
 			{
 				type = "function",
-				description = "Gets whether the given animation name is being currently played.",
-				args = "(string animationName)",
+				description = "Gets whether the given animation id is being currently played.",
+				args = "(AnimID animationId)",
 				returns = "(boolean)",
 				valuetype = "boolean"
 			},
@@ -1745,10 +1765,26 @@ return {
 				returns = "(number)",
 				valuetype = "number"
 			},
+			resetBones =
+			{
+				type = "method",
+				description = "Resets the skeleton to its bind pose.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setDebugLog =
+			{
+				type = "method",
+				description = "Switches detailed animation logging on: one line per frame for the source and the target clip, and for a running overlay its clip, time position and weight plus the bone hierarchy with a marker on every bone the overlay owns.",
+				args = "(boolean debugLog)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
 			setOverlayAnimation1 =
 			{
 				type = "method",
-				description = "Starts an overlay animation on top of the current one using per-bone weights. Useful for upper-body actions (attacks, reloads) while legs keep playing locomotion. Non-looping overlays auto-clear when they finish.",
+				description = "Starts a non looping overlay animation on top of the current one, for upper body actions (attacks, reloads) while the legs keep playing locomotion. It fades itself out again when the clip is over. Attention: the bones the overlay takes over are the bones the CLIP ITSELF animates - a full body mocap clip therefore takes the whole skeleton away from the locomotion animation, and the character stops walking. Use setOverlayAnimationForBoneChain1 for those.",
 				args = "(AnimID animationId, number blendInTime)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -1756,7 +1792,7 @@ return {
 			setOverlayAnimation2 =
 			{
 				type = "method",
-				description = "Starts an overlay animation by name on top of the current one using per-bone weights. Useful for upper-body actions (attacks, reloads) while legs keep playing locomotion. Non-looping overlays auto-clear when they finish.",
+				description = "Starts a non looping overlay animation by name on top of the current one. See setOverlayAnimation1 for details and for the caveat about full body clips.",
 				args = "(string animationName, number blendInTime)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -1777,10 +1813,122 @@ return {
 				returns = "(boolean)",
 				valuetype = "boolean"
 			},
+			setOverlayAnimation3 =
+			{
+				type = "method",
+				description = "Starts an overlay animation on top of the current one and optionally loops it. A non looping overlay fades itself out again over blendInTime when the clip is over, a looping one runs until clearOverlayAnimation is called. Attention: the bones the overlay takes over are the bones the clip itself animates - a full body clip therefore takes the whole skeleton away from the locomotion animation. Use setOverlayAnimationForBoneChain1 for those.",
+				args = "(AnimID animationId, number blendInTime, boolean loop)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setOverlayAnimation4 =
+			{
+				type = "method",
+				description = "Starts an overlay animation by name on top of the current one and optionally loops it. See setOverlayAnimation3 for details.",
+				args = "(string animationName, number blendInTime, boolean loop)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setOverlayAnimationForBoneChain1 =
+			{
+				type = "method",
+				description = "Starts an overlay animation that only drives the given bone and all of its children, so the rest of the skeleton keeps playing the main animation. This is the 'upper body attack, lower body locomotion' case: pass the lowest spine bone as rootBoneName and the legs keep walking while the arms swing. An empty or unknown bone name falls back to the bones of the clip itself. Switch setDebugLog on to get the whole hierarchy printed with a marker on every bone the overlay owns - if a leg bone comes out marked, the chain root is too high.",
+				args = "(AnimID animationId, string rootBoneName, number blendInTime, boolean loop)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setOverlayAnimationForBoneChain2 =
+			{
+				type = "method",
+				description = "Starts an overlay animation by name that only drives the given bone chain. See setOverlayAnimationForBoneChain1 for details.",
+				args = "(string animationName, string rootBoneName, number blendInTime, boolean loop)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOverlayTimePosition =
+			{
+				type = "function",
+				description = "Gets the time position of the overlay clip in seconds. Attention: getTimePosition reports the MAIN animation, which is the walk cycle for as long as the overlay runs - it cannot be used to time an overlay.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getOverlayLength =
+			{
+				type = "function",
+				description = "Gets the length of the overlay clip in seconds, or 0 when no overlay is running.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getOverlayProgress =
+			{
+				type = "function",
+				description = "Gets how far the overlay clip has come, 0 at its first frame and 1 at its last. This is what a hit window or a combo follow up window is timed on.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setOverlayTimePosition =
+			{
+				type = "method",
+				description = "Sets the time position of the overlay clip, for example to restart a swing from its beginning.",
+				args = "(number timePosition)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isOverlayBlendingOut =
+			{
+				type = "function",
+				description = "Gets whether the overlay has reached its end and is fading out. isOverlayAnimationActive is still true during that fade, so this is the one to test for 'the action is over'.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setOverlayInfluence =
+			{
+				type = "method",
+				description = "Sets how strongly the overlay takes over, separately for the bone chain it owns and for the rest of the skeleton. chainInfluence is 0 to 1, default 1: how much of the chain the overlay takes, 1 leaving the locomotion clip no say there at all. outsideChainInfluence is 0 to 1, default 0: how far the overlay reaches into the pelvis and the legs. 0 keeps the locomotion untouched below the chain, a small value like 0.3 lets the whole body lean into the action while the legs keep walking, which makes a punch read as much heavier. Attention: the pelvis carries the root motion of a mocap clip, so high values pull the character around - 0.4 is about the sensible ceiling. Whatever the overlay takes, the main animation gets the rest, at every moment of the fade.",
+				args = "(number chainInfluence, number outsideChainInfluence)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOverlayChainInfluence =
+			{
+				type = "function",
+				description = "Gets how much of its bone chain the overlay takes over. Default is 1.0.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getOverlayOutsideInfluence =
+			{
+				type = "function",
+				description = "Gets how far the overlay reaches into the skeleton outside its bone chain. Default is 0.0.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setOverlaySpeed =
+			{
+				type = "method",
+				description = "Sets the playback speed of the overlay only, 1.0 being the authored speed. Attention: setAnimationSpeed does NOT affect the overlay. That one is the locomotion speed the player controller drives from the walking speed - an upper body action must not slow down just because the legs do.",
+				args = "(number speed)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOverlaySpeed =
+			{
+				type = "function",
+				description = "Gets the overlay playback speed multiplier. Default is 1.0.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
 			setAnimationSpeed =
 			{
 				type = "method",
-				description = "Sets the playback speed multiplier for the current source and target animations. 1.0 = normal speed, 2.0 = double speed, 0.5 = half speed. The base frame rate per animation is preserved internally so calling this multiple times is safe. When using this, pass raw dt to addTime() instead of scaling it manually.",
+				description = "Sets the playback speed multiplier for the current source and target animations. 1.0 = normal speed, 2.0 = double speed, 0.5 = half speed. The base frame rate per animation is preserved internally so calling this multiple times is safe. When using this, pass raw dt to addTime() instead of scaling it manually. Does not affect a running overlay, see setOverlaySpeed.",
 				args = "(number speed)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -1792,6 +1940,46 @@ return {
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
+			},
+			getSource =
+			{
+				type = "function",
+				description = "Gets the animation state that is currently the main one. Note: Always check against nil.",
+				args = "()",
+				returns = "(SkeletonAnimation)",
+				valuetype = "SkeletonAnimation"
+			},
+			getTarget =
+			{
+				type = "function",
+				description = "Gets the animation state that is currently being blended to, or nil when no blend is running.",
+				args = "()",
+				returns = "(SkeletonAnimation)",
+				valuetype = "SkeletonAnimation"
+			},
+			getBone =
+			{
+				type = "function",
+				description = "Gets the bone with the given name, or nil when the skeleton has none.",
+				args = "(string boneName)",
+				returns = "(Bone)",
+				valuetype = "Bone"
+			},
+			getLocalToWorldPosition =
+			{
+				type = "function",
+				description = "Gets the world position of the given bone, with the scale and the orientation of the whole character applied.",
+				args = "(Bone bone)",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			getLocalToWorldOrientation =
+			{
+				type = "function",
+				description = "Gets the world orientation of the given bone, with the orientation of the whole character applied.",
+				args = "(Bone bone)",
+				returns = "(Quaternion)",
+				valuetype = "Quaternion"
 			},
 			driveBlendSpace =
 			{
@@ -11162,6 +11350,22 @@ return {
 				returns = "(ProceduralMazeComponent)",
 				valuetype = "ProceduralMazeComponent"
 			},
+			getProceduralPipeComponent =
+			{
+				type = "function",
+				description = "Gets the ProceduralPipeComponent from this GameObject.",
+				args = "()",
+				returns = "(ProceduralPipeComponent)",
+				valuetype = "ProceduralPipeComponent"
+			},
+			getProceduralPipeComponentFromName =
+			{
+				type = "function",
+				description = "Gets a named ProceduralPipeComponent from this GameObject.",
+				args = "(string name)",
+				returns = "(ProceduralPipeComponent)",
+				valuetype = "ProceduralPipeComponent"
+			},
 			getProceduralPlanetComponent =
 			{
 				type = "function",
@@ -13457,6 +13661,14 @@ return {
 				args = "(ProceduralMazeComponent other)",
 				returns = "(ProceduralMazeComponent)",
 				valuetype = "ProceduralMazeComponent"
+			},
+			castProceduralPipeComponent =
+			{
+				type = "function",
+				description = "Casts for Lua auto-completion support.",
+				args = "(ProceduralPipeComponent other)",
+				returns = "(ProceduralPipeComponent)",
+				valuetype = "ProceduralPipeComponent"
 			},
 			castProceduralPlatformBoundaryComponent =
 			{
@@ -30444,6 +30656,175 @@ return {
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
+			}
+		}
+	},
+	ProceduralPipeComponent =
+	{
+		type = "class",
+		description = "Usage: Creates procedural 2.5D pipes/tubes on a fixed depth plane, for Metroidvania-style levels. The player can run THROUGH the tube; the arc facing the camera can be faded or cut away so he stays visible.  PIPE BUILDING (Object Mode): - Left-click anywhere to start a new pipe segment. The first click of the whole chain fixes   the local Z (depth) plane every further segment will be drawn on. - Move the mouse to preview the segment, then left-click again to confirm it. - Hold SHIFT while confirming to automatically chain the next segment from the endpoint. - Hold CTRL to constrain the segment direction to horizontal or vertical. - Right-click or press ESC to cancel the current segment. - Press CTRL+Z to undo the last confirmed segment.  SEGMENT MODE: - Set the 'Edit Mode' property to 'Segment' to enter segment editing. - Left-click near any pipe segment to select it. The selected segment is highlighted. - Press X to delete the selected segment, E to extend a new one from its tail endpoint. - Press U / SHIFT+U to shift the selected segment one Pipe Radius along the depth axis, so   two crossing runs pass in front of / behind each other instead of intersecting. Only a   chain's two END segments move the ramp - nudging a middle segment changes nothing. - Press ESC to deselect. - A green snap circle appears near an existing endpoint; release there to connect.  GEOMETRY: - 'Pipe Radius' is the outer radius of the tube in meters. - 'Wall Thickness' builds a second, inner shell plus closing rings at both ends. The inside   is then correctly lit and solid-looking, and the physics collision has a real inner   surface. 0 means a single shell - cheaper, but the inside is backfacing. - 'Radial Segments' is how many vertices each ring has (higher = rounder). - 'Curve Subdivisions' controls how many points are interpolated along the path. - 'Smoothing Factor' blends height changes between connected segments.  JUNCTIONS: - Three or more arms meeting at one endpoint form a junction, and a sphere is built to   fill it. Each arm is trimmed back so its mouth sits inside that sphere, and the sphere   gets a hole where every arm enters - so the player can run straight through in any   direction. The near-side cut continues across the sphere, so a junction does not put an   opaque ball in front of him exactly where the interesting part is. - 'Junction Hub Scale' is the sphere's radius as a multiple of Pipe Radius. 1.3 gives the   usual bulged fitting; larger values a chunky ball joint. Below ~1.1 the sphere hides   inside the arms and the joint opens up. - Endpoints are matched in (x, height) only, so two arms nudged to different depths still   count as meeting; the hub is then placed between them.  NEAR SIDE (the arc between camera and player): - 'Near Side Mode':     Solid       - closed tube, the player is hidden inside it.     Transparent - the near arc uses 'Near Datablock', typically an alpha-blended copy of                   the pipe material, so the player shows through. No rebuild on switch.     Hidden      - the near arc is not built at all and the cut edges get rim strips,                   giving an open trough. Triggers a rebuild. - 'Near Side Arc' is how wide that arc is, in degrees around the camera direction (+Z in   the pipe's own frame). 0 disables the split entirely - everything becomes far side. - Do NOT flip vertices to see inside: reverse the culling on the datablock instead, or use   Hlms two-sided lighting. Flipping geometry costs a rebuild and breaks every other view.  LUA API: - getProceduralPipeComponent() on a GameObject returns this component. - setNearSideMode('Solid'|'Transparent'|'Hidden'), getNearSideMode(). - getPipeLength() returns the swept centerline length in meters. - getPointAtDistance(d) / getDirectionAtDistance(d) - world position/tangent d meters in. - getPointAt(t) / getDirectionAt(t) - same with t normalized to 0..1. - getDistanceOnPipe(worldPos) - how far along the pipe a world position projects, which is   how a script tracks where the player currently is inside it. - addPipeSegment(start, end), getSegmentCount(), setPipeRadius(r), setWallThickness(t). ",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Activates or deactivates the pipe component.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setPipeRadius =
+			{
+				type = "method",
+				description = "Sets the outer radius of the tube in meters and rebuilds.",
+				args = "(number radius)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setWallThickness =
+			{
+				type = "method",
+				description = "Sets the wall thickness. Greater than 0 adds an inner shell and closing end rings.",
+				args = "(number thickness)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setRadialSegments =
+			{
+				type = "method",
+				description = "Sets how many vertices each ring has (3-128).",
+				args = "(number segments)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setNearSideMode =
+			{
+				type = "method",
+				description = "Sets how the arc facing the camera is treated: 'Solid', 'Transparent' or 'Hidden'. Solid<->Transparent is a datablock swap and needs no rebuild; anything involving Hidden rebuilds the mesh.",
+				args = "(string mode)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getNearSideMode =
+			{
+				type = "function",
+				description = "Returns the current near side mode.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setNearSideArc =
+			{
+				type = "method",
+				description = "Sets how wide the near arc is, in degrees around the camera direction. 0 disables the split.",
+				args = "(number degrees)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setJunctionHubScale =
+			{
+				type = "method",
+				description = "Sets the radius of the sphere filling a junction, as a multiple of Pipe Radius (1.05-3.0). Also decides how far each arm is trimmed back into it, so this rebuilds the mesh.",
+				args = "(number scale)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getJunctionHubScale =
+			{
+				type = "function",
+				description = "Returns the junction hub scale.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setNearSideAlpha =
+			{
+				type = "method",
+				description = "Sets the alpha of the near arc in Transparent mode (0-1). The transparency is applied to a CLONE of the datablock, so the pipe body and every other object sharing that material stay opaque. 1.0 leaves the datablock untouched.",
+				args = "(number alpha)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getNearSideAlpha =
+			{
+				type = "function",
+				description = "Returns the near arc alpha.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setInvertNearSide =
+			{
+				type = "method",
+				description = "Flips which side counts as the near one. Off means local -Z (the camera side for an unrotated object); turn it on for a pipe whose GameObject is rotated 180 degrees.",
+				args = "(boolean invert)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getPipeLength =
+			{
+				type = "function",
+				description = "Returns the total swept centerline length in meters.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getPointAtDistance =
+			{
+				type = "function",
+				description = "Returns the world position d meters along the pipe.",
+				args = "(number distance)",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			getDirectionAtDistance =
+			{
+				type = "function",
+				description = "Returns the world tangent d meters along the pipe.",
+				args = "(number distance)",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			getPointAt =
+			{
+				type = "function",
+				description = "Returns the world position at t in 0..1 along the pipe.",
+				args = "(number t)",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			getDirectionAt =
+			{
+				type = "function",
+				description = "Returns the world tangent at t in 0..1 along the pipe.",
+				args = "(number t)",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			getDistanceOnPipe =
+			{
+				type = "function",
+				description = "Projects a world position onto the centerline and returns how far along the pipe it lies - feed it the player's position to track where he is inside the tube.",
+				args = "(Vector3 worldPosition)",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getSegmentCount =
+			{
+				type = "function",
+				description = "Returns the number of pipe segments currently placed.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			addPipeSegment =
+			{
+				type = "method",
+				description = "Adds a single pipe segment between two local positions and rebuilds.",
+				args = "(Vector3 start, Vector3 end)",
+				returns = "(nil)",
+				valuetype = "nil"
 			}
 		}
 	},

@@ -413,7 +413,14 @@ void ResourcesPanelMeshes::loadMeshes(const Ogre::String& filter)
                 parent->add(child);
             }
         }
-        
+        // Add Platform Pipe
+        {
+            if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralPipeComponent"))
+            {
+                child = new MyGUI::TreeControl::Node("Pipe", "Data");
+                parent->add(child);
+            }
+        }
         // Add Platform Conveyor
         {
             if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralConveyorLoopComponent"))

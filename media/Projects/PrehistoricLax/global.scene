@@ -2,8 +2,8 @@
 <scene formatVersion="1.1.0" generator="NOWA-Engine">
 	<nodes>
 		<node name="WeaponStick" id="3232914531">
-			<position x="1.52416" y="1.86157" z="-6.35161"/>
-			<rotation qw="0.791965" qx="-0.548356" qy="0.152852" qz="-0.220757"/>
+			<position x="1.58775" y="1.77449" z="-6.36726"/>
+			<rotation qw="0.742635" qx="-0.490219" qy="0.314746" qz="-0.330322"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="WeaponStick" meshFile="monster_item_cudgel.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="items_mat.004"/>

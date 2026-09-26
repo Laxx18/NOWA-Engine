@@ -168,6 +168,7 @@ namespace NOWA
         private:
             std::vector<BlendSpaceEntry> entries;
         };
+
     public:
         /**
          * @brief		Creates the animation blender for the given item.
@@ -227,6 +228,102 @@ namespace NOWA
         void clearOverlayAnimation(Ogre::Real blendOutTime = 0.2f);
 
         bool isOverlayAnimationActive(void) const;
+
+        /**
+         * @brief	Starts an overlay animation on top of the current one and optionally loops it.
+         * @param	animationId		The clip to overlay
+         * @param	blendInTime		How long the overlay fades in, in seconds. The same value is
+         *							used to fade it out again when a non looping clip is over.
+         * @param	loop			true keeps the overlay running until clearOverlayAnimation() is
+         *							called, false ends it when the clip reaches its end.
+         * @Note	The bones the overlay takes over are the bones the CLIP ITSELF animates. That is
+         *			only the upper body if the clip really only keys the upper body - a full body
+         *			mocap punch keys the legs and the root too and then takes the whole skeleton away
+         *			from the locomotion clip. Use setOverlayAnimationForBoneChain() for those.
+         */
+        void setOverlayAnimation(AnimID animationId, Ogre::Real blendInTime, bool loop);
+
+        void setOverlayAnimation(const Ogre::String& animationName, Ogre::Real blendInTime, bool loop);
+
+        /**
+         * @brief	Starts an overlay animation that only drives one bone chain, so the rest of the
+         *			skeleton keeps playing the main animation. This is the "upper body attack, lower
+         *			body locomotion" case.
+         * @param	animationId		The clip to overlay
+         * @param	rootBoneName	The first bone of the chain the overlay owns, for example the
+         *							lowest spine bone. That bone and ALL of its children are driven
+         *							by the overlay, everything else keeps playing the main animation.
+         *							An empty or unknown name falls back to the bones of the clip.
+         * @param	blendInTime		How long the overlay fades in, in seconds
+         * @param	loop			Whether the overlay loops
+         */
+        void setOverlayAnimationForBoneChain(AnimID animationId, const Ogre::String& rootBoneName, Ogre::Real blendInTime, bool loop);
+
+        void setOverlayAnimationForBoneChain(const Ogre::String& animationName, const Ogre::String& rootBoneName, Ogre::Real blendInTime, bool loop);
+
+        /**
+         * @brief	Gets the time position of the OVERLAY clip in seconds.
+         * @Note	getTimePosition() cannot be used for this, it reports the main animation, which
+         *			is the walk cycle for as long as the overlay runs.
+         */
+        Ogre::Real getOverlayTimePosition(void) const;
+
+        /**
+         * @brief	Gets the length of the overlay clip in seconds, or 0 when there is none.
+         */
+        Ogre::Real getOverlayLength(void) const;
+
+        /**
+         * @brief	Gets how far the overlay clip has come, 0 at its first frame and 1 at its last.
+         *			This is what a script times a hit window or a follow up window on.
+         */
+        Ogre::Real getOverlayProgress(void) const;
+
+        /**
+         * @brief	Sets the time position of the overlay clip, for example to restart a swing.
+         */
+        void setOverlayTimePosition(Ogre::Real timePosition);
+
+        /**
+         * @brief	Gets whether the overlay has reached its end and is fading out. isOverlayAnimationActive()
+         *			is still true during that fade, so this is the one to test for "the swing is over".
+         */
+        bool isOverlayBlendingOut(void) const;
+
+        /**
+         * @brief	Sets the playback speed of the OVERLAY only. 1.0 is the authored speed.
+         * @Note	setAnimationSpeed() deliberately does not touch the overlay. That one is the
+         *			locomotion speed the player controller drives from the walking speed, and it
+         *			used to be pushed onto the overlay as well - a 0.87 second punch then took two
+         *			and a half seconds, because the legs were moving slowly.
+         */
+        /**
+         * @brief	Sets how strongly the overlay takes over, separately for the chain it owns and
+         *			for the rest of the skeleton.
+         * @param	chainInfluence			0 to 1, default 1. How much of the chain the overlay
+         *									takes. 1 means the locomotion clip has no say there at
+         *									all, which is what a punch wants.
+         * @param	outsideChainInfluence	0 to 1, default 0. How much the overlay reaches into the
+         *									REST of the skeleton - the pelvis and the legs. 0 keeps
+         *									the locomotion untouched below the chain; a small value
+         *									like 0.3 lets the whole body lean into the action while
+         *									the legs keep walking, which makes a punch read as much
+         *									heavier. Attention: the pelvis is where a mocap clip
+         *									carries its root motion, so high values pull the
+         *									character around - 0.4 is about the sensible ceiling.
+         * @Note	Whatever the overlay takes, the main animation gets the rest, at every moment of
+         *			the fade. Ogre-Next accumulates both onto the same bone, so the two weights have
+         *			to add up to one or the pose is either doubled or missing.
+         */
+        void setOverlayInfluence(Ogre::Real chainInfluence, Ogre::Real outsideChainInfluence);
+
+        Ogre::Real getOverlayChainInfluence(void) const;
+
+        Ogre::Real getOverlayOutsideInfluence(void) const;
+
+        void setOverlaySpeed(Ogre::Real speed);
+
+        Ogre::Real getOverlaySpeed(void) const;
 
         void driveBlendSpace(Ogre::Real parameter, const AnimationBlenderV2::BlendSpaceEntryList& entryList);
 
@@ -309,9 +406,28 @@ namespace NOWA
         // phaseSync defaults to false: every existing call site keeps the safe behaviour of
         // starting the incoming animation at its beginning. Only blendPhaseSynced() opts in.
         void internalBlend(const Ogre::String& animationName, BlendingTransition transition, Ogre::Real duration, bool loop = true, bool phaseSync = false);
+
         Ogre::SkeletonAnimation* internalGetAnimationState(const Ogre::String& animationName);
+
         bool isTargetAnimationActive(AnimID animationId);
-        void internalSetOverlayAnimation(const Ogre::String& animationName, Ogre::Real blendInTime);
+        void internalSetOverlayAnimation(const Ogre::String& animationName, const Ogre::String& maskRootBoneName, Ogre::Real blendInTime, bool loop);
+
+        void internalUpdateOverlay(Ogre::Real renderDt);
+
+        // The overlay clip itself: full weight on the chain it owns, zero everywhere else.
+        void internalSetOverlayOwnBoneWeights(bool restore);
+
+        // Hands the chain over to the overlay and back again, following the overlay's own weight
+        // every frame, so the chain is never driven by two clips at once and never by none.
+        void internalDriveOverlayChainWeight(Ogre::Real overlayAuthority);
+
+        void internalRestoreOverlayChainWeight(void);
+
+        void internalCollectBoneChain(Ogre::Bone* bone, std::vector<Ogre::String>& outBoneNames);
+
+        // Only used by the debug log: prints the hierarchy indented and marks every bone the
+        // overlay currently owns.
+        void internalLogBoneChain(Ogre::Bone* bone, const Ogre::String& padding);
 
         bool tryClaimAddTime(const Ogre::String& ownerId); // returns true if caller won
 
@@ -353,6 +469,23 @@ namespace NOWA
         Ogre::Real overlayTimeleft;
         Ogre::Real overlayDuration;
         bool overlayBlendingOut;
+        bool overlayLoop;
+        Ogre::Real overlayBlendOutTime;
+        Ogre::Real overlaySpeed;
+        Ogre::Real overlayChainInfluence;
+        Ogre::Real overlayOutsideInfluence;
+        // The bones the overlay owns, and the whole skeleton. Both are needed: muting the other
+        // animations on the chain alone still leaves the overlay at its default weight of 1.0 on
+        // every bone OUTSIDE the chain, so the punch would drive the legs as well.
+        // Names only for the debug log. The ids are what the per frame code uses - hashing the
+        // bone names again on every frame would be pure waste.
+        std::vector<Ogre::String> overlayMaskBoneNames;
+        std::vector<Ogre::String> overlayAllBoneNames;
+        std::vector<Ogre::IdString> overlayChainBoneIds;
+        std::vector<Ogre::IdString> overlayOtherBoneIds;
+        // Every animation whose chain weight was lowered for this overlay, so all of them can be
+        // restored - not just the one that happens to be the source when the overlay ends.
+        std::vector<Ogre::SkeletonAnimation*> overlayMutedAnimations;
 
         Ogre::String addTimeOwner; // empty = unclaimed this frame
     };
