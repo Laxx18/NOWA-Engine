@@ -922,15 +922,24 @@ namespace NOWA
 
         if (false == activated)
         {
+            // Wait for the running physics update FIRST. The force and torque callback is a
+            // std::function bound to this component, and the physics thread may be calling it right
+            // now; replacing it underneath that call is a data race. Only once Sync() has returned is
+            // it safe to unbind, and only then is it safe for a caller to destroy this component.
+            if (nullptr != this->ogreNewt)
+            {
+                this->ogreNewt->Sync();
+            }
+
             this->physicsBody->removeForceAndTorqueCallback();
 
             // Only remove from world if it was actually added.
-            // During createDynamicBody the body is not yet in the world —
+            // During createDynamicBody the body is not yet in the world -
             // in that case just store the flag and skip, the body will
             // simply never be added (enqueuePhysics checks m_isInWorld).
             if (this->physicsBody->isInWorld())
             {
-                this->ogreNewt->Sync();
+                this->physicsBody->setUserData(OgreNewt::Any(nullptr));
                 this->physicsBody->removeFromWorld();
             }
         }
@@ -940,6 +949,7 @@ namespace NOWA
             if (false == this->physicsBody->isInWorld())
             {
                 this->ogreNewt->Sync();
+                this->physicsBody->setUserData(OgreNewt::Any(static_cast<PhysicsComponent*>(this)));
                 this->physicsBody->addToWorld();
             }
 

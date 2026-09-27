@@ -2664,7 +2664,7 @@ namespace NOWA
 
         this->global->setValue(isGlobal);
 
-        if (nullptr != this->luaScript)
+        if (true == isGlobal && nullptr != this->luaScript)
         {
             this->luaScript->setIsGlobal(isGlobal);
         }

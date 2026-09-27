@@ -15,4 +15,6 @@ function dump(o)
 end
 
 -- Register your events here:
--- Example: AppStateManager:getScriptEventManager():registerEvent("DestroyStone");
+AppStateManager:getScriptEventManager():registerEvent("PlayerDeadEvent");
+AppStateManager:getScriptEventManager():registerEvent("EnemyDeadEvent");
+AppStateManager:getScriptEventManager():registerEvent("PlayerAttackEvent");

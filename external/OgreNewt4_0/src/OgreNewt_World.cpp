@@ -30,7 +30,38 @@ World::World(Ogre::Real desiredFps, int maxUpdatesPerFrames, const Ogre::String&
     m_debugger(nullptr),
     m_mainThreadId()
 {
-    m_threadsRequested = 4;
+    // Attention: This must stay the VERY FIRST statement of the constructor body, exactly
+    // like in the official Newton Dynamics 4 demo world (ndPhysicsWorld::ndPhysicsWorld).
+    // ndFreeListAlloc is a process wide pooled allocator that every ndWorld shares. When a
+    // previous World was deleted, its CleanUp() pushed all of its blocks back into that
+    // pool instead of returning them to the CRT heap. The next World then builds its
+    // internal scene and, above all, its worker thread pool out of those recycled blocks.
+    // If anything in the previous teardown was even slightly out of order, the recycled
+    // block handed to a new ndThread object is garbage, and the very first virtual dispatch
+    // that the freshly spawned worker thread performs reads through an invalid vtable
+    // pointer. That is exactly the intermittent access violation seen in
+    // ndThread::'vcall' on a Newton worker thread. Flushing the pool here forces Newton to
+    // take fresh memory from the CRT heap for the new world.
+    ClearCache();
+
+    // Attention: Do NOT size the Newton thread pool here and do NOT fake a value either.
+    // The old code did "m_threadsRequested = 4;" without ever touching the pool. As a
+    // result the setThreadCount() call that OgreNewtModule::createPhysics() issues right
+    // after the constructor ALWAYS saw a mismatch, and therefore always ran
+    // ndWorld::SetThreadCount() -> ndThreadPool::SetCount(), which does
+    // "delete[] m_workers; m_workers = new ndWorker[n]". So the worker pool was torn down
+    // and rebuilt a few microseconds after it had just been created. Destroying an
+    // ndThread whose OS thread has already been created but not yet scheduled is what
+    // corrupts the vtable pointer the worker dereferences first.
+    // A value of 0 means "pool not sized yet". The module then sizes it exactly once, on a
+    // completely empty world, which is a pure allocation and never a teardown. The
+    // official ND4 demo never resizes the pool either.
+    m_threadsRequested = 0;
+
+    if (m_mainThreadId == std::thread::id())
+    {
+        m_mainThreadId = std::this_thread::get_id();
+    }
 
     m_defaultMatID = new OgreNewt::MaterialID(this, 0);
 
@@ -38,11 +69,6 @@ World::World(Ogre::Real desiredFps, int maxUpdatesPerFrames, const Ogre::String&
 
     OgreNewt::ContactNotify* notify = new OgreNewt::ContactNotify(this);
     SetContactNotify(notify);
-
-    if (m_mainThreadId == std::thread::id())
-    {
-        m_mainThreadId = std::this_thread::get_id();
-    }
 
     setSolverModel(m_solverMode);
     // Must be 1 because else on any movecallback forces and especially jump force will not work anymore! because on logic thread 1x jump is made and if substeps are 4, then 4 times gravity back, so no jump possible!
@@ -103,6 +129,10 @@ void World::cleanUp()
 void World::internalCleanUp()
 {
     Sync();
+    // Attention: ClearCache() must NOT be called here. Flushing ndFreeListAlloc while this
+    // world is still alive would hand blocks back to the CRT that Newton may still be
+    // pooling for this world. The flush now happens at the only safe moment, as the first
+    // statement of the World constructor, mirroring the official ND4 demo world.
     // ClearCache();
 }
 
@@ -127,8 +157,67 @@ void World::setSolverModel(int mode)
 
 void World::setThreadCount(int threads)
 {
-    m_threadsRequested = std::max(1, threads);
+    // Attention: ndWorld::SetThreadCount() forwards to ndThreadPool::SetCount(), which does
+    // "delete[] m_workers; m_workers = new ndWorker[n]". Every single call therefore
+    // destroys ALL existing Newton worker threads and spawns brand new ones. An ndThread
+    // whose std::thread has been created but whose OS thread has not been scheduled yet is
+    // destroyed from under the starting thread, and the first virtual dispatch that thread
+    // performs then runs through a dead vtable pointer -> access violation inside
+    // ndThread::'vcall'. Because it depends purely on OS scheduling, the crash is
+    // intermittent.
+    //
+    // Consequences, all enforced below:
+    // 1. Sizing the pool must happen exactly once per World, ideally on an empty world.
+    // 2. A repeated call with the same value must be a no-op instead of a rebuild.
+    // 3. The pool must never be resized from a foreign thread or while a step is running.
+    int clampedThreads = threads;
+    if (clampedThreads < 1)
+    {
+        clampedThreads = 1;
+    }
+    if (clampedThreads > 16)
+    {
+        clampedThreads = 16;
+    }
+
+    if (clampedThreads == m_threadsRequested)
+    {
+        // Nothing changes, so do not touch the pool at all.
+        return;
+    }
+
+    if (false == isMainThread())
+    {
+        if (nullptr != Ogre::LogManager::getSingletonPtr())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreNewt::World] setThreadCount() called from a foreign thread. Ignoring, because rebuilding the Newton thread pool is only safe on the main thread.");
+        }
+        return;
+    }
+
+    if (true == isSimulating())
+    {
+        if (nullptr != Ogre::LogManager::getSingletonPtr())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreNewt::World] setThreadCount() called while the world is simulating. Ignoring, because the worker pool must not be destroyed during a step.");
+        }
+        return;
+    }
+
+    // Make sure no asynchronous step is still in flight before the pool is replaced.
+    Sync();
+
+    m_threadsRequested = clampedThreads;
     ndWorld::SetThreadCount(m_threadsRequested);
+
+    // Let the freshly created workers reach their idle wait state before the caller
+    // starts feeding bodies, joints and steps into the world.
+    Sync();
+
+    if (nullptr != Ogre::LogManager::getSingletonPtr())
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreNewt::World] Newton thread pool sized to " + std::to_string(m_threadsRequested) + " threads.");
+    }
 }
 
 void World::setGravity(const Ogre::Vector3& g)

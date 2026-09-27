@@ -23,6 +23,7 @@ Rhino["connect"] = function(gameObject)
     animationBlender:registerAnimation(AnimationBlender.ANIM_RUN, "Rhino_Run_In_Place");
     animationBlender:registerAnimation(AnimationBlender.ANIM_ATTACK_1, "Rhino_Kick");
     animationBlender:registerAnimation(AnimationBlender.ANIM_ATTACK_2, "Rhino_Roll_In_Place");
+    animationBlender:registerAnimation(AnimationBlender.ANIM_TAKE_DAMAGE, "Rhino_Damage");
 
     -- WeaponStick.lua already fires this exact event (with enemyId) the moment
     -- this rhino's Energy attribute reaches 0 - no new event type needed.
@@ -41,25 +42,27 @@ Rhino["onEnemyDead"] = function(eventData)
         do return end;
     end
 
+    -- The event fires for ANY killed enemy - only react if it's this one.
     if (eventData["enemyId"] ~= rhino:getId()) then
         do return end;
     end
 
-    local ragDollComponent = rhino:getPhysicsRagDollComponent();
-    if (ragDollComponent ~= nil) then
-        ragDollComponent:setState("Ragdolling");
+    local ragDollComponent = rhino:getPhysicsRagDollComponentV2();
+    ragDollComponent:setState("Ragdolling");
+    
+    local pathFollowComponent = rhino:getAiPathFollowComponent();
+    pathFollowComponent:setActivated(false);
 
-        -- TODO: exact Lua API for applying an impulse to a ragdoll is a guess below -
-        -- see question 2 below, need the real method name/signature.
-        local hitDirection = eventData["hitDirection"];
-        if (hitDirection ~= nil) then
-            local knockbackStrength = 8;
-            local impulse = Vector3(hitDirection.x * knockbackStrength, 4, hitDirection.z * knockbackStrength);
-            ragDollComponent:addImpulse(impulse);
-        end
+    -- Knock the ragdoll away from where the hit came from, same mechanism the
+    -- player controller itself uses (applyRequiredForceForVelocity), just on the
+    -- ragdoll's own physics component instead of a player controller.
+    local hitDirection = eventData["hitDirection"];
+    if (hitDirection ~= nil) then
+        local knockbackStrength = 2;
+        local upKick = 2;
+        local pushDirection = Vector3(hitDirection.x * knockbackStrength, upKick, 0);
+        ragDollComponent:applyRequiredForceForVelocity(pushDirection);
     end
 
-    rhino:getLuaScriptComponent():callDelayedMethod(function()
-        AppStateManager:getGameObjectController():deleteGameObject(rhino:getId());
-    end, 2);
+    AppStateManager:getGameObjectController():deleteDelayedGameObject(rhino:getId(), 2);
 end

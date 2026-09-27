@@ -1195,12 +1195,29 @@ namespace NOWA
 
     void GameObjectController::deleteGameObjectImmediately(GameObjectPtr gameObjectPtr)
     {
+        // Stop the physics thread from touching this game object before ANYTHING is torn down.
+        // The Newton world runs on its own thread and calls each physics component's force and torque
+        // callback; destroying the component while such a call is in flight crashes with an access
+        // violation. setActivated(false) syncs with the physics thread and unbinds that callback, so
+        // afterwards the object is inert and safe to destroy.
+        unsigned int physicsComponentIndex = 0;
+        boost::shared_ptr<PhysicsComponent> physicsCompPtr = nullptr;
+        do
+        {
+            physicsCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponentWithOccurrence<PhysicsComponent>(physicsComponentIndex));
+            if (nullptr != physicsCompPtr)
+            {
+                physicsCompPtr->setActivated(false);
+                physicsComponentIndex++;
+            }
+        } while (nullptr != physicsCompPtr);
+
         gameObjectPtr->setVisible(false);
         this->freeCategoryFromGameObject(gameObjectPtr->getCategory());
         this->freeRenderCategoryFromGameObject(gameObjectPtr->getRenderCategory());
         unsigned long id = gameObjectPtr->getId();
 
-        // Remove from flat list: swap with last element, then pop — O(1), no shifting
+        // Remove from flat list: swap with last element, then pop - O(1), no shifting
         for (size_t i = 0; i < this->gameObjectsList.size(); ++i)
         {
             if (this->gameObjectsList[i].get() == gameObjectPtr.get())
@@ -1211,7 +1228,6 @@ namespace NOWA
             }
         }
 
-        // ... rest unchanged (erase from map, destroy, etc.)
         boost::shared_ptr<EventDataDeleteGameObject> deleteGameObjectEvent(boost::make_shared<EventDataDeleteGameObject>(id));
         AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->triggerEvent(deleteGameObjectEvent);
         this->gameObjects->erase(id);

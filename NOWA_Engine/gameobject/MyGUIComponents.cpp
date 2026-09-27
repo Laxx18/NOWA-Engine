@@ -228,11 +228,18 @@ namespace NOWA
 
         if (nullptr != this->widget)
         {
-            this->widget->eventMouseButtonClick += MyGUI::newDelegate(this, &MyGUIComponent::mouseButtonClick);
-            this->widget->eventMouseButtonPressed += MyGUI::newDelegate(this, &MyGUIComponent::baseMouseButtonPressed);
-            this->widget->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &MyGUIComponent::baseMouseButtonDoubleClick);
-            this->widget->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &MyGUIComponent::rootMouseChangeFocus);
-            this->widget->eventChangeCoord += MyGUI::newDelegate(this, &MyGUIComponent::changeCoord);
+            // Attention: attaching delegates mutates the widget's event lists, which the render
+            // thread reads while dispatching input - this must not happen concurrently, so it
+            // goes through a render command like every other MyGUI mutation in this file.
+            NOWA::GraphicsModule::RenderCommand delegateCommand = [this]()
+            {
+                this->widget->eventMouseButtonClick += MyGUI::newDelegate(this, &MyGUIComponent::mouseButtonClick);
+                this->widget->eventMouseButtonPressed += MyGUI::newDelegate(this, &MyGUIComponent::baseMouseButtonPressed);
+                this->widget->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &MyGUIComponent::baseMouseButtonDoubleClick);
+                this->widget->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &MyGUIComponent::rootMouseChangeFocus);
+                this->widget->eventChangeCoord += MyGUI::newDelegate(this, &MyGUIComponent::changeCoord);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(delegateCommand), "MyGUIComponent::postInit delegates");
         }
 
         if (nullptr != this->skin)
@@ -257,7 +264,12 @@ namespace NOWA
         // Guard: shared data-only instances (activated=false) have no widget yet
         if (nullptr != this->widget)
         {
-            this->widget->setUserData(std::make_pair<unsigned long, unsigned int>(this->gameObjectPtr->getId(), this->getIndex()));
+            // Attention: setUserData() is a MyGUI call, so it goes through the render thread.
+            NOWA::GraphicsModule::RenderCommand userDataCommand = [this]()
+            {
+                this->widget->setUserData(std::make_pair<unsigned long, unsigned int>(this->gameObjectPtr->getId(), this->getIndex()));
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(userDataCommand), "MyGUIComponent::postInit userData");
         }
         return true;
     }
@@ -910,10 +922,49 @@ namespace NOWA
             // auto closureFunction = [this, size](Ogre::Real renderDt)
             GraphicsModule::RenderCommand renderCommand = [this, size]()
             {
+                // Attention: The two extra setRealSize() calls with -0.001f and +0.001f that used to
+                // follow here were removed. They were meant as a "jiggle" to force MyGUI to refresh,
+                // but the LAST call wins, so the widget permanently ended up 0.001 relative units
+                // LARGER than what was configured and than what this->size reports. On a 2560 pixel
+                // wide view that is 2.5 pixels of silent drift, and it makes the widget's real size
+                // never match the stored size, which in turn makes every measurement of the widget
+                // useless. MyGUI::Widget::setSize() already triggers _setAlign() on all children and
+                // _updateView(), so no jiggle is needed at all.
                 this->widget->setRealSize(size.x, size.y);
 
-                this->widget->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-                this->widget->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+                // Attention: Throttled diagnostics for the "widget does not reach the screen edge"
+                // problem. Only every 10th call is written, so the log stays readable.
+                // What to look for in the log:
+                // - viewSize must be the real render window client size. If it is smaller, then
+                //   MyGUI was never told about the final window size and even a relative size of
+                //   1.0 can never reach the edge.
+                // - expected vs. absolute tells whether MyGUI applied the requested size at all.
+                // - relative size is what the scene file / properties panel actually stores. If it
+                //   is not exactly 1.0, the gap is simply the configured value.
+                static std::atomic<unsigned int> setRealSizeLogCounter{0};
+                const unsigned int currentLogCount = setRealSizeLogCounter.fetch_add(1);
+                if (0 == (currentLogCount % 10))
+                {
+                    const MyGUI::IntSize viewSize = MyGUI::RenderManager::getInstance().getViewSize();
+                    MyGUI::IntSize referenceSize = viewSize;
+                    if (nullptr != this->widget->getParent())
+                    {
+                        referenceSize = this->widget->getParent()->getSize();
+                    }
+                    const MyGUI::IntCoord absoluteCoord = this->widget->getAbsoluteCoord();
+
+                    Ogre::String objectName = "<no game object>";
+                    if (nullptr != this->gameObjectPtr)
+                    {
+                        objectName = this->gameObjectPtr->getName();
+                    }
+
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+                        "[MyGUIComponent] setRealSize #" + Ogre::StringConverter::toString(currentLogCount) + " class: " + this->getClassName() + " object: " + objectName + " relative: (" + Ogre::StringConverter::toString(size.x) + ", " + Ogre::StringConverter::toString(size.y) +
+                        ") viewSize: (" + Ogre::StringConverter::toString(viewSize.width) + ", " + Ogre::StringConverter::toString(viewSize.height) + ") referenceSize: (" + Ogre::StringConverter::toString(referenceSize.width) + ", " +
+                        Ogre::StringConverter::toString(referenceSize.height) + ") expected: (" + Ogre::StringConverter::toString(static_cast<int>(referenceSize.width * size.x)) + ", " + Ogre::StringConverter::toString(static_cast<int>(referenceSize.height * size.y)) +
+                        ") absolute: (" + Ogre::StringConverter::toString(absoluteCoord.left) + ", " + Ogre::StringConverter::toString(absoluteCoord.top) + ", " + Ogre::StringConverter::toString(absoluteCoord.width) + ", " + Ogre::StringConverter::toString(absoluteCoord.height) + ")");
+                }
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIComponent::setRealSize");
 
@@ -1120,10 +1171,18 @@ namespace NOWA
         this->layer->setListSelectedValue(layer);
         if (nullptr != this->widget)
         {
-            if (true == this->widget->isRootWidget())
+            // Attention: isRootWidget() is itself a MyGUI read and was evaluated on the logic
+            // thread, deciding whether to queue the command at all - it has to move INSIDE the
+            // command, so the decision is made on the same thread that acts on it. Otherwise the
+            // widget can be re-parented between the check and the execution.
             {
                 GraphicsModule::RenderCommand renderCommand = [this, layer]()
                 {
+                    if (false == this->widget->isRootWidget())
+                    {
+                        return;
+                    }
+
                     MyGUI::LayerManager::getInstance().detachFromLayer(this->widget);
                     MyGUI::LayerManager::getInstance().attachToLayerNode(layer, this->widget);
                 };
@@ -1241,7 +1300,12 @@ namespace NOWA
         // For identification
         if (nullptr != this->widget)
         {
-            this->widget->setUserData(std::make_pair<unsigned long, unsigned int>(this->gameObjectPtr->getId(), this->getIndex()));
+            // Attention: setUserData() is a MyGUI call, so it goes through the render thread.
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                this->widget->setUserData(std::make_pair<unsigned long, unsigned int>(this->gameObjectPtr->getId(), this->getIndex()));
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIComponent::onOtherComponentRemoved");
         }
     }
 
@@ -1251,7 +1315,12 @@ namespace NOWA
         // For identification
         if (nullptr != this->widget)
         {
-            this->widget->setUserData(std::make_pair<unsigned long, unsigned int>(this->gameObjectPtr->getId(), this->getIndex()));
+            // Attention: setUserData() is a MyGUI call, so it goes through the render thread.
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                this->widget->setUserData(std::make_pair<unsigned long, unsigned int>(this->gameObjectPtr->getId(), this->getIndex()));
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIComponent::onOtherComponentAdded");
         }
     }
 
@@ -1261,7 +1330,12 @@ namespace NOWA
         // For identification
         if (nullptr != this->widget)
         {
-            this->widget->setUserData(std::make_pair<unsigned long, unsigned int>(this->gameObjectPtr->getId(), this->getIndex()));
+            // Attention: setUserData() is a MyGUI call, so it goes through the render thread.
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                this->widget->setUserData(std::make_pair<unsigned long, unsigned int>(this->gameObjectPtr->getId(), this->getIndex()));
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIComponent::onReordered");
         }
     }
 
@@ -1333,12 +1407,27 @@ namespace NOWA
         {
             return;
         }
+        // Attention: MyGUI::Widget::changeWidgetSkin() is far from free and it is also the
+        // trigger for the MyGUI::ProgressBar::updateTrack() crash (see the long note in
+        // MyGUIProgressBarComponent::setValue()). changeWidgetSkin() calls shutdownOverride()
+        // and then shutdownWidgetSkinBase(), which destroys every skin child widget and,
+        // recursively, all of its children. So it must only run when the skin really changes.
+        // During deserialization and property actualization this setter is called with the
+        // value that is already active, which rebuilt the whole skin for nothing.
+        const Ogre::String oldSkin = this->skin->getListSelectedValue();
+        const bool skinHasChanged = (oldSkin != skin);
+
         this->skin->setListSelectedValue(skin);
         if (nullptr != this->widget)
         {
-            GraphicsModule::RenderCommand renderCommand = [this, skin]()
+            GraphicsModule::RenderCommand renderCommand = [this, skin, skinHasChanged]()
             {
-                this->widget->changeWidgetSkin(skin);
+                if (true == skinHasChanged)
+                {
+                    this->widget->changeWidgetSkin(skin);
+                }
+                // onChangeSkin() is called in both cases on purpose, so derived components keep
+                // re-applying their content exactly as before.
                 this->onChangeSkin();
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIComponent::setSkin");
@@ -1573,12 +1662,20 @@ namespace NOWA
         // because the default value may equal the current value (e.g. false==false)
         if (nullptr != this->widget)
         {
-            bool initialActivated = this->activated->getBool();
-            this->widget->setVisible(initialActivated);
-            for (size_t i = 0; i < this->widget->getChildCount(); i++)
+            // Attention: setVisible()/getChildCount()/getChildAt() are MyGUI calls and walk the
+            // widget's child list, which the render thread also walks while drawing - this must
+            // go through a render command.
+            const bool initialActivated = this->activated->getBool();
+
+            NOWA::GraphicsModule::RenderCommand visibilityCommand = [this, initialActivated]()
             {
-                this->widget->getChildAt(i)->setVisible(initialActivated);
-            }
+                this->widget->setVisible(initialActivated);
+                for (size_t i = 0; i < this->widget->getChildCount(); i++)
+                {
+                    this->widget->getChildAt(i)->setVisible(initialActivated);
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(visibilityCommand), "MyGUIWindowComponent::postInit visibility");
         }
 
         if (true == this->commonWidget->getBool())
@@ -1723,7 +1820,7 @@ namespace NOWA
                             {
                                 return;
                             }
-                            
+
                             // Copy happens HERE on the logic thread — safe for luabind::object
                             auto closures = *closureListPtr;
 
@@ -3645,15 +3742,25 @@ namespace NOWA
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIImageBoxComponent::postInit");
         }
 
-        MyGUI::ISubWidget* main = this->widget->getSubWidgetMain();
-        if (nullptr == main)
+        // Attention: getSubWidgetMain() and castType() are MyGUI calls and belong on the render
+        // thread. Also, the old code logged the nullptr case and then dereferenced 'main' anyway
+        // on the next line - a guaranteed null dereference whenever MyGUI_Media is missing from
+        // resources.cfg, i.e. exactly in the situation the log message warns about.
+        NOWA::GraphicsModule::RenderCommand subWidgetCommand = [this]()
         {
-            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIImageBoxComponent] Error: Could not get MyGUI sub widget. Check resources.cfg for MyGUI_Media.");
-        }
-        if ("RotatingSkin" == this->skin->getListSelectedValue())
-        {
-            this->rotatingSkin = main->castType<MyGUI::RotatingSkin>();
-        }
+            MyGUI::ISubWidget* main = this->widget->getSubWidgetMain();
+            if (nullptr == main)
+            {
+                Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIImageBoxComponent] Error: Could not get MyGUI sub widget. Check resources.cfg for MyGUI_Media.");
+                return;
+            }
+
+            if ("RotatingSkin" == this->skin->getListSelectedValue())
+            {
+                this->rotatingSkin = main->castType<MyGUI::RotatingSkin>();
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(subWidgetCommand), "MyGUIImageBoxComponent::postInit subWidget");
 
         this->setUsePickingMask(this->usePickingMask->getBool());
         this->setImageFileName(this->imageFileName->getString());
@@ -3832,8 +3939,10 @@ namespace NOWA
                 int scaledX = (mousePosition.left - imageCoord.left) * imageWidth / widgetWidth;
                 int scaledY = (mousePosition.top - imageCoord.top) * imageHeight / widgetHeight;
 
+                // Attention: pickingMask is allocated only by setUsePickingMask(true), so the
+                // variant being true does not guarantee the pointer is valid - check it.
                 // Check the picking mask using the scaled coordinates
-                if (true == this->pickingMask->pick(MyGUI::IntPoint(scaledX, scaledY)))
+                if (nullptr != this->pickingMask && true == this->pickingMask->pick(MyGUI::IntPoint(scaledX, scaledY)))
                 {
                     // std::cout << "Clickable area clicked!" << std::endl;
                     this->callMousePressLuaFunction();
@@ -3985,9 +4094,21 @@ namespace NOWA
         this->imageFileName->setValue(imageFileName);
         if (nullptr != this->widget)
         {
-            widget->castType<MyGUI::ImageBox>()->setImageTexture(imageFileName);
+            // Attention: setImageTexture() is a MyGUI call and must not run on the logic thread
+            // - same class of race as MyGUIProgressBarComponent::setValue(), see the long
+            // comment there.
+            GraphicsModule::RenderCommand renderCommand = [this, imageFileName]()
+            {
+                this->widget->castType<MyGUI::ImageBox>()->setImageTexture(imageFileName);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MyGUIImageBoxComponent::setImageFileName");
 
-            if (true == this->usePickingMask->getBool())
+            // The picking mask is pure CPU work on an Ogre::Image2 and touches no MyGUI state,
+            // so it stays on the calling thread.
+            // Attention: pickingMask is allocated only by setUsePickingMask(true). The variant
+            // can be true while the pointer is still null (e.g. set through the variant rather
+            // than through the setter), so it has to be checked here.
+            if (true == this->usePickingMask->getBool() && nullptr != this->pickingMask)
             {
                 // Create a custom picking mask based on the alpha channel using Ogre::Image2
                 if (this->pickingMask->loadFromAlpha(imageFileName))
@@ -4390,7 +4511,40 @@ namespace NOWA
         this->value->setValue(value);
         if (nullptr != this->widget)
         {
-            widget->castType<MyGUI::ProgressBar>()->setProgressPosition(value);
+            // Attention: The render command here is correct and stays, because every MyGUI call
+            // has to happen on the render thread. But it is NOT what caused the crash inside
+            // MyGUI::ProgressBar::updateTrack(). The real cause is a bug in MyGUI itself:
+            //
+            //   ProgressBar keeps its track child widgets in ProgressBar::mVectorTrack and
+            //   creates them with mTrackPlace->createWidget<Widget>(). mTrackPlace is the skin
+            //   child named "TrackPlace" (or the obsolete "Client").
+            //   MyGUI::Widget::changeWidgetSkin() calls ProgressBar::shutdownOverride(), which
+            //   only does "mTrackPlace = nullptr", and immediately afterwards
+            //   Widget::shutdownWidgetSkinBase(), which destroys every skin child widget and
+            //   recursively all of its children - so all track widgets die.
+            //   mVectorTrack is NEVER cleared, by nobody, anywhere in MyGUI.
+            //
+            // The very next updateTrack() therefore walks a vector full of freed pointers and
+            // calls a virtual method on them. With mEndPosition still 0 it takes the
+            // "if ((0 == mRange) || (0 == mEndPosition))" branch and dies in
+            // "iter->setVisible(false)" with an access violation while EXECUTING, because the
+            // vtable pointer of the recycled heap block is garbage (0xcdcdcdcd fill).
+            //
+            // The fix belongs in MyGUI: MyGUI_ProgressBar.cpp, ProgressBar::shutdownOverride()
+            // must destroy the widgets in mVectorTrack and clear the vector. On the NOWA side
+            // MyGUIComponent::setSkin() no longer re-skins when the skin did not change, which
+            // removes most of the occasions on which the MyGUI bug can be hit at all.
+            //
+            // enqueue (not enqueueAndWait) on purpose: this is typically driven per frame from
+            // lua (e.g. an energy bar), so it must not block the logic thread. The queue is FIFO
+            // and enqueue() executes inline when the caller already IS the render thread, so
+            // onChangeSkin() - which runs inside MyGUIComponent::setSkin()'s render command and
+            // calls setRange/setValue/setFlowDirection in that order - keeps its ordering.
+            GraphicsModule::RenderCommand renderCommand = [this, value]()
+            {
+                this->widget->castType<MyGUI::ProgressBar>()->setProgressPosition(value);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MyGUIProgressBarComponent::setValue");
         }
     }
 
@@ -5205,7 +5359,12 @@ namespace NOWA
 
                 if (nullptr != this->widget)
                 {
-                    widget->castType<MyGUI::ListBox>()->addItem("");
+                    // Attention: addItem() is a MyGUI call and must go through the render thread.
+                    GraphicsModule::RenderCommand renderCommand = [this]()
+                    {
+                        this->widget->castType<MyGUI::ListBox>()->addItem("");
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MyGUIListBoxComponent::setItemCount addItem");
                 }
             }
 
@@ -6088,7 +6247,13 @@ namespace NOWA
         this->modeDrop->setValue(modeDrop);
         if (nullptr != this->widget)
         {
-            widget->castType<MyGUI::ComboBox>(false)->setComboModeDrop(modeDrop);
+            // Attention: MyGUI call, must go through the render thread - see
+            // MyGUIProgressBarComponent::setValue() for why a direct call here races.
+            GraphicsModule::RenderCommand renderCommand = [this, modeDrop]()
+            {
+                this->widget->castType<MyGUI::ComboBox>(false)->setComboModeDrop(modeDrop);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MyGUIComboBoxComponent::setModeDrop");
         }
     }
 
@@ -6102,7 +6267,12 @@ namespace NOWA
         this->smooth->setValue(smooth);
         if (nullptr != this->widget)
         {
-            widget->castType<MyGUI::ComboBox>(false)->setSmoothShow(smooth);
+            // Attention: MyGUI call, must go through the render thread.
+            GraphicsModule::RenderCommand renderCommand = [this, smooth]()
+            {
+                this->widget->castType<MyGUI::ComboBox>(false)->setSmoothShow(smooth);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MyGUIComboBoxComponent::setSmooth");
         }
     }
 
@@ -6146,7 +6316,20 @@ namespace NOWA
 
     void MyGUIComboBoxComponent::setCaption(const Ogre::String& caption)
     {
-        this->widget->castType<MyGUI::ComboBox>()->setOnlyText(caption);
+        // Attention: the nullptr check was missing entirely - this is reachable from lua, and a
+        // shared-widget instance that is not currently the owner has this->widget == nullptr by
+        // design (see createAndRegisterSharedWidgetImpl / onActivated).
+        if (nullptr == this->widget)
+        {
+            return;
+        }
+
+        // Attention: MyGUI call, must go through the render thread.
+        GraphicsModule::RenderCommand renderCommand = [this, caption]()
+        {
+            this->widget->castType<MyGUI::ComboBox>()->setOnlyText(caption);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MyGUIComboBoxComponent::setCaption");
     }
 
     void MyGUIComboBoxComponent::setItemCount(unsigned int itemCount)
@@ -6166,7 +6349,12 @@ namespace NOWA
 
                 if (nullptr != this->widget)
                 {
-                    widget->castType<MyGUI::ComboBox>()->addItem("");
+                    // Attention: addItem() is a MyGUI call and must go through the render thread.
+                    GraphicsModule::RenderCommand renderCommand = [this]()
+                    {
+                        this->widget->castType<MyGUI::ComboBox>()->addItem("");
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MyGUIComboBoxComponent::setItemCount addItem");
                 }
             }
         }

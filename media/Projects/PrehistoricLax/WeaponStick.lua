@@ -76,29 +76,11 @@ WeaponStick["onKinematicContact"] = function(otherGameObject)
         do return end;
     end
 
-    log("->hit: " .. otherGameObject:getName());
-
     local enemyId = otherGameObject:getId();
     if (alreadyHitThisSwing[enemyId] == true) then
         do return end;
     end
     alreadyHitThisSwing[enemyId] = true;
-
-    log("->alreadyHitThisSwing");
-
-    local enemyAttributes = otherGameObject:getAttributesComponent();
-    if (enemyAttributes == nil) then
-        do return end;
-    end
-
-    log("->enemyAttributes");
-
-    local enemyEnergy = enemyAttributes:getAttributeValueByName("Energy");
-    if (enemyEnergy == nil) then
-        do return end;
-    end
-
-    log("->enemyEnergy");
 
     -- Knockback direction: away from the stick, flattened onto the ground plane so a
     -- hit doesn't launch the enemy straight up/down depending on stick height.
@@ -107,7 +89,7 @@ WeaponStick["onKinematicContact"] = function(otherGameObject)
     if (hitDirection:squaredLength() > 0.0001) then
         hitDirection = hitDirection:normalisedCopy();
     else
-        hitDirection = Vector3(1, 0, 0);
+        hitDirection = Vector3(-1, 0, 0);
     end
 
     -- Damage scales with the player's Strength attribute, like the old weapon contact did.
@@ -120,8 +102,10 @@ WeaponStick["onKinematicContact"] = function(otherGameObject)
     end
 
     enemyEnergy:decrementValueNumber(damage);
+    
+    local animationBlender = otherGameObject:getAnimationComponentV2():getAnimationBlender();
 
-    log("[Cudgel] Hit " .. otherGameObject:getName() .. " for " .. toString(damage) .. " -> energy: " .. toString(enemyEnergy:getValueNumber()));
+    log("[PrehistoricLax Weapon] Hit " .. otherGameObject:getName() .. " for " .. toString(damage) .. " -> energy: " .. toString(enemyEnergy:getValueNumber()));
 
     if (hitParticle ~= nil) then
         hitParticle:setGlobalPosition(stick:getPosition());
@@ -133,6 +117,8 @@ WeaponStick["onKinematicContact"] = function(otherGameObject)
     if (hitSound ~= nil) then
         hitSound:setActivated(true);
     end
+    
+    local animationBlender = otherGameObject:getAnimationComponentV2():getAnimationBlender();
 
     if (enemyEnergy:getValueNumber() <= 0) then
         enemyEnergy:setValueNumber(0);
@@ -151,12 +137,10 @@ WeaponStick["onKinematicContact"] = function(otherGameObject)
             -- direction - it has no other way to know where the hit came from.
             eventData["hitDirection"] = hitDirection;
             AppStateManager:getScriptEventManager():queueEvent(EventType.EnemyDeadEvent, eventData);
+            animationBlender:blend5(AnimationBlender.ANIM_IDLE_1, AnimationBlender.BLEND_WHILE_ANIMATING, 0.1, false);
         end
     else
         -- Not dead yet: play the hit-reaction animation.
-        local animationBlender = otherGameObject:getAnimationComponentV2():getAnimationBlender();
-        if (animationBlender ~= nil) then
-            animationBlender:blend5(AnimationBlender.ANIM_TAKE_DAMAGE, AnimationBlender.BLEND_WHILE_ANIMATING, 0.1, false);
-        end
+        animationBlender:blend5(AnimationBlender.ANIM_TAKE_DAMAGE, AnimationBlender.BLEND_WHILE_ANIMATING, 0.1, false);
     end
 end

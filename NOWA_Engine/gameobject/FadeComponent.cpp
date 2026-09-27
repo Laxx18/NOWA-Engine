@@ -11,6 +11,10 @@
 // MyGUI_ControllerItem.h, MyGUI_Widget.h).
 #include <MyGUI.h>
 
+// Attention: Required for the throttled fade widget diagnostics in FadeComponent::connect().
+#include "MyGUI_RenderManager.h"
+#include <atomic>
+
 namespace NOWA
 {
     using namespace rapidxml;
@@ -112,7 +116,14 @@ namespace NOWA
 
     FadeComponent::~FadeComponent()
     {
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[FadeComponent] Destructor fade component for game object: " + this->gameObjectPtr->getName());
+        // Attention: gameObjectPtr can already be reset when the owner is torn down, so it must
+        // not be dereferenced unconditionally in a destructor.
+        Ogre::String objectName = "<no game object>";
+        if (nullptr != this->gameObjectPtr)
+        {
+            objectName = this->gameObjectPtr->getName();
+        }
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[FadeComponent] Destructor fade component for game object: " + objectName);
     }
 
     bool FadeComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -177,10 +188,37 @@ namespace NOWA
         {
             NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
             {
-                this->fadeWidget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Widget>("PanelSkin", 0.0f, 0.0f, 1.0f, 1.0f, MyGUI::Align::Stretch, FADE_LAYER_NAME, "FadeComponent_" + this->gameObjectPtr->getName());
+                // Attention: The fade must cover the screen down to the very last pixel row and
+                // column. createWidgetReal() with (0, 0, 1, 1) routes through
+                // MyGUI::CoordConverter::convertFromRelative(), which used to truncate and could
+                // therefore end up one pixel short on the right and at the bottom. Creating the
+                // widget directly in pixels from the current view size removes that conversion
+                // entirely, so the fade is exact no matter how CoordConverter behaves.
+                // MyGUI::Align::Stretch keeps it exact when the render window is resized, because
+                // the layer forwards the size delta to the widget as integers.
+                const MyGUI::IntSize viewSize = MyGUI::RenderManager::getInstance().getViewSize();
+
+                this->fadeWidget =
+                    MyGUI::Gui::getInstancePtr()->createWidget<MyGUI::Widget>("PanelSkin", MyGUI::IntCoord(0, 0, viewSize.width, viewSize.height), MyGUI::Align::Stretch, FADE_LAYER_NAME, "FadeComponent_" + this->gameObjectPtr->getName());
                 this->fadeWidget->setColour(MyGUI::Colour(0.0f, 0.0f, 0.0f));
                 this->fadeWidget->setNeedMouseFocus(false);
                 this->fadeWidget->setVisible(false);
+
+                // Attention: Throttled diagnostics, only every 10th creation, so the log stays
+                // usable. If absolute already matches viewSize exactly and a pixel row is still
+                // missing on screen, then the geometry is fine and the cause is the "PanelSkin"
+                // skin definition (sub skin alignment or a tiled state that drops the last
+                // partial tile), not the widget coordinates.
+                static std::atomic<unsigned int> fadeWidgetLogCounter{0};
+                const unsigned int currentLogCount = fadeWidgetLogCounter.fetch_add(1);
+                if (0 == (currentLogCount % 10))
+                {
+                    const MyGUI::IntCoord absoluteCoord = this->fadeWidget->getAbsoluteCoord();
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[FadeComponent] Fade widget #" + Ogre::StringConverter::toString(currentLogCount) + " created for: " + this->gameObjectPtr->getName() + " viewSize: (" +
+                                                                                          Ogre::StringConverter::toString(viewSize.width) + ", " + Ogre::StringConverter::toString(viewSize.height) + ") absolute: (" +
+                                                                                          Ogre::StringConverter::toString(absoluteCoord.left) + ", " + Ogre::StringConverter::toString(absoluteCoord.top) + ", " +
+                                                                                          Ogre::StringConverter::toString(absoluteCoord.width) + ", " + Ogre::StringConverter::toString(absoluteCoord.height) + ")");
+                }
             };
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "FadeComponent::connect");
         }

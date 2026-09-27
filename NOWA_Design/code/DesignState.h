@@ -77,6 +77,11 @@ private:
 	void onMenuItemSelected(MyGUI::MenuCtrl* menu, MyGUI::MenuItem* item);
 
 	void toggleGuiVisibility(bool visible);
+
+	/**
+	 * @brief Toggles the visibility of the status bar (manipulationWindow's info caption showing FPS, selection, camera pos etc.) on/off. Bound to ALT+O.
+	 */
+    void toggleStatusBar(void);
 private:
 	// Event delegates
 	void handleGenerateCategoriesDelegate(NOWA::EventDataPtr eventData);
@@ -168,6 +173,7 @@ private:
 
 	bool targetCoordinateSystemModeActive = false; // persists across frames, toggled by Alt
     bool altKeyWasDown = false;                    // for rising-edge detection
+    bool statusBarVisible = true;
 };
 
 #endif

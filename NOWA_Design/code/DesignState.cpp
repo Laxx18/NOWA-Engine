@@ -80,6 +80,7 @@ void DesignState::enter(void)
     this->editPopupMenu = nullptr;
     this->isMouseAtTop = false;
     this->guiVisible = true;
+    this->statusBarVisible = true;
     this->mouseTopTimer = 0.0f;
     this->selectedGameObject = nullptr;
 
@@ -634,6 +635,25 @@ void DesignState::enableWidgets(bool enable)
     NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::enableWidgets");
 }
 
+void DesignState::toggleStatusBar(void)
+{
+    // Flip our own tracked state on the calling (logic) thread and capture the resulting target value by copy,
+    // instead of reading manipulationWindow->getVisible() from inside the render-thread lambda. Reading the live
+    // widget state there raced with other code that also sets its visibility (e.g. simulate()), and depending on
+    // enqueue timing, one key press could see a still-stale value - hence needing to press twice to actually flip it.
+    this->statusBarVisible = !this->statusBarVisible;
+    bool targetVisible = this->statusBarVisible;
+
+    NOWA::GraphicsModule::RenderCommand renderCommand = [this, targetVisible]()
+    {
+        if (nullptr != this->manipulationWindow)
+        {
+            this->manipulationWindow->setVisible(targetVisible);
+        }
+    };
+    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::toggleStatusBar");
+}
+
 void DesignState::simulate(bool pause, bool withUndo)
 {
     // NOWA::Core::getSingletonPtr()->switchFullscreen(!pause, 0, 0, 0);
@@ -656,6 +676,10 @@ void DesignState::simulate(bool pause, bool withUndo)
             this->playButton->setImageResource("StopImage");
             this->enableWidgets(false);
 
+            // The status bar (manipulationWindow's info caption) shall not be visible by default while simulating; can be toggled back on via ALT+O.
+            this->statusBarVisible = false;
+            this->manipulationWindow->setVisible(this->statusBarVisible);
+
             if (nullptr != this->editorManager)
             {
                 this->editorManager->setViewportGridEnabled(false);
@@ -672,6 +696,10 @@ void DesignState::simulate(bool pause, bool withUndo)
             this->mainMenuBar->enableFileMenu(pause);
             MyGUI::LayerManager::getInstance().detachFromLayer(this->manipulationWindow);
             MyGUI::LayerManager::getInstance().attachToLayerNode("Popup", this->manipulationWindow);
+
+            // Back to edit mode: the status bar is shown again by default (regardless of whether it was toggled off during simulation).
+            this->statusBarVisible = true;
+            this->manipulationWindow->setVisible(this->statusBarVisible);
 
             if (nullptr != editorManager)
             {
@@ -2268,6 +2296,12 @@ bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
         }*/
         case OIS::KC_O:
         {
+            // ALT+O toggles the status bar - checked first and independent of any focused MyGUI widget.
+            if (GetAsyncKeyState(VK_MENU))
+            {
+                this->toggleStatusBar();
+                return true;
+            }
 
             MyGUI::Widget* widget = NOWA::GraphicsModule::getInstance()->getMyGUIFocusWidget();
             if (nullptr == widget)

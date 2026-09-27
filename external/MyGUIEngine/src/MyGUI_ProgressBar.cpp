@@ -10,6 +10,7 @@
 #include "MyGUI_Widget.h"
 #include "MyGUI_Gui.h"
 #include "MyGUI_SkinManager.h"
+#include "MyGUI_WidgetManager.h"
 
 namespace MyGUI
 {
@@ -76,6 +77,40 @@ namespace MyGUI
 
 	void ProgressBar::shutdownOverride()
 	{
+		// Attention: The track widgets stored in mVectorTrack are created with
+		// mClient->createWidget<Widget>(), and mClient is the skin child named "TrackPlace"
+		// (or the obsolete "Client"), assigned in initialiseOverride().
+		//
+		// Widget::changeWidgetSkin() calls shutdownOverride() and immediately afterwards
+		// Widget::shutdownWidgetSkinBase(), which destroys every widget in mWidgetChildSkin
+		// and, recursively through _destroyChildWidget() -> _shutdown() ->
+		// _destroyAllChildWidget(), all of their children. So every widget in mVectorTrack is
+		// freed there, but mVectorTrack itself was never cleared - not here and nowhere else
+		// in this class. The very next updateTrack() then iterated over freed pointers and
+		// called a virtual method on them. That is an access violation while EXECUTING,
+		// because the recycled heap block no longer holds a valid vtable pointer.
+		//
+		// Destroying the track widgets explicitly here and clearing the vector keeps
+		// mVectorTrack and the real widget tree in sync in both cases:
+		//   - Widget::changeWidgetSkin(), where only the skin children are rebuilt
+		//   - Widget::_shutdown(), where the whole widget goes away
+		// It also covers the "mClient = this" fallback of initialiseOverride(). In that case
+		// the track widgets are normal children of the progress bar itself and would survive
+		// shutdownWidgetSkinBase(), so without this loop they would stay behind as orphans
+		// while updateTrack() creates a second set of tracks on top of them.
+		//
+		// This runs before anything is torn down, so the widget tree is still fully intact
+		// and WidgetManager::destroyWidget() can unlink each track from its real parent.
+		WidgetManager& widgetManager = WidgetManager::getInstance();
+		for (VectorWidgetPtr::iterator iter = mVectorTrack.begin(); iter != mVectorTrack.end(); ++iter)
+		{
+			if (nullptr != *iter)
+			{
+				widgetManager.destroyWidget(*iter);
+			}
+		}
+		mVectorTrack.clear();
+
 		mClient = nullptr;
 
 		Base::shutdownOverride();
@@ -156,6 +191,16 @@ namespace MyGUI
 
 	void ProgressBar::updateTrack()
 	{
+		// Attention: Safety net. mClient is nullptr between shutdownOverride() and
+		// initialiseOverride() while Widget::changeWidgetSkin() rebuilds the skin. Every
+		// helper below (getClientWidth(), getClientHeight(), setTrackPosition()) dereferences
+		// mClient without checking it, so a single updateTrack() slipping into that window
+		// would be a null pointer access. There is nothing to lay out without a client.
+		if (nullptr == mClient)
+		{
+			return;
+		}
+
 		// все скрыто
 		if ((0 == mRange) || (0 == mEndPosition))
 		{
@@ -213,7 +258,7 @@ namespace MyGUI
 		if (ost > 0)
 		{
 			width += mTrackStep - ost;
-			count ++;
+			count++;
 		}
 
 		while ((int)mVectorTrack.size() < count)
@@ -277,9 +322,9 @@ namespace MyGUI
 						setTrackPosition(*iter, pos * mTrackStep, 0, mTrackWidth, getClientHeight());
 					}
 				}
-				hide_count --;
-				show_count --;
-				pos ++;
+				hide_count--;
+				show_count--;
+				pos++;
 			}
 		}
 	}

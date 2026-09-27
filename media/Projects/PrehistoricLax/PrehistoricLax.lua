@@ -31,6 +31,7 @@ local attackId = 0;
 local isInvulnerable = false;
 
 local energy = nil;
+local energyProgress = nil;
 local hitParticle = nil;
 local baseDamage = 10;
 
@@ -172,6 +173,7 @@ function setEnergy(value)
         do return end;
     end
     energy:setValueNumber(value);
+    energyProgress:setValue(value);
 end
 
 -- Central damage entry point, so an enemy, a trap or a hard landing all go through one place.
@@ -320,6 +322,7 @@ PrehistoricLax["connect"] = function(gameObject)
     -- The player's energy lives on the main game object, next to score and level, exactly
     -- like in main.lua - the HUD reads it from there.
     energy = mainGameObject:getAttributesComponent():getAttributeValueByName("Energy");
+    energyProgress = mainGameObject:getMyGUIProgressBarComponentFromName("EnergyProgress");
     hitParticle = mainGameObject:getParticleFxComponentFromName("HitParticle");
 
     playerController = prehistoricLax:getPlayerControllerJumpNRunComponent();
@@ -437,9 +440,7 @@ PrehistoricLax["connect"] = function(gameObject)
     playerController:reactOnLand(function(fallTime)
         -- The longer the fall, the harder the landing. Below half a second it is an ordinary
         -- hop and must not cost anything.
-        if (fallTime > 1.5) then
-            applyDamage(math.floor(fallTime * 10));
-        elseif (fallTime > 0.5) then
+        if (fallTime > 0.5) then
             local smokeParticle = prehistoricLax:getParticleFxComponentFromIndex(0);
             if (smokeParticle ~= nil) then
                 smokeParticle:setActivated(true);
@@ -447,19 +448,20 @@ PrehistoricLax["connect"] = function(gameObject)
         end
     end);
 
-    playerController:reactOnWallContact(function(otherGameObject, wallNormal)
+    --TODO: In physicsmaterialcomponent!
+    --playerController:reactOnWallContact(function(otherGameObject, wallNormal)
         -- Always called, no matter what 'Use Wall Separation Mode' is set to. With the flag
         -- on, C++ has already dropped the movement input pointing into the wall, so this is
         -- purely for effects - or for a ledge grab once the flag is switched off.
-        if (otherGameObject == nil) then
-            do return end;
-        end
+        --if (otherGameObject == nil) then
+        --    do return end;
+        --end
 
-        otherGameObject = AppStateManager:getGameObjectController():castGameObject(otherGameObject);
-        if (otherGameObject:getTagName() == "Spikes") then
-            applyDamage(20);
-        end
-    end);
+       -- otherGameObject = AppStateManager:getGameObjectController():castGameObject(otherGameObject);
+       -- if (otherGameObject:getTagName() == "Spikes") then
+            --applyDamage(20);
+       -- end
+    --end);
 
     -----------------------------------------------------------------------------------------
     -- Pickups
@@ -593,7 +595,6 @@ RagDollState["enter"] = function(gameObject)
 
     local ragDollComponent = playerController:getPhysicsRagDollComponent();
     if (ragDollComponent ~= nil) then
-        ragDollComponent:setBoneConfigFile("PrehistoricLax2.rag");
         ragDollComponent:setState("Ragdolling");
     end
 end
@@ -625,13 +626,12 @@ end
 RagDollState["exit"] = function(gameObject)
     local ragDollComponent = playerController:getPhysicsRagDollComponent();
     if (ragDollComponent ~= nil) then
-        ragDollComponent:setBoneConfigFile("PrehistoricLaxPartial.rag");
-        ragDollComponent:setState("PartialRagdolling");
+        ragDollComponent:setState("Inactive");
     end
 
     -- The ragdoll left the body with whatever velocity and spin the push gave it. Without this
     -- the walking state would inherit both and the player would walk off sideways, spinning.
-    playerController:getPhysicsComponent():resetForce();
+    --playerController:getPhysicsComponent():resetForce();
 
     playerController:lockMovement("ragdoll", false);
     isInvulnerable = false;

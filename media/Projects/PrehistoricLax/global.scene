@@ -1,6 +1,198 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <scene formatVersion="1.1.0" generator="NOWA-Engine">
 	<nodes>
+		<node name="MainGameObject" id="1366663313">
+			<position x="0" y="0" z="0"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="false">
+				<subitem index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1111111111"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="false"/>
+					<property type="12" name="HideOnConnect" data="false"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="true"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentDescriptionComponent" data="DescriptionComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="Description" data="&lt;p float='left'&gt;&lt;img width='260' height='159'&gt;pic_NOWA&lt;/img&gt; &lt;/p&gt;&lt;br/&gt;&lt;p align='center'&gt;&lt;color value='#FFFFFF'&gt;&lt;url value='https://www.lukas-kalinowski.com'&gt;https://www.lukas-kalinowski.com&lt;/url&gt;&lt;/color&gt;&lt;/p&gt;&lt;br/&gt;&lt;br/&gt;&lt;p&gt;&lt;color value='#1D6EA7'&gt;No description.&lt;/color&gt;&lt;/p&gt;"/>
+					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="ScriptFile" data="MainGameObject.lua"/>
+					<property type="12" name="CloneScript" data="false"/>
+					<property type="12" name="HasCommonScript" data="false"/>
+					<property type="12" name="ScriptGlobal" data="true"/>
+					<property type="2" name="OrderIndex" data="1"/>
+					<property type="7" name="ComponentFadeComponent" data="FadeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="FadeMode" data="FadeIn"/>
+					<property type="6" name="Duration" data="2"/>
+					<property type="7" name="EaseFunction" data="easeInSine"/>
+					<property type="7" name="ComponentFadeComponent" data="FadeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="FadeMode" data="FadeOut"/>
+					<property type="6" name="Duration" data="2"/>
+					<property type="7" name="EaseFunction" data="easeOutSine"/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="Category1" data="Player"/>
+					<property type="7" name="Category2" data="Platform"/>
+					<property type="8" name="Friction" data="0 0"/>
+					<property type="6" name="Softness" data="0.1"/>
+					<property type="6" name="Elasticity" data="0"/>
+					<property type="6" name="SurfaceThickness" data="0.082"/>
+					<property type="12" name="Collideable" data="true"/>
+					<property type="7" name="ContactBehavior" data="WallSlide"/>
+					<property type="6" name="ContactSpeed" data="10"/>
+					<property type="9" name="ContactDirection" data="0 0 -1"/>
+					<property type="7" name="OneWayAxis" data="Y"/>
+					<property type="7" name="OneWayAllowedDirection" data="Positive"/>
+					<property type="6" name="WallSlideAngle" data="68"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data=""/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
+					<property type="7" name="ComponentAttributesComponent" data="AttributesComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="AttributesCount" data="4"/>
+					<property type="7" name="AttributeName0" data="Energy"/>
+					<property type="7" name="AttributeType0" data="Int"/>
+					<property type="7" name="AttributeValue0" data="100"/>
+					<property type="7" name="AttributeName1" data="Strength"/>
+					<property type="7" name="AttributeType1" data="Int"/>
+					<property type="7" name="AttributeValue1" data="10"/>
+					<property type="7" name="AttributeName2" data="Experience"/>
+					<property type="7" name="AttributeType2" data="Int"/>
+					<property type="7" name="AttributeValue2" data=""/>
+					<property type="7" name="AttributeName3" data="Coins"/>
+					<property type="7" name="AttributeType3" data="Int"/>
+					<property type="7" name="AttributeValue3" data=""/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="SoundName" data="Level 1 - Awakening Moon Overworld.ogg"/>
+					<property type="6" name="Volume" data="100"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="12" name="Loop" data="true"/>
+					<property type="8" name="FadeInFadeOut" data="2 2"/>
+					<property type="12" name="Stream" data="true"/>
+					<property type="12" name="RelativeToListener" data="false"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="Category1" data="Weapon"/>
+					<property type="7" name="Category2" data="Player"/>
+					<property type="8" name="Friction" data="0.8 0.4"/>
+					<property type="6" name="Softness" data="0.01"/>
+					<property type="6" name="Elasticity" data="0.01"/>
+					<property type="6" name="SurfaceThickness" data="0.125"/>
+					<property type="12" name="Collideable" data="false"/>
+					<property type="7" name="ContactBehavior" data="None"/>
+					<property type="6" name="ContactSpeed" data="10"/>
+					<property type="9" name="ContactDirection" data="0 0 -1"/>
+					<property type="7" name="OneWayAxis" data="Y"/>
+					<property type="7" name="OneWayAllowedDirection" data="Positive"/>
+					<property type="6" name="WallSlideAngle" data="68"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data=""/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
+					<property type="7" name="ComponentMyGUIWindowComponent" data="MyGUIWindowComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="2755466205"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0 0.9"/>
+					<property type="8" name="Size" data="1 0.1"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Back"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Skin" data="WoodWindow"/>
+					<property type="12" name="CommonWidget" data="false"/>
+					<property type="12" name="Movable" data="false"/>
+					<property type="7" name="WindowCaption" data=""/>
+					<property type="7" name="ComponentMyGUITextComponent" data="MyGUITextComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="2735729322"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0 0.15"/>
+					<property type="8" name="Size" data="0.06 0.4"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Back"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="2755466205"/>
+					<property type="7" name="Skin" data="EditBoxEmpty"/>
+					<property type="12" name="CommonWidget" data="false"/>
+					<property type="7" name="Caption" data="Energy:"/>
+					<property type="2" name="FontHeight" data="16"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="0.88 0.88 0.88 1"/>
+					<property type="12" name="ReadOnly" data="true"/>
+					<property type="12" name="MultiLine" data="false"/>
+					<property type="12" name="WordWrap" data="false"/>
+					<property type="7" name="ComponentMyGUIProgressBarComponent" data="MyGUIProgressBarComponent"/>
+					<property type="7" name="Name" data="EnergyProgress"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="3798190617"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.05 0.26"/>
+					<property type="8" name="Size" data="0.06 0.2"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Back"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="2755466205"/>
+					<property type="7" name="Skin" data="ProgressBarFill"/>
+					<property type="12" name="CommonWidget" data="false"/>
+					<property type="2" name="Value" data="100"/>
+					<property type="2" name="Range" data="100"/>
+					<property type="12" name="FlowDirection" data="LeftToRight"/>
+				</userData>
+			</item>
+		</node>
 		<node name="WeaponStick" id="3232914531">
 			<position x="1.58775" y="1.77449" z="-6.36726"/>
 			<rotation qw="0.742635" qx="-0.490219" qy="0.314746" qz="-0.330322"/>
@@ -60,6 +252,7 @@
 					<property type="7" name="ScriptFile" data="WeaponStick.lua"/>
 					<property type="12" name="CloneScript" data="false"/>
 					<property type="12" name="HasCommonScript" data="false"/>
+					<property type="12" name="ScriptGlobal" data="true"/>
 					<property type="2" name="OrderIndex" data="3"/>
 				</userData>
 			</item>
@@ -141,6 +334,7 @@
 					<property type="7" name="ScriptFile" data="PrehistoricLax.lua"/>
 					<property type="12" name="CloneScript" data="false"/>
 					<property type="12" name="HasCommonScript" data="false"/>
+					<property type="12" name="ScriptGlobal" data="true"/>
 					<property type="2" name="OrderIndex" data="2"/>
 					<property type="7" name="ComponentPlayerControllerJumpNRunComponent" data="PlayerControllerJumpNRunComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -189,7 +383,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="12" name="ShortTimeActivation" data="false"/>
-					<property type="6" name="UpdateThreshold" data="0.5"/>
+					<property type="6" name="UpdateThreshold" data="0.1"/>
 					<property type="12" name="TriggerPermanentely" data="false"/>
 					<property type="2" name="AreaCount" data="1"/>
 					<property type="6" name="Radius0" data="1.2"/>

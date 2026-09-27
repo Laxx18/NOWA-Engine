@@ -71,6 +71,7 @@ namespace NOWA
         scriptFile(new Variant(LuaScriptComponent::AttrScriptFile(), Ogre::String(""), this->attributes)),
         cloneScript(new Variant(LuaScriptComponent::AttrCloneScript(), false, this->attributes)),
         commonScript(new Variant(LuaScriptComponent::AttrHasCommonScript(), false, this->attributes)),
+        scriptGlobal(new Variant(LuaScriptComponent::AttrScriptGlobal(), false, this->attributes)),
         orderIndex(new Variant(LuaScriptComponent::AttrOrderIndex(), static_cast<int>(-1), this->attributes))
     {
         this->scriptFile->setDescription("Name of the script file, e.g. 'Explosion.lua'.");
@@ -78,10 +79,18 @@ namespace NOWA
         this->scriptFile->addUserData(GameObject::AttrActionLuaScript());
         this->cloneScript->addUserData(GameObject::AttrActionNeedRefresh());
         this->commonScript->addUserData(GameObject::AttrActionNeedRefresh());
+        this->scriptGlobal->addUserData(GameObject::AttrActionNeedRefresh());
         this->cloneScript->setDescription("If activated, a copy of the original script will be made for the new game object with the new cloned name. Else the cloned components will have no lua script component."
                                           "Attention: Cloning a lua script may be dangerous, because its content of this original component will also be cloned and executed.");
         this->commonScript->setDescription("Several game object may use the same script, if the script name for the lua script components is the same. This is useful if they should behave the same. This also increases the performance."
                                            "Also for example when the game object is cloned, the lua script component is cloned too, but referencing the original lua script file.");
+        this->scriptGlobal
+            ->setDescription("Only relevant if 'Has Common Script' is activated. A game object can be local to just one scene, but its (common) lua script can still be made global via this flag. "
+                             "This lets hundreds of local, non-global game objects, spread across many different scenes, share and execute the exact same global lua script instance, "
+                             "instead of every scene creating and compiling its own local copy of it. Has no effect while 'Has Common Script' is false; the script's global state then depends "
+                             "solely on whether the game object itself is global. "
+                             "Note: If the game object itself is already global, the script is unavoidably global too - this switch is then automatically shown as activated and locked (read-only), since toggling it would have no effect.");
+        this->scriptGlobal->setVisible(false);
         this->orderIndex->setDescription("The order index, at which this lua script is executed at.");
         this->orderIndex->setReadOnly(true);
 
@@ -125,6 +134,11 @@ namespace NOWA
             this->setHasCommonScript(XMLConverter::getAttribBool(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
         }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ScriptGlobal")
+        {
+            this->setScriptGlobal(XMLConverter::getAttribBool(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OrderIndex")
         {
             this->setOrderIndex(XMLConverter::getAttribUnsignedInt(propertyElement, "data"));
@@ -150,7 +164,7 @@ namespace NOWA
         }
 
         Ogre::String scriptDestFilePathName;
-        if (false == this->gameObjectPtr->getGlobal())
+        if (false == this->determineIsLuaScriptGlobal())
         {
             scriptDestFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + this->scriptFile->getString();
         }
@@ -194,10 +208,14 @@ namespace NOWA
         clonedCompPtr->setActivated(this->activated->getBool());
         clonedCompPtr->setCloneScript(this->cloneScript->getBool());
         clonedCompPtr->setHasCommonScript(this->commonScript->getBool());
+        clonedCompPtr->setScriptGlobal(this->scriptGlobal->getBool());
         clonedCompPtr->setOrderIndex(this->orderIndex->getUInt());
 
         clonedGameObjectPtr->addComponent(clonedCompPtr);
         clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+        // Owner is available now: re-sync in case the cloned game object's global state differs from the original one
+        clonedCompPtr->syncScriptGlobalWithGameObject();
 
         // New game object must already be available
         if (false == this->cloneScript->getBool() && true == this->commonScript->getBool() && true == this->scriptFile->getString().empty())
@@ -225,6 +243,10 @@ namespace NOWA
 
     bool LuaScriptComponent::postInit(void)
     {
+        // Owner is guaranteed to be set by now: keep the "Script Global" switch in sync with it (e.g. after loading a
+        // scene, so a game object that is global from XML correctly shows/locks the switch, even before any editing).
+        this->syncScriptGlobalWithGameObject();
+
         // Do not set script a second time
         if (true == this->componentCloned || nullptr != this->luaScript)
         {
@@ -320,6 +342,10 @@ namespace NOWA
         {
             this->setHasCommonScript(attribute->getBool());
         }
+        else if (LuaScriptComponent::AttrScriptGlobal() == attribute->getName())
+        {
+            this->setScriptGlobal(attribute->getBool());
+        }
         else if (LuaScriptComponent::AttrOrderIndex() == attribute->getName())
         {
             this->setOrderIndex(attribute->getUInt());
@@ -354,7 +380,7 @@ namespace NOWA
             if (false == scriptFileInGroup.good() || true == this->commonScript->getBool())
             {
                 Ogre::String scriptSourceFilePathName;
-                if (false == this->gameObjectPtr->getGlobal())
+                if (false == this->determineIsLuaScriptGlobal())
                 {
                     scriptSourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + this->scriptFile->getString();
                 }
@@ -364,12 +390,12 @@ namespace NOWA
                 }
 
                 Ogre::String scriptDestFilePathName = filePathName + "/" + this->scriptFile->getString();
-                AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScriptAbsolutePath(scriptSourceFilePathName, scriptDestFilePathName, false, this->gameObjectPtr->getGlobal());
+                AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScriptAbsolutePath(scriptSourceFilePathName, scriptDestFilePathName, false, this->determineIsLuaScriptGlobal());
             }
             else
             {
                 Ogre::String scriptSourceFilePathName;
-                if (false == this->gameObjectPtr->getGlobal())
+                if (false == this->determineIsLuaScriptGlobal())
                 {
                     scriptSourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + this->scriptFile->getString();
                 }
@@ -378,10 +404,10 @@ namespace NOWA
                     scriptSourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->scriptFile->getString();
                 }
 
-                Ogre::String tempScriptFileName = AppStateManager::getSingletonPtr()->getLuaScriptModule()->getValidatedLuaScriptName(this->scriptFile->getString(), this->gameObjectPtr->getGlobal());
+                Ogre::String tempScriptFileName = AppStateManager::getSingletonPtr()->getLuaScriptModule()->getValidatedLuaScriptName(this->scriptFile->getString(), this->determineIsLuaScriptGlobal());
                 Ogre::String scriptDestFilePathName = filePathName + "/" + Core::getSingletonPtr()->getProjectName() + "/" + tempScriptFileName;
                 this->scriptFile->setValue(tempScriptFileName);
-                AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScriptAbsolutePath(scriptSourceFilePathName.c_str(), scriptDestFilePathName.c_str(), false, this->gameObjectPtr->getGlobal());
+                AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScriptAbsolutePath(scriptSourceFilePathName.c_str(), scriptDestFilePathName.c_str(), false, this->determineIsLuaScriptGlobal());
             }
         }
 
@@ -410,6 +436,12 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
         propertyXML->append_attribute(doc.allocate_attribute("name", "HasCommonScript"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->commonScript->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "ScriptGlobal"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->scriptGlobal->getBool())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(node_element, "property");
@@ -504,13 +536,13 @@ namespace NOWA
                 tempScriptFileName = this->gameObjectPtr->getName() + ".lua";
             }
             // Script name may exist and must be replaced, before a copy is made
-            tempScriptFileName = AppStateManager::getSingletonPtr()->getLuaScriptModule()->getValidatedLuaScriptName(tempScriptFileName, this->gameObjectPtr->getGlobal());
+            tempScriptFileName = AppStateManager::getSingletonPtr()->getLuaScriptModule()->getValidatedLuaScriptName(tempScriptFileName, this->determineIsLuaScriptGlobal());
         }
         else if (eScriptAction::CLONE == scriptAction)
         {
             // Script name may exist and must be replaced, before a copy is made
-            Ogre::String newScriptName = AppStateManager::getSingletonPtr()->getLuaScriptModule()->getValidatedLuaScriptName(tempScriptFileName, this->gameObjectPtr->getGlobal());
-            AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScript(this->scriptFile->getString(), tempScriptFileName, false, this->gameObjectPtr->getGlobal());
+            Ogre::String newScriptName = AppStateManager::getSingletonPtr()->getLuaScriptModule()->getValidatedLuaScriptName(tempScriptFileName, this->determineIsLuaScriptGlobal());
+            AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScript(this->scriptFile->getString(), tempScriptFileName, false, this->determineIsLuaScriptGlobal());
 
             boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
             NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataResourceCreated);
@@ -537,7 +569,7 @@ namespace NOWA
         {
             if (nullptr != this->luaScript && scriptFile != this->luaScript->getName())
             {
-                AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScript(this->luaScript->getScriptName(), tempScriptFileName, true, this->gameObjectPtr->getGlobal());
+                AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScript(this->luaScript->getScriptName(), tempScriptFileName, true, this->determineIsLuaScriptGlobal());
                 AppStateManager::getSingletonPtr()->getLuaScriptModule()->destroyScript(this->luaScript);
 
                 boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
@@ -548,7 +580,7 @@ namespace NOWA
             }
         }
 
-        this->luaScript = AppStateManager::getSingletonPtr()->getLuaScriptModule()->createScript(unqiueScriptName, tempScriptFileName, this->gameObjectPtr->getGlobal());
+        this->luaScript = AppStateManager::getSingletonPtr()->getLuaScriptModule()->createScript(unqiueScriptName, tempScriptFileName, this->determineIsLuaScriptGlobal());
 
         if (nullptr == this->luaScript)
         {
@@ -558,7 +590,7 @@ namespace NOWA
         // Set the lua script also for the game object
         this->gameObjectPtr->luaScript = this->luaScript;
 
-        if (false == AppStateManager::getSingletonPtr()->getLuaScriptModule()->checkLuaScriptFileExists(tempScriptFileName, this->gameObjectPtr->getGlobal()))
+        if (false == AppStateManager::getSingletonPtr()->getLuaScriptModule()->checkLuaScriptFileExists(tempScriptFileName, this->determineIsLuaScriptGlobal()))
         {
             Ogre::String firstLetter = tempScriptName.substr(0, 1);
             Ogre::StringUtil::toLowerCase(firstLetter);
@@ -573,9 +605,9 @@ namespace NOWA
                                                            "require("
                                                            "\"init"
                                                            "\");\n\n" +
-                                                           tempScriptVariable +
+                                                           "local " + tempScriptVariable +
                                                            " = nil\n\n"
-                                                           "-- physicsActiveComponent = nil;\n\n" +
+                                                           "-- local physicsActiveComponent = nil;\n\n" +
                                                            tempScriptName + " = {}\n\n" + tempScriptName +
                                                            "["
                                                            "\"connect"
@@ -642,7 +674,7 @@ namespace NOWA
         }
 
         Ogre::String relativeLuaScriptFilePathName;
-        if (false == this->gameObjectPtr->getGlobal())
+        if (false == this->determineIsLuaScriptGlobal())
         {
             relativeLuaScriptFilePathName = NOWA::Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + tempScriptFileName;
         }
@@ -704,16 +736,85 @@ namespace NOWA
             // Both is not possible, either clone a script or use a common script!
             this->cloneScript->setVisible(false);
             this->cloneScript->setValue(false);
+
+            // ScriptGlobal only makes sense in combination with a common script
+            this->scriptGlobal->setVisible(true);
         }
         else
         {
             this->cloneScript->setVisible(true);
+
+            // Without a common script there is nothing to make independently global; fall back to the game object's own global state
+            this->scriptGlobal->setVisible(false);
+            this->scriptGlobal->setValue(false);
         }
+
+        // If the owner is already global, the switch above must be overridden again: it always shows activated + locked in that case
+        this->syncScriptGlobalWithGameObject();
     }
 
     bool LuaScriptComponent::getHasCommonScript(void) const
     {
         return this->commonScript->getBool();
+    }
+
+    void LuaScriptComponent::setScriptGlobal(bool scriptGlobal)
+    {
+        // If the game object itself is already global, the script cannot be made non-global again - it stays forced to true (see @syncScriptGlobalWithGameObject).
+        if (nullptr != this->gameObjectPtr && true == this->gameObjectPtr->getGlobal())
+        {
+            scriptGlobal = true;
+        }
+
+        this->scriptGlobal->setValue(scriptGlobal);
+
+        // Propagate to the actual lua script instance (if it already exists), so its internal global state
+        // (used for e.g. resource group / storage path resolution) stays in sync with the component's setting.
+        // NOTE: verify "setGlobal" is the correct LuaScript setter name for your LuaScript.h - adjust if it differs.
+        if (nullptr != this->luaScript)
+        {
+            this->luaScript->setIsGlobal(this->determineIsLuaScriptGlobal());
+        }
+    }
+
+    bool LuaScriptComponent::getIsScriptGlobal(void) const
+    {
+        return this->scriptGlobal->getBool();
+    }
+
+    bool LuaScriptComponent::determineIsLuaScriptGlobal(void) const
+    {
+        // A script is global either because the whole game object is global (legacy behavior, affects everything on that
+        // game object including this script), or - new - because the game object is local but this component has a common
+        // script that has explicitly been marked global. This lets hundreds of local game objects, spread across many
+        // scenes, share and execute the exact same global lua script instance.
+        return this->gameObjectPtr->getGlobal() || (true == this->commonScript->getBool() && true == this->scriptGlobal->getBool());
+    }
+
+    void LuaScriptComponent::syncScriptGlobalWithGameObject(void)
+    {
+        // Owner not assigned yet (e.g. during clone(), before setOwner() has been called) - nothing to sync against yet.
+        if (nullptr == this->gameObjectPtr)
+        {
+            return;
+        }
+
+        if (true == this->gameObjectPtr->getGlobal())
+        {
+            // The game object itself is global, hence the script is unavoidably global too (@determineIsLuaScriptGlobal).
+            // Show and lock the switch accordingly, instead of leaving it editable and possibly showing "false" while the
+            // effective state is actually "true".
+            this->scriptGlobal->setVisible(true);
+            this->scriptGlobal->setValue(true);
+            this->scriptGlobal->setReadOnly(true);
+        }
+        else
+        {
+            // Game object is local again: unlock the switch and fall back to the normal visibility rule (only relevant
+            // together with a common script).
+            this->scriptGlobal->setReadOnly(false);
+            this->scriptGlobal->setVisible(this->commonScript->getBool());
+        }
     }
 
     LuaScript* LuaScriptComponent::getLuaScript(void) const

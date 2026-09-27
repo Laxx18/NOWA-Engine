@@ -79,17 +79,7 @@ namespace NOWA
 
     PhysicsRagDollComponentV2::~PhysicsRagDollComponentV2()
     {
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsRagDollComponentV2] Destructor physics rag doll component for game object: " + this->gameObjectPtr->getName());
-
-        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PhysicsRagDollComponentV2::gameObjectAnimationChangedDelegate), EventDataAnimationChanged::getStaticEventType());
-        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PhysicsRagDollComponentV2::deleteJointDelegate), EventDataDeleteJoint::getStaticEventType());
-
-        while (this->ragDataList.size() > 0)
-        {
-            RagBone* ragBone = this->ragDataList.back().ragBone;
-            delete ragBone;
-            this->ragDataList.pop_back();
-        }
+        
     }
 
     // ============================================================================
@@ -198,6 +188,28 @@ namespace NOWA
     void PhysicsRagDollComponentV2::onRemoveComponent(void)
     {
         GameObjectComponent::onRemoveComponent();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsRagDollComponentV2] Destructor physics rag doll component for game object: " + this->gameObjectPtr->getName());
+
+        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PhysicsRagDollComponentV2::gameObjectAnimationChangedDelegate), EventDataAnimationChanged::getStaticEventType());
+        AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PhysicsRagDollComponentV2::deleteJointDelegate), EventDataDeleteJoint::getStaticEventType());
+
+        // Cut the physics thread loose from this object FIRST. The root rag bone body carries a force
+        // and torque callback bound to this instance, and this derived destructor runs before
+        // ~PhysicsComponent (which is where destroyBody() finally removes it). Everything below
+        // destroys the derived part of the object, so any call the physics thread makes in the meantime
+        // lands in freed memory.
+        if (nullptr != this->physicsBody && nullptr != this->ogreNewt && false == this->ogreNewt->isShuttingDown())
+        {
+            this->destroyBody();
+        }
+
+        while (this->ragDataList.size() > 0)
+        {
+            RagBone* ragBone = this->ragDataList.back().ragBone;
+            delete ragBone;
+            this->ragDataList.pop_back();
+        }
 
         this->rdState = PhysicsRagDollComponentV2::INACTIVE;
         boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
@@ -512,6 +524,37 @@ namespace NOWA
                 else
                 {
                     (*it).ragBone->getBody()->freeze();
+                }
+            }
+
+            // Freezing alone does NOT stop the force and torque callback of the ROOT body, which is
+            // bound to this component. Deactivating a ragdoll before deleting its game object - the
+            // usual way to make a teardown safe - therefore did not actually make it safe. Bind and
+            // unbind that callback here, mirroring what the RagBone constructor does.
+            for (size_t j = 0; j < this->ragDataList.size(); j++)
+            {
+                if (nullptr == this->ragDataList[j].ragBone || this->ragDataList[j].ragBone->getBody() != this->physicsBody)
+                {
+                    continue;
+                }
+
+                if (true == activated)
+                {
+                    // ANIMATION state must stay without a callback: there the bodies are pinned to the
+                    // animated bones and must not receive gravity or any other force.
+                    if (PhysicsRagDollComponentV2::ANIMATION != this->rdState)
+                    {
+                        this->physicsBody->setCustomForceAndTorqueCallback<PhysicsRagDollComponentV2>(&PhysicsActiveComponent::moveCallback, this);
+                    }
+                }
+                else
+                {
+                    if (nullptr != this->ogreNewt && false == this->ogreNewt->isShuttingDown())
+                    {
+                        this->ogreNewt->Sync();
+                    }
+
+                    this->physicsBody->removeForceAndTorqueCallback();
                 }
             }
         }
@@ -2997,6 +3040,7 @@ namespace NOWA
     // ============================================================================
     // RagBone destructor
     // ============================================================================
+    // ============================================================================
 
     PhysicsRagDollComponentV2::RagBone::~RagBone()
     {
@@ -3017,6 +3061,7 @@ namespace NOWA
         }
         if (nullptr != this->body)
         {
+            this->physicsRagDollComponentV2->ogreNewt->Sync();
             if (this->jointCompPtr)
             {
                 AppStateManager::getSingletonPtr()->getGameObjectController()->removeJointComponent(this->jointCompPtr->getId());
@@ -3031,6 +3076,7 @@ namespace NOWA
                 this->body->removeForceAndTorqueCallback();
                 this->body->removeNodeUpdateNotify();
                 this->body->removeDestructorCallback();
+                this->body->setUserData(OgreNewt::Any(nullptr));
                 delete this->body;
                 this->body = nullptr;
             }

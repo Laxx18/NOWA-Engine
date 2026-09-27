@@ -1357,7 +1357,23 @@ namespace NOWA
 
     void PhysicsComponent::destroyBody(void)
     {
-        // Re-entry guard � prevents infinite recursion when getComponentWithOccurrence
+        // The Newton world runs on its OWN thread (ndWorld::ThreadFunction -> PhysicsUpdate ->
+        // SubStepUpdate -> ndScene::ApplyExtForce -> ndBodyDynamic::ApplyExternalForces ->
+        // OgreNewt::Body::onForceAndTorqueCallback). That callback is a std::function bound to THIS
+        // component, so removing it and deleting the body without waiting for the physics thread is a
+        // data race: deleting a game object while the simulation runs crashes with an access violation
+        // inside the moveCallback thunk, because the physics thread is calling into an object the logic
+        // thread is in the middle of freeing.
+        //
+        // Sync() waits for the running physics update to finish, so from here on the callback can no
+        // longer be entered. It must happen BEFORE the re-entry guard's early out is relevant and
+        // before anything below touches the body.
+        if (nullptr != this->physicsBody && nullptr != this->ogreNewt && false == this->ogreNewt->isShuttingDown())
+        {
+            this->ogreNewt->Sync();
+        }
+
+        // Re-entry guard — prevents infinite recursion when getComponentWithOccurrence
         // releases a shared_ptr whose destructor calls destroyBody() again
         if (nullptr == this->physicsBody)
         {
@@ -1370,11 +1386,11 @@ namespace NOWA
         Ogre::Node* node = this->gameObjectPtr ? this->gameObjectPtr->getSceneNode() : nullptr;
 
         // CRITICAL: nil out physicsBody FIRST before any component iteration
-        // This is the re-entry guard � if we get called again, we exit immediately above
+        // This is the re-entry guard — if we get called again, we exit immediately above
         OgreNewt::Body* bodyToDestroy = this->physicsBody;
         this->physicsBody = nullptr;
 
-        // Now safely iterate joints � even if a shared_ptr destructor triggers
+        // Now safely iterate joints — even if a shared_ptr destructor triggers
         // ~PhysicsComponent again, physicsBody is already nullptr so we return early
         unsigned int i = 0;
         boost::shared_ptr<JointComponent> jointCompPtr = nullptr;
@@ -1393,6 +1409,7 @@ namespace NOWA
         bodyToDestroy->removeNodeUpdateNotify();
         bodyToDestroy->detachNode();
         bodyToDestroy->removeDestructorCallback();
+        bodyToDestroy->setUserData(OgreNewt::Any(nullptr));
         delete bodyToDestroy;
 
         if (nullptr != node)
