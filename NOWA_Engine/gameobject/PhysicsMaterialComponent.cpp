@@ -808,25 +808,37 @@ namespace NOWA
     void PhysicsMaterialComponent::setOverlapFunctionName(const Ogre::String& overlapFunctionName)
     {
         this->overlapFunctionName->setValue(overlapFunctionName);
-        this->overlapFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), overlapFunctionName + "(gameObject0, gameObject1)");
+        if (false == overlapFunctionName.empty())
+        {
+            this->overlapFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), overlapFunctionName + "(gameObject0, gameObject1)");
+        }
     }
 
     void PhysicsMaterialComponent::setContactFunctionName(const Ogre::String& contactFunctionName)
     {
         this->contactFunctionName->setValue(contactFunctionName);
-        this->contactFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), contactFunctionName + "(gameObject0, gameObject1, contact)");
+        if (false == contactFunctionName.empty())
+        {
+            this->contactFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), contactFunctionName + "(gameObject0, gameObject1, contact)");
+        }
     }
 
     void PhysicsMaterialComponent::setContactOnceFunctionName(const Ogre::String& contactOnceFunctionName)
     {
         this->contactOnceFunctionName->setValue(contactOnceFunctionName);
-        this->contactOnceFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), contactOnceFunctionName + "(gameObject0, gameObject1, contact)");
+        if (false == contactOnceFunctionName.empty())
+        {
+            this->contactOnceFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), contactOnceFunctionName + "(gameObject0, gameObject1, contact)");
+        }
     }
 
     void PhysicsMaterialComponent::setContactScratchFunctionName(const Ogre::String& contactScratchFunctionName)
     {
         this->contactScratchFunctionName->setValue(contactScratchFunctionName);
-        this->contactScratchFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), contactScratchFunctionName + "(gameObject0, gameObject1, contact)");
+        if (false == contactScratchFunctionName.empty())
+        {
+            this->contactScratchFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), contactScratchFunctionName + "(gameObject0, gameObject1, contact)");
+        }
     }
 
     bool PhysicsMaterialComponent::canStaticAddComponent(GameObject* gameObject)

@@ -175,11 +175,6 @@ namespace NOWA
                 return false;
             }
             this->sound->setStatic(!this->gameObjectPtr->isDynamic());
-            this->sound->setGain(this->calculateEffectiveGain());
-            this->sound->setPitch(this->speed->getReal());
-            this->sound->setStream(this->stream->getBool());
-            this->sound->setLoop(loop);
-            this->sound->setRelativeToListener(this->relativeToListener->getBool());
             this->sound->setQueryFlags(0);
             this->gameObjectPtr->getSceneNode()->attachObject(this->sound);
         }
@@ -527,6 +522,26 @@ namespace NOWA
             {
                 this->setupSound();
             }
+
+            if (nullptr != this->sound)
+            {
+                // FIX: same reasoning as in setupSound() - keep the fade target
+                // (mMaxGain) in sync with the actually configured volume, and only
+                // snap the gain directly when no fade is currently animating it,
+                // so this call cannot fight a fade that setupSound() may have just
+                // started (e.g. when setActivated(true) triggers setupSound() above).
+                const Ogre::Real effectiveGain = this->calculateEffectiveGain();
+                this->sound->setMaxGain(effectiveGain);
+                if (false == this->sound->isFading())
+                {
+                    this->sound->setGain(effectiveGain);
+                }
+                this->sound->setPitch(this->speed->getReal());
+                this->sound->setStream(this->stream->getBool());
+                // FIX: was passing the Variant* member `loop` instead of its bool value.
+                this->sound->setLoop(this->loop->getBool());
+                this->sound->setRelativeToListener(this->relativeToListener->getBool());
+            }
         }
     }
 
@@ -552,7 +567,16 @@ namespace NOWA
         this->volume->setValue(volume);
         if (nullptr != this->sound)
         {
-            this->sound->setGain(this->calculateEffectiveGain());
+            // FIX: also keep the fade target (mMaxGain) in sync here, and don't snap
+            // the gain directly while a fade is still running - otherwise dragging the
+            // volume slider mid-fade would instantly jump the gain and cut the fade
+            // short, then have it possibly still finish ramping towards the old target.
+            const Ogre::Real effectiveGain = this->calculateEffectiveGain();
+            this->sound->setMaxGain(effectiveGain);
+            if (false == this->sound->isFading())
+            {
+                this->sound->setGain(effectiveGain);
+            }
         }
     }
 
@@ -710,13 +734,19 @@ namespace NOWA
 
     void SimpleSoundComponent::setFadeInOutTime(const Ogre::Vector2& fadeInOutTime)
     {
+        // FIX: this used to immediately call both this->sound->fadeIn(fadeInOutTime.x)
+        // AND this->sound->fadeOut(fadeInOutTime.y) as soon as the property was written
+        // (e.g. every time the properties panel actualizes/re-applies this attribute,
+        // not just when the user actually changes the value). Since fadeIn() ramps
+        // toward mMaxGain and fadeOut() immediately afterward starts ramping the very
+        // same mGain back down toward mMinGain, the two fights each other on the very
+        // next _updateFading() tick and, combined with fadeIn() previously always
+        // targeting the hardcoded mMaxGain=1.0 (see setupSound()/setActivated() above),
+        // this was another source of the reported "wrong/maximum volume" symptom.
+        // fadeInOutTime only configures the DURATIONS to be used the next time a fade
+        // is actually started (from setupSound()/setActivated()/playWhenInMotion
+        // handling); it must not itself trigger a fade.
         this->fadeInFadeOut->setValue(fadeInOutTime);
-
-        if (nullptr != this->sound)
-        {
-            this->sound->fadeIn(fadeInOutTime.x);
-            this->sound->fadeOut(fadeInOutTime.y);
-        }
     }
 
     void SimpleSoundComponent::setInnerOuterConeAngle(const Ogre::Vector2& innerOuterConeAngle)
@@ -882,10 +912,41 @@ namespace NOWA
                 }
 
                 this->sound->play();
+
+                // FIX: The effective volume (local * global, see calculateEffectiveGain())
+                // must be known BEFORE fadeIn() is called, and OgreAL::Sound::fadeIn()
+                // always animates the gain towards its internal mMaxGain member, which
+                // defaults to 1.0 (100%) and is never otherwise touched by this component.
+                // That is exactly why a music track configured at e.g. 10% volume used to
+                // fade all the way up to 100%: fadeIn() had no way of knowing the intended
+                // target. Pointing mMaxGain at the actual effective gain via setMaxGain()
+                // before starting the fade makes OgreAL::Sound::fadeIn()'s own existing
+                // ramp logic animate towards the correct value - no engine-side change
+                // needed. As a side effect this also correctly caps this source's real
+                // OpenAL AL_MAX_GAIN at the configured volume.
+                const Ogre::Real effectiveGain = this->calculateEffectiveGain();
+                this->sound->setMaxGain(effectiveGain);
+
                 if (this->fadeInFadeOut->getVector2().x > 0)
                 {
                     this->sound->fadeIn(this->fadeInFadeOut->getVector2().x);
                 }
+                else
+                {
+                    // Not fading in: apply the configured volume immediately. Note this
+                    // must NOT be called when a fade is in progress (see above), because
+                    // it would instantly snap the gain to its target and skip the fade.
+                    this->sound->setGain(effectiveGain);
+                }
+
+                this->sound->setPitch(this->speed->getReal());
+                this->sound->setStream(this->stream->getBool());
+                // FIX: was passing the bare `loop` identifier, which resolves to the
+                // Variant* member `this->loop`, not its bool value. A Variant* is never
+                // null here, so it always implicitly converted to `true` - every sound
+                // looped regardless of the configured "Loop" setting.
+                this->sound->setLoop(this->loop->getBool());
+                this->sound->setRelativeToListener(this->relativeToListener->getBool());
             }
             else
             {

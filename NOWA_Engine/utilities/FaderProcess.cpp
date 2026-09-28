@@ -7,6 +7,10 @@
 // MyGUI_ControllerItem.h, MyGUI_Widget.h).
 #include <MyGUI.h>
 
+// Attention: Required for the throttled fade widget diagnostics in getSharedFadeWidget().
+#include "MyGUI_RenderManager.h"
+#include <atomic>
+
 namespace NOWA
 {
     namespace
@@ -29,10 +33,41 @@ namespace NOWA
             static MyGUI::Widget* sharedFadeWidget = nullptr;
             if (nullptr == sharedFadeWidget)
             {
-                sharedFadeWidget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Widget>("PanelSkin", 0.0f, 0.0f, 1.0f, 1.0f, MyGUI::Align::Stretch, FADE_LAYER_NAME, "FaderProcess_SharedFadeWidget");
+                // Attention: Same fix as FadeComponent::connect(). createWidgetReal() with
+                // (0, 0, 1, 1) routes through MyGUI::CoordConverter::convertFromRelative(),
+                // which used to truncate towards zero and could end up one pixel short on the
+                // right and at the bottom - exactly the "one row of the scene is visible behind
+                // the fade" symptom. Creating the widget directly in pixels from the current
+                // view size removes that conversion entirely, so this is exact regardless of
+                // whether CoordConverter rounds or truncates.
+                const MyGUI::IntSize viewSize = MyGUI::RenderManager::getInstance().getViewSize();
+
+                // Attention (overscan workaround): pixel-exact geometry here plus a confirmed-zero
+                // D3D9 texel offset in Ogre2RenderManager still left a 1px sliver visible at the
+                // right/bottom edge. Since the widget coordinates are provably correct (see the
+                // throttled log below), grow the widget 1px past every edge - it is a solid-colour
+                // full-screen panel, so the extra ring is never visible, and this guarantees no gap
+                // regardless of whether the actual cause is GPU-rasterizer edge behaviour or the
+                // "PanelSkin" skin's own tiling. Same fix applied in FadeComponent::connect().
+                sharedFadeWidget = MyGUI::Gui::getInstancePtr()->createWidget<MyGUI::Widget>("PanelSkin", MyGUI::IntCoord(-1, -1, viewSize.width + 2, viewSize.height + 2), MyGUI::Align::Stretch, FADE_LAYER_NAME, "FaderProcess_SharedFadeWidget");
                 sharedFadeWidget->setColour(MyGUI::Colour(0.0f, 0.0f, 0.0f));
                 sharedFadeWidget->setNeedMouseFocus(false);
                 sharedFadeWidget->setVisible(false);
+
+                // Attention: Throttled diagnostics, only every 10th creation (this widget is a
+                // function-local static, so in practice this fires once per process - the
+                // counter guard is kept anyway for consistency with the other call sites and in
+                // case the shared widget is ever recreated).
+                static std::atomic<unsigned int> faderWidgetLogCounter{0};
+                const unsigned int currentLogCount = faderWidgetLogCounter.fetch_add(1);
+                if (0 == (currentLogCount % 10))
+                {
+                    const MyGUI::IntCoord absoluteCoord = sharedFadeWidget->getAbsoluteCoord();
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[FaderProcess] Shared fade widget #" + Ogre::StringConverter::toString(currentLogCount) + " created, viewSize: (" +
+                                                                                          Ogre::StringConverter::toString(viewSize.width) + ", " + Ogre::StringConverter::toString(viewSize.height) + ") absolute: (" +
+                                                                                          Ogre::StringConverter::toString(absoluteCoord.left) + ", " + Ogre::StringConverter::toString(absoluteCoord.top) + ", " +
+                                                                                          Ogre::StringConverter::toString(absoluteCoord.width) + ", " + Ogre::StringConverter::toString(absoluteCoord.height) + ")");
+                }
             }
             return sharedFadeWidget;
         }

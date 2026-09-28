@@ -581,6 +581,15 @@ namespace NOWA
         {
             auto closureFunction = [this](Ogre::Real renderDt)
             {
+                // Second line of defence. Removing the closure is posted to the graphics module's
+                // closure queue, so it takes effect on the next processed render frame; this check
+                // covers the frames in between, and any path that clears the flag without going
+                // through internalStopAnimating().
+                if (false == this->canAnimate)
+                {
+                    return;
+                }
+
                 // Guard: if source was disabled by resetAnimation (disconnect),
                 // and timeleft somehow got reset but source is still non-null,
                 // skip execution to avoid re-enabling a dead animation.
@@ -1218,6 +1227,66 @@ namespace NOWA
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AnimationBlenderV2::setOverlayAnimation");
     }
 
+    void AnimationBlenderV2::internalClearOverlayImmediately(void)
+    {
+        // Drops the overlay without a fade and hands every muted bone back. Used wherever the
+        // blender has to stop NOW - a reset, or the character going into a ragdoll.
+        //
+        // Attention: RENDER THREAD only.
+        if (nullptr != this->overlaySource)
+        {
+            this->internalRestoreOverlayChainWeight();
+            this->internalSetOverlayOwnBoneWeights(true);
+
+            if (true == this->overlayChainBoneIds.empty())
+            {
+                this->overlaySource->setOverrideBoneWeightsOnAllAnimations(1.0f, true);
+            }
+
+            this->overlaySource->setEnabled(false);
+            this->overlaySource->mWeight = 0.0f;
+            this->overlaySource = nullptr;
+        }
+
+        this->overlayMutedAnimations.clear();
+        this->overlayMaskBoneNames.clear();
+        this->overlayAllBoneNames.clear();
+        this->overlayChainBoneIds.clear();
+        this->overlayOtherBoneIds.clear();
+        this->overlayBlendingOut = false;
+        this->overlayTimeleft = 0.0f;
+    }
+
+    void AnimationBlenderV2::internalStopAnimating(void)
+    {
+        // Takes the per frame closure OUT of the graphics module.
+        //
+        // Attention: this is the part that 'canAnimate = false' alone does NOT do, and it is why
+        // a ragdoll used to explode.
+        //
+        // addTime() does not animate anything itself - it registers a closure:
+        //
+        //     Ogre::String id = "AnimationBlenderV2::addTime" + toString(this->uniqueId);
+        //     NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
+        //
+        // and that closure then runs on the RENDER thread, once per rendered frame, until
+        // somebody removes it. 'canAnimate' guards the ENTRY of addTime() and of every blend
+        // function, so once the ragdoll starts, no new closure is registered - but the one from
+        // the last frame before that keeps advancing the clip and writing bone transforms, at
+        // render rate, while the physics writes the very same bones from the ragdoll bodies.
+        //
+        // PhysicsRagDollComponentV2::setAnimationEnabled(false) makes only the bones listed in
+        // the .rag file manual; everything between and below them - spine, neck, clavicles,
+        // hands, fingers - stays animation driven and was still being pulled around by that
+        // closure. That is what tore the skeleton apart.
+        Ogre::String closureId = "AnimationBlenderV2::addTime" + Ogre::StringConverter::toString(this->uniqueId);
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(closureId);
+
+        // An overlay must not survive either. Its bone weights are still muted on the locomotion
+        // clips, and with the closure gone nothing would ever hand them back.
+        this->internalClearOverlayImmediately();
+    }
+
     void AnimationBlenderV2::internalUpdateOverlay(Ogre::Real renderDt)
     {
         // Attention: called from inside the addTime closure, so this already runs on the render
@@ -1665,6 +1734,12 @@ namespace NOWA
                     if (gameObject->getId() == id)
                     {
                         this->canAnimate = !castEventData->getIsInRagDollingState();
+
+                        if (false == this->canAnimate)
+                        {
+                            // Clearing the flag is not enough - see internalStopAnimating().
+                            this->internalStopAnimating();
+                        }
                     }
                 }
             }
@@ -2046,27 +2121,7 @@ namespace NOWA
         // The overlay is a layer of its own and survived every reset so far: on disconnect it
         // stayed enabled with the locomotion clip's bones still muted, so the next connect came
         // up with a frozen upper body.
-        if (nullptr != this->overlaySource)
-        {
-            this->internalRestoreOverlayChainWeight();
-            this->internalSetOverlayOwnBoneWeights(true);
-
-            if (true == this->overlayChainBoneIds.empty())
-            {
-                this->overlaySource->setOverrideBoneWeightsOnAllAnimations(1.0f, true);
-            }
-
-            this->overlaySource->setEnabled(false);
-            this->overlaySource->mWeight = 0.0f;
-            this->overlaySource = nullptr;
-        }
-        this->overlayMutedAnimations.clear();
-        this->overlayMaskBoneNames.clear();
-        this->overlayAllBoneNames.clear();
-        this->overlayChainBoneIds.clear();
-        this->overlayOtherBoneIds.clear();
-        this->overlayBlendingOut = false;
-        this->overlayTimeleft = 0.0f;
+        this->internalClearOverlayImmediately();
 
         this->timeleft = 0.0f;
         this->complete = false;

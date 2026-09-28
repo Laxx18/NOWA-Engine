@@ -30,7 +30,7 @@
 		</lightFoward>
 		<mainParameter>
 			<ignoreGlobalScene value="false"/>
-			<renderDistance distance="500"/>
+			<renderDistance distance="100"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
 		<bounds mostLeftNearPosition="0 -1 -16.5203" mostRightFarPosition="100 21.08 -5"/>
@@ -41,8 +41,8 @@
 	</OgreNewt>
 	<nodes>
 		<node name="MainCamera" id="4010617415">
-			<position x="20.5795" y="2.02379" z="8.85829"/>
-			<rotation qw="0.992967" qx="-0.0346752" qy="0.113134" qz="0.00395073"/>
+			<position x="15.1428" y="5" z="7.47606"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -72,8 +72,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="18.0851 2.22232 11.4276"/>
-					<property type="9" name="CameraOrientation" data="-3.84648 -6.65298 0.22925"/>
+					<property type="9" name="CameraPosition" data="16.6924 5 5.57533"/>
+					<property type="9" name="CameraOrientation" data="0 0 0"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -212,7 +212,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="12" name="HideOnConnect" data="false"/>
@@ -281,8 +281,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="6" name="TargetId" data="1085244942"/>
-					<property type="6" name="MoveSpeedX" data="0.1"/>
+					<property type="6" name="TargetId" data="1255209972"/>
+					<property type="6" name="MoveSpeedX" data="0.01"/>
 					<property type="6" name="MoveSpeedY" data="0"/>
 					<property type="12" name="FollowGameObjectX" data="true"/>
 					<property type="12" name="FollowGameObjectY" data="false"/>
@@ -293,8 +293,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="6" name="TargetId" data="1085244942"/>
-					<property type="6" name="MoveSpeedX" data="0.2"/>
+					<property type="6" name="TargetId" data="1255209972"/>
+					<property type="6" name="MoveSpeedX" data="0.02"/>
 					<property type="6" name="MoveSpeedY" data="0"/>
 					<property type="12" name="FollowGameObjectX" data="true"/>
 					<property type="12" name="FollowGameObjectY" data="false"/>
@@ -346,7 +346,7 @@
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2363829373"/>
-					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="Category" data="Danger"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
@@ -596,7 +596,7 @@
 		</node>
 		<node name="Fence1_3" id="3220600583">
 			<position x="65.785" y="1" z="-14.3505"/>
-			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Fence1_3" meshFile="Fence1.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="WoodPlanks"/>
@@ -710,7 +710,7 @@
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="351931245"/>
-					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="Category" data="Danger"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
@@ -1016,7 +1016,7 @@
 			</item>
 		</node>
 		<node name="Platform_3" id="1500554060">
-			<position x="45.1657" y="6" z="-10"/>
+			<position x="45.1657" y="6.40599" z="-10"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Platform_3" meshFile="Procedural.mesh" castShadows="true" visible="true">
@@ -1079,7 +1079,7 @@
 			</item>
 		</node>
 		<node name="Platform_4" id="1500553625">
-			<position x="52.7065" y="9" z="-10"/>
+			<position x="52.7065" y="9.40599" z="-10"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Platform_4" meshFile="Procedural.mesh" castShadows="true" visible="true">
@@ -1142,7 +1142,7 @@
 			</item>
 		</node>
 		<node name="Platform_5" id="1500553190">
-			<position x="59.8368" y="6" z="-10"/>
+			<position x="59.8368" y="6.40599" z="-10"/>
 			<rotation qw="0.997564" qx="0" qy="0" qz="-0.0697565"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Platform_5" meshFile="Procedural.mesh" castShadows="true" visible="true">
@@ -2064,120 +2064,8 @@
 				</userData>
 			</item>
 		</node>
-		<node name="CoinCrown_17" id="3647913476">
-			<position x="54.6334" y="7.02294" z="-7"/>
-			<rotation qw="1" qx="0" qy="0" qz="0"/>
-			<scale x="1" y="1" z="1"/>
-			<item name="CoinCrown_17" meshFile="CoinCrown.mesh" castShadows="true" visible="true">
-				<subitem index="0" datablockName="CoinCrown"/>
-				<userData>
-					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="1295924835"/>
-					<property type="7" name="Category" data="Item"/>
-					<property type="7" name="RenderCategory" data="All"/>
-					<property type="7" name="TagName" data="Coin"/>
-					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
-					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
-					<property type="12" name="HideOnConnect" data="false"/>
-					<property type="9" name="DefaultDirection" data="0 0 1"/>
-					<property type="12" name="Global" data="false"/>
-					<property type="12" name="ClampY" data="false"/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="10"/>
-					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="100"/>
-					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					<property type="7" name="DataBlock0" data="CoinCrown"/>
-					<property type="7" name="ComponentTransformComponent" data="TransformComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="12" name="RotationActivated" data="true"/>
-					<property type="9" name="RotationAxis" data="0 1 0"/>
-					<property type="6" name="RotationMin" data="0"/>
-					<property type="7" name="RotationMax" data="360"/>
-					<property type="6" name="RotationSpeed" data="1"/>
-					<property type="12" name="RotationRepeat" data="true"/>
-					<property type="12" name="RotationDirectionChange" data="false"/>
-					<property type="12" name="TranslationActivated" data="false"/>
-					<property type="9" name="TranslationAxis" data="0 0 0"/>
-					<property type="6" name="TranslationMin" data="0"/>
-					<property type="7" name="TranslationMax" data="10"/>
-					<property type="6" name="TranslationSpeed" data="1"/>
-					<property type="12" name="TranslationRepeat" data="true"/>
-					<property type="12" name="TranslationDirectionChange" data="true"/>
-					<property type="12" name="ScaleActivated" data="false"/>
-					<property type="9" name="ScaleAxis" data="0 0 0"/>
-					<property type="6" name="ScaleMin" data="0.5"/>
-					<property type="7" name="ScaleMax" data="10"/>
-					<property type="6" name="ScaleSpeed" data="0.1"/>
-					<property type="12" name="ScaleRepeat" data="true"/>
-					<property type="12" name="ScaleDirectionChange" data="true"/>
-				</userData>
-			</item>
-		</node>
-		<node name="CoinCrown_18" id="3647909561">
-			<position x="55.5334" y="7.02294" z="-7"/>
-			<rotation qw="1" qx="0" qy="0" qz="0"/>
-			<scale x="1" y="1" z="1"/>
-			<item name="CoinCrown_18" meshFile="CoinCrown.mesh" castShadows="true" visible="true">
-				<subitem index="0" datablockName="CoinCrown"/>
-				<userData>
-					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="2647813289"/>
-					<property type="7" name="Category" data="Item"/>
-					<property type="7" name="RenderCategory" data="All"/>
-					<property type="7" name="TagName" data="Coin"/>
-					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
-					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
-					<property type="12" name="HideOnConnect" data="false"/>
-					<property type="9" name="DefaultDirection" data="0 0 1"/>
-					<property type="12" name="Global" data="false"/>
-					<property type="12" name="ClampY" data="false"/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="10"/>
-					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="100"/>
-					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					<property type="7" name="DataBlock0" data="CoinCrown"/>
-					<property type="7" name="ComponentTransformComponent" data="TransformComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="12" name="RotationActivated" data="true"/>
-					<property type="9" name="RotationAxis" data="0 1 0"/>
-					<property type="6" name="RotationMin" data="0"/>
-					<property type="7" name="RotationMax" data="360"/>
-					<property type="6" name="RotationSpeed" data="1"/>
-					<property type="12" name="RotationRepeat" data="true"/>
-					<property type="12" name="RotationDirectionChange" data="false"/>
-					<property type="12" name="TranslationActivated" data="false"/>
-					<property type="9" name="TranslationAxis" data="0 0 0"/>
-					<property type="6" name="TranslationMin" data="0"/>
-					<property type="7" name="TranslationMax" data="10"/>
-					<property type="6" name="TranslationSpeed" data="1"/>
-					<property type="12" name="TranslationRepeat" data="true"/>
-					<property type="12" name="TranslationDirectionChange" data="true"/>
-					<property type="12" name="ScaleActivated" data="false"/>
-					<property type="9" name="ScaleAxis" data="0 0 0"/>
-					<property type="6" name="ScaleMin" data="0.5"/>
-					<property type="7" name="ScaleMax" data="10"/>
-					<property type="6" name="ScaleSpeed" data="0.1"/>
-					<property type="12" name="ScaleRepeat" data="true"/>
-					<property type="12" name="ScaleDirectionChange" data="true"/>
-				</userData>
-			</item>
-		</node>
 		<node name="Node_1" id="4215511685">
-			<position x="53.7334" y="6.14803" z="-6.88909"/>
+			<position x="53.7334" y="6.58848" z="-6.88909"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Node_1" meshFile="Node.mesh" castShadows="true" visible="true">
@@ -2212,7 +2100,7 @@
 			</item>
 		</node>
 		<node name="Node_0" id="4215511250">
-			<position x="46.447" y="6.24205" z="-7"/>
+			<position x="46.447" y="6.6825" z="-7"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Node_0" meshFile="Node.mesh" castShadows="true" visible="true">
@@ -2375,15 +2263,266 @@
 				</userData>
 			</item>
 		</node>
-		<node name="CoinCrown_19" id="3647909126">
-			<position x="48.5214" y="4.12925" z="-7"/>
+		<node name="Platform Block_5" id="303589923">
+			<position x="0" y="-1" z="-10"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="CoinCrown_19" meshFile="CoinCrown.mesh" castShadows="true" visible="true">
+			<item name="Platform Block_5" meshFile="Procedural.mesh" castShadows="true" visible="true">
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2486551799"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
+					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="ComponentProceduralBlockComponent" data="ProceduralBlockComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="2" name="Columns" data="100"/>
+					<property type="2" name="Rows" data="1"/>
+					<property type="6" name="Depth" data="10"/>
+					<property type="7" name="Datablock" data="rockClif_D"/>
+					<property type="8" name="UV Tiling" data="1 1"/>
+					<property type="12" name="Use Gradient" data="false"/>
+					<property type="12" name="Use Bevel" data="false"/>
+					<property type="6" name="Bevel Size" data="0.1"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Node_3" id="4215510815">
+			<position x="46.5353" y="3.60198" z="-6.88909"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Node_3" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2696365814"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 -7"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Show" data="true"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Node_2" id="4215510380">
+			<position x="39.2489" y="3.696" z="-7"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Node_2" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1856355345"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Show" data="true"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Node_4" id="4215509510">
+			<position x="53.2452" y="9.69897" z="-7"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Node_4" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3036099813"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Show" data="true"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Node_6" id="4215508640">
+			<position x="61.8584" y="9.60495" z="-6.88909"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Node_6" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3814939857"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 -7"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Show" data="true"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Node_8" id="4215514730">
+			<position x="97.8058" y="5.21925" z="-7"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Node_8" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3510944176"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Show" data="true"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Node_7" id="4215509075">
+			<position x="79.8863" y="4.68753" z="-7"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Node_7" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2395271499"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Show" data="true"/>
+				</userData>
+			</item>
+		</node>
+		<node name="CoinCrown_17" id="3647913476">
+			<position x="54.6334" y="7.19367" z="-7"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="CoinCrown_17" meshFile="CoinCrown.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="CoinCrown"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="3282919768"/>
+					<property type="7" name="Id" data="1295924835"/>
 					<property type="7" name="Category" data="Item"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data="Coin"/>
@@ -2431,15 +2570,15 @@
 				</userData>
 			</item>
 		</node>
-		<node name="CoinCrown_20" id="3648116186">
-			<position x="47.6214" y="4.12925" z="-7"/>
+		<node name="CoinCrown_18" id="3647909561">
+			<position x="55.5334" y="7.19367" z="-7"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="CoinCrown_20" meshFile="CoinCrown.mesh" castShadows="true" visible="true">
+			<item name="CoinCrown_18" meshFile="CoinCrown.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="CoinCrown"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="3064738958"/>
+					<property type="7" name="Id" data="2647813289"/>
 					<property type="7" name="Category" data="Item"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data="Coin"/>
@@ -2991,15 +3130,121 @@
 				</userData>
 			</item>
 		</node>
-		<node name="CoinCrown_13" id="3647911736">
-			<position x="78.6986" y="7.714" z="-7"/>
+		<node name="Rhino_0" id="1637565766">
+			<position x="50.4758" y="6.60415" z="-7"/>
+			<rotation qw="-0.707107" qx="0" qy="0.707107" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Rhino_0" meshFile="Rhino.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Rhino"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3337111083"/>
+					<property type="7" name="Category" data="Enemy"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data="Rhino"/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="Rhino"/>
+					<property type="7" name="ComponentPhysicsRagDollComponentV2" data="PhysicsRagDollComponentV2"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0.3 0.9 0.3"/>
+					<property type="9" name="OffsetPosition" data="0 0.7 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 90"/>
+					<property type="6" name="Mass" data="50"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0.1"/>
+					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
+					<property type="6" name="Density" data="1"/>
+					<property type="9" name="Gravity" data="0 -29.9 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 1 0"/>
+					<property type="6" name="Speed" data="5"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="10"/>
+					<property type="7" name="CollisionType" data="Capsule"/>
+					<property type="9" name="ConstraintAxis" data="0 0 1"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="BoneConfigFile" data="Rhino.rag"/>
+					<property type="7" name="State" data="Inactive"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="AnimationActivated" data="true"/>
+					<property type="7" name="AnimationName" data="Rhino_Walk_In_Place"/>
+					<property type="6" name="AnimationSpeed" data="1"/>
+					<property type="12" name="AnimationRepeat" data="true"/>
+					<property type="7" name="ComponentAttributesComponent" data="AttributesComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="AttributesCount" data="3"/>
+					<property type="7" name="AttributeName0" data="Energy"/>
+					<property type="7" name="AttributeType0" data="Int"/>
+					<property type="7" name="AttributeValue0" data="20"/>
+					<property type="7" name="AttributeName1" data="Strength"/>
+					<property type="7" name="AttributeType1" data="Int"/>
+					<property type="7" name="AttributeValue1" data="5"/>
+					<property type="7" name="AttributeName2" data="Experience"/>
+					<property type="7" name="AttributeType2" data="Int"/>
+					<property type="7" name="AttributeValue2" data="2"/>
+					<property type="7" name="ComponentAiPathFollowComponent" data="AiPathFollowComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="RotationSpeed" data="10"/>
+					<property type="12" name="FlyMode" data="false"/>
+					<property type="6" name="StuckTime" data="0"/>
+					<property type="12" name="AutoOrientation" data="true"/>
+					<property type="12" name="AutoAnimation" data="true"/>
+					<property type="6" name="AgentId" data="0"/>
+					<property type="2" name="WaypointsCount" data="2"/>
+					<property type="2" name="Waypoint0" data="1761424885"/>
+					<property type="2" name="Waypoint1" data="2177753556"/>
+					<property type="12" name="Repeat" data="true"/>
+					<property type="12" name="DirectionChange" data="true"/>
+					<property type="12" name="InvertDirection" data="false"/>
+					<property type="6" name="GoalRadius" data="0.2"/>
+					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="ScriptFile" data="Rhino.lua"/>
+					<property type="12" name="CloneScript" data="false"/>
+					<property type="12" name="HasCommonScript" data="true"/>
+					<property type="12" name="ScriptGlobal" data="true"/>
+					<property type="2" name="OrderIndex" data="4"/>
+				</userData>
+			</item>
+		</node>
+		<node name="CoinCrown_16" id="3647913911">
+			<position x="77.7986" y="6.814" z="-7"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="CoinCrown_13" meshFile="CoinCrown.mesh" castShadows="true" visible="true">
+			<item name="CoinCrown_16" meshFile="CoinCrown.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="CoinCrown"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="3912330979"/>
+					<property type="7" name="Id" data="305810227"/>
 					<property type="7" name="Category" data="Item"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data="Coin"/>
@@ -3103,18 +3348,18 @@
 				</userData>
 			</item>
 		</node>
-		<node name="CoinCrown_16" id="3647913911">
-			<position x="77.7986" y="6.814" z="-7"/>
-			<rotation qw="1" qx="0" qy="0" qz="0"/>
+		<node name="Rhino_2" id="1637564896">
+			<position x="60.5368" y="9.62062" z="-7"/>
+			<rotation qw="-0.707107" qx="0" qy="0.707107" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="CoinCrown_16" meshFile="CoinCrown.mesh" castShadows="true" visible="true">
-				<subitem index="0" datablockName="CoinCrown"/>
+			<item name="Rhino_2" meshFile="Rhino.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Rhino"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="305810227"/>
-					<property type="7" name="Category" data="Item"/>
+					<property type="7" name="Id" data="2767275928"/>
+					<property type="7" name="Category" data="Enemy"/>
 					<property type="7" name="RenderCategory" data="All"/>
-					<property type="7" name="TagName" data="Coin"/>
+					<property type="7" name="TagName" data="Rhino"/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
@@ -3129,33 +3374,83 @@
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					<property type="7" name="DataBlock0" data="CoinCrown"/>
-					<property type="7" name="ComponentTransformComponent" data="TransformComponent"/>
+					<property type="7" name="DataBlock0" data="Rhino"/>
+					<property type="7" name="ComponentPhysicsRagDollComponentV2" data="PhysicsRagDollComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
-					<property type="12" name="RotationActivated" data="true"/>
-					<property type="9" name="RotationAxis" data="0 1 0"/>
-					<property type="6" name="RotationMin" data="0"/>
-					<property type="7" name="RotationMax" data="360"/>
-					<property type="6" name="RotationSpeed" data="1"/>
-					<property type="12" name="RotationRepeat" data="true"/>
-					<property type="12" name="RotationDirectionChange" data="false"/>
-					<property type="12" name="TranslationActivated" data="false"/>
-					<property type="9" name="TranslationAxis" data="0 0 0"/>
-					<property type="6" name="TranslationMin" data="0"/>
-					<property type="7" name="TranslationMax" data="10"/>
-					<property type="6" name="TranslationSpeed" data="1"/>
-					<property type="12" name="TranslationRepeat" data="true"/>
-					<property type="12" name="TranslationDirectionChange" data="true"/>
-					<property type="12" name="ScaleActivated" data="false"/>
-					<property type="9" name="ScaleAxis" data="0 0 0"/>
-					<property type="6" name="ScaleMin" data="0.5"/>
-					<property type="7" name="ScaleMax" data="10"/>
-					<property type="6" name="ScaleSpeed" data="0.1"/>
-					<property type="12" name="ScaleRepeat" data="true"/>
-					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="9" name="CollisionSize" data="0.3 0.9 0.3"/>
+					<property type="9" name="OffsetPosition" data="0 0.7 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 90"/>
+					<property type="6" name="Mass" data="50"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0.1"/>
+					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
+					<property type="6" name="Density" data="1"/>
+					<property type="9" name="Gravity" data="0 -29.9 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 1 0"/>
+					<property type="6" name="Speed" data="5"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="10"/>
+					<property type="7" name="CollisionType" data="Capsule"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="BoneConfigFile" data="Rhino.rag"/>
+					<property type="7" name="State" data="Inactive"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="AnimationActivated" data="true"/>
+					<property type="7" name="AnimationName" data="Rhino_Walk_In_Place"/>
+					<property type="6" name="AnimationSpeed" data="1"/>
+					<property type="12" name="AnimationRepeat" data="true"/>
+					<property type="7" name="ComponentAttributesComponent" data="AttributesComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="AttributesCount" data="3"/>
+					<property type="7" name="AttributeName0" data="Energy"/>
+					<property type="7" name="AttributeType0" data="Int"/>
+					<property type="7" name="AttributeValue0" data="20"/>
+					<property type="7" name="AttributeName1" data="Strength"/>
+					<property type="7" name="AttributeType1" data="Int"/>
+					<property type="7" name="AttributeValue1" data="5"/>
+					<property type="7" name="AttributeName2" data="Experience"/>
+					<property type="7" name="AttributeType2" data="Int"/>
+					<property type="7" name="AttributeValue2" data="2"/>
+					<property type="7" name="ComponentAiPathFollowComponent" data="AiPathFollowComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="RotationSpeed" data="10"/>
+					<property type="12" name="FlyMode" data="false"/>
+					<property type="6" name="StuckTime" data="0"/>
+					<property type="12" name="AutoOrientation" data="true"/>
+					<property type="12" name="AutoAnimation" data="false"/>
+					<property type="6" name="AgentId" data="0"/>
+					<property type="2" name="WaypointsCount" data="2"/>
+					<property type="2" name="Waypoint0" data="3036099813"/>
+					<property type="2" name="Waypoint1" data="3814939857"/>
+					<property type="12" name="Repeat" data="true"/>
+					<property type="12" name="DirectionChange" data="true"/>
+					<property type="12" name="InvertDirection" data="false"/>
+					<property type="6" name="GoalRadius" data="0.2"/>
+					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="ScriptFile" data="Rhino.lua"/>
+					<property type="12" name="CloneScript" data="false"/>
+					<property type="12" name="HasCommonScript" data="true"/>
+					<property type="12" name="ScriptGlobal" data="true"/>
+					<property type="2" name="OrderIndex" data="4"/>
 				</userData>
 			</item>
 		</node>
@@ -3215,59 +3510,18 @@
 				</userData>
 			</item>
 		</node>
-		<node name="Platform Block_5" id="303589923">
-			<position x="0" y="-1" z="-10"/>
-			<rotation qw="1" qx="0" qy="0" qz="0"/>
+		<node name="Coyote" id="1435321164">
+			<position x="89.0922" y="1.00606" z="-7.30823"/>
+			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Platform Block_5" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Coyote" meshFile="Coyote.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Coyote"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="2486551799"/>
-					<property type="7" name="Category" data="Default"/>
-					<property type="7" name="RenderCategory" data="All"/>
-					<property type="7" name="TagName" data=""/>
-					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
-					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
-					<property type="12" name="HideOnConnect" data="false"/>
-					<property type="9" name="DefaultDirection" data="0 0 -1"/>
-					<property type="12" name="Global" data="false"/>
-					<property type="12" name="ClampY" data="false"/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="10"/>
-					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="100"/>
-					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					<property type="7" name="ComponentProceduralBlockComponent" data="ProceduralBlockComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="2" name="Columns" data="100"/>
-					<property type="2" name="Rows" data="1"/>
-					<property type="6" name="Depth" data="10"/>
-					<property type="7" name="Datablock" data="rockClif_D"/>
-					<property type="8" name="UV Tiling" data="1 1"/>
-					<property type="12" name="Use Gradient" data="false"/>
-					<property type="12" name="Use Bevel" data="false"/>
-					<property type="6" name="Bevel Size" data="0.1"/>
-				</userData>
-			</item>
-		</node>
-		<node name="Rhino_0" id="1637565766">
-			<position x="50.4758" y="6.16822" z="-7"/>
-			<rotation qw="-0.707107" qx="0" qy="0.707107" qz="0"/>
-			<scale x="1" y="1" z="1"/>
-			<item name="Rhino_0" meshFile="Rhino.mesh" castShadows="true" visible="true">
-				<subitem index="0" datablockName="Rhino"/>
-				<userData>
-					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="3337111083"/>
+					<property type="7" name="Id" data="1086803814"/>
 					<property type="7" name="Category" data="Enemy"/>
 					<property type="7" name="RenderCategory" data="All"/>
-					<property type="7" name="TagName" data=""/>
+					<property type="7" name="TagName" data="Coyote"/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
@@ -3282,16 +3536,16 @@
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					<property type="7" name="DataBlock0" data="Rhino"/>
+					<property type="7" name="DataBlock0" data="Coyote"/>
 					<property type="7" name="ComponentPhysicsRagDollComponentV2" data="PhysicsRagDollComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
-					<property type="9" name="CollisionSize" data="0.3 0.9 0.3"/>
-					<property type="9" name="OffsetPosition" data="0 0.7 0"/>
-					<property type="9" name="OffsetDirection" data="0 0 90"/>
-					<property type="6" name="Mass" data="50"/>
+					<property type="9" name="CollisionSize" data="0.3 0.7 0.3"/>
+					<property type="9" name="OffsetPosition" data="0 0.4 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 0"/>
+					<property type="6" name="Mass" data="10"/>
 					<property type="9" name="MassOrigin" data="0 0 0"/>
 					<property type="6" name="LinearDamping" data="0.1"/>
 					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
@@ -3299,38 +3553,35 @@
 					<property type="9" name="Gravity" data="0 -29.9 0"/>
 					<property type="7" name="GravitySourceCategory" data=""/>
 					<property type="9" name="ConstraintDirection" data="0 1 0"/>
-					<property type="6" name="Speed" data="5"/>
+					<property type="6" name="Speed" data="6"/>
 					<property type="6" name="MinSpeed" data="1"/>
-					<property type="6" name="MaxSpeed" data="10"/>
+					<property type="6" name="MaxSpeed" data="6"/>
 					<property type="7" name="CollisionType" data="Capsule"/>
 					<property type="9" name="ConstraintAxis" data="0 0 1"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
 					<property type="12" name="Activated" data="true"/>
-					<property type="7" name="BoneConfigFile" data="PrehistoricRhino.rag"/>
+					<property type="7" name="BoneConfigFile" data="Coyote.rag"/>
 					<property type="7" name="State" data="Inactive"/>
 					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="AnimationActivated" data="true"/>
-					<property type="7" name="AnimationName" data="Rhino_Walk_In_Place"/>
+					<property type="7" name="AnimationName" data="Walk_InPlace"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
 					<property type="12" name="AnimationRepeat" data="true"/>
 					<property type="7" name="ComponentAttributesComponent" data="AttributesComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="AttributesCount" data="3"/>
+					<property type="2" name="AttributesCount" data="2"/>
 					<property type="7" name="AttributeName0" data="Energy"/>
 					<property type="7" name="AttributeType0" data="Int"/>
-					<property type="7" name="AttributeValue0" data="20"/>
-					<property type="7" name="AttributeName1" data="Strength"/>
+					<property type="7" name="AttributeValue0" data="200"/>
+					<property type="7" name="AttributeName1" data="Experience"/>
 					<property type="7" name="AttributeType1" data="Int"/>
 					<property type="7" name="AttributeValue1" data="5"/>
-					<property type="7" name="AttributeName2" data="Experience"/>
-					<property type="7" name="AttributeType2" data="Int"/>
-					<property type="7" name="AttributeValue2" data="2"/>
 					<property type="7" name="ComponentAiPathFollowComponent" data="AiPathFollowComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -3343,8 +3594,8 @@
 					<property type="12" name="AutoAnimation" data="true"/>
 					<property type="6" name="AgentId" data="0"/>
 					<property type="2" name="WaypointsCount" data="2"/>
-					<property type="2" name="Waypoint0" data="1761424885"/>
-					<property type="2" name="Waypoint1" data="2177753556"/>
+					<property type="2" name="Waypoint0" data="2395271499"/>
+					<property type="2" name="Waypoint1" data="3510944176"/>
 					<property type="12" name="Repeat" data="true"/>
 					<property type="12" name="DirectionChange" data="true"/>
 					<property type="12" name="InvertDirection" data="false"/>
@@ -3354,16 +3605,16 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
-					<property type="7" name="ScriptFile" data="Rhino.lua"/>
+					<property type="7" name="ScriptFile" data="Coyote.lua"/>
 					<property type="12" name="CloneScript" data="false"/>
 					<property type="12" name="HasCommonScript" data="true"/>
 					<property type="12" name="ScriptGlobal" data="true"/>
-					<property type="2" name="OrderIndex" data="4"/>
+					<property type="2" name="OrderIndex" data="9"/>
 				</userData>
 			</item>
 		</node>
 		<node name="CoinCrown_12" id="3647912171">
-			<position x="58.3297" y="12.9938" z="-7"/>
+			<position x="58.3297" y="13.4342" z="-7"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="CoinCrown_12" meshFile="CoinCrown.mesh" castShadows="true" visible="true">
@@ -3419,7 +3670,7 @@
 			</item>
 		</node>
 		<node name="CoinCrown_11" id="3647912606">
-			<position x="59.2297" y="12.9938" z="-7"/>
+			<position x="59.2297" y="13.4342" z="-7"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="CoinCrown_11" meshFile="CoinCrown.mesh" castShadows="true" visible="true">
@@ -3475,7 +3726,7 @@
 			</item>
 		</node>
 		<node name="CoinCrown_10" id="3647913041">
-			<position x="58.3297" y="12.0938" z="-7"/>
+			<position x="58.3297" y="12.5342" z="-7"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="CoinCrown_10" meshFile="CoinCrown.mesh" castShadows="true" visible="true">
@@ -3531,7 +3782,7 @@
 			</item>
 		</node>
 		<node name="CoinCrown_9" id="1084592707">
-			<position x="59.2297" y="12.0938" z="-7"/>
+			<position x="59.2297" y="12.5342" z="-7"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="CoinCrown_9" meshFile="CoinCrown.mesh" castShadows="true" visible="true">
@@ -3583,6 +3834,280 @@
 					<property type="6" name="ScaleSpeed" data="0.1"/>
 					<property type="12" name="ScaleRepeat" data="true"/>
 					<property type="12" name="ScaleDirectionChange" data="true"/>
+				</userData>
+			</item>
+		</node>
+		<node name="CoinCrown_13" id="3647911736">
+			<position x="78.6986" y="7.714" z="-7"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="CoinCrown_13" meshFile="CoinCrown.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CoinCrown"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3912330979"/>
+					<property type="7" name="Category" data="Item"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data="Coin"/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="CoinCrown"/>
+					<property type="7" name="ComponentTransformComponent" data="TransformComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="12" name="RotationActivated" data="true"/>
+					<property type="9" name="RotationAxis" data="0 1 0"/>
+					<property type="6" name="RotationMin" data="0"/>
+					<property type="7" name="RotationMax" data="360"/>
+					<property type="6" name="RotationSpeed" data="1"/>
+					<property type="12" name="RotationRepeat" data="true"/>
+					<property type="12" name="RotationDirectionChange" data="false"/>
+					<property type="12" name="TranslationActivated" data="false"/>
+					<property type="9" name="TranslationAxis" data="0 0 0"/>
+					<property type="6" name="TranslationMin" data="0"/>
+					<property type="7" name="TranslationMax" data="10"/>
+					<property type="6" name="TranslationSpeed" data="1"/>
+					<property type="12" name="TranslationRepeat" data="true"/>
+					<property type="12" name="TranslationDirectionChange" data="true"/>
+					<property type="12" name="ScaleActivated" data="false"/>
+					<property type="9" name="ScaleAxis" data="0 0 0"/>
+					<property type="6" name="ScaleMin" data="0.5"/>
+					<property type="7" name="ScaleMax" data="10"/>
+					<property type="6" name="ScaleSpeed" data="0.1"/>
+					<property type="12" name="ScaleRepeat" data="true"/>
+					<property type="12" name="ScaleDirectionChange" data="true"/>
+				</userData>
+			</item>
+		</node>
+		<node name="CoinCrown_19" id="3647909126">
+			<position x="48.5214" y="4.12925" z="-7"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="CoinCrown_19" meshFile="CoinCrown.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CoinCrown"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3282919768"/>
+					<property type="7" name="Category" data="Item"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data="Coin"/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="CoinCrown"/>
+					<property type="7" name="ComponentTransformComponent" data="TransformComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="12" name="RotationActivated" data="true"/>
+					<property type="9" name="RotationAxis" data="0 1 0"/>
+					<property type="6" name="RotationMin" data="0"/>
+					<property type="7" name="RotationMax" data="360"/>
+					<property type="6" name="RotationSpeed" data="1"/>
+					<property type="12" name="RotationRepeat" data="true"/>
+					<property type="12" name="RotationDirectionChange" data="false"/>
+					<property type="12" name="TranslationActivated" data="false"/>
+					<property type="9" name="TranslationAxis" data="0 0 0"/>
+					<property type="6" name="TranslationMin" data="0"/>
+					<property type="7" name="TranslationMax" data="10"/>
+					<property type="6" name="TranslationSpeed" data="1"/>
+					<property type="12" name="TranslationRepeat" data="true"/>
+					<property type="12" name="TranslationDirectionChange" data="true"/>
+					<property type="12" name="ScaleActivated" data="false"/>
+					<property type="9" name="ScaleAxis" data="0 0 0"/>
+					<property type="6" name="ScaleMin" data="0.5"/>
+					<property type="7" name="ScaleMax" data="10"/>
+					<property type="6" name="ScaleSpeed" data="0.1"/>
+					<property type="12" name="ScaleRepeat" data="true"/>
+					<property type="12" name="ScaleDirectionChange" data="true"/>
+				</userData>
+			</item>
+		</node>
+		<node name="CoinCrown_20" id="3648116186">
+			<position x="47.6214" y="4.12925" z="-7"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="CoinCrown_20" meshFile="CoinCrown.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CoinCrown"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3064738958"/>
+					<property type="7" name="Category" data="Item"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data="Coin"/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="CoinCrown"/>
+					<property type="7" name="ComponentTransformComponent" data="TransformComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="12" name="RotationActivated" data="true"/>
+					<property type="9" name="RotationAxis" data="0 1 0"/>
+					<property type="6" name="RotationMin" data="0"/>
+					<property type="7" name="RotationMax" data="360"/>
+					<property type="6" name="RotationSpeed" data="1"/>
+					<property type="12" name="RotationRepeat" data="true"/>
+					<property type="12" name="RotationDirectionChange" data="false"/>
+					<property type="12" name="TranslationActivated" data="false"/>
+					<property type="9" name="TranslationAxis" data="0 0 0"/>
+					<property type="6" name="TranslationMin" data="0"/>
+					<property type="7" name="TranslationMax" data="10"/>
+					<property type="6" name="TranslationSpeed" data="1"/>
+					<property type="12" name="TranslationRepeat" data="true"/>
+					<property type="12" name="TranslationDirectionChange" data="true"/>
+					<property type="12" name="ScaleActivated" data="false"/>
+					<property type="9" name="ScaleAxis" data="0 0 0"/>
+					<property type="6" name="ScaleMin" data="0.5"/>
+					<property type="7" name="ScaleMax" data="10"/>
+					<property type="6" name="ScaleSpeed" data="0.1"/>
+					<property type="12" name="ScaleRepeat" data="true"/>
+					<property type="12" name="ScaleDirectionChange" data="true"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Rhino_1" id="1637566201">
+			<position x="40.9828" y="3.62217" z="-7"/>
+			<rotation qw="-0.707107" qx="0" qy="0.707107" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Rhino_1" meshFile="Rhino.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Rhino"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1020969501"/>
+					<property type="7" name="Category" data="Enemy"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data="Rhino"/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="Rhino"/>
+					<property type="7" name="ComponentPhysicsRagDollComponentV2" data="PhysicsRagDollComponentV2"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0.3 0.9 0.3"/>
+					<property type="9" name="OffsetPosition" data="0 0.7 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 90"/>
+					<property type="6" name="Mass" data="50"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0.1"/>
+					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
+					<property type="6" name="Density" data="1"/>
+					<property type="9" name="Gravity" data="0 -29.9 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 1 0"/>
+					<property type="6" name="Speed" data="5"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="10"/>
+					<property type="7" name="CollisionType" data="Capsule"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="BoneConfigFile" data="Rhino.rag"/>
+					<property type="7" name="State" data="Inactive"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="AnimationActivated" data="true"/>
+					<property type="7" name="AnimationName" data="Rhino_Walk_In_Place"/>
+					<property type="6" name="AnimationSpeed" data="1"/>
+					<property type="12" name="AnimationRepeat" data="true"/>
+					<property type="7" name="ComponentAttributesComponent" data="AttributesComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="AttributesCount" data="3"/>
+					<property type="7" name="AttributeName0" data="Energy"/>
+					<property type="7" name="AttributeType0" data="Int"/>
+					<property type="7" name="AttributeValue0" data="20"/>
+					<property type="7" name="AttributeName1" data="Strength"/>
+					<property type="7" name="AttributeType1" data="Int"/>
+					<property type="7" name="AttributeValue1" data="5"/>
+					<property type="7" name="AttributeName2" data="Experience"/>
+					<property type="7" name="AttributeType2" data="Int"/>
+					<property type="7" name="AttributeValue2" data="2"/>
+					<property type="7" name="ComponentAiPathFollowComponent" data="AiPathFollowComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="RotationSpeed" data="10"/>
+					<property type="12" name="FlyMode" data="false"/>
+					<property type="6" name="StuckTime" data="0"/>
+					<property type="12" name="AutoOrientation" data="true"/>
+					<property type="12" name="AutoAnimation" data="false"/>
+					<property type="6" name="AgentId" data="0"/>
+					<property type="2" name="WaypointsCount" data="2"/>
+					<property type="2" name="Waypoint0" data="1856355345"/>
+					<property type="2" name="Waypoint1" data="2696365814"/>
+					<property type="12" name="Repeat" data="true"/>
+					<property type="12" name="DirectionChange" data="true"/>
+					<property type="12" name="InvertDirection" data="false"/>
+					<property type="6" name="GoalRadius" data="0.2"/>
+					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="ScriptFile" data="Rhino.lua"/>
+					<property type="12" name="CloneScript" data="false"/>
+					<property type="12" name="HasCommonScript" data="true"/>
+					<property type="12" name="ScriptGlobal" data="true"/>
+					<property type="2" name="OrderIndex" data="4"/>
 				</userData>
 			</item>
 		</node>

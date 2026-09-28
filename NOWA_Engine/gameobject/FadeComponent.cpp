@@ -198,8 +198,19 @@ namespace NOWA
                 // the layer forwards the size delta to the widget as integers.
                 const MyGUI::IntSize viewSize = MyGUI::RenderManager::getInstance().getViewSize();
 
+                // Attention (overscan workaround): even with pixel-exact geometry here and a
+                // confirmed-zero D3D9 texel offset in Ogre2RenderManager, a 1px sliver at the
+                // right/bottom edge kept showing through. Since the widget's own coordinates are
+                // provably correct (see the throttled log below), whatever is dropping that last
+                // row/column sits below MyGUI's widget layer - most likely in how the render
+                // system/GPU rasterizes a quad whose edge lands exactly on the backbuffer border,
+                // or in the "PanelSkin" skin's own tiling (a tiled sub-skin state can drop a
+                // partial trailing tile). Rather than keep chasing that at the pixel-rasterizer
+                // level, grow this widget by 1px past every edge - it is a solid-colour full-screen
+                // panel, so the extra pixel ring is never visible; it just guarantees the visible
+                // area has no gap regardless of where the missing row/column actually comes from.
                 this->fadeWidget =
-                    MyGUI::Gui::getInstancePtr()->createWidget<MyGUI::Widget>("PanelSkin", MyGUI::IntCoord(0, 0, viewSize.width, viewSize.height), MyGUI::Align::Stretch, FADE_LAYER_NAME, "FadeComponent_" + this->gameObjectPtr->getName());
+                    MyGUI::Gui::getInstancePtr()->createWidget<MyGUI::Widget>("PanelSkin", MyGUI::IntCoord(-1, -1, viewSize.width + 2, viewSize.height + 2), MyGUI::Align::Stretch, FADE_LAYER_NAME, "FadeComponent_" + this->gameObjectPtr->getName());
                 this->fadeWidget->setColour(MyGUI::Colour(0.0f, 0.0f, 0.0f));
                 this->fadeWidget->setNeedMouseFocus(false);
                 this->fadeWidget->setVisible(false);

@@ -1912,6 +1912,7 @@ namespace NOWA
 
         if (state == "Inactive")
         {
+            this->resetForce();
             // Leaving any ragdoll state must explicitly release manual-bone control.
             // This is also required when the state is already Inactive because a
             // previous simulation may have left the bones manually controlled.
@@ -1932,6 +1933,7 @@ namespace NOWA
         }
         else if (state == "Animation")
         {
+            this->resetForce();
             // Animation mode owns every bone again; do not rely on the old state
             // because manual-bone flags survive a simulation stop.
             this->rdState = PhysicsRagDollComponentV2::ANIMATION;
@@ -1951,6 +1953,8 @@ namespace NOWA
                 return;
             }
 
+            this->resetForce();
+
             if (this->rdState == PhysicsRagDollComponentV2::RAGDOLLING)
             {
                 return;
@@ -1962,6 +1966,8 @@ namespace NOWA
         }
         else if (state == "PartialRagdolling")
         {
+            this->resetForce();
+
             if (this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING && this->oldPartialRagdollBoneName == this->partialRagdollBoneName)
             {
                 return;

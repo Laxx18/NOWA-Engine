@@ -154,10 +154,23 @@ namespace NOWA
         tagPoints(new Variant(TagPointComponent::AttrTagPointName(), std::vector<Ogre::String>(), this->attributes)),
         sourceId(new Variant(TagPointComponent::AttrSourceId(), static_cast<unsigned long>(0), this->attributes, true)),
         offsetPosition(new Variant(TagPointComponent::AttrOffsetPosition(), Ogre::Vector3::ZERO, this->attributes)),
-        offsetOrientation(new Variant(TagPointComponent::AttrOffsetOrientation(), Ogre::Vector3::ZERO, this->attributes))
+        offsetOrientation(new Variant(TagPointComponent::AttrOffsetOrientation(), Ogre::Vector3::ZERO, this->attributes)),
+        useBakedOffset(new Variant(TagPointComponent::AttrUseBakedOffset(), true, this->attributes)),
+        bakeOffsetAction(new Variant(TagPointComponent::AttrBakeOffsetAction(), "Bake Offset Now", this->attributes))
     {
+        // Attention: the default is ON, but only for a component that is NEWLY ADDED in the
+        // editor. init() switches it off before parsing, so a scene that was saved before this
+        // attribute existed keeps the old behaviour and nothing in it moves.
+        this->bakeOffsetAction->addUserData(GameObject::AttrActionExec());
+        this->bakeOffsetAction->addUserData(GameObject::AttrActionExecId(), "TagPointComponent.BakeOffset");
+        this->bakeOffsetAction->setDescription("Freezes where the source currently hangs into 'Offset Position' and 'Offset Orientation' and switches 'Use Baked Offset' on. "
+                                               "Press this after moving the source, then save the scene.");
+
         this->tagPoints->setDescription("If this game object uses several TagPoint-Components data may not be tagged to the same bone name");
         this->offsetOrientation->setDescription("Orientation is set in the form: (degreeX, degreeY, degreeZ)");
+        this->useBakedOffset->setDescription("If on, the offset IS the attachment transform in the bone's local space and nothing is derived from world transforms at connect time. "
+                                             "Use bakeOffset() once to fill the offset in, then save the scene. If off, the offset is added on top of wherever the source happens to "
+                                             "sit relative to the bone when this component connects - which breaks as soon as the character is repositioned before that happens.");
     }
 
     TagPointComponent::~TagPointComponent()
@@ -180,6 +193,16 @@ namespace NOWA
     {
         GameObjectComponent::init(propertyElement);
 
+        // Attention: switched off BEFORE parsing, on purpose.
+        //
+        // The constructor defaults it to ON so that a component added in the editor is robust
+        // from the start. A scene saved before this attribute existed has no 'UseBakedOffset'
+        // property at all, so the block further down never fires - and without this line such a
+        // scene would silently come up with baking enabled and an offset of all zeroes, which
+        // would drop the source right onto the bone. Scenes saved WITH the property overwrite
+        // this again a few lines later.
+        this->useBakedOffset->setValue(false);
+
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TagPointName")
         {
             this->tagPoints->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
@@ -200,6 +223,13 @@ namespace NOWA
             this->offsetOrientation->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
         }
+        // Attention: read with a default of false, so every scene that was saved before this
+        // attribute existed keeps the old derive-at-connect behaviour and nothing moves.
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseBakedOffset")
+        {
+            this->useBakedOffset->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+            propertyElement = propertyElement->next_sibling("property");
+        }
         return true;
     }
 
@@ -211,6 +241,7 @@ namespace NOWA
         clonedCompPtr->setSourceId(this->sourceId->getULong());
         clonedCompPtr->setOffsetPosition(this->offsetPosition->getVector3());
         clonedCompPtr->setOffsetOrientation(this->offsetOrientation->getVector3());
+        clonedCompPtr->setUseBakedOffset(this->useBakedOffset->getBool());
 
         clonedGameObjectPtr->addComponent(clonedCompPtr);
         clonedCompPtr->setOwner(clonedGameObjectPtr);
@@ -321,6 +352,8 @@ namespace NOWA
                 GameObjectPtr sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->sourceId->getULong());
                 if (nullptr == sourceGameObjectPtr)
                 {
+                    // TEMPORARY DIAGNOSTICS
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TagPoint-DIAG] ABORTED: no source game object for id: " + Ogre::StringConverter::toString(this->sourceId->getULong()));
                     return;
                 }
 
@@ -332,9 +365,22 @@ namespace NOWA
                     this->sourcePhysicsActiveComponent = physicsActiveCompPtr.get();
                 }
 
+                // TEMPORARY DIAGNOSTICS - without a source physics component the update
+                // closure further down is never registered, and then nothing ever drives the
+                // body. The dynamic_cast result decides which of the two drive paths is taken.
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TagPoint-DIAG] source: " + sourceGameObjectPtr->getName() +
+                                                                                        " physicsActiveComponent: " + Ogre::String(nullptr != this->sourcePhysicsActiveComponent ? "FOUND" : "NULL") +
+                                                                                        " isKinematic: " + Ogre::String(nullptr != dynamic_cast<PhysicsActiveKinematicComponent*>(this->sourcePhysicsActiveComponent) ? "YES" : "no"));
+
                 // Resolve the bone by name
                 Ogre::IdString boneIdString(this->tagPoints->getListSelectedValue());
                 this->attachedBone = this->skeletonInstance->getBone(boneIdString);
+
+                // TEMPORARY DIAGNOSTICS
+                if (nullptr == this->attachedBone)
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TagPoint-DIAG] ABORTED: bone '" + this->tagPoints->getListSelectedValue() + "' NOT FOUND on the skeleton.");
+                }
 
                 if (nullptr != this->attachedBone)
                 {
@@ -375,6 +421,7 @@ namespace NOWA
                     Ogre::Vector3 baseLocalScale = sourceWorldScale / boneWorldScale;
 
                     // User-specified additional offset, applied on top of the base transform
+                    // Not const: the automatic bake further down may replace them.
                     Ogre::Vector3 offsetPos = this->offsetPosition->getVector3();
                     Ogre::Quaternion offsetQuat = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
 
@@ -389,8 +436,52 @@ namespace NOWA
                     // THEN add the user-specified offset on top of it (instead of
                     // using the offset as the sole/absolute local transform, which
                     // caused the visible twist).
-                    this->tagPointV2->setPosition(baseLocalPosition + (baseLocalOrientation * offsetPos));
-                    this->tagPointV2->setOrientation(baseLocalOrientation * offsetQuat);
+                    // Automatic one time bake.
+                    //
+                    // 'Use Baked Offset' is on but nothing has ever been stored, which is the
+                    // state of a freshly placed source: the values are still at their defaults.
+                    // The transform that was just derived above is exactly what has to be frozen,
+                    // and THIS is the right moment for it - the source is still sitting where it
+                    // was placed, the character has not been moved anywhere yet and the skeleton
+                    // is in the pose the editor showed.
+                    //
+                    // From the next connect onwards the stored values are used and nothing is
+                    // derived any more, so it no longer matters what has been repositioned in the
+                    // meantime. Saving the scene persists it; pressing 'Bake Offset Now' in the
+                    // editor repeats it deliberately after the source was moved.
+                    if (true == this->useBakedOffset->getBool() && true == this->offsetPosition->getVector3().positionEquals(Ogre::Vector3::ZERO, 0.0000001f) &&
+                        true == this->offsetOrientation->getVector3().positionEquals(Ogre::Vector3::ZERO, 0.0000001f))
+                    {
+                        this->offsetPosition->setValue(baseLocalPosition);
+                        this->offsetOrientation->setValue(this->internalOrientationToDegrees(baseLocalOrientation));
+
+                        offsetPos = this->offsetPosition->getVector3();
+                        offsetQuat = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
+
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TagPointComponent] Baked the attachment of game object: " + this->gameObjectPtr->getName() +
+                                                                                                " -> offset position: " + Ogre::StringConverter::toString(this->offsetPosition->getVector3()) +
+                                                                                                " offset orientation: " + Ogre::StringConverter::toString(this->offsetOrientation->getVector3()) + ". Save the scene to persist it.");
+                    }
+
+                    if (true == this->useBakedOffset->getBool())
+                    {
+                        // The offset IS the attachment, in the bone's local space. Nothing above
+                        // is used: not where this game object stands, not where the source stands,
+                        // not which animation frame the skeleton happens to show.
+                        //
+                        // That is the whole point. The derived variant below needs all three of
+                        // those to be correct at this exact instant, and they are not: a character
+                        // that is repositioned on level load before this component connects leaves
+                        // the source behind, so 'sourceWorldPosition - boneWorldPosition' becomes
+                        // the distance between the two places and the weapon hangs in the void.
+                        this->tagPointV2->setPosition(offsetPos);
+                        this->tagPointV2->setOrientation(offsetQuat);
+                    }
+                    else
+                    {
+                        this->tagPointV2->setPosition(baseLocalPosition + (baseLocalOrientation * offsetPos));
+                        this->tagPointV2->setOrientation(baseLocalOrientation * offsetQuat);
+                    }
 
                     // Re-apply the shield's own visual scale (e.g. 0.5, 0.5, 0.5).
                     // Without this the tag point defaults to scale (1,1,1), so the
@@ -480,6 +571,18 @@ namespace NOWA
     {
         // Runs on the render thread (tracked closure, after renderOneFrame).
 
+        // TEMPORARY DIAGNOSTICS - logged BEFORE the early return, so "the closure never runs"
+        // can be told apart from "it runs but returns immediately".
+        {
+            static unsigned int diagEnterCounter = 0;
+            diagEnterCounter++;
+            if (diagEnterCounter % 300 == 1)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TagPoint-DIAG] updateV2PhysicsFromTagPoint ENTERED #" + Ogre::StringConverter::toString(diagEnterCounter) + " tagPointV2: " +
+                                                                                        Ogre::String(nullptr != this->tagPointV2 ? "ok" : "NULL") + " sourcePhysics: " + Ogre::String(nullptr != this->sourcePhysicsActiveComponent ? "ok" : "NULL"));
+            }
+        }
+
         // attachedBone and the character's scene node are dereferenced below now, so they are
         // part of the guard.
         if (nullptr == this->tagPointV2 || nullptr == this->sourcePhysicsActiveComponent || nullptr == this->attachedBone || nullptr == this->gameObjectPtr->getSceneNode())
@@ -551,9 +654,51 @@ namespace NOWA
             // One call for both values on purpose: set separately, the second call reads the
             // other value back out of the body and writes the stale one.
             sourcePhysicsActiveKinematicComponent->setKinematicPositionOrientation(tagPointWorldPosition, tagPointWorldOrientation);
+
+            // TEMPORARY DIAGNOSTICS - remove once the kinematic contact is understood.
+            //
+            // Separates the only two possibilities for a weapon body sitting at the world
+            // origin:
+            //
+            //   tagPoint 0 0 0               -> the TagPoint's derived transform is the
+            //                                   problem. _getDerivedPositionUpdated() resolves
+            //                                   a NODE chain, but a v2 TagPoint hangs off a
+            //                                   BONE and is written during the skeleton pass.
+            //                                   Compare against 'bone', which is computed the
+            //                                   way getBonePosition() does it.
+            //
+            //   tagPoint correct, body 0 0 0 -> setPosition() never reaches the kinematic
+            //                                   body. createDynamicBody() removed its force
+            //                                   and torque callback, so a deferred transform
+            //                                   command would have no consumer.
+            {
+                static unsigned int diagCounter = 0;
+                diagCounter++;
+                if (diagCounter % 30 == 1)
+                {
+                    // boneLocal is the decisive value: if it never changes while an animation is
+                    // playing, the bone transform being read is the bind pose and not the
+                    // animated one - then no amount of physics work downstream can help.
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TagPoint-DIAG] #" + Ogre::StringConverter::toString(diagCounter) + " boneLocal: " + Ogre::StringConverter::toString(boneLocalPosition) +
+                                                                                            " charWorld: " + Ogre::StringConverter::toString(characterWorldPosition) + " bone: " + Ogre::StringConverter::toString(boneWorldPosition) +
+                                                                                            " computedWorld: " + Ogre::StringConverter::toString(tagPointWorldPosition) +
+                                                                                            " bodyAfterSet: " + Ogre::StringConverter::toString(sourcePhysicsActiveKinematicComponent->getPosition()));
+                }
+            }
         }
         else
         {
+            // TEMPORARY DIAGNOSTICS - if this fires for the cudgel, the dynamic_cast to
+            // PhysicsActiveKinematicComponent failed and the wrong drive path is used.
+            {
+                static unsigned int diagJointCounter = 0;
+                diagJointCounter++;
+                if (diagJointCounter % 300 == 1)
+                {
+                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TagPoint-DIAG] NON-KINEMATIC drive path used for: " + this->sourcePhysicsActiveComponent->getOwner()->getName());
+                }
+            }
+
             // Non-kinematic body: the JointKinematicComponent was created in
             // connectV2Item and drives the body via a target position/rotation.
             auto jointKinematicCompPtr = NOWA::makeStrongPtr(this->sourcePhysicsActiveComponent->getOwner()->getComponent<JointKinematicComponent>());
@@ -619,10 +764,13 @@ namespace NOWA
             // sits in the list.
             if (false == this->updateClosureId.empty() && nullptr != this->tagPointV2 && nullptr != this->sourcePhysicsActiveComponent)
             {
-                NOWA::GraphicsModule::getInstance()->updateTrackedClosure(this->updateClosureId,  [this](Ogre::Real /*renderDt*/)
+                NOWA::GraphicsModule::getInstance()->updateTrackedClosure(
+                    this->updateClosureId,
+                    [this](Ogre::Real /*renderDt*/)
                     {
                         this->updateV2PhysicsFromTagPoint();
-                    }, false);
+                    },
+                    false);
             }
 
             if (true == this->bShowDebugData && nullptr != this->debugGeometryArrowNode)
@@ -663,6 +811,21 @@ namespace NOWA
         {
             this->setOffsetOrientation(attribute->getVector3());
         }
+        else if (TagPointComponent::AttrUseBakedOffset() == attribute->getName())
+        {
+            this->setUseBakedOffset(attribute->getBool());
+        }
+    }
+
+    bool TagPointComponent::executeAction(const Ogre::String& actionId, NOWA::Variant* attribute)
+    {
+        if ("TagPointComponent.BakeOffset" == actionId)
+        {
+            this->bakeOffset();
+            return true;
+        }
+
+        return false;
     }
 
     void TagPointComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
@@ -691,6 +854,12 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
         propertyXML->append_attribute(doc.allocate_attribute("name", "OffsetOrientation"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->offsetOrientation->getVector3())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "UseBakedOffset"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useBakedOffset->getBool())));
         propertiesXML->append_node(propertyXML);
     }
 
@@ -829,6 +998,147 @@ namespace NOWA
     Ogre::Vector3 TagPointComponent::getOffsetPosition(void) const
     {
         return this->offsetPosition->getVector3();
+    }
+
+    Ogre::Vector3 TagPointComponent::internalOrientationToDegrees(const Ogre::Quaternion& orientation)
+    {
+        // The offset attribute is degrees, so the quaternion has to be decomposed. Ogre's XYZ
+        // euler extraction is the inverse of building the rotation as X * Y * Z.
+        Ogre::Matrix3 rotationMatrix;
+        orientation.ToRotationMatrix(rotationMatrix);
+
+        Ogre::Radian eulerX;
+        Ogre::Radian eulerY;
+        Ogre::Radian eulerZ;
+        rotationMatrix.ToEulerAnglesXYZ(eulerX, eulerY, eulerZ);
+
+        Ogre::Vector3 degrees(eulerX.valueDegrees(), eulerY.valueDegrees(), eulerZ.valueDegrees());
+
+        // Verified rather than trusted: MathHelper::degreesToQuat is what connect() feeds these
+        // degrees back into, so the round trip has to land on the same rotation. If the two used a
+        // different euler order, the attachment would come back subtly twisted and silently so.
+        Ogre::Quaternion verifyOrientation = MathHelper::getInstance()->degreesToQuat(degrees);
+        const Ogre::Real orientationDot = Ogre::Math::Abs(verifyOrientation.Dot(orientation));
+
+        if (orientationDot < 0.9999f)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TagPointComponent] The attachment orientation of game object: " + this->gameObjectPtr->getName() + " cannot be expressed as degrees without loss (dot: " +
+                                                                                    Ogre::StringConverter::toString(orientationDot) + "). MathHelper::degreesToQuat uses a different euler order than Matrix3::ToEulerAnglesXYZ.");
+        }
+
+        return degrees;
+    }
+
+    bool TagPointComponent::internalComputeBaseLocalTransform(Ogre::Bone* bone, Ogre::Vector3& outLocalPosition, Ogre::Quaternion& outLocalOrientation)
+    {
+        if (nullptr == bone || nullptr == this->gameObjectPtr)
+        {
+            return false;
+        }
+
+        GameObjectPtr sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->sourceId->getULong());
+        if (nullptr == sourceGameObjectPtr)
+        {
+            return false;
+        }
+
+        Ogre::SceneNode* characterSceneNode = this->gameObjectPtr->getSceneNode();
+        Ogre::SceneNode* sourceSceneNode = sourceGameObjectPtr->getSceneNode();
+
+        if (nullptr == characterSceneNode || nullptr == sourceSceneNode)
+        {
+            return false;
+        }
+
+        Ogre::Vector3 sourceWorldPosition = sourceSceneNode->_getDerivedPositionUpdated();
+        Ogre::Quaternion sourceWorldOrientation = sourceSceneNode->_getDerivedOrientationUpdated();
+
+        Ogre::Vector3 characterWorldPosition = characterSceneNode->_getDerivedPositionUpdated();
+        Ogre::Quaternion characterWorldOrientation = characterSceneNode->_getDerivedOrientationUpdated();
+        Ogre::Vector3 characterWorldScale = characterSceneNode->_getDerivedScale();
+
+        Ogre::Vector3 boneLocalPosition;
+        Ogre::Quaternion boneLocalOrientation;
+        extractBoneLocalTransform(bone, boneLocalPosition, boneLocalOrientation);
+
+        Ogre::Vector3 boneWorldPosition = characterWorldOrientation * (boneLocalPosition * characterWorldScale) + characterWorldPosition;
+        Ogre::Quaternion boneWorldOrientation = characterWorldOrientation * boneLocalOrientation;
+        Ogre::Vector3 boneWorldScale = characterWorldScale;
+
+        Ogre::Quaternion boneWorldOrientationInverse = boneWorldOrientation.Inverse();
+
+        outLocalPosition = boneWorldOrientationInverse * ((sourceWorldPosition - boneWorldPosition) / boneWorldScale);
+        outLocalOrientation = boneWorldOrientationInverse * sourceWorldOrientation;
+
+        return true;
+    }
+
+    void TagPointComponent::setUseBakedOffset(bool useBakedOffset)
+    {
+        this->useBakedOffset->setValue(useBakedOffset);
+    }
+
+    bool TagPointComponent::getUseBakedOffset(void) const
+    {
+        return this->useBakedOffset->getBool();
+    }
+
+    void TagPointComponent::bakeOffset(void)
+    {
+        Ogre::Vector3 localPosition = Ogre::Vector3::ZERO;
+        Ogre::Quaternion localOrientation = Ogre::Quaternion::IDENTITY;
+        bool baked = false;
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, &localPosition, &localOrientation, &baked]()
+        {
+            if (nullptr != this->tagPointV2)
+            {
+                // Already attached: the tag point is a child of the bone, so its LOCAL transform
+                // IS the attachment relative to that bone. Nothing has to be recomputed.
+                localPosition = this->tagPointV2->getPosition();
+                localOrientation = this->tagPointV2->getOrientation();
+                baked = true;
+                return;
+            }
+
+            // Not attached yet - which is the NORMAL case, because the natural moment to bake is
+            // in the editor with the simulation switched OFF: the source sits exactly where it was
+            // pushed into the hand, the character is at its authored position and the skeleton is
+            // in its bind pose. There is no better pose to freeze than that one, and no tag point
+            // exists at that point.
+            //
+            // So the very computation connect() would do is run right here instead, and its result
+            // is stored rather than being redone later under conditions nobody controls.
+            if (nullptr == this->skeletonInstance)
+            {
+                return;
+            }
+
+            const Ogre::String boneName = this->tagPoints->getListSelectedValue();
+            if (true == boneName.empty() || false == this->skeletonInstance->hasBone(Ogre::IdString(boneName)))
+            {
+                return;
+            }
+
+            baked = this->internalComputeBaseLocalTransform(this->skeletonInstance->getBone(Ogre::IdString(boneName)), localPosition, localOrientation);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "TagPointComponent::bakeOffset");
+
+        if (false == baked)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[TagPointComponent] bakeOffset failed for game object: " + this->gameObjectPtr->getName() + ". Check that 'Tag Point Name' names an existing bone and that 'Source Id' points at a game object that is in the scene.");
+            return;
+        }
+
+        Ogre::Vector3 degrees = this->internalOrientationToDegrees(localOrientation);
+
+        this->offsetPosition->setValue(localPosition);
+        this->offsetOrientation->setValue(degrees);
+        this->useBakedOffset->setValue(true);
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TagPointComponent] bakeOffset for game object: " + this->gameObjectPtr->getName() + " -> offset position: " + Ogre::StringConverter::toString(localPosition) +
+                                                                                " offset orientation: " + Ogre::StringConverter::toString(degrees) + ". Save the scene to persist it.");
     }
 
     void TagPointComponent::setOffsetOrientation(const Ogre::Vector3& offsetOrientation)
@@ -1058,20 +1368,20 @@ namespace NOWA
 
     void TagPointComponent::createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
     {
-        luabind::module(lua)
-        [
-            luabind::class_<TagPointComponent, GameObjectComponent>("TagPointComponent")
-            .def("setTagPointName", &TagPointComponent::setTagPointName)
-            .def("getTagPointName", &TagPointComponent::getTagPointName)
-            .def("setSourceId", &setSourceIdForLua)
-            .def("getSourceId", &getSourceIdForLua)
-            .def("setOffsetPosition", &TagPointComponent::setOffsetPosition)
-            .def("getOffsetPosition", &TagPointComponent::getOffsetPosition)
-            .def("setOffsetOrientation", &TagPointComponent::setOffsetOrientation)
-            .def("getOffsetOrientation", &TagPointComponent::getOffsetOrientation)
-            .def("getBonePosition", &TagPointComponent::getBonePosition)
-            .def("getBoneOrientation", &TagPointComponent::getBoneOrientation)
-        ];
+        luabind::module(lua)[luabind::class_<TagPointComponent, GameObjectComponent>("TagPointComponent")
+                .def("setTagPointName", &TagPointComponent::setTagPointName)
+                .def("getTagPointName", &TagPointComponent::getTagPointName)
+                .def("setSourceId", &setSourceIdForLua)
+                .def("getSourceId", &getSourceIdForLua)
+                .def("setOffsetPosition", &TagPointComponent::setOffsetPosition)
+                .def("getOffsetPosition", &TagPointComponent::getOffsetPosition)
+                .def("setOffsetOrientation", &TagPointComponent::setOffsetOrientation)
+                .def("setUseBakedOffset", &TagPointComponent::setUseBakedOffset)
+                .def("getUseBakedOffset", &TagPointComponent::getUseBakedOffset)
+                .def("bakeOffset", &TagPointComponent::bakeOffset)
+                .def("getOffsetOrientation", &TagPointComponent::getOffsetOrientation)
+                .def("getBonePosition", &TagPointComponent::getBonePosition)
+                .def("getBoneOrientation", &TagPointComponent::getBoneOrientation)];
 
         LuaScriptApi::getInstance()->addClassToCollection("TagPointComponent", "class inherits GameObjectComponent", TagPointComponent::getStaticInfoText());
         LuaScriptApi::getInstance()->addClassToCollection("TagPointComponent", "void setTagPointName(String tagName)", "Sets the tag point name the source game object should be attached to.");
@@ -1082,6 +1392,14 @@ namespace NOWA
         LuaScriptApi::getInstance()->addClassToCollection("TagPointComponent", "Vector3 getOffsetPosition()", "Gets the attachment offset position.");
         LuaScriptApi::getInstance()->addClassToCollection("TagPointComponent", "void setOffsetOrientation(Vector3 offsetOrientation)", "Sets the attachment offset orientation in degrees.");
         LuaScriptApi::getInstance()->addClassToCollection("TagPointComponent", "Vector3 getOffsetOrientation()", "Gets the attachment offset orientation in degrees.");
+        LuaScriptApi::getInstance()->addClassToCollection("TagPointComponent", "void setUseBakedOffset(bool useBakedOffset)",
+            "Sets whether the offset IS the attachment transform in the bone's local space. On, nothing is derived from world transforms at connect time, so it no longer matters where "
+            "the character or the source are standing or which animation frame is showing. Off (the default) keeps the old behaviour of adding the offset on top of a transform derived "
+            "at connect time.");
+        LuaScriptApi::getInstance()->addClassToCollection("TagPointComponent", "bool getUseBakedOffset()", "Gets whether the offset is used as the final attachment transform.");
+        LuaScriptApi::getInstance()->addClassToCollection("TagPointComponent", "void bakeOffset()",
+            "Freezes the CURRENT attachment into the offset attributes and switches 'Use Baked Offset' on. Place the source where it belongs, let the component connect once, then call "
+            "this and save the scene.");
         LuaScriptApi::getInstance()->addClassToCollection("TagPointComponent", "Vector3 getBonePosition(String name)", "Gets a named bone position in world space.");
         LuaScriptApi::getInstance()->addClassToCollection("TagPointComponent", "Quaternion getBoneOrientation(String name)", "Gets a named bone orientation in world space.");
 

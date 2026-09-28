@@ -104,6 +104,11 @@ namespace NOWA
         virtual void actualizeValue(Variant* attribute) override;
 
         /**
+         * @see		GameObjectComponent::executeAction
+         */
+        virtual bool executeAction(const Ogre::String& actionId, NOWA::Variant* attribute) override;
+
+        /**
          * @see		GameObjectComponent::writeXML
          */
         virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
@@ -178,6 +183,41 @@ namespace NOWA
         Ogre::Vector3 getOffsetOrientation(void) const;
 
         /**
+         * @brief Sets whether the offset is used as the FINAL attachment transform instead of
+         *        being added on top of a transform derived at connect time.
+         * @param[in] useBakedOffset The flag to set
+         * @Note  Off (the default) keeps the historical behaviour: connect() reads the world
+         *        transforms of the source and of this game object, works out where the source
+         *        currently sits relative to the bone, and adds the offset on top of that. That is
+         *        convenient while placing an object in the editor, but it makes the attachment
+         *        depend on THREE things that all have to be right at that exact moment - where
+         *        this game object stands, where the source stands, and which pose the skeleton is
+         *        in. Move the character before this component connects and the source stays
+         *        behind, so the derived transform is the distance between the two.
+         *
+         *        On, the offset IS the attachment, expressed in the bone's local space. Nothing
+         *        is read from the world, so it no longer matters where anybody stands or which
+         *        animation frame is showing. Use bakeOffset() to fill the values in once.
+         */
+        void setUseBakedOffset(bool useBakedOffset);
+
+        /**
+         * @brief Gets whether the offset is used as the final attachment transform.
+         */
+        bool getUseBakedOffset(void) const;
+
+        /**
+         * @brief Freezes the CURRENT attachment into the offset attributes and switches
+         *        'Use Baked Offset' on.
+         * @Note  Place the source where it belongs, let this component connect once so the tag
+         *        point is built, then call this. The tag point's local transform is by definition
+         *        the attachment relative to the bone, so it is simply copied into the offset -
+         *        no world transform is involved and there is nothing left to get wrong later.
+         *        Save the scene afterwards and the attachment is persisted.
+         */
+        void bakeOffset(void);
+
+        /**
          * @brief Gets a named bone position in world space.
          * @param[in] name The bone name.
          * @return The bone position, or Ogre::Vector3::ZERO when unavailable.
@@ -220,6 +260,14 @@ namespace NOWA
         {
             return "Offset Orientation";
         }
+        static const Ogre::String AttrUseBakedOffset(void)
+        {
+            return "Use Baked Offset";
+        }
+        static const Ogre::String AttrBakeOffsetAction(void)
+        {
+            return "Bake Offset";
+        }
 
     private:
         void generateDebugData(void);
@@ -233,6 +281,16 @@ namespace NOWA
         // Physics update closure for V2 (registered only when source has physics)
         void updateV2PhysicsFromTagPoint(void);
 
+        // Works out where the source currently sits relative to the given bone. This is the same
+        // computation connect() uses, factored out so bakeOffset() can run it with the simulation
+        // switched off - before any tag point exists.
+        // Attention: RENDER THREAD only.
+        bool internalComputeBaseLocalTransform(Ogre::Bone* bone, Ogre::Vector3& outLocalPosition, Ogre::Quaternion& outLocalOrientation);
+
+        // Decomposes an attachment orientation into the degrees the offset attribute stores, and
+        // verifies the round trip through MathHelper::degreesToQuat.
+        Ogre::Vector3 internalOrientationToDegrees(const Ogre::Quaternion& orientation);
+
     private:
         // Common members
         Ogre::SceneNode* tagPointNode;
@@ -244,6 +302,8 @@ namespace NOWA
         Variant* sourceId;
         Variant* offsetPosition;
         Variant* offsetOrientation;
+        Variant* useBakedOffset;
+        Variant* bakeOffsetAction;
 
         // Debug visualization
         Ogre::SceneNode* debugGeometryArrowNode;

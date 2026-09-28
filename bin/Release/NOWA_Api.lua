@@ -771,6 +771,22 @@ return {
 				returns = "(boolean)",
 				valuetype = "boolean"
 			},
+			setInvertDirection =
+			{
+				type = "method",
+				description = "Inverses the waypoint direction.",
+				args = "(boolean invert)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			turnAround =
+			{
+				type = "function",
+				description = "Turns the agent around on its live path, so it walks back to the waypoint it is coming from. Returns true if it turned around.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
 			setGoalRadius =
 			{
 				type = "method",
@@ -858,6 +874,14 @@ return {
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
+			},
+			setInvertDirection =
+			{
+				type = "method",
+				description = "Inverts the waypoint direction.",
+				args = "(boolean invert)",
+				returns = "(nil)",
+				valuetype = "nil"
 			},
 			setGoalRadius =
 			{
@@ -33601,6 +33625,14 @@ return {
 				returns = "(nil)",
 				valuetype = "nil"
 			},
+			removeEventListener =
+			{
+				type = "method",
+				description = "Removes the given event listener for the given type and callback function.",
+				args = "(EventType eventType, luabind::object callbackFunction)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
 			queueEvent =
 			{
 				type = "function",
@@ -35103,6 +35135,30 @@ return {
 				args = "()",
 				returns = "(Vector3)",
 				valuetype = "Vector3"
+			},
+			setUseBakedOffset =
+			{
+				type = "method",
+				description = "Sets whether the offset IS the attachment transform in the bone's local space. On, nothing is derived from world transforms at connect time, so it no longer matters where the character or the source are standing or which animation frame is showing. Off (the default) keeps the old behaviour of adding the offset on top of a transform derived at connect time.",
+				args = "(boolean useBakedOffset)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getUseBakedOffset =
+			{
+				type = "function",
+				description = "Gets whether the offset is used as the final attachment transform.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			bakeOffset =
+			{
+				type = "method",
+				description = "Freezes the CURRENT attachment into the offset attributes and switches 'Use Baked Offset' on. Place the source where it belongs, let the component connect once, then call this and save the scene.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
 			},
 			getBonePosition =
 			{

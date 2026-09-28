@@ -41,6 +41,8 @@ namespace NOWA
 
 			void setInvertDirection(bool invertDirection);
 
+			bool turnAround(void);
+
 			// Adds a waypoint to the end of the path
 			void addWayPoint(const Ogre::Vector3& newPoint, const Ogre::Quaternion& orientation = Ogre::Quaternion::IDENTITY);
 

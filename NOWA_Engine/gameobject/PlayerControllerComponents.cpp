@@ -1562,7 +1562,7 @@ namespace NOWA
         if (nullptr != this->animationBlender)
         {
             // this->animationBlender->clearAnimations();
-            this->animationBlender->init(NOWA::AnimationBlenderV2::ANIM_IDLE_1);
+            this->animationBlender->resetBlendState();
             // Reset animation to T-Pose
             this->animationBlender->setSourceEnabled(false);
         }
@@ -3128,10 +3128,10 @@ namespace NOWA
     void WalkingStateJumpNRun::enter(GameObject* player)
     {
         this->playerController = NOWA::makeStrongPtr(player->getComponent<PlayerControllerJumpNRunComponent>()).get();
-        this->walkSound = OgreALModule::getInstance()->createSound(this->playerController->getOwner()->getSceneManager(), "PlayerWalk1", "Walk.wav");
-        this->walkSound->setGain(0.5f);
+        this->walkSound = OgreALModule::getInstance()->createSound(this->playerController->getOwner()->getSceneManager(), "PlayerWalk1", "step0.wav");
+        this->walkSound->setGain(1.0f);
         this->jumpSound = OgreALModule::getInstance()->createSound(this->playerController->getOwner()->getSceneManager(), "PlayerJump1", "Jump1.wav");
-        this->jumpSound->setGain(0.5f);
+        this->jumpSound->setGain(1.0f);
 
         this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_IDLE_1, NOWA::AnimationBlenderV2::BlendThenAnimate, 0.2f, true);
 

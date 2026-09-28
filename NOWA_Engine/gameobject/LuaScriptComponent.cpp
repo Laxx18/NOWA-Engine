@@ -66,7 +66,11 @@ namespace NOWA
         hasUpdateFunction(false),
         hasLateUpdateFunction(false),
         componentCloned(false),
-        alreadyDisconnected(false),
+        // Attention: true on purpose. It means "the lua 'disconnect' must not run now" and is only set
+        // to false once the lua 'connect' really ran (see setActivated()). onRemoveComponent() now calls
+        // disconnect() as well, and in the editor (component or game object removed, simulation never
+        // started) that must not execute the lua 'disconnect' of a script that was never connected.
+        alreadyDisconnected(true),
         activated(new Variant(LuaScriptComponent::AttrActivated(), true, this->attributes)),
         scriptFile(new Variant(LuaScriptComponent::AttrScriptFile(), Ogre::String(""), this->attributes)),
         cloneScript(new Variant(LuaScriptComponent::AttrCloneScript(), false, this->attributes)),
@@ -270,6 +274,19 @@ namespace NOWA
     void LuaScriptComponent::onRemoveComponent(void)
     {
         GameObjectComponent::onRemoveComponent();
+
+        // Attention: a game object deleted WHILE the simulation runs (e.g. an enemy killed and removed
+        // via deleteDelayedGameObject) never got its lua 'disconnect' called - GameObject::destroy()
+        // only calls onRemoveComponent(). The script's module ("Rhino_<id>") however stays alive in the
+        // lua state, together with every event listener it registered and every game object reference
+        // it holds. The next event (e.g. EnemyDeadEvent of the NEXT rhino) then ran the handler of the
+        // deleted one, which called getId() on its already freed game object -> crash.
+        //
+        // disconnect() runs the lua 'disconnect' only if the lua 'connect' really ran and it was not
+        // disconnected yet (alreadyDisconnected), so this is a no-op in the editor and after a normal
+        // simulation stop. The script's 'disconnect' is expected to remove its event listeners and to
+        // drop its game object references.
+        this->disconnect();
 
         boost::shared_ptr<EventDataLuaScriptModfied> eventDataLuaScriptModified(new EventDataLuaScriptModfied(this->gameObjectPtr->getId(), ""));
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataLuaScriptModified);

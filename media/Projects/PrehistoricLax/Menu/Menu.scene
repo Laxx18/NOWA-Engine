@@ -6,7 +6,7 @@
 		<ambient>
 			<ambientLightUpperHemisphere r="0.00835963" g="0.0303886" b="0.0758533"/>
 			<ambientLightLowerHemisphere r="0.0142503" g="0.015975" b="0.0144702" a="1"/>
-			<hemisphereDir x="-6.69105e-08" y="0.92388" z="-0.382683"/>
+			<hemisphereDir x="0" y="0.882948" z="0.469471"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -33,7 +33,7 @@
 			<renderDistance distance="100"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-2.82594 -0.1615 -0.153" mostRightFarPosition="3.35268 8.84276 6.74843"/>
+		<bounds mostLeftNearPosition="inf inf inf" mostRightFarPosition="-inf -inf -inf"/>
 	</environment>
 	<OgreNewt solverModel="4" threadCount="1" desiredFps="60" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -41,8 +41,8 @@
 	</OgreNewt>
 	<nodes>
 		<node name="SunLight" id="1479238507">
-			<position x="2.93158" y="8.33287" z="6.23853"/>
-			<rotation qw="0.830378" qx="-0.343954" qy="0.167757" qz="0.405002"/>
+			<position x="3.35268" y="8.84276" z="6.74843"/>
+			<rotation qw="0.770417" qx="-0.462914" qy="0.225778" qz="0.375757"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -56,6 +56,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -95,9 +96,10 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -157,7 +159,7 @@
 					<property type="2" name="PresetsCount" data="1"/>
 					<property type="7" name="Time0" data="06:30"/>
 					<property type="6" name="DensityCoefficient0" data="0.37"/>
-					<property type="6" name="DensityDiffusion0" data="2"/>
+					<property type="6" name="DensityDiffusion0" data="1"/>
 					<property type="6" name="HorizonLimit0" data="0.035"/>
 					<property type="6" name="SunPower0" data="1"/>
 					<property type="6" name="SkyPower0" data="1"/>
@@ -188,6 +190,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="false"/>
+					<property type="12" name="HideOnConnect" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -206,6 +209,7 @@
 					<property type="7" name="ScriptFile" data="MainGameObject.lua"/>
 					<property type="12" name="CloneScript" data="false"/>
 					<property type="12" name="HasCommonScript" data="false"/>
+					<property type="12" name="ScriptGlobal" data="false"/>
 					<property type="2" name="OrderIndex" data="0"/>
 					<property type="7" name="ComponentMyGUIButtonComponent" data="MyGUIButtonComponent"/>
 					<property type="7" name="Name" data="ContinueButton"/>
@@ -220,7 +224,7 @@
 					<property type="10" name="Color" data="0.85 0.78 0.6 1"/>
 					<property type="12" name="Enabled" data="true"/>
 					<property type="2" name="ParentId" data="0"/>
-					<property type="7" name="Skin" data="Button"/>
+					<property type="7" name="Skin" data="WoodButton"/>
 					<property type="12" name="CommonWidget" data="false"/>
 					<property type="7" name="Caption" data="Continue"/>
 					<property type="2" name="FontHeight" data="40"/>
@@ -249,7 +253,7 @@
 					<property type="10" name="Color" data="0.85 0.78 0.6 1"/>
 					<property type="12" name="Enabled" data="true"/>
 					<property type="2" name="ParentId" data="0"/>
-					<property type="7" name="Skin" data="Button"/>
+					<property type="7" name="Skin" data="WoodButton"/>
 					<property type="12" name="CommonWidget" data="false"/>
 					<property type="7" name="Caption" data="Start"/>
 					<property type="2" name="FontHeight" data="40"/>
@@ -278,7 +282,7 @@
 					<property type="10" name="Color" data="0.85 0.78 0.6 1"/>
 					<property type="12" name="Enabled" data="true"/>
 					<property type="2" name="ParentId" data="0"/>
-					<property type="7" name="Skin" data="Button"/>
+					<property type="7" name="Skin" data="WoodButton"/>
 					<property type="12" name="CommonWidget" data="false"/>
 					<property type="7" name="Caption" data="Load"/>
 					<property type="2" name="FontHeight" data="40"/>
@@ -307,7 +311,7 @@
 					<property type="10" name="Color" data="0.85 0.78 0.6 1"/>
 					<property type="12" name="Enabled" data="true"/>
 					<property type="2" name="ParentId" data="0"/>
-					<property type="7" name="Skin" data="Button"/>
+					<property type="7" name="Skin" data="WoodButton"/>
 					<property type="12" name="CommonWidget" data="false"/>
 					<property type="7" name="Caption" data="Configuration"/>
 					<property type="2" name="FontHeight" data="40"/>
@@ -336,7 +340,7 @@
 					<property type="10" name="Color" data="0.85 0.78 0.6 1"/>
 					<property type="12" name="Enabled" data="true"/>
 					<property type="2" name="ParentId" data="0"/>
-					<property type="7" name="Skin" data="Button"/>
+					<property type="7" name="Skin" data="WoodButton"/>
 					<property type="12" name="CommonWidget" data="false"/>
 					<property type="7" name="Caption" data="Exit"/>
 					<property type="2" name="FontHeight" data="40"/>

@@ -6412,3 +6412,218 @@ particle_system SleepZzzDrift
         keep_velocity   true
     }
 }
+
+// ============================================================================
+// Dust particle effects for landing / footsteps
+//
+// DustLand      -> short puff when the player lands after a jump. Small, only
+//                  visible around the shoes, fades out in well under a second.
+// DustLandSoft  -> even smaller variant for short hops / low falls.
+// DustStep      -> tiny puff for running footsteps (one per step).
+//
+// Usage:
+//   Create the system at the feet position (ground contact point) at the moment
+//   of landing. The emitter is active for a very short time only (duration) and
+//   does NOT repeat (no repeat_delay), so it is a one-shot burst. Destroy the
+//   system after roughly 1 second (or pool and re-create it on the next landing).
+//
+// All values are tuned for a scale of 1 unit == 1 meter.
+// Uses the existing material Particle/Smoke (soft alpha sprite, AlphaTransparent).
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// Standard landing puff.
+// ----------------------------------------------------------------------------
+particle_system DustLand
+{
+    material                Particle/Smoke
+    particle_width          0.10
+    particle_height         0.10
+    cull_each               false
+    quota                   40
+    billboard_type          point
+    billboard_rotation_type vertex
+    sorted                  true
+
+    // Flat emitter around the feet. With direction 0 1 0 the width/height axes
+    // span the horizontal plane and depth is the (almost zero) vertical extent.
+    emitter Box
+    {
+        position            0 0.02 0
+        angle               80
+        emission_rate       140
+        duration            0.08
+        time_to_live_min    0.35
+        time_to_live_max    0.65
+        direction           0 1 0
+        velocity_min        0.35
+        velocity_max        0.85
+        colour_range_start  0.78 0.70 0.58 0.55
+        colour_range_end    0.88 0.82 0.70 0.55
+        width               0.30
+        height              0.30
+        depth               0.02
+    }
+
+    // Fade in very quickly, then fade out completely.
+    affector ColourInterpolator
+    {
+        time0       0.0
+        colour0     1 1 1 0
+        time1       0.10
+        colour1     1 1 1 1
+        time2       0.45
+        colour2     1 1 1 0.55
+        time3       1.0
+        colour3     1 1 1 0
+    }
+
+    // The puff expands while it fades away.
+    affector Scaler
+    {
+        rate 0.28
+    }
+
+    // Random tilt and a lazy rotation, so the puffs do not all look the same.
+    affector Rotator
+    {
+        rotation_range_start        0
+        rotation_range_end          360
+        rotation_speed_range_start  -40
+        rotation_speed_range_end    40
+    }
+
+    // Tiny upward lift, dust hangs in the air for a moment.
+    affector LinearForce
+    {
+        force_vector        0 0.35 0
+        force_application   add
+    }
+
+    // Small jitter so the burst does not look perfectly symmetrical.
+    affector DirectionRandomiser
+    {
+        randomness      0.8
+        scope           0.4
+        keep_velocity   true
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Softer / smaller variant for short hops.
+// ----------------------------------------------------------------------------
+particle_system DustLandSoft
+{
+    material                Particle/Smoke
+    particle_width          0.07
+    particle_height         0.07
+    cull_each               false
+    quota                   20
+    billboard_type          point
+    billboard_rotation_type vertex
+    sorted                  true
+
+    emitter Box
+    {
+        position            0 0.02 0
+        angle               80
+        emission_rate       80
+        duration            0.06
+        time_to_live_min    0.25
+        time_to_live_max    0.45
+        direction           0 1 0
+        velocity_min        0.20
+        velocity_max        0.50
+        colour_range_start  0.78 0.70 0.58 0.45
+        colour_range_end    0.88 0.82 0.70 0.45
+        width               0.22
+        height              0.22
+        depth               0.02
+    }
+
+    affector ColourInterpolator
+    {
+        time0       0.0
+        colour0     1 1 1 0
+        time1       0.12
+        colour1     1 1 1 1
+        time2       0.50
+        colour2     1 1 1 0.45
+        time3       1.0
+        colour3     1 1 1 0
+    }
+
+    affector Scaler
+    {
+        rate 0.20
+    }
+
+    affector Rotator
+    {
+        rotation_range_start        0
+        rotation_range_end          360
+        rotation_speed_range_start  -30
+        rotation_speed_range_end    30
+    }
+
+    affector LinearForce
+    {
+        force_vector        0 0.25 0
+        force_application   add
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Tiny footstep puff for running. Place it at the foot that just touched down.
+// ----------------------------------------------------------------------------
+particle_system DustStep
+{
+    material                Particle/Smoke
+    particle_width          0.05
+    particle_height         0.05
+    cull_each               false
+    quota                   12
+    billboard_type          point
+    billboard_rotation_type vertex
+    sorted                  true
+
+    emitter Point
+    {
+        position            0 0.02 0
+        angle               60
+        emission_rate       60
+        duration            0.05
+        time_to_live_min    0.20
+        time_to_live_max    0.35
+        direction           0 1 0
+        velocity_min        0.10
+        velocity_max        0.30
+        colour_range_start  0.78 0.70 0.58 0.40
+        colour_range_end    0.88 0.82 0.70 0.40
+    }
+
+    affector ColourInterpolator
+    {
+        time0       0.0
+        colour0     1 1 1 0
+        time1       0.15
+        colour1     1 1 1 1
+        time2       0.55
+        colour2     1 1 1 0.40
+        time3       1.0
+        colour3     1 1 1 0
+    }
+
+    affector Scaler
+    {
+        rate 0.14
+    }
+
+    affector Rotator
+    {
+        rotation_range_start        0
+        rotation_range_end          360
+        rotation_speed_range_start  -25
+        rotation_speed_range_end    25
+    }
+}

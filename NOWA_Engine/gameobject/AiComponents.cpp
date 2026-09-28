@@ -1138,6 +1138,186 @@ namespace NOWA
 		return this->goalRadius->getReal();
 	}
 
+	bool AiPathFollowComponent::turnAround(void)
+	{
+		// Attention: setInvertDirection() can NOT be used for this. It only stores the attribute, the
+		// running path picks it up on the next connect() only. And even then it would not mean "turn
+		// around": KI::Path inverts the traversal order of the whole list, so whether the agent ends
+		// up walking away from its current target depends on where it currently is. This function
+		// rebuilds the LIVE path so that the waypoint BEHIND the agent becomes the next target.
+		if (false == this->bConnected || nullptr == this->movingBehaviorPtr)
+		{
+			return false;
+		}
+
+		auto* path = this->movingBehaviorPtr->getPath();
+		if (nullptr == path)
+		{
+			return false;
+		}
+
+		// Same waypoint lookup as connect(), so both always agree on the waypoint positions.
+		std::vector<Ogre::Vector3> positions;
+		positions.reserve(this->waypoints.size());
+		for (size_t i = 0; i < this->waypoints.size(); i++)
+		{
+			GameObjectPtr waypointGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->waypoints[i]->getULong());
+			if (nullptr != waypointGameObjectPtr)
+			{
+				auto nodeCompPtr = NOWA::makeStrongPtr(waypointGameObjectPtr->getComponent<NodeComponent>());
+				if (nullptr != nodeCompPtr)
+				{
+					positions.emplace_back(nodeCompPtr->getPosition());
+				}
+			}
+		}
+
+		const int count = static_cast<int>(positions.size());
+		if (count < 2)
+		{
+			return false;
+		}
+
+		std::pair<bool, Ogre::Vector3> currentWaypoint = path->getCurrentWaypoint();
+		if (false == currentWaypoint.first)
+		{
+			return false;
+		}
+
+		// The moving behavior drives the agent game object, which is not necessarily this one.
+		GameObjectPtr agentGameObjectPtr = this->gameObjectPtr;
+		if (0 != this->agentId->getULong())
+		{
+			GameObjectPtr otherAgentGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->agentId->getULong());
+			if (nullptr != otherAgentGameObjectPtr)
+			{
+				agentGameObjectPtr = otherAgentGameObjectPtr;
+			}
+		}
+
+		const Ogre::Vector3 agentPosition = agentGameObjectPtr->getPosition();
+
+		// Index of the current target: the waypoint nearest to the path's current waypoint position.
+		int currentIndex = 0;
+		Ogre::Real nearestTargetDistance = std::numeric_limits<Ogre::Real>::max();
+		for (int i = 0; i < count; i++)
+		{
+			const Ogre::Real distance = positions[i].squaredDistance(currentWaypoint.second);
+			if (distance < nearestTargetDistance)
+			{
+				nearestTargetDistance = distance;
+				currentIndex = i;
+			}
+		}
+
+		// The waypoint behind the agent: the nearest one that lies on the opposite side of the current
+		// target, seen from the agent. Nothing behind (e.g. the agent stands before the first
+		// waypoint) means there is nothing to turn around to.
+		const Ogre::Vector3 towardsTarget = currentWaypoint.second - agentPosition;
+		int behindIndex = -1;
+		Ogre::Real nearestBehindDistance = std::numeric_limits<Ogre::Real>::max();
+		for (int i = 0; i < count; i++)
+		{
+			if (i == currentIndex)
+			{
+				continue;
+			}
+
+			const Ogre::Vector3 towardsWaypoint = positions[i] - agentPosition;
+			if (towardsWaypoint.dotProduct(towardsTarget) >= 0.0f)
+			{
+				continue;
+			}
+
+			const Ogre::Real distance = towardsWaypoint.squaredLength();
+			if (distance < nearestBehindDistance)
+			{
+				nearestBehindDistance = distance;
+				behindIndex = i;
+			}
+		}
+
+		if (-1 == behindIndex)
+		{
+			return false;
+		}
+
+		// New traversal order, starting at the waypoint behind and walking away from the old target.
+		std::vector<int> order;
+		order.reserve(static_cast<size_t>(count) * 2);
+
+		const bool walkDownwards = behindIndex < currentIndex;
+		const bool pingPong = this->directionChange->getBool();
+		const bool loop = this->repeat->getBool();
+
+		if (true == walkDownwards)
+		{
+			for (int i = behindIndex; i >= 0; i--)
+			{
+				order.emplace_back(i);
+			}
+
+			if (true == pingPong)
+			{
+				// Back up the whole line again, the path reverses at its end by itself afterwards.
+				for (int i = 1; i < count; i++)
+				{
+					order.emplace_back(i);
+				}
+			}
+			else if (true == loop)
+			{
+				// Closed loop, walked backwards: continue from the last waypoint.
+				for (int i = count - 1; i > behindIndex; i--)
+				{
+					order.emplace_back(i);
+				}
+			}
+		}
+		else
+		{
+			for (int i = behindIndex; i < count; i++)
+			{
+				order.emplace_back(i);
+			}
+
+			if (true == pingPong)
+			{
+				for (int i = count - 2; i >= 0; i--)
+				{
+					order.emplace_back(i);
+				}
+			}
+			else if (true == loop)
+			{
+				for (int i = 0; i < behindIndex; i++)
+				{
+					order.emplace_back(i);
+				}
+			}
+		}
+
+		path->clear();
+		for (size_t i = 0; i < order.size(); i++)
+		{
+			path->addWayPoint(positions[order[i]]);
+		}
+
+		path->setRepeat(this->repeat->getBool());
+		path->setDirectionChange(this->directionChange->getBool());
+		// The order above is already explicit - an inverted traversal on top would undo the turn.
+		path->setInvertDirection(false);
+
+		// followPath() removes FOLLOW_PATH once a non repeating path is finished, so make sure the
+		// behavior is switched on again for the rebuilt path.
+		if (true == this->activated->getBool())
+		{
+			this->movingBehaviorPtr->addBehavior(this->behaviorTypeId);
+		}
+
+		return true;
+	}
+
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	AiWanderComponent::AiWanderComponent()

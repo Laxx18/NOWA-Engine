@@ -161,7 +161,14 @@ namespace NOWA
             sound = this->soundManager->createSound(sceneManager, name, resourceName, loop, stream);
 
             // Set volume
-            sound->setGain(Ogre::Real(this->soundVolume) / 100.0f);
+            if (true == stream)
+            {
+                sound->setGain(Ogre::Real(this->musicVolume) / 100.0f);
+            }
+            else
+            {
+                sound->setGain(Ogre::Real(this->soundVolume) / 100.0f);
+            }
 
             Ogre::String path;
             // Tag resource for cleanup

@@ -412,6 +412,14 @@ namespace NOWA
         bool isTargetAnimationActive(AnimID animationId);
         void internalSetOverlayAnimation(const Ogre::String& animationName, const Ogre::String& maskRootBoneName, Ogre::Real blendInTime, bool loop);
 
+        // Drops the overlay without a fade and hands every muted bone back.
+        void internalClearOverlayImmediately(void);
+
+        // Removes the per frame addTime closure from the graphics module and clears the overlay.
+        // Called when the character enters a ragdoll state: clearing 'canAnimate' alone only stops
+        // NEW closures from being registered, it does not stop the one that is already running.
+        void internalStopAnimating(void);
+
         void internalUpdateOverlay(Ogre::Real renderDt);
 
         // The overlay clip itself: full weight on the chain it owns, zero everywhere else.

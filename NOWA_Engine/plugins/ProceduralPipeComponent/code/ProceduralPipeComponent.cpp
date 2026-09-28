@@ -1996,6 +1996,70 @@ namespace NOWA
         currentIdx += 4;
     }
 
+    void ProceduralPipeComponent::addPipeTriangle(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& normal, const Ogre::Vector2& uv0, const Ogre::Vector2& uv1,
+        const Ogre::Vector2& uv2, PipeMeshBuffer targetBuffer)
+    {
+        std::vector<float>& verts = (targetBuffer == PipeMeshBuffer::NEAR_SIDE) ? this->nearVertices : this->farVertices;
+        std::vector<Ogre::uint32>& inds = (targetBuffer == PipeMeshBuffer::NEAR_SIDE) ? this->nearIndices : this->farIndices;
+        Ogre::uint32& currentIdx = (targetBuffer == PipeMeshBuffer::NEAR_SIDE) ? this->currentNearVertexIndex : this->currentFarVertexIndex;
+
+        const Ogre::Vector3 edge1 = v1 - v0;
+        const Ogre::Vector3 edge2 = v2 - v0;
+        Ogre::Vector3 triNormal = edge1.crossProduct(edge2);
+
+        // Same scale-relative degeneracy test addPipeQuad uses: a clipped sphere cell can be a
+        // very thin sliver, and a fixed absolute epsilon would classify perfectly good slivers
+        // as degenerate exactly where the hole boundary is.
+        const Ogre::Real edgeScale = std::max(edge1.squaredLength(), edge2.squaredLength());
+        const Ogre::Real degenerateThreshold = std::max(1e-10f, edgeScale * 1e-6f);
+
+        if (triNormal.squaredLength() <= degenerateThreshold)
+        {
+            // Zero area - nothing to draw, and no winding to get right.
+            return;
+        }
+
+        bool flipWinding = false;
+        triNormal.normalise();
+        if (triNormal.dotProduct(normal) < 0.0f)
+        {
+            flipWinding = true;
+            triNormal = -triNormal;
+        }
+
+        auto addVertex = [&](const Ogre::Vector3& pos, const Ogre::Vector2& uv)
+        {
+            verts.push_back(pos.x);
+            verts.push_back(pos.y);
+            verts.push_back(pos.z);
+            verts.push_back(triNormal.x);
+            verts.push_back(triNormal.y);
+            verts.push_back(triNormal.z);
+            verts.push_back(uv.x);
+            verts.push_back(uv.y);
+        };
+
+        const Ogre::uint32 baseIdx = currentIdx;
+        addVertex(v0, uv0);
+        addVertex(v1, uv1);
+        addVertex(v2, uv2);
+
+        if (false == flipWinding)
+        {
+            inds.push_back(baseIdx + 0);
+            inds.push_back(baseIdx + 1);
+            inds.push_back(baseIdx + 2);
+        }
+        else
+        {
+            inds.push_back(baseIdx + 0);
+            inds.push_back(baseIdx + 2);
+            inds.push_back(baseIdx + 1);
+        }
+
+        currentIdx += 3;
+    }
+
     void ProceduralPipeComponent::generatePipeRings(const std::vector<PipeControlPoint>& points, bool capFront, bool capBack)
     {
         const size_t numRings = points.size();
@@ -2271,22 +2335,20 @@ namespace NOWA
 
         const Ogre::Vector2 tiling = this->pipeUVTiling->getVector2();
 
-        // Deliberately finer than the tube's rings. A hole is punched by dropping whole cells,
-        // so the boundary is quantised to this grid - at the tube's own resolution the notch
-        // where an arm enters would be several degrees wide and plainly visible. A junction
-        // sphere is a few hundred triangles either way.
         const int lonSegments = std::max(24, this->radialSegments->getInt());
-        const int latSegments = std::max(12, this->radialSegments->getInt() / 2);
+        const int latSegments = std::max(16, this->radialSegments->getInt());
 
-        // Angular radius of the hole an arm punches into a shell. An arm of radius r whose axis
-        // passes through the centre of a sphere of radius R cuts a circle at asin(r/R) - so the
-        // two shells need DIFFERENT hole sizes: asin(r/R) for the outer pair and
-        // asin((r-t)/(R-t)) for the inner one. Using one angle for both leaves a ring-shaped gap
-        // between the inner tube and the inner sphere, which reads as a see-through slot from
-        // inside the pipe, exactly where the player is standing.
-        const Ogre::Real margin = Ogre::Degree(3.0f).valueRadians();
-        const Ogre::Real outerHoleAngle = std::asin(std::min(0.995f, pipeR / hubR)) + margin;
-        const Ogre::Real innerHoleAngle = hasInnerShell ? (std::asin(std::min(0.995f, innerPipeR / innerHubR)) + margin) : outerHoleAngle;
+        // EXACT hole angles - no safety margin, and none wanted.
+        //
+        // A cylinder of radius r whose axis passes through the centre of a sphere of radius R
+        // cuts that sphere in a CIRCLE, at angular radius asin(r/R) from the axis. A hole
+        // punched at exactly that angle is therefore not an approximation of where the arm goes
+        // through: it IS the intersection, and the arm's surface meets the sphere's surface
+        // along it with nothing in between. The outer shell is cut where the arm's OUTER
+        // surface crosses it, the inner shell where the arm's BORE does - two different angles,
+        // and using one for both is what leaves a slot you can see through from inside the pipe.
+        const Ogre::Real outerHoleAngle = std::asin(std::min(0.999f, pipeR / hubR));
+        const Ogre::Real innerHoleAngle = hasInnerShell ? std::asin(std::min(0.999f, innerPipeR / innerHubR)) : outerHoleAngle;
 
         auto directionAt = [lonSegments, latSegments](int lat, int lon) -> Ogre::Vector3
         {
@@ -2296,35 +2358,84 @@ namespace NOWA
             return Ogre::Vector3(std::sin(phi) * std::cos(lambda), std::cos(phi), std::sin(phi) * std::sin(lambda));
         };
 
-        auto quadDirection = [&directionAt](int lat, int lon) -> Ogre::Vector3
+        // Inside the UNION of all the arm cones - not inside one particular cone.
+        //
+        // That distinction is the whole difficulty here. At a useful hub scale the holes are
+        // huge: with Junction Hub Scale 1.15 each one is about 60 degrees across, so two arms
+        // meeting at 90 degrees have OVERLAPPING holes. Snapping a vertex onto one cone's
+        // boundary then drops it straight inside the next cone, and snapping repeatedly just
+        // oscillates between the two - measured at a third of all vertices still ending up
+        // inside a hole no matter how many passes are run. The union has to be treated as one
+        // shape, which is what the marching-squares clip below does.
+        auto insideUnion = [&junction](const Ogre::Vector3& dir, Ogre::Real coneAngle) -> bool
         {
-            // Centre direction of the quad spanned by (lat, lon) .. (lat+1, lon+1). Averaging
-            // the four corners and renormalising is enough here - the cells are small and only
-            // ever used for classification, never for a position.
-            Ogre::Vector3 sum = directionAt(lat, lon) + directionAt(lat, lon + 1) + directionAt(lat + 1, lon + 1) + directionAt(lat + 1, lon);
-            if (sum.squaredLength() < 1e-9f)
-            {
-                return directionAt(lat, lon);
-            }
-            return sum.normalisedCopy();
-        };
-
-        auto insideAnyArm = [&junction](const Ogre::Vector3& dir, Ogre::Real holeAngle) -> bool
-        {
-            const Ogre::Real cosLimit = std::cos(holeAngle);
+            const Ogre::Real cosLimit = std::cos(coneAngle);
             for (const Ogre::Vector3& armDir : junction.armDirections)
+        {
+                if (dir.dotProduct(armDir) > cosLimit)
             {
-                if (dir.dotProduct(armDir) >= cosLimit)
-                {
                     return true;
                 }
             }
             return false;
         };
 
-        // Per-cell bookkeeping, so the rim strips further down can tell WHY a neighbouring cell
-        // is missing: a hole is covered by the arm that made it and needs no rim, a near-side
-        // cut is an open wall cross-section and does.
+        // Great-circle interpolation. Plain linear interpolation plus a normalise would also
+        // land on the sphere, but it bunches towards the ends, and the bisection below wants an
+        // even parameterisation to converge cleanly.
+        auto slerp = [](const Ogre::Vector3& a, const Ogre::Vector3& b, Ogre::Real t) -> Ogre::Vector3
+        {
+            const Ogre::Real d = Ogre::Math::Clamp(a.dotProduct(b), -1.0f, 1.0f);
+            const Ogre::Real omega = std::acos(d);
+
+            if (omega < 1e-5f)
+            {
+                return a;
+            }
+
+            const Ogre::Real sinOmega = std::sin(omega);
+            return (a * std::sin((1.0f - t) * omega) + b * std::sin(t * omega)) / sinOmega;
+        };
+
+        // Where the edge between an inside and an outside corner crosses the union boundary.
+        // Bisection rather than a closed form, because the boundary of a union of cones is made
+        // of arcs of several circles meeting at corners, and there is no single formula for it.
+        // 20 halvings put the result within a millionth of the arc.
+        //
+        // The OUTSIDE end is returned, so a rounding error can only ever leave the hole a hair
+        // too small - the arm's own tube then covers the difference. The other way round would
+        // open a crack.
+        auto boundaryBetween = [&slerp, &insideUnion](const Ogre::Vector3& insideDir, const Ogre::Vector3& outsideDir, Ogre::Real coneAngle) -> Ogre::Vector3
+        {
+            Ogre::Vector3 low = insideDir;
+            Ogre::Vector3 high = outsideDir;
+
+            for (int i = 0; i < 20; ++i)
+        {
+                const Ogre::Vector3 mid = slerp(low, high, 0.5f).normalisedCopy();
+
+                if (true == insideUnion(mid, coneAngle))
+            {
+                    low = mid;
+                }
+                else
+                {
+                    high = mid;
+                }
+            }
+
+            return high.normalisedCopy();
+        };
+
+        auto cellIndex = [lonSegments](int lat, int lon) -> size_t
+        {
+            return static_cast<size_t>(lat) * static_cast<size_t>(lonSegments) + static_cast<size_t>(lon);
+        };
+
+        // Per-cell bookkeeping for the rim strips further down: a cell dropped because an arm
+        // passes through it needs NO rim (the arm's own tube closes the wall there, exactly, by
+        // the construction above), while a cell dropped by the near-side cut leaves the wall
+        // cross-section open and does.
         const size_t cellCount = static_cast<size_t>(latSegments) * static_cast<size_t>(lonSegments);
         std::vector<bool> droppedByHole(cellCount, false);
         std::vector<bool> droppedByNearCut(cellCount, false);
@@ -2333,11 +2444,28 @@ namespace NOWA
         {
             for (int lon = 0; lon < lonSegments; ++lon)
             {
-                const size_t cell = static_cast<size_t>(lat) * static_cast<size_t>(lonSegments) + static_cast<size_t>(lon);
-                const Ogre::Vector3 dir = quadDirection(lat, lon);
+                const int latIndices[4] = {lat, lat, lat + 1, lat + 1};
+                const int lonIndices[4] = {lon, lon + 1, lon + 1, lon};
 
-                droppedByHole[cell] = insideAnyArm(dir, outerHoleAngle);
-                droppedByNearCut[cell] = (true == hideNear && PipeMeshBuffer::NEAR_SIDE == this->bufferForDirection(dir));
+                int insideCount = 0;
+                Ogre::Vector3 sum = Ogre::Vector3::ZERO;
+
+                for (int corner = 0; corner < 4; ++corner)
+                {
+                    const Ogre::Vector3 raw = directionAt(latIndices[corner], lonIndices[corner]);
+                    sum += raw;
+                    if (true == insideUnion(raw, outerHoleAngle))
+                    {
+                        ++insideCount;
+                    }
+                }
+
+                const size_t cell = cellIndex(lat, lon);
+
+                droppedByHole[cell] = (4 == insideCount);
+
+                const Ogre::Vector3 cellDirection = (sum.squaredLength() > 1e-9f) ? sum.normalisedCopy() : directionAt(lat, lon);
+                droppedByNearCut[cell] = (true == hideNear && PipeMeshBuffer::NEAR_SIDE == this->bufferForDirection(cellDirection));
             }
         }
 
@@ -2347,41 +2475,107 @@ namespace NOWA
             {
                 for (int lon = 0; lon < lonSegments; ++lon)
                 {
-                    const Ogre::Vector3 dir = quadDirection(lat, lon);
-
-                    if (true == insideAnyArm(dir, holeAngle))
+                    if (true == droppedByNearCut[cellIndex(lat, lon)])
                     {
                         continue;
                     }
 
-                    const PipeMeshBuffer buffer = this->bufferForDirection(dir);
+                    const int latIndices[4] = {lat, lat, lat + 1, lat + 1};
+                    const int lonIndices[4] = {lon, lon + 1, lon + 1, lon};
 
-                    if (true == hideNear && PipeMeshBuffer::NEAR_SIDE == buffer)
+                    Ogre::Vector3 corners[4];
+                    bool cornerInside[4];
+                    int insideCount = 0;
+
+                    for (int corner = 0; corner < 4; ++corner)
+                    {
+                        corners[corner] = directionAt(latIndices[corner], lonIndices[corner]);
+                        cornerInside[corner] = insideUnion(corners[corner], holeAngle);
+                        if (true == cornerInside[corner])
+                        {
+                            ++insideCount;
+                        }
+                    }
+
+                    // Wholly inside a hole - nothing to draw. Checked per shell, because the
+                    // two shells have different hole angles and a cell can be fully inside one
+                    // while only clipped by the other.
+                    if (4 == insideCount)
                     {
                         continue;
                     }
 
-                    const Ogre::Vector3 d00 = directionAt(lat, lon);
-                    const Ogre::Vector3 d01 = directionAt(lat, lon + 1);
-                    const Ogre::Vector3 d11 = directionAt(lat + 1, lon + 1);
-                    const Ogre::Vector3 d10 = directionAt(lat + 1, lon);
+                    // Marching squares on the sphere: walk the cell's four edges, keep every
+                    // corner that is outside the union, and insert the exact boundary point
+                    // wherever an edge crosses it. The result is the cell clipped to the hole,
+                    // as a polygon of three to five corners.
+                    Ogre::Vector3 polygon[8];
+                    Ogre::Vector2 polygonUV[8];
+                    int polygonCount = 0;
 
-                    const Ogre::Vector3 p0 = junction.centre + d00 * radius;
-                    const Ogre::Vector3 p1 = junction.centre + d01 * radius;
-                    const Ogre::Vector3 p2 = junction.centre + d11 * radius;
-                    const Ogre::Vector3 p3 = junction.centre + d10 * radius;
+                    const Ogre::Real uAt[4] = {static_cast<Ogre::Real>(lon), static_cast<Ogre::Real>(lon + 1), static_cast<Ogre::Real>(lon + 1), static_cast<Ogre::Real>(lon)};
+                    const Ogre::Real vAt[4] = {static_cast<Ogre::Real>(lat), static_cast<Ogre::Real>(lat), static_cast<Ogre::Real>(lat + 1), static_cast<Ogre::Real>(lat + 1)};
 
-                    const Ogre::Vector3 normal = outward ? dir : -dir;
+                    auto uvFor = [&](Ogre::Real lonIndex, Ogre::Real latIndex) -> Ogre::Vector2
+                    {
+                        return Ogre::Vector2((lonIndex / static_cast<Ogre::Real>(lonSegments)) * tiling.x, (latIndex / static_cast<Ogre::Real>(latSegments)) * Ogre::Math::PI * radius * tiling.y);
+                    };
 
-                    const Ogre::Real u0 = (static_cast<Ogre::Real>(lon) / static_cast<Ogre::Real>(lonSegments)) * tiling.x;
-                    const Ogre::Real u1 = (static_cast<Ogre::Real>(lon + 1) / static_cast<Ogre::Real>(lonSegments)) * tiling.x;
-                    const Ogre::Real v0 = (static_cast<Ogre::Real>(lat) / static_cast<Ogre::Real>(latSegments)) * Ogre::Math::PI * radius * tiling.y;
-                    const Ogre::Real v1 = (static_cast<Ogre::Real>(lat + 1) / static_cast<Ogre::Real>(latSegments)) * Ogre::Math::PI * radius * tiling.y;
+                    for (int corner = 0; corner < 4; ++corner)
+                    {
+                        const int next = (corner + 1) % 4;
 
-                    // The two polar rows collapse to a point on one side, so one of the two
-                    // triangles is zero-area. Harmless - Ogre skips it - and cheaper than a
-                    // separate triangle-fan path for two rows out of latSegments.
-                    this->addPipeQuad(p0, p1, p2, p3, normal, u0, u1, v0, v1, buffer);
+                        if (false == cornerInside[corner])
+                        {
+                            polygon[polygonCount] = corners[corner];
+                            polygonUV[polygonCount] = uvFor(uAt[corner], vAt[corner]);
+                            ++polygonCount;
+                        }
+
+                        if (cornerInside[corner] != cornerInside[next])
+                        {
+                            const Ogre::Vector3 insideDir = cornerInside[corner] ? corners[corner] : corners[next];
+                            const Ogre::Vector3 outsideDir = cornerInside[corner] ? corners[next] : corners[corner];
+
+                            const Ogre::Vector3 crossing = boundaryBetween(insideDir, outsideDir, holeAngle);
+
+                            // The UV is carried across at the same fraction along the edge the
+                            // crossing sits at, so the texture does not shear at a hole rim.
+                            const Ogre::Real total = corners[corner].angleBetween(corners[next]).valueRadians();
+                            Ogre::Real fraction = 0.0f;
+                            if (total > 1e-6f)
+                            {
+                                fraction = Ogre::Math::Clamp(corners[corner].angleBetween(crossing).valueRadians() / total, 0.0f, 1.0f);
+                            }
+
+                            polygon[polygonCount] = crossing;
+                            polygonUV[polygonCount] = uvFor(uAt[corner] + (uAt[next] - uAt[corner]) * fraction, vAt[corner] + (vAt[next] - vAt[corner]) * fraction);
+                            ++polygonCount;
+                        }
+                    }
+
+                    if (polygonCount < 3)
+                    {
+                        continue;
+                    }
+
+                    Ogre::Vector3 sum = Ogre::Vector3::ZERO;
+                    for (int i = 0; i < polygonCount; ++i)
+                    {
+                        sum += polygon[i];
+                    }
+
+                    const Ogre::Vector3 cellDirection = (sum.squaredLength() > 1e-9f) ? sum.normalisedCopy() : corners[0];
+                    const Ogre::Vector3 normal = outward ? cellDirection : -cellDirection;
+                    const PipeMeshBuffer buffer = this->bufferForDirection(cellDirection);
+
+                    // Fan from the first corner. The polygon is convex enough for that: it is a
+                    // grid cell clipped by at most a couple of smooth arcs.
+                    for (int i = 1; i + 1 < polygonCount; ++i)
+                    {
+                        this->addPipeTriangle(junction.centre + polygon[0] * radius, junction.centre + polygon[i] * radius, junction.centre + polygon[i + 1] * radius, normal, polygonUV[0], polygonUV[i], polygonUV[i + 1],
+                            buffer);
+                    }
                 }
             }
         };
@@ -2393,55 +2587,47 @@ namespace NOWA
             buildShell(innerHubR, innerHoleAngle, false);
         }
 
-        // ── Rim strips ───────────────────────────────────────────────────────────────
-        // Wherever a cell was dropped, the shell's wall cross-section is left open, and these
-        // close it. Two reasons a cell can be missing, and BOTH need a rim:
+        // ── Rim strips along the near-side cut ───────────────────────────────────────
+        // ONLY along the near-side cut. The arm holes need no rim any more: the outer hole
+        // boundary is exactly where the arm's outer surface crosses the sphere and the inner
+        // one exactly where its bore does, so the wall closes itself there.
         //
-        //   - the near-side cut, same as on the tube: without a rim the hub looks like an
-        //     eggshell from any angle that can see the edge.
-        //   - an arm hole. The hole boundary is quantised to the grid above, so the inner and
-        //     outer shells never cut at exactly the same angle - and the outer shell's hole is
-        //     wider than the inner one's by construction (asin(r/R) grows as both shrink by the
-        //     wall thickness). Without a rim that mismatch is a slot you can see through from
-        //     inside the pipe. With one, the hub is a closed solid shell with tubular holes and
-        //     any remaining mismatch is just interpenetration with the arm, which is invisible.
-        if (true == hasInnerShell)
+        // A rim is emitted only where BOTH of its corners are clear of every hole. Where a cut
+        // edge runs into a hole the arm's own tube is what closes the wall, and a rim there
+        // would poke through it.
+        if (true == hideNear && true == hasInnerShell)
         {
-            auto cellIndex = [lonSegments](int lat, int lon) -> size_t
+            auto isDroppedByCut = [&](int lat, int lon) -> bool
+        {
+                if (lat < 0 || lat >= latSegments)
             {
-                return static_cast<size_t>(lat) * static_cast<size_t>(lonSegments) + static_cast<size_t>(lon);
-            };
-
-            auto isDropped = [&](int lat, int lon, bool& outExists) -> bool
-            {
-                outExists = (lat >= 0 && lat < latSegments);
-                if (false == outExists)
-                {
-                    // Off the top or bottom of the sphere: the cells there collapse into the
-                    // pole, so there is no edge to close.
                     return false;
                 }
                 const int wrappedLon = ((lon % lonSegments) + lonSegments) % lonSegments;
-                const size_t cell = cellIndex(lat, wrappedLon);
-                return (true == droppedByHole[cell] || true == droppedByNearCut[cell]);
+                return droppedByNearCut[cellIndex(lat, wrappedLon)];
             };
 
             auto isKept = [&](int lat, int lon) -> bool
             {
-                bool exists = false;
-                const bool dropped = isDropped(lat, lon, exists);
-                return (true == exists && false == dropped);
+                if (lat < 0 || lat >= latSegments)
+                {
+                    return false;
+                }
+                const int wrappedLon = ((lon % lonSegments) + lonSegments) % lonSegments;
+                const size_t cell = cellIndex(lat, wrappedLon);
+                return (false == droppedByHole[cell] && false == droppedByNearCut[cell]);
             };
 
-            auto needsRimTowards = [&](int lat, int lon) -> bool
+            auto addRim = [&](int latA, int lonA, int latB, int lonB, const Ogre::Vector3& towardsRemoved)
             {
-                bool exists = false;
-                const bool dropped = isDropped(lat, lon, exists);
-                return (true == exists && true == dropped);
-            };
+                const Ogre::Vector3 dirA = directionAt(latA, lonA);
+                const Ogre::Vector3 dirB = directionAt(latB, lonB);
 
-            auto addRim = [&](const Ogre::Vector3& dirA, const Ogre::Vector3& dirB, const Ogre::Vector3& towardsRemoved)
+                if (true == insideUnion(dirA, outerHoleAngle) || true == insideUnion(dirB, outerHoleAngle))
             {
+                    return;
+                }
+
                 const Ogre::Vector3 o0 = junction.centre + dirA * hubR;
                 const Ogre::Vector3 o1 = junction.centre + dirB * hubR;
                 const Ogre::Vector3 i1 = junction.centre + dirB * innerHubR;
@@ -2459,27 +2645,23 @@ namespace NOWA
                         continue;
                     }
 
-                    const Ogre::Vector3 own = quadDirection(lat, lon);
+                    const Ogre::Vector3 own = directionAt(lat, lon);
 
-                    // Next longitude
-                    if (true == needsRimTowards(lat, lon + 1))
+                    if (true == isDroppedByCut(lat, lon + 1))
                     {
-                        addRim(directionAt(lat, lon + 1), directionAt(lat + 1, lon + 1), (quadDirection(lat, (lon + 1) % lonSegments) - own).normalisedCopy());
+                        addRim(lat, lon + 1, lat + 1, lon + 1, (directionAt(lat, lon + 2) - own).normalisedCopy());
                     }
-                    // Previous longitude
-                    if (true == needsRimTowards(lat, lon - 1))
+                    if (true == isDroppedByCut(lat, lon - 1))
                     {
-                        addRim(directionAt(lat, lon), directionAt(lat + 1, lon), (quadDirection(lat, (lon - 1 + lonSegments) % lonSegments) - own).normalisedCopy());
+                        addRim(lat, lon, lat + 1, lon, (directionAt(lat, lon - 1) - own).normalisedCopy());
                     }
-                    // Next latitude
-                    if (true == needsRimTowards(lat + 1, lon))
+                    if (true == isDroppedByCut(lat + 1, lon))
                     {
-                        addRim(directionAt(lat + 1, lon), directionAt(lat + 1, lon + 1), (quadDirection(lat + 1, lon) - own).normalisedCopy());
+                        addRim(lat + 1, lon, lat + 1, lon + 1, (directionAt(lat + 2, lon) - own).normalisedCopy());
                     }
-                    // Previous latitude
-                    if (true == needsRimTowards(lat - 1, lon))
+                    if (true == isDroppedByCut(lat - 1, lon))
                     {
-                        addRim(directionAt(lat, lon), directionAt(lat, lon + 1), (quadDirection(lat - 1, lon) - own).normalisedCopy());
+                        addRim(lat, lon, lat, lon + 1, (directionAt(lat - 1, lon) - own).normalisedCopy());
                     }
                 }
             }
@@ -2537,34 +2719,49 @@ namespace NOWA
             "[ProceduralPipeComponent] Rebuild: " + Ogre::StringConverter::toString(this->pipeSegments.size()) + " segments, " + Ogre::StringConverter::toString(endpointMap.size()) + " distinct endpoints, " +
                 Ogre::StringConverter::toString(junctions.size()) + " junctions (3+ arms)");
 
-        // How much of each arm the hub swallows. Derived, not exposed, and the exact value
-        // matters more than it looks:
+        // How much of each arm the hub swallows.
         //
-        // An arm of radius r meeting a sphere of radius R crosses its surface at
-        // sqrt(R^2 - r^2) from the centre. Doing the same for the two INNER radii gives a
-        // second, smaller crossing distance - and the window between the two is exactly where
-        // the arm's mouth has to sit, because that is the band the hub's own wall occupies.
-        // Land inside it and the arm's open cross-section is buried in the hub wall, invisible
-        // from the bore and from outside alike.
+        // The arm's BORE (radius pipeR - wall) crosses the hub's INNER shell (radius hubR -
+        // wall) at sqrt(inner^2 - bore^2) along the axis, and its outer surface crosses the
+        // outer shell further out. Trimming to just inside the nearer of the two means the arm
+        // spans BOTH crossing circles - which is exactly what makes the seam close, because
+        // generateJunctionHub punches its holes at precisely those two circles.
         //
-        // Trimming SHORTER than that window (which an innocent-looking 0.9 factor does) pulls
-        // the mouth into the hub's hollow chamber, where it is not covered by anything - and
-        // with three arms meeting, one arm's mouth ring then reaches straight across the
-        // NEXT arm's bore. That is a wall the player runs into, in the middle of the junction.
+        // Trimming any shorter pulls the arm's mouth into the hollow hub chamber, where it is
+        // covered by nothing and, with three arms meeting, reaches across the NEXT arm's bore.
         const Ogre::Real pipeR = std::max(0.01f, this->pipeRadius->getReal());
         const Ogre::Real hubR = pipeR * std::max(1.05f, this->junctionHubScale->getReal());
         const Ogre::Real wallForTrim = std::min(std::max(0.0f, this->wallThickness->getReal()), pipeR * 0.9f);
 
-        const Ogre::Real outerCrossing = std::sqrt(std::max(0.0f, hubR * hubR - pipeR * pipeR));
         const Ogre::Real innerCrossing = std::sqrt(std::max(0.0f, (hubR - wallForTrim) * (hubR - wallForTrim) - (pipeR - wallForTrim) * (pipeR - wallForTrim)));
+        // EXACTLY the inner crossing, with no safety factor. A factor below 1 pushes the arm's
+        // mouth into the hollow hub chamber, where its wall cross-section is exposed as a thin
+        // ring-shaped slot right at the seam. A factor above 1 pulls the mouth back so far that
+        // it no longer reaches the inner shell's hole edge, leaving a hairline crack instead.
+        //
+        // At exactly this distance the mouth's inner edge sits on the inner shell's hole circle
+        // and its outer edge inside the hub wall, which is the only value where neither happens.
+        const Ogre::Real trimDistance = innerCrossing;
 
-        // The midpoint of the window. It is always a valid window: subtracting the same wall
-        // thickness from both radii shrinks R^2 - r^2 by 2*t*(R - r), which is positive.
-        const Ogre::Real trimDistance = 0.5f * (innerCrossing + outerCrossing);
+        // ── Pass A: build every chain's path, and find out where the junctions are ───
+        //
+        // Split into two passes ON PURPOSE. An arm's hole has to be punched in the direction
+        // the arm leaves the hub CENTRE - and the centre is only known once every arm has
+        // reported where it ends. The earlier single pass used the path's local TANGENT at the
+        // mouth instead, which is the same thing only for an arm that runs dead straight into
+        // the junction: on a curved arm the two diverge by the bend angle, the hole is punched
+        // somewhere off to the side, and the arm itself stays walled in. That is precisely the
+        // "one side of the sphere is closed" case.
+        struct ChainGeometry
+        {
+            std::vector<PipeControlPoint> densePath;
+            EndpointKey frontKey;
+            EndpointKey backKey;
+            bool frontIsJunction = false;
+            bool backIsJunction = false;
+        };
 
-        // Collected per junction while the arms are swept, then averaged: a depth nudge can make
-        // two arms reach the same (x, height) at different z, and the sphere has to sit
-        // somewhere sensible between them rather than on top of one arm.
+        std::vector<ChainGeometry> chainGeometries;
         std::map<EndpointKey, std::vector<Ogre::Vector3>> junctionArmEndpoints;
 
         const std::vector<std::vector<std::pair<size_t, bool>>> chains = this->buildChains();
@@ -2600,11 +2797,11 @@ namespace NOWA
                 continue;
             }
 
-            const EndpointKey frontKey = makeEndpointKey(*chainRefs.front());
-            const EndpointKey backKey = makeEndpointKey(*chainRefs.back());
-
-            const bool frontIsJunction = (junctions.find(frontKey) != junctions.end());
-            const bool backIsJunction = (junctions.find(backKey) != junctions.end());
+            ChainGeometry geometry;
+            geometry.frontKey = makeEndpointKey(*chainRefs.front());
+            geometry.backKey = makeEndpointKey(*chainRefs.back());
+            geometry.frontIsJunction = (junctions.find(geometry.frontKey) != junctions.end());
+            geometry.backIsJunction = (junctions.find(geometry.backKey) != junctions.end());
 
             // ── Depth ramp ───────────────────────────────────────────────────────────
             // Only the chain's two END offsets are read; everything between is interpolated by
@@ -2657,78 +2854,85 @@ namespace NOWA
             }
 
             // The untrimmed ends ARE the junction positions, seen from this arm.
-            const Ogre::Vector3 frontEndpoint(densePath.front().position.x, densePath.front().smoothedHeight, densePath.front().renderZ);
-            const Ogre::Vector3 backEndpoint(densePath.back().position.x, densePath.back().smoothedHeight, densePath.back().renderZ);
-
-            if (true == frontIsJunction)
+            if (true == geometry.frontIsJunction)
             {
-                junctionArmEndpoints[frontKey].push_back(frontEndpoint);
+                junctionArmEndpoints[geometry.frontKey].push_back(Ogre::Vector3(densePath.front().position.x, densePath.front().smoothedHeight, densePath.front().renderZ));
             }
-            if (true == backIsJunction)
+            if (true == geometry.backIsJunction)
             {
-                junctionArmEndpoints[backKey].push_back(backEndpoint);
+                junctionArmEndpoints[geometry.backKey].push_back(Ogre::Vector3(densePath.back().position.x, densePath.back().smoothedHeight, densePath.back().renderZ));
             }
 
-            const std::vector<PipeControlPoint> trimmedPath = this->trimPathEnds(densePath, frontIsJunction ? trimDistance : 0.0f, backIsJunction ? trimDistance : 0.0f);
+            geometry.densePath = densePath;
+            chainGeometries.push_back(geometry);
+        }
+
+        // ── Junction centres ─────────────────────────────────────────────────────────
+        // Averaged over the arriving arm endpoints, because a depth nudge can make two arms
+        // reach the same (x, height) at different z.
+        for (auto& entry : junctions)
+            {
+            const auto endpointsIt = junctionArmEndpoints.find(entry.first);
+            if (endpointsIt == junctionArmEndpoints.end() || endpointsIt->second.empty())
+            {
+                continue;
+            }
+
+            Ogre::Vector3 sum = Ogre::Vector3::ZERO;
+            for (const Ogre::Vector3& endpoint : endpointsIt->second)
+            {
+                sum += endpoint;
+            }
+            entry.second.centre = sum / static_cast<Ogre::Real>(endpointsIt->second.size());
+            }
+
+        // ── Pass B: trim each arm back, record where it leaves the hub, sweep it ─────
+        for (const ChainGeometry& geometry : chainGeometries)
+        {
+            const std::vector<PipeControlPoint> trimmedPath = this->trimPathEnds(geometry.densePath, geometry.frontIsJunction ? trimDistance : 0.0f, geometry.backIsJunction ? trimDistance : 0.0f);
 
             if (trimmedPath.size() < 2)
             {
                 continue;
             }
 
-            // Arm directions point AWAY from the junction, taken from the trimmed path so they
-            // describe where the tube actually goes rather than where it was authored.
-            if (true == frontIsJunction)
+            // The arm direction is the RADIAL one, centre -> mouth. By definition that is where
+            // the arm crosses the hub's surface, so it is where the hole has to go. Taking the
+            // path's tangent instead (which is what this used to do) aims the hole off to the
+            // side by the bend angle on any curved arm.
+            if (true == geometry.frontIsJunction)
             {
-                const Ogre::Vector3 a(trimmedPath[0].position.x, trimmedPath[0].smoothedHeight, trimmedPath[0].renderZ);
-                const Ogre::Vector3 b(trimmedPath[1].position.x, trimmedPath[1].smoothedHeight, trimmedPath[1].renderZ);
-                const Ogre::Vector3 dir = b - a;
-                if (dir.squaredLength() > 1e-9f)
+                const Ogre::Vector3 mouth(trimmedPath.front().position.x, trimmedPath.front().smoothedHeight, trimmedPath.front().renderZ);
+                const Ogre::Vector3 radial = mouth - junctions[geometry.frontKey].centre;
+
+                if (radial.squaredLength() > 1e-9f)
                 {
-                    junctions[frontKey].armDirections.push_back(dir.normalisedCopy());
+                    junctions[geometry.frontKey].armDirections.push_back(radial.normalisedCopy());
                 }
             }
-            if (true == backIsJunction)
+            if (true == geometry.backIsJunction)
             {
-                const Ogre::Vector3 a(trimmedPath[trimmedPath.size() - 1].position.x, trimmedPath[trimmedPath.size() - 1].smoothedHeight, trimmedPath[trimmedPath.size() - 1].renderZ);
-                const Ogre::Vector3 b(trimmedPath[trimmedPath.size() - 2].position.x, trimmedPath[trimmedPath.size() - 2].smoothedHeight, trimmedPath[trimmedPath.size() - 2].renderZ);
-                const Ogre::Vector3 dir = a - b;
-                if (dir.squaredLength() > 1e-9f)
+                const Ogre::Vector3 mouth(trimmedPath.back().position.x, trimmedPath.back().smoothedHeight, trimmedPath.back().renderZ);
+                const Ogre::Vector3 radial = mouth - junctions[geometry.backKey].centre;
+
+                if (radial.squaredLength() > 1e-9f)
                 {
-                    junctions[backKey].armDirections.push_back(dir.normalisedCopy());
+                    junctions[geometry.backKey].armDirections.push_back(radial.normalisedCopy());
                 }
             }
 
             // NO cap at a junction end. The cap is an annulus rather than a disc, so it does
             // not block its OWN bore - but it is a full ring standing across the tube axis, and
-            // at a junction the next arm's bore passes right through where that ring sits. The
-            // player then walks into a ring-shaped wall inside the hub.
+            // at a junction the next arm's bore passes right through where that ring sits.
             //
-            // Leaving it off is safe precisely because of the trim distance above: the arm's
-            // open cross-section ends up inside the hub's wall band, where the hub's own two
-            // shells close it from both sides.
-            this->generatePipeRings(trimmedPath, false == frontIsJunction, false == backIsJunction);
-
-            if (true == frontIsJunction || true == backIsJunction)
-            {
-                // One line per arm per rebuild - enough to check a junction actually came out
-                // the way the numbers say, without drowning the log.
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-                    "[ProceduralPipeComponent] Junction arm: trim=" + Ogre::StringConverter::toString(trimDistance) + " mouth inside hub wall band [" + Ogre::StringConverter::toString(hubR - wallForTrim) + ", " +
-                        Ogre::StringConverter::toString(hubR) + "] at " + Ogre::StringConverter::toString(std::sqrt(trimDistance * trimDistance + (pipeR - wallForTrim) * (pipeR - wallForTrim))) + ".." +
-                        Ogre::StringConverter::toString(std::sqrt(trimDistance * trimDistance + pipeR * pipeR)));
-            }
+            // Leaving it off is safe because of the trim distance: the arm spans both hole
+            // circles, so the hub's own two shells meet the arm's two surfaces exactly there.
+            this->generatePipeRings(trimmedPath, false == geometry.frontIsJunction, false == geometry.backIsJunction);
         }
 
         for (auto& entry : junctions)
         {
             PipeJunction& junction = entry.second;
-
-            const auto endpointsIt = junctionArmEndpoints.find(entry.first);
-            if (endpointsIt == junctionArmEndpoints.end() || endpointsIt->second.empty())
-            {
-                continue;
-            }
 
             // Fewer than three arms actually arrived - one of them was too short to survive
             // trimming, or two arms of the junction belong to the same chain. A sphere there
@@ -2740,13 +2944,6 @@ namespace NOWA
                         " arms reached it. Usually one of the arms is shorter than the hub is wide, so it could not be trimmed back.");
                 continue;
             }
-
-            Ogre::Vector3 sum = Ogre::Vector3::ZERO;
-            for (const Ogre::Vector3& endpoint : endpointsIt->second)
-            {
-                sum += endpoint;
-            }
-            junction.centre = sum / static_cast<Ogre::Real>(endpointsIt->second.size());
 
             this->generateJunctionHub(junction);
 

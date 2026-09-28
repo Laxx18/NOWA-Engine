@@ -153,7 +153,28 @@ namespace NOWA
                 }
 
                 // Export all global game objects in projectName/global.scene separately
-                this->exportGlobalScene(sceneResourceGroupName, projectName);
+                //
+                // FIX (data-loss bug): a scene with ignoreGlobalScene=true (e.g. Menu.scene)
+                // never has its global GameObjects loaded into the SceneManager in the first
+                // place - DotSceneImportModule::processScene() skips parseGlobalScene() for
+                // such scenes entirely. So calling exportGlobalScene() while such a scene is
+                // the one currently loaded would find zero GameObjects flagged getGlobal()==true
+                // and silently overwrite the real, previously-saved global.scene with an empty
+                // <nodes/> file - exactly the reported bug ("global.scene was overwritten with
+                // an almost-empty xml after saving Menu.scene"). Since this scene by definition
+                // has no valid global-GameObject state in memory to export, skip the export
+                // entirely rather than write out garbage. (exportGlobalScene() itself also got
+                // a second, independent safety net below, in case it is ever called directly
+                // with stale/empty in-memory state for some other reason.)
+                if (false == this->projectParameter.ignoreGlobalScene)
+                {
+                    this->exportGlobalScene(sceneResourceGroupName, projectName);
+                }
+                else
+                {
+                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_NORMAL, "[DotSceneExportModule] Skipping global.scene export: current scene has ignoreGlobalScene=true, "
+                                                                                  "so no global GameObjects were loaded for it and there is nothing valid to export.");
+                }
 
                 // Bounds element (after bounds have been calculated for each object
                 {
@@ -507,11 +528,35 @@ namespace NOWA
             doc.append_node(sceneXML);
 
             // Nodes element
+            xml_node<>* nodesXML = doc.allocate_node(node_element, "nodes");
             {
-                xml_node<>* nodesXML = doc.allocate_node(node_element, "nodes");
                 // Export global game objects (true)
                 this->exportSceneNodes(nodesXML, doc, true);
                 sceneXML->append_node(nodesXML);
+            }
+
+            // FIX (data-loss safety net): the caller (DotSceneExportModule::exportScene())
+            // now skips calling this function entirely when the current scene has
+            // ignoreGlobalScene=true, which is the actual root cause fix. This check here
+            // is a second, independent line of defense in case exportGlobalScene() is ever
+            // invoked directly (e.g. from elsewhere, or in the future) while the currently
+            // loaded scene happens to have zero GameObjects flagged getGlobal()==true in
+            // memory for any other reason: refuse to overwrite an existing, non-empty
+            // global.scene on disk with an empty <nodes/> result, since that would silently
+            // destroy real, previously-saved global data.
+            if (nullptr == nodesXML->first_node())
+            {
+                std::ifstream existingFile(filePathName.c_str(), std::ios::binary | std::ios::ate);
+                bool existingFileHasContent = existingFile.is_open() && existingFile.tellg() > 0;
+                existingFile.close();
+
+                if (true == existingFileHasContent)
+                {
+                    Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneExportModule] Warning: Refusing to overwrite existing global.scene at '" + filePathName +
+                                                                                        "' with an empty result (0 global GameObjects found in the currently loaded scene - e.g. because "
+                                                                                        "this scene has ignoreGlobalScene=true). The on-disk global.scene was left untouched.");
+                    return;
+                }
             }
         }
 
@@ -1267,7 +1312,8 @@ namespace NOWA
             {
                 this->calculateBounds(item->getWorldAabbUpdated());
                 // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                //     "-->bounds: " + meshName + " name: " + gameObject->getName() + " mostLeftNearPosition: " + Ogre::StringConverter::toString(this->mostLeftNearPosition) + " mostRightFarPosition: " + Ogre::StringConverter::toString(this->mostRightFarPosition));
+                //     "-->bounds: " + meshName + " name: " + gameObject->getName() + " mostLeftNearPosition: " + Ogre::StringConverter::toString(this->mostLeftNearPosition) + " mostRightFarPosition: " +
+                //     Ogre::StringConverter::toString(this->mostRightFarPosition));
             }
 
             // Check if GameObject has a procedural mesh component

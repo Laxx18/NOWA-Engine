@@ -4412,6 +4412,9 @@ namespace NOWA
             {
                 this->optionMusicVolume = Ogre::StringConverter::parseInt(pSubElement->first_attribute("MusicVolume")->value());
             }
+
+            OgreALModule::getInstance()->setSoundVolume(this->optionSoundVolume);
+            OgreALModule::getInstance()->setMusicVolume(this->optionMusicVolume);
         }
         // retrieve log configuration
         pSubElement = XMLRoot->first_node("Log");

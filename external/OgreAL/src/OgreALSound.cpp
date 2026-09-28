@@ -672,7 +672,11 @@ namespace OgreAL
 	{
 		if (gain < 0) return;
 
+		Ogre::String name = this->getName();
+
 		mGain = gain;
+		// Because of fader
+		// mMaxGain = gain;
 
 		if (mSource != AL_NONE)
 		{

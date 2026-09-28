@@ -6089,22 +6089,29 @@ namespace NOWA
         AddClassToCollection("AiMoveComponent", "void setTargetId(String targetId)", "Sets the target game object id. This is used for 'Seek', 'Flee', 'Arrive', 'Pursuit', 'Evade'.");
         AddClassToCollection("AiMoveComponent", "String getTargetId()", "Gets the target game object id.");
 
-        module(lua)[class_<AiMoveRandomlyComponent, AiComponent>("AiMoveRandomlyComponent")
+        module(lua)
+        [
+            class_<AiMoveRandomlyComponent, AiComponent>("AiMoveRandomlyComponent")
             // .def("clone", &AiMoveRandomlyComponent::clone)
         ];
 
-        module(lua)[class_<AiPathFollowComponent, AiComponent>("AiPathFollowComponent")
-                .def("setWaypointsCount", &AiPathFollowComponent::setWaypointsCount)
-                .def("getWaypointsCount", &AiPathFollowComponent::getWaypointsCount)
-                .def("setWaypointId", &setWaypointId)
-                .def("addWaypointId", &addWaypointId)
-                .def("getWaypointId", &getWaypointId)
-                .def("setRepeat", &AiPathFollowComponent::setRepeat)
-                .def("getRepeat", &AiPathFollowComponent::getRepeat)
-                .def("setDirectionChange", &AiPathFollowComponent::setDirectionChange)
-                .def("getDirectionChange", &AiPathFollowComponent::getDirectionChange)
-                .def("setGoalRadius", &AiPathFollowComponent::setGoalRadius)
-                .def("getGoalRadius", &AiPathFollowComponent::getGoalRadius)];
+        module(lua)
+        [
+            class_<AiPathFollowComponent, AiComponent>("AiPathFollowComponent")
+            .def("setWaypointsCount", &AiPathFollowComponent::setWaypointsCount)
+            .def("getWaypointsCount", &AiPathFollowComponent::getWaypointsCount)
+            .def("setWaypointId", &setWaypointId)
+            .def("addWaypointId", &addWaypointId)
+            .def("getWaypointId", &getWaypointId)
+            .def("setRepeat", &AiPathFollowComponent::setRepeat)
+            .def("getRepeat", &AiPathFollowComponent::getRepeat)
+            .def("setDirectionChange", &AiPathFollowComponent::setDirectionChange)
+            .def("getDirectionChange", &AiPathFollowComponent::getDirectionChange)
+            .def("setInvertDirection", &AiPathFollowComponent::setInvertDirection)
+            .def("setGoalRadius", &AiPathFollowComponent::setGoalRadius)
+            .def("getGoalRadius", &AiPathFollowComponent::getGoalRadius)
+            .def("turnAround", &AiPathFollowComponent::turnAround)
+        ];
 
         AddClassToCollection("AiPathFollowComponent", "class inherits AiComponent", AiPathFollowComponent::getStaticInfoText());
         AddClassToCollection("AiPathFollowComponent", "void setWaypointsCount(int count)", "Sets the way points count.");
@@ -6116,7 +6123,8 @@ namespace NOWA
         AddClassToCollection("AiPathFollowComponent", "bool getRepeat()", "Gets whether to repeat the path, when the game object reached the last way point.");
         AddClassToCollection("AiPathFollowComponent", "void setDirectionChange(bool directionChange)", "Sets whether to change the direction of the path follow when the game object reached the last waypoint.");
         AddClassToCollection("AiPathFollowComponent", "bool getDirectionChange()", "Gets whether to change the direction of the path follow when the game object reached the last waypoint.");
-        // AddClassToCollection("AiPathFollowComponent", "void setInvertDirection(int count)", "???");
+        AddClassToCollection("AiPathFollowComponent", "void setInvertDirection(bool invert)", "Inverses the waypoint direction.");
+        AddClassToCollection("AiPathFollowComponent", "bool turnAround()", "Turns the agent around on its live path, so it walks back to the waypoint it is coming from. Returns true if it turned around.");
         // AddClassToCollection("AiPathFollowComponent", "int getInvertDirection()",  "???");
         AddClassToCollection("AiPathFollowComponent", "void setGoalRadius(float radius)", "Sets the goal radius at which the game object is considered within the next waypoint range. Default value is 0.2.");
         AddClassToCollection("AiPathFollowComponent", "float getGoalRadius()", "Gets the goal radius at which the game object is considered within the next waypoint range.");
@@ -6182,7 +6190,7 @@ namespace NOWA
                 .def("getRepeat", &AiRecastPathNavigationComponent::getRepeat)
                 .def("setDirectionChange", &AiRecastPathNavigationComponent::setDirectionChange)
                 .def("getDirectionChange", &AiRecastPathNavigationComponent::getDirectionChange)
-                // .def("setInvertDirection", &AiRecastPathNavigationComponent::setInvertDirection)
+                .def("setInvertDirection", &AiRecastPathNavigationComponent::setInvertDirection)
                 // .def("getInvertDirection", &AiRecastPathNavigationComponent::getInvertDirection)
                 .def("setGoalRadius", &AiRecastPathNavigationComponent::setGoalRadius)
                 .def("getGoalRadius", &AiRecastPathNavigationComponent::getGoalRadius)
@@ -6265,7 +6273,7 @@ namespace NOWA
                 .def("getRepeat", &AiPathFollowComponent2D::getRepeat)
                 .def("setDirectionChange", &AiPathFollowComponent2D::setDirectionChange)
                 .def("getDirectionChange", &AiPathFollowComponent2D::getDirectionChange)
-                // .def("setInvertDirection", &AiPathFollowComponent2D::setInvertDirection)
+                .def("setInvertDirection", &AiPathFollowComponent2D::setInvertDirection)
                 // .def("getInvertDirection", &AiPathFollowComponent2D::getInvertDirection)
                 .def("setGoalRadius", &AiPathFollowComponent2D::setGoalRadius)
                 .def("getGoalRadius", &AiPathFollowComponent2D::getGoalRadius)];
@@ -6280,7 +6288,7 @@ namespace NOWA
         AddClassToCollection("AiPathFollowComponent2D", "bool getRepeat()", "Gets whether to repeat the path, when the game object reached the last way point.");
         AddClassToCollection("AiPathFollowComponent2D", "void setDirectionChange(bool directionChange)", "Sets whether to change the direction of the path follow when the game object reached the last waypoint.");
         AddClassToCollection("AiPathFollowComponent2D", "bool getDirectionChange()", "Gets whether to change the direction of the path follow when the game object reached the last waypoint.");
-        // AddClassToCollection("AiPathFollowComponent2D", "void setInvertDirection(int count)", "???");
+        AddClassToCollection("AiPathFollowComponent2D", "void setInvertDirection(bool invert)", "Inverts the waypoint direction.");
         // AddClassToCollection("AiPathFollowComponent2D", "int getInvertDirection()",  "???");
         AddClassToCollection("AiPathFollowComponent2D", "void setGoalRadius(float radius)", "Sets the goal radius at which the game object is considered within the next waypoint range. Default value is 0.2.");
         AddClassToCollection("AiPathFollowComponent2D", "float getGoalRadius()", "Gets the goal radius at which the game object is considered within the next waypoint range.");
@@ -10858,12 +10866,14 @@ namespace NOWA
 
     void bindLuaScriptEventManager(lua_State* lua)
     {
-        module(lua)[class_<ScriptEventManager>("ScriptEventManager")
-                // .def("getInstance", &ScriptEventManager::getInstance) //returns static singleton instance
-                .def("registerEvent", &ScriptEventManager::registerEvent)
-                .def("registerEventListener", &ScriptEventManager::registerEventListener)
-                // .def("removeEventListener", &ScriptEventManager::removeEventListener)
-                .def("queueEvent", (bool (ScriptEventManager::*)(EventType, luabind::object))&ScriptEventManager::queueEvent)
+        module(lua)
+        [
+            class_<ScriptEventManager>("ScriptEventManager")
+            // .def("getInstance", &ScriptEventManager::getInstance) //returns static singleton instance
+            .def("registerEvent", &ScriptEventManager::registerEvent)
+            .def("registerEventListener", &ScriptEventManager::registerEventListener)
+            .def("removeEventListener", &ScriptEventManager::removeEventListener)
+            .def("queueEvent", (bool (ScriptEventManager::*)(EventType, luabind::object))&ScriptEventManager::queueEvent)
             // .def("triggerEvent", (bool (ScriptEventManager::*)(EventType, luabind::object)) &ScriptEventManager::triggerEvent)
         ];
 
@@ -10884,6 +10894,8 @@ namespace NOWA
             "For example: 'ScriptEventManager:registerEventListener(EventType.DestroyStone, stone_felsite6_0["
             "/onDestroyStone"
             "/]);'");
+        AddClassToCollection("ScriptEventManager", "void removeEventListener(EventType eventType, luabind::object callbackFunction)",
+            "Removes the given event listener for the given type and callback function.");
         AddClassToCollection("ScriptEventManager", "bool queueEvent(EventType eventType, luabind::object eventData)", "Queues an event, that is send out as soon as possible.");
         // AddClassToCollection("LuaScriptComponent", "bool triggerEvent(EventType eventType, luabind::object eventData)", "Triggers an event immediately.");
     }

@@ -18,6 +18,8 @@
 #include <OgreTextureGpuManager.h>
 #include <OgreWindow.h>
 
+#include <atomic>
+
 namespace MyGUI
 {
 	// v2 fix: was 254, which collides with NOWA::RENDER_QUEUE_MAX / the v1
@@ -59,7 +61,8 @@ namespace MyGUI
 		mIsInitialise(false),
 		mManualRender(false),
 		mCountBatch(0)
-	{}
+	{
+	}
 
 	void Ogre2RenderManager::initialise(Ogre::Window* _window, Ogre::SceneManager* _scene)
 	{
@@ -284,7 +287,49 @@ namespace MyGUI
 	// для оповещений об изменении окна рендера
 	void Ogre2RenderManager::windowResized(Ogre::Window* _window)
 	{
-		mViewSize.set(_window->getWidth(), _window->getHeight());
+		// INVESTIGATION + FIX candidate for the persistent 1px right/bottom gap on
+		// MyGUI overlays: mViewSize used to be built from _window->getWidth()/
+		// getHeight() - the WINDOW's reported logical client size. But what the
+		// "MYGUI" custom compositor pass actually renders into is the window's real
+		// backbuffer, _window->getTexture(). These two are usually the same, but
+		// are not guaranteed to be identical, and a 1px mismatch here would explain
+		// everything observed so far: MyGUI widgets are built pixel-exact against
+		// mViewSize (confirmed via logging - CoordConverter rounding fix, pixel-exact
+		// FadeComponent/FaderProcess creation), yet even an OVERSCANNED widget (2px
+		// larger than mViewSize on every side) still shows the identical 1px gap.
+		// That combination only makes sense if the actual render target being drawn
+		// into (the real backbuffer) is smaller than mViewSize itself - in which case
+		// the GPU's own viewport/scissor clips the overscan away right along with
+		// everything else, no matter how MyGUI builds its widgets. Using the
+		// backbuffer's own reported size instead of the window's fixes that
+		// regardless of which of the two was actually the "wrong" one.
+		const Ogre::uint32 windowWidth = _window->getWidth();
+		const Ogre::uint32 windowHeight = _window->getHeight();
+		Ogre::uint32 backbufferWidth = windowWidth;
+		Ogre::uint32 backbufferHeight = windowHeight;
+
+		Ogre::TextureGpu* backbuffer = _window->getTexture();
+		if (nullptr != backbuffer)
+		{
+			backbufferWidth = backbuffer->getWidth();
+			backbufferHeight = backbuffer->getHeight();
+
+			if (backbufferWidth != windowWidth || backbufferHeight != windowHeight)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+					"[Ogre2RenderManager] windowResized(): Window::getWidth/Height() report (" +
+					Ogre::StringConverter::toString(windowWidth) + ", " + Ogre::StringConverter::toString(windowHeight) +
+					") but the real backbuffer TextureGpu reports (" + Ogre::StringConverter::toString(backbufferWidth) +
+					", " + Ogre::StringConverter::toString(backbufferHeight) + "). This mismatch is very likely the "
+					"actual cause of the persistent 1px overlay gap - MyGUI was building every widget against the "
+					"WRONG (window-reported) size instead of the real backbuffer size. Using the backbuffer size now.");
+			}
+		}
+
+		// Use the real backbuffer size - what the GPU actually renders into - rather
+		// than the window's reported logical size, in case the two ever disagree.
+		mViewSize.set(backbufferWidth, backbufferHeight);
+
 		// обновить всех
 		mUpdate = true;
 
@@ -298,8 +343,51 @@ namespace MyGUI
 		if (mRenderSystem != nullptr)
 		{
 			mInfo.maximumDepth = mRenderSystem->getMaximumDepthInputValue();
-			mInfo.hOffset = mRenderSystem->getHorizontalTexelOffset() / float(mViewSize.width);
-			mInfo.vOffset = mRenderSystem->getVerticalTexelOffset() / float(mViewSize.height);
+
+			// INVESTIGATION for the persistent 1px right/bottom gap on MyGUI overlays
+			// (the 3D scene itself fills the screen exactly, only MyGUI content -
+			// Fader, window skins, etc. - is missing a pixel at the right/bottom edge):
+			//
+			// getHorizontalTexelOffset()/getVerticalTexelOffset() exist ONLY for the old
+			// Direct3D9 "directly map texels to pixels" half-texel correction: D3D9
+			// sampled texels at pixel CORNERS instead of centers, so pixel-perfect 2D/GUI
+			// rendering needed every vertex position nudged by -0.5 texel. MyGUI's core
+			// bakes this hOffset/vOffset into every vertex position before converting to
+			// NDC (see mInfo usage). None of Ogre-Next's render systems (D3D11, D3D12,
+			// Vulkan, Metal, GL3+) have this quirk and the base Ogre::RenderSystem is
+			// supposed to return 0 here - but if this fork's D3D11 RenderSystem (or a
+			// shared base it inherits from) still returns a stray non-zero value, EVERY
+			// GUI vertex gets shifted by a fraction of a pixel in NDC space. For a
+			// full-screen quad that is built pixel-exact against the screen edges (as
+			// FadeComponent/FaderProcess/MyGUIWindowComponent now are, see the earlier
+			// CoordConverter fix), that shift is invisible in the middle of the screen
+			// but clips/reveals a sliver exactly at one edge - matching the symptom.
+			//
+			// Log once (throttled) so a rebuild can confirm whether this render system
+			// actually returns a non-zero value here, and clamp to 0 unconditionally
+			// either way: a non-zero D3D9-style texel offset has no correct meaning on
+			// any of Ogre-Next's render systems, so there is no legitimate case where
+			// honoring it would be more correct than ignoring it.
+			static std::atomic<unsigned int> texelOffsetLogCounter{ 0 };
+			const float rawHTexelOffset = mRenderSystem->getHorizontalTexelOffset();
+			const float rawVTexelOffset = mRenderSystem->getVerticalTexelOffset();
+			if (0 == (texelOffsetLogCounter++ % 10))
+			{
+				if (0.0f != rawHTexelOffset || 0.0f != rawVTexelOffset)
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+						"[Ogre2RenderManager] updateRenderInfo(): RenderSystem reports a NON-ZERO "
+						"texel offset (h=" + Ogre::StringConverter::toString(rawHTexelOffset) +
+						", v=" + Ogre::StringConverter::toString(rawVTexelOffset) + "). This is a "
+						"legacy Direct3D9-only correction and should always be 0 on this render "
+						"system - it is being clamped to 0 for GUI rendering below, but a non-zero "
+						"value here is worth reporting upstream too (this may well be the source of "
+						"the 1px overlay gap).");
+				}
+			}
+
+			mInfo.hOffset = 0.0f;
+			mInfo.vOffset = 0.0f;
 			mInfo.aspectCoef = float(mViewSize.height) / float(mViewSize.width);
 			mInfo.pixScaleX = 1.0f / float(mViewSize.width);
 			mInfo.pixScaleY = 1.0f / float(mViewSize.height);
@@ -332,10 +420,12 @@ namespace MyGUI
 	}
 
 	void Ogre2RenderManager::begin()
-	{}
+	{
+	}
 
 	void Ogre2RenderManager::end()
-	{}
+	{
+	}
 
 	ITexture* Ogre2RenderManager::createTexture(const std::string& _name)
 	{

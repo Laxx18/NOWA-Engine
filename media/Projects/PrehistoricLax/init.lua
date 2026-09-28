@@ -18,3 +18,5 @@ end
 AppStateManager:getScriptEventManager():registerEvent("PlayerDeadEvent");
 AppStateManager:getScriptEventManager():registerEvent("EnemyDeadEvent");
 AppStateManager:getScriptEventManager():registerEvent("PlayerAttackEvent");
+-- Sent by WeaponStick.lua for every hit that does NOT kill the enemy (enemyId, hitDirection, remainingEnergy).
+AppStateManager:getScriptEventManager():registerEvent("EnemyHitEvent");

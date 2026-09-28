@@ -883,7 +883,7 @@ namespace NOWA
             try
             {
                 // Restore clone defaults so next play is not stuck at emissionRate=0 after fade out
-                this->restoreOriginalEmissionRates(particleData);
+                // this->restoreOriginalEmissionRates(particleData);
 
                 if (particleData.particleNode && particleData.particleSystem && particleData.particleSystem->isAttached())
                 {

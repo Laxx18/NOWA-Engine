@@ -160,21 +160,74 @@ namespace NOWA
 		}
 
 		void Path::setInvertDirection(bool invertDirection)
+        {
+            if (true == invertDirection)
+            {
+                this->currentDirection = -1;
+                this->currentWaypointItr = this->wayPoints.end() - 1;
+            }
+            else
+            {
+                this->currentDirection = 1;
+                this->currentWaypointItr = this->wayPoints.begin();
+            }
+        }
+
+		bool Path::turnAround(void)
 		{
-			if (true == invertDirection)
+			// Turns the agent around on the spot: the waypoint it is coming FROM becomes its next target,
+			// and the traversal direction flips, so setNextWayPoint() continues correctly from there.
+			//
+			// Attention: this is NOT setInvertDirection(). That one jumps to an END of the list (last
+			// waypoint for true, first for false), so whether it turns the agent around depends on where
+			// the agent currently is - with two waypoints and the agent walking towards the second one,
+			// setInvertDirection(true) keeps it walking towards the second one.
+			if (this->wayPoints.size() < 2 || false == this->valid || this->currentWaypointItr == this->wayPoints.end())
 			{
-				if (1 == this->currentDirection)
+				return false;
+			}
+
+			const bool loop = (true == this->repeat && false == this->directionChange);
+
+			if (1 == this->currentDirection)
+			{
+				// Walking forward: the agent comes from the previous waypoint.
+				if (this->currentWaypointItr == this->wayPoints.begin())
 				{
-					this->currentDirection = -1;
-					// Remember: Never set the itr to wayPoints.end(), as its not valid!, each for loop increments as long as itr != wayPoints.end()
+					if (false == loop)
+					{
+						// Nothing behind the first waypoint of an open path.
+						return false;
+					}
+					// A loop: the previous waypoint of the first one is the last one.
 					this->currentWaypointItr = this->wayPoints.end() - 1;
 				}
 				else
 				{
-					this->currentDirection = 1;
+					--this->currentWaypointItr;
+				}
+				this->currentDirection = -1;
+			}
+			else
+			{
+				// Walking backward: the agent comes from the next waypoint.
+				if (this->currentWaypointItr + 1 == this->wayPoints.end())
+				{
+					if (false == loop)
+					{
+						// Nothing behind the last waypoint of an open path.
+						return false;
+					}
 					this->currentWaypointItr = this->wayPoints.begin();
 				}
+				else
+				{
+					++this->currentWaypointItr;
+				}
+				this->currentDirection = 1;
 			}
+
+			return true;
 		}
 
 		void Path::addWayPoint(const Ogre::Vector3& waypoint, const Ogre::Quaternion& orientation)
@@ -298,6 +351,16 @@ namespace NOWA
 						// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] Change direction to 1 and start at beginning");
 						this->currentWaypointItr = this->wayPoints.begin();
 						this->currentDirection = 1;
+					}
+					else if (true == this->repeat)
+					{
+						// A repeating loop walked backwards continues at the last waypoint. Without this the
+						// iterator stayed on begin() forever (the decrement below does nothing there) and the
+						// agent kept seeking the waypoint it had already reached - it got stuck at the first
+						// waypoint. This happened for invertDirection + repeat already, and turnAround() on a
+						// loop relies on it.
+						this->currentWaypointItr = this->wayPoints.end() - 1;
+						return;
 					}
 				}
 			}

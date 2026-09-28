@@ -710,6 +710,15 @@ namespace NOWA
         void addPipeQuad(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, const Ogre::Vector3& normal, Ogre::Real u0, Ogre::Real u1, Ogre::Real v0Val, Ogre::Real v1Val,
             PipeMeshBuffer targetBuffer);
 
+        /**
+         * @brief Single triangle. The junction hub needs it: a sphere cell that straddles the
+         *        edge of an arm hole is clipped to a polygon of three to five corners, and
+         *        forcing those through a quad-only path would mean emitting degenerate
+         *        triangles by the thousand.
+         */
+        void addPipeTriangle(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& normal, const Ogre::Vector2& uv0, const Ogre::Vector2& uv1, const Ogre::Vector2& uv2,
+            PipeMeshBuffer targetBuffer);
+
         // Spline / path helpers - same math as ProceduralPlatformComponent, operating on
         // (x, height) because that is the whole path: depth is a separate, ramped quantity.
         Ogre::Vector2 evaluateCatmullRom(const std::vector<PipeControlPoint>& points, Ogre::Real t);

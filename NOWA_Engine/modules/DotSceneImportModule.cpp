@@ -231,6 +231,12 @@ namespace NOWA
 
         Ogre::String projectPath = sections[0];
 
+        // Attention: bSceneParsed is a member that is ALSO read while the outer scene is still being parsed.
+        // internalParseScene() calls this function in the middle of its own run and hands the flag on to
+        // GameObjectFactory::createOrSetGameObjectFromXML(). The old code set it to true on entry and hard coded
+        // it to false on the normal exit, which switched the flag off underneath the still running outer parse,
+        // and left it stuck at true on every early return. It is saved here and restored on every exit path.
+        const bool previousSceneParsed = this->bSceneParsed;
         this->bSceneParsed = true;
 
         // Import global scene, if it does exist
@@ -252,6 +258,7 @@ namespace NOWA
         // If it does not exist, then there are no global objects and it does not matter
         if (false == ifs.good())
         {
+            this->bSceneParsed = previousSceneParsed;
             return false;
         }
         std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
@@ -278,18 +285,20 @@ namespace NOWA
         if (nullptr == xmlRoot)
         {
             Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Invalid global.scene File. Missing <scene>");
+            this->bSceneParsed = previousSceneParsed;
             return false;
         }
         if (XMLConverter::getAttrib(xmlRoot, "formatVersion", "") == "")
         {
-            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Invalid global.scene File. Missing <scene>");
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Invalid global.scene File. Missing formatVersion");
+            this->bSceneParsed = previousSceneParsed;
             return false;
         }
 
         // Process the global.scene
         this->processScene(xmlRoot);
 
-        this->bSceneParsed = false;
+        this->bSceneParsed = previousSceneParsed;
 
         return true;
     }
@@ -409,11 +418,16 @@ namespace NOWA
         if (nullptr == xmlRoot)
         {
             Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Invalid .scene File. Missing <scene>");
+            // Attention: These two early returns used to leave bSceneParsed at true forever, so the module
+            // stayed in "currently parsing" state and every later load passed the wrong flag into
+            // GameObjectFactory::createOrSetGameObjectFromXML().
+            this->bSceneParsed = false;
             return false;
         }
         if (XMLConverter::getAttrib(xmlRoot, "formatVersion", "") == "")
         {
             Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Invalid .scene File. Missing formatVersion");
+            this->bSceneParsed = false;
             return false;
         }
 
@@ -441,7 +455,8 @@ namespace NOWA
         }
         else
         {
-            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Attention: Scene: '" + this->scenePath + "' uses ignore global scene. If this is desired, then its fine. Else some gameobjects will not be loaded. Keep that in mind!");
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL,
+                "[DotSceneImportModule] Attention: Scene: '" + this->scenePath + "' uses ignore global scene. If this is desired, then its fine. Else some gameobjects will not be loaded. Keep that in mind!");
         }
 
         NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
@@ -478,6 +493,10 @@ namespace NOWA
         std::ifstream ifs(savedGameFilePathName);
         if (false == ifs.good())
         {
+            // Attention: This early return left bSceneParsed and bIsSnapshot at true, so a missing saved game
+            // file put the module into a permanently wrong state for every following normal scene load.
+            this->bSceneParsed = false;
+            this->bIsSnapshot = false;
             success = false;
             return success;
         }
@@ -1286,6 +1305,17 @@ namespace NOWA
 
         // Main Parameter
         {
+            // Attention: this->projectParameter is a member and survives from one loaded scene to the next.
+            // Both values below used to be assigned ONLY when their XML node was present, so a scene without
+            // a <mainParameter> block silently inherited the value of the PREVIOUSLY loaded scene. In practice:
+            // load Menu.scene (ignoreGlobalScene = true), then load Level1.scene (no mainParameter block) and
+            // Level1 still ignored global.scene and lost every global game object - and, because the editor
+            // then also believes the current scene ignores the global scene, a following save can wipe
+            // global.scene. The defaults are therefore restored first, exactly like the forwardMode block
+            // above already does.
+            this->projectParameter.ignoreGlobalScene = false;
+            this->projectParameter.renderDistance = Core::getSingletonPtr()->getGlobalRenderDistance();
+
             pElement = xmlNode->first_node("mainParameter");
             if (pElement)
             {
@@ -1298,7 +1328,12 @@ namespace NOWA
                 subElement = pElement->first_node("renderDistance");
                 if (subElement)
                 {
-                    this->projectParameter.renderDistance = XMLConverter::getAttribReal(subElement, "renderDistance", Core::getSingletonPtr()->getGlobalRenderDistance());
+                    // Attention: This read an attribute called "renderDistance" from a node that is itself named
+                    // <renderDistance>, while every other node in this file carries its payload in a "value"
+                    // attribute. The lookup therefore never matched and the per scene render distance silently
+                    // fell back to the global default. "value" is read first now, and the old attribute name is
+                    // still accepted as a fallback so existing scene files keep working.
+                    this->projectParameter.renderDistance = XMLConverter::getAttribReal(subElement, "value", XMLConverter::getAttribReal(subElement, "renderDistance", Core::getSingletonPtr()->getGlobalRenderDistance()));
                 }
             }
         }
@@ -2255,7 +2290,8 @@ namespace NOWA
                 // nullptr as the component means: dummy workspace.
                 AppStateManager::getSingletonPtr()->getWorkspaceModule()->setPrimaryWorkspace(this->sceneManager, this->temporaryLoadingCamera, nullptr);
 
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[LOADING-BEGIN] dummy workspace created, hasAnyWorkspace=" + Ogre::StringConverter::toString(AppStateManager::getSingletonPtr()->getWorkspaceModule()->hasAnyWorkspace()));
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[LOADING-BEGIN] dummy workspace created, hasAnyWorkspace=" + Ogre::StringConverter::toString(AppStateManager::getSingletonPtr()->getWorkspaceModule()->hasAnyWorkspace()));
             }
 
             // Fall back to the cheapest indicator if the caller did not provide one.

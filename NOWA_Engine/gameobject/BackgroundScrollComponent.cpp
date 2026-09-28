@@ -210,113 +210,90 @@ namespace NOWA
 
     void BackgroundScrollComponent::update(Ogre::Real dt, bool notSimulating)
     {
-        if (!notSimulating && this->active->getBool() && this->workspaceBackgroundComponent != nullptr)
+        if (false == notSimulating && true == this->active->getBool() && nullptr != this->workspaceBackgroundComponent)
         {
-            bool followGameObjectX = this->followGameObjectX->getBool();
-            bool followGameObjectY = this->followGameObjectY->getBool();
-            bool followGameObjectZ = this->followGameObjectZ->getBool();
-
-            Ogre::Vector2 absolutePos2D = Ogre::Vector2::ZERO;
-            Ogre::Vector2 velocity = Ogre::Vector2::ZERO;
-
-            if (this->targetSceneNode != nullptr)
+            // Resolve the layer this component drives ONCE, not per frame in a 9 iteration loop.
+            const int layerIndex = static_cast<int>(this->gameObjectPtr->getOccurrenceIndexFromComponent(this));
+            if (layerIndex < 0 || layerIndex >= 9)
             {
-                Ogre::Vector3 absolutePos3D = this->targetSceneNode->_getDerivedPositionUpdated();
+                return;
+            }
 
-                // Determine which axes to track for scroll calculation
-                if (followGameObjectX || followGameObjectY)
-                {
-                    absolutePos2D = Ogre::Vector2(absolutePos3D.x, absolutePos3D.y);
-                }
-                else
-                {
-                    absolutePos2D = Ogre::Vector2(absolutePos3D.x, absolutePos3D.z);
-                }
+            const bool followX = this->followGameObjectX->getBool();
+            const bool followY = this->followGameObjectY->getBool();
+            const bool followZ = this->followGameObjectZ->getBool();
 
-                // Initialize lastPosition on first update
-                if (this->firstTimePositionSet)
+            // Scroll direction per axis. If a layer moves WITH the camera instead of against it,
+            // flip the sign here - this is the only place that decides the direction.
+            const Ogre::Real signX = 1.0f;
+            const Ogre::Real signY = -1.0f;
+
+            if (true == followX || true == followY || true == followZ)
+            {
+                // Parallax is driven by how far the CAMERA moved. Camera stands still -> the layer
+                // stands still, exactly.
+                Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+                if (nullptr != camera)
                 {
-                    if (followGameObjectX)
+                    const Ogre::Vector3 cameraPosition = camera->getPosition();
+                    const Ogre::Real cameraHorizontal = cameraPosition.x;
+                    // Vertical source: y for a side scroller, z for a top down layer.
+                    const Ogre::Real cameraVertical = (true == followY) ? cameraPosition.y : cameraPosition.z;
+
+                    // Camera teleports (FollowCamera2D placing the camera on the player at the start,
+                    // level or camera switches) must not scroll the layer. A real camera cannot move
+                    // this far in one update, so snap to the new position without scrolling.
+                    const Ogre::Real maxPlausibleCameraDelta = 10.0f;
+
+                    if (true == this->firstTimePositionSet || Ogre::Math::Abs(cameraHorizontal - this->lastPosition.x) > maxPlausibleCameraDelta || Ogre::Math::Abs(cameraVertical - this->lastPosition.y) > maxPlausibleCameraDelta)
                     {
-                        this->lastPosition.x = absolutePos2D.x;
+                        this->lastPosition.x = cameraHorizontal;
+                        this->lastPosition.y = cameraVertical;
+                        this->firstTimePositionSet = false;
                     }
-                    if (followGameObjectY || followGameObjectZ)
+
+                    // FIX: the old alpha "0.1f * dt" is 0.1 per SECOND, i.e. a time constant of about
+                    // 10 s: the layer needed seconds to react and kept drifting for 10-30 s after the
+                    // camera had stopped. Frame rate independent alpha instead; smoothingTimeSeconds is
+                    // the only value to tune (bigger = smoother but lags more, 0.05 - 0.15 is sane).
+                    const Ogre::Real smoothingTimeSeconds = 0.08f;
+                    const Ogre::Real smoothing = 1.0f - std::exp(-dt / smoothingTimeSeconds);
+
+                    if (true == followX)
                     {
-                        this->lastPosition.y = absolutePos2D.y;
+                        const Ogre::Real filteredX = NOWA::MathHelper::getInstance()->lowPassFilter(cameraHorizontal, this->lastPosition.x, smoothing);
+                        // moveSpeed = uv units per world unit the camera moved. The delta is already
+                        // per frame, so deliberately no "* dt" here.
+                        this->xScroll += signX * (filteredX - this->lastPosition.x) * this->moveSpeedX->getReal();
+                        this->xScroll = fmodf(this->xScroll + 2.0f, 2.0f); // Wrap between [0,2)
+                        this->lastPosition.x = filteredX;
                     }
 
-                    this->firstTimePositionSet = false;
-                }
-
-                // Smooth and calculate velocity for X
-                if (followGameObjectX)
-                {
-                    float filteredX = NOWA::MathHelper::getInstance()->lowPassFilter(absolutePos2D.x, this->lastPosition.x, 0.1f * dt);
-                    velocity.x = filteredX - this->lastPosition.x;
-
-                    this->xScroll += velocity.x * this->moveSpeedX->getReal() * dt;
-                    this->xScroll = fmodf(this->xScroll + 2.0f, 2.0f); // Wrap between [0,2)
-                    absolutePos2D.x = filteredX;                       // update for lastPosition below
-                }
-
-                // Smooth and calculate velocity for Y
-                if (followGameObjectY || followGameObjectZ)
-                {
-                    float filteredY = NOWA::MathHelper::getInstance()->lowPassFilter(absolutePos2D.y, this->lastPosition.y, 0.1f * dt);
-                    velocity.y = filteredY - this->lastPosition.y;
-
-                    this->yScroll -= velocity.y * this->moveSpeedY->getReal() * dt;
-                    this->yScroll = fmodf(this->yScroll + 2.0f, 2.0f); // Wrap between [0,2)
-                    absolutePos2D.y = filteredY;                       // update for lastPosition below
+                    if (true == followY || true == followZ)
+                    {
+                        const Ogre::Real filteredY = NOWA::MathHelper::getInstance()->lowPassFilter(cameraVertical, this->lastPosition.y, smoothing);
+                        this->yScroll += signY * (filteredY - this->lastPosition.y) * this->moveSpeedY->getReal();
+                        this->yScroll = fmodf(this->yScroll + 2.0f, 2.0f); // Wrap between [0,2)
+                        this->lastPosition.y = filteredY;
+                    }
                 }
             }
 
-            // If not following game object, just scroll based on moveSpeed values
-            if (!followGameObjectX)
+            // Axes that do NOT follow scroll on their own (clouds etc.): moveSpeed = uv units per
+            // second, constant, no filter.
+            if (false == followX)
             {
-                float filteredSpeedX = NOWA::MathHelper::getInstance()->lowPassFilter(this->moveSpeedX->getReal(), this->lastPosition.x, 0.1f * dt);
-                this->xScroll += filteredSpeedX * dt;
+                this->xScroll += signX * this->moveSpeedX->getReal() * dt;
                 this->xScroll = fmodf(this->xScroll + 2.0f, 2.0f);
-                velocity.x = filteredSpeedX;
             }
-
-            if (!followGameObjectY && !followGameObjectZ)
+            if (false == followY && false == followZ)
             {
-                float filteredSpeedY = NOWA::MathHelper::getInstance()->lowPassFilter(this->moveSpeedY->getReal(), this->lastPosition.y, 0.1f * dt);
-                this->yScroll -= filteredSpeedY * dt;
+                this->yScroll += signY * this->moveSpeedY->getReal() * dt;
                 this->yScroll = fmodf(this->yScroll + 2.0f, 2.0f);
-                velocity.y = filteredSpeedY;
             }
 
-            // Update the workspace background component with current scroll values
-            for (unsigned short i = 0; i < 9; ++i)
-            {
-                if (i == this->gameObjectPtr->getOccurrenceIndexFromComponent(this))
-                {
-                    this->workspaceBackgroundComponent->setBackgroundScrollSpeedX(i, this->xScroll);
-                    this->workspaceBackgroundComponent->setBackgroundScrollSpeedY(i, this->yScroll);
-                    break;
-                }
-            }
-
-            // Update lastPosition for next frame
-            if (followGameObjectX)
-            {
-                this->lastPosition.x = absolutePos2D.x;
-            }
-            else
-            {
-                this->lastPosition.x = velocity.x;
-            }
-
-            if (followGameObjectY || followGameObjectZ)
-            {
-                this->lastPosition.y = absolutePos2D.y;
-            }
-            else
-            {
-                this->lastPosition.y = velocity.y;
-            }
+            this->workspaceBackgroundComponent->setBackgroundScrollSpeedX(static_cast<unsigned short>(layerIndex), this->xScroll);
+            this->workspaceBackgroundComponent->setBackgroundScrollSpeedY(static_cast<unsigned short>(layerIndex), this->yScroll);
         }
     }
 
