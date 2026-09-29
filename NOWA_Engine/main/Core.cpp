@@ -1768,6 +1768,8 @@ namespace NOWA
         MyGUI::ResourceManager::getInstancePtr()->load("MyGUI_WoodButton.xml");
         MyGUI::ResourceManager::getInstancePtr()->load("WoodSliderSkin.xml");
         MyGUI::ResourceManager::getInstancePtr()->load("WoodButtonSkin.xml");
+        MyGUI::ResourceManager::getInstancePtr()->load("ProgressValueBar.xml");
+        
     }
 
     void Core::setSceneManagerForMyGuiPlatform(Ogre::SceneManager* sceneManager)

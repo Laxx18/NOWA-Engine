@@ -1,7 +1,7 @@
 {
 	"samplers" :
 	{
-		"Sampler_5" :
+		"Custom_Sampler_0" :
 		{
 			"min" : "anisotropic",
 			"mag" : "anisotropic",
@@ -20,7 +20,7 @@
 
 	"macroblocks" :
 	{
-		"Macroblock_0" :
+		"Custom_Macroblock_0" :
 		{
 			"scissor_test" : false,
 			"depth_check" : true,
@@ -35,7 +35,7 @@
 
 	"blendblocks" :
 	{
-		"Blendblock_0" :
+		"Custom_Blendblock_0" :
 		{
 			"alpha_to_coverage" : false,
 			"blendmask" : "rgba",
@@ -51,8 +51,8 @@
 
 		"Missing" :
 		{
-			"macroblock" : "Macroblock_0",
-			"blendblock" : "Blendblock_0",
+			"macroblock" : "Custom_Macroblock_0",
+			"blendblock" : "Custom_Blendblock_0",
 			"shadow_const_bias" : 0.01,
 			"workflow" : "specular_fresnel",
 			"brdf" : "cook_torrance",
@@ -61,7 +61,7 @@
 				"value" : [3.14, 3.14, 3.14],
 				"background" : [1, 1, 1, 1],
 				"texture" : "Missing.png",
-				"sampler" : "Sampler_5"
+				"sampler" : "Custom_Sampler_0"
 			},
 			"specular" :
 			{
@@ -75,6 +75,24 @@
 			"roughness" :
 			{
 				"value" : 0.09
+			}
+		},
+		
+		"BlackMaterial" :
+		{
+			"macroblock" : "Custom_Macroblock_0",
+			"blendblock" : "Custom_Blendblock_0",
+			"shadow_const_bias" : 0.01,
+			"workflow" : "SpecularWorkflow",
+			"brdf" : "default_uncorrelated",
+			"diffuse" :
+			{
+				"value" : [0, 0, 0],
+				"background" : [0, 0, 0, 1]
+			},
+			"specular" :
+			{
+				"value" : [0, 0, 0]
 			}
 		}
 	}

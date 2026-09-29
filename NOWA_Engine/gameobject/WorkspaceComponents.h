@@ -669,6 +669,8 @@ namespace NOWA
 
 		void changeBackground(unsigned short index, const Ogre::String& backgroundTextureName);
 
+		void resetBackgroundScrollPosition(unsigned short index);
+
 		void setBackgroundScrollSpeedX(unsigned short index, Ogre::Real backgroundScrollFarSpeedX);
 
 		void setBackgroundScrollSpeedY(unsigned short index, Ogre::Real backgroundScrollFarSpeedY);

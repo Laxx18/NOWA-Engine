@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    ProgressValueBar - progress bar skins in the look of the ValueBarComponent (enemy energy bars).
+    Texture: ProgressValueBar.png (128 x 32), put it next to MyGUI_BlackBlueSkins.png.
+
+    Skins (the 'Skin' attribute of a MyGUIProgressBarComponent):
+      ProgressValueBar         frame + dark background + red fill. Drop in replacement for ProgressBarFill.
+      ProgressValueBarTrail    frame + dark background + light damage trail fill.
+      ProgressValueBarOverlay  red fill only, no frame and no background. Laid exactly over a
+                               ProgressValueBarTrail bar, the trail shows through where energy was just lost.
+
+    The fill color comes from the texture: region 32..55 is the red fill, 64..87 the trail. Recolor
+    those two regions for other bars (e.g. blue for mana, green for experience).
+-->
+<MyGUI type="Resource" version="1.1">
+	<Resource type="ResourceSkin" name="ProgressValueBarBackSkin" size="24 24" texture="ProgressValueBar.png">
+		<BasisSkin type="SubSkin" offset="0 0 3 3" align="Left Top">
+			<State name="disabled" offset="0 0 3 3"/>
+			<State name="normal" offset="0 0 3 3"/>
+			<State name="highlighted" offset="0 0 3 3"/>
+			<State name="pushed" offset="0 0 3 3"/>
+		</BasisSkin>
+		<BasisSkin type="SubSkin" offset="3 0 18 3" align="HStretch Top">
+			<State name="disabled" offset="3 0 18 3"/>
+			<State name="normal" offset="3 0 18 3"/>
+			<State name="highlighted" offset="3 0 18 3"/>
+			<State name="pushed" offset="3 0 18 3"/>
+		</BasisSkin>
+		<BasisSkin type="SubSkin" offset="21 0 3 3" align="Right Top">
+			<State name="disabled" offset="21 0 3 3"/>
+			<State name="normal" offset="21 0 3 3"/>
+			<State name="highlighted" offset="21 0 3 3"/>
+			<State name="pushed" offset="21 0 3 3"/>
+		</BasisSkin>
+		<BasisSkin type="SubSkin" offset="21 3 3 18" align="Right VStretch">
+			<State name="disabled" offset="21 3 3 18"/>
+			<State name="normal" offset="21 3 3 18"/>
+			<State name="highlighted" offset="21 3 3 18"/>
+			<State name="pushed" offset="21 3 3 18"/>
+		</BasisSkin>
+		<BasisSkin type="SubSkin" offset="21 21 3 3" align="Right Bottom">
+			<State name="disabled" offset="21 21 3 3"/>
+			<State name="normal" offset="21 21 3 3"/>
+			<State name="highlighted" offset="21 21 3 3"/>
+			<State name="pushed" offset="21 21 3 3"/>
+		</BasisSkin>
+		<BasisSkin type="SubSkin" offset="3 21 18 3" align="HStretch Bottom">
+			<State name="disabled" offset="3 21 18 3"/>
+			<State name="normal" offset="3 21 18 3"/>
+			<State name="highlighted" offset="3 21 18 3"/>
+			<State name="pushed" offset="3 21 18 3"/>
+		</BasisSkin>
+		<BasisSkin type="SubSkin" offset="0 21 3 3" align="Left Bottom">
+			<State name="disabled" offset="0 21 3 3"/>
+			<State name="normal" offset="0 21 3 3"/>
+			<State name="highlighted" offset="0 21 3 3"/>
+			<State name="pushed" offset="0 21 3 3"/>
+		</BasisSkin>
+		<BasisSkin type="SubSkin" offset="0 3 3 18" align="Left VStretch">
+			<State name="disabled" offset="0 3 3 18"/>
+			<State name="normal" offset="0 3 3 18"/>
+			<State name="highlighted" offset="0 3 3 18"/>
+			<State name="pushed" offset="0 3 3 18"/>
+		</BasisSkin>
+		<BasisSkin type="SubSkin" offset="3 3 18 18" align="Stretch">
+			<State name="disabled" offset="3 3 18 18"/>
+			<State name="normal" offset="3 3 18 18"/>
+			<State name="highlighted" offset="3 3 18 18"/>
+			<State name="pushed" offset="3 3 18 18"/>
+		</BasisSkin>
+	</Resource>
+	<Resource type="ResourceSkin" name="ProgressValueBarFillSkin" size="24 24" texture="ProgressValueBar.png">
+		<BasisSkin type="SubSkin" offset="0 0 2 24" align="Left VStretch">
+			<State name="disabled" offset="32 0 2 24"/>
+			<State name="normal" offset="32 0 2 24"/>
+			<State name="highlighted" offset="32 0 2 24"/>
+			<State name="pushed" offset="32 0 2 24"/>
+		</BasisSkin>
+		<BasisSkin type="SubSkin" offset="2 0 20 24" align="Stretch">
+			<State name="disabled" offset="34 0 20 24"/>
+			<State name="normal" offset="34 0 20 24"/>
+			<State name="highlighted" offset="34 0 20 24"/>
+			<State name="pushed" offset="34 0 20 24"/>
+		</BasisSkin>
+		<BasisSkin type="SubSkin" offset="22 0 2 24" align="Right VStretch">
+			<State name="disabled" offset="54 0 2 24"/>
+			<State name="normal" offset="54 0 2 24"/>
+			<State name="highlighted" offset="54 0 2 24"/>
+			<State name="pushed" offset="54 0 2 24"/>
+		</BasisSkin>
+	</Resource>
+	<Resource type="ResourceSkin" name="ProgressValueBarTrailFillSkin" size="24 24" texture="ProgressValueBar.png">
+		<BasisSkin type="SubSkin" offset="0 0 2 24" align="Left VStretch">
+			<State name="disabled" offset="64 0 2 24"/>
+			<State name="normal" offset="64 0 2 24"/>
+			<State name="highlighted" offset="64 0 2 24"/>
+			<State name="pushed" offset="64 0 2 24"/>
+		</BasisSkin>
+		<BasisSkin type="SubSkin" offset="2 0 20 24" align="Stretch">
+			<State name="disabled" offset="66 0 20 24"/>
+			<State name="normal" offset="66 0 20 24"/>
+			<State name="highlighted" offset="66 0 20 24"/>
+			<State name="pushed" offset="66 0 20 24"/>
+		</BasisSkin>
+		<BasisSkin type="SubSkin" offset="22 0 2 24" align="Right VStretch">
+			<State name="disabled" offset="86 0 2 24"/>
+			<State name="normal" offset="86 0 2 24"/>
+			<State name="highlighted" offset="86 0 2 24"/>
+			<State name="pushed" offset="86 0 2 24"/>
+		</BasisSkin>
+	</Resource>
+	<Resource type="ResourceLayout" name="ProgressValueBar" version="3.2.0">
+		<Widget type="Widget" skin="ProgressValueBarBackSkin" position="25 50 125 15" name="Root">
+			<Property key="MoveToClick" value="true"/>
+			<UserString key="LE_TargetWidgetType" value="ProgressBar"/>
+			<UserString key="TrackFill" value="true"/>
+			<UserString key="TrackSkin" value="ProgressValueBarFillSkin"/>
+			<UserString key="TrackWidth" value="4"/>
+			<Widget type="Widget" skin="PanelEmpty" position="3 3 119 9" align="Stretch" name="TrackPlace">
+				<Property key="NeedKey" value="false"/>
+				<Property key="InheritsPick" value="true"/>
+			</Widget>
+		</Widget>
+	</Resource>
+	<Resource type="ResourceLayout" name="ProgressValueBarTrail" version="3.2.0">
+		<Widget type="Widget" skin="ProgressValueBarBackSkin" position="25 50 125 15" name="Root">
+			<Property key="MoveToClick" value="true"/>
+			<UserString key="LE_TargetWidgetType" value="ProgressBar"/>
+			<UserString key="TrackFill" value="true"/>
+			<UserString key="TrackSkin" value="ProgressValueBarTrailFillSkin"/>
+			<UserString key="TrackWidth" value="4"/>
+			<Widget type="Widget" skin="PanelEmpty" position="3 3 119 9" align="Stretch" name="TrackPlace">
+				<Property key="NeedKey" value="false"/>
+				<Property key="InheritsPick" value="true"/>
+			</Widget>
+		</Widget>
+	</Resource>
+	<Resource type="ResourceLayout" name="ProgressValueBarOverlay" version="3.2.0">
+		<Widget type="Widget" skin="PanelEmpty" position="25 50 125 15" name="Root">
+			<Property key="MoveToClick" value="true"/>
+			<UserString key="LE_TargetWidgetType" value="ProgressBar"/>
+			<UserString key="TrackFill" value="true"/>
+			<UserString key="TrackSkin" value="ProgressValueBarFillSkin"/>
+			<UserString key="TrackWidth" value="4"/>
+			<Widget type="Widget" skin="PanelEmpty" position="3 3 119 9" align="Stretch" name="TrackPlace">
+				<Property key="NeedKey" value="false"/>
+				<Property key="InheritsPick" value="true"/>
+			</Widget>
+		</Widget>
+	</Resource>
+</MyGUI>

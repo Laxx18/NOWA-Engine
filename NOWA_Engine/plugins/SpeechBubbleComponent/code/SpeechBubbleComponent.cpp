@@ -897,7 +897,7 @@ namespace NOWA
                 this->manualObject = sceneManager->createManualObject();
                 // 212 is one below MovableText's own queue (213), so the bubble body
                 // is always drawn before the glyphs sitting on top of it.
-                this->manualObject->setRenderQueueGroup(212);
+                this->manualObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MANUAL);
                 this->manualObject->setName("SpeechBubble_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(this->index));
                 this->manualObject->setQueryFlags(0 << 0);
                 this->manualObject->setCastShadows(false);

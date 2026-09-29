@@ -3,9 +3,6 @@ module("PrehistoricLax", package.seeall);
 
 require("init");
 
--- Combat values of all enemy types, see EnemyProfiles.lua.
-local EnemyProfiles = require("EnemyProfiles");
-
 -- File scope locals are fine here: the state tables below live in the SAME chunk, so they
 -- close over these as upvalues. What does NOT work is declaring them inside connect() - the
 -- state functions cannot see those, which is the trap the old PrehistoricLax_0 script ran
@@ -19,6 +16,31 @@ local playerController = nil;
 local animationBlender = nil;
 local moneySound = nil;
 local hurtSound = nil;
+-- Player attributes (main game object, saved) and the status bar texts that show them.
+local energy = nil;
+local strength = nil;
+local experience = nil;
+local ascension = nil;
+local level = nil;
+local coins = nil;
+local killedEnemies = nil;
+local energyProgress = nil;
+-- Damage trail of the energy bar: a second progress bar (skin ProgressValueBarTrail) right under
+-- 'EnergyProgress' (skin ProgressValueBarOverlay). It holds the old value for a moment after a hit and
+-- then shrinks, like the enemy energy bars.
+local energyTrailProgress = nil;
+local energyPercent = 0;
+local energyTrailPercent = 0;
+local energyTrailDelay = 0;
+local strengthText = nil;
+local levelText = nil;
+local experienceText = nil;
+local coinsText = nil;
+local killedEnemiesText = nil;
+local hitParticle = nil;
+local playerDeadListenerId = nil;
+local enemyDeadListenerId = nil;
+local enemyNearPlayerListenerId = nil;
 
 -- Mirrors NOWA::Direction from PlayerControllerComponents.h.
 -- Attention: this order is NOT the one the old script used - RIGHT comes before LEFT here.
@@ -37,11 +59,6 @@ local attackId = 0;
 -- tracked separately in invulnerableTimer, so the two can never switch each other off.
 local isInvulnerable = false;
 
-local energy = nil;
-local energyProgress = nil;
-local hitParticle = nil;
-local baseDamage = 10;
-
 ---------------------------------------------------------------------------------------------------
 -- Attack
 --
@@ -54,191 +71,171 @@ local baseDamage = 10;
 --   allowed to blend, so the player kept the punch pose while the physics carried on moving him:
 --   he was sliding across the floor in a punch. Layering solves exactly that. The walking state
 --   keeps doing its job - input, velocity, facing, the locomotion clip and addTime() - and the
---   punch is added on top of it. That is the "oben schlagen, unten laufen" case:
---
---       virtual void setOverlayAnimation(AnimID animationId, Ogre::Real blendInTime = 0.2f);
---       @brief  Starts an overlay animation on top of the current one using per-bone weights.
---               Useful for upper-body actions (attacks, reloads) while legs keep playing
---               locomotion.
+--   punch is added on top of it. That is the "oben schlagen, unten laufen" case.
 --
 --   The overlay also does not go through AnimationBlenderV2::internalBlend(), which refuses every
---   new blend while a non looping clip is still running:
+--   new blend while a non looping clip is still running. That guard is what made the second press
+--   do nothing for a second or two. An overlay has no such gate.
 --
---       if (false == this->complete && nullptr != this->previousSource) { return; }
---
---   That guard is what made the second press do nothing for a second or two. An overlay has no
---   such gate, so a follow-up swing starts the moment the window below allows it.
---
--- The timer is driven from PrehistoricLax["update"], which the LuaScriptComponent calls every
--- frame - the very function the NOWA-Design template already generates commented out at the
--- bottom of every object script.
---
--- Attention: this needs the fixed AnimationBlenderV2. In the old one the overlay driving code sat
--- inside the completion branch of a NON LOOPING main clip, so for a walking character it never ran
--- at all: the overlay was enabled with weight 0, its bones were muted on every other animation and
--- nothing advanced it - the upper body froze in the bind pose and the overlay never cleared itself.
+-- The timer is driven from PrehistoricLax["update"], which the LuaScriptComponent calls every frame.
 ---------------------------------------------------------------------------------------------------
 
 -- Which bone chain the swing owns. That bone and ALL of its children are driven by the punch,
 -- everything below it keeps walking.
---
--- "Boy 1 Pelvis" is the root of this skeleton and the parent of BOTH "Boy 1 Spine" and the two
--- thighs, so the spine is exactly where the upper body splits off from the legs:
 --
 --     Boy 1 Pelvis
 --       Boy 1 Spine  ->  Spine1 -> Spine2 -> Neck/Head, clavicles, arms, hands, hoodie, backpack
 --       Boy 1 L Thigh -> L Calf -> L Foot -> L Toe0
 --       Boy 1 R Thigh -> R Calf -> R Foot -> R Toe0
 --
--- The pelvis itself stays with the walk animation, which is what keeps the hip movement of the
--- walk cycle intact while the arms swing.
---
--- An empty string falls back to "whatever bones the punch clip animates". That is only the upper
--- body if the clip really keys nothing else; a full body mocap punch keys the legs and the root
--- too, and then the player punches with his whole body again - which is exactly the
--- "er schlaegt ODER er laeuft" symptom.
+-- The pelvis itself stays with the walk animation, which keeps the hip movement of the walk cycle
+-- intact while the arms swing.
 local ATTACK_OVERLAY_BONE = "Boy 1 Spine";
 
--- Prints, at the start of every swing, the clip length, the frame rate, the overlay speed and the
--- whole bone hierarchy with a marker on each bone the overlay owns, plus one line per frame while
--- the swing runs. If a leg bone comes out marked, the chain root is wrong.
+-- Prints the overlay bone hierarchy and one line per frame while the swing runs.
 local ATTACK_DEBUG = false;
 
--- How strongly the swing takes over.
---
--- ATTACK_CHAIN_INFLUENCE is how much of the spine chain the punch owns. 1.0 means the walk or idle
--- clip has no say above the pelvis at all, which is what a punch wants.
---
--- ATTACK_BODY_INFLUENCE is how far the punch reaches into the pelvis and the legs. 0 keeps the
--- locomotion completely untouched down there. A small value lets the whole body lean into the
--- swing while the legs keep walking, which is what makes it read as heavy rather than as an arm
--- waving on a separate torso. 0.25 to 0.35 is the sweet spot.
---
--- Attention: the pelvis is where the mocap clip carries its root motion, so turning this up too far
--- pulls the character backwards on every swing. Above 0.4 it starts to show.
+-- ATTACK_CHAIN_INFLUENCE: how much of the spine chain the punch owns (1.0 = walk has no say above
+-- the pelvis). ATTACK_BODY_INFLUENCE: how far the punch reaches into pelvis and legs; 0.25 to 0.35
+-- lets the whole body lean into the swing. Above 0.4 the root motion of the clip starts to pull the
+-- character backwards.
 local ATTACK_CHAIN_INFLUENCE = 1.0;
 local ATTACK_BODY_INFLUENCE = 0.3;
 
--- Playback speed of the punch, 1.0 being the authored speed.
---
--- Attention: this is NOT the player controller's animation speed. That one is driven from the
--- walking speed to keep the feet in sync with the movement and sits well below 1.0 most of the
--- time; the overlay used to inherit it, which is why a 0.87 second punch took two to three
--- seconds.
+-- Playback speed of the punch. NOT the player controller's animation speed, which follows the
+-- walking speed and made a 0.87 second punch take two to three seconds.
 local ATTACK_SPEED = 1.0;
 
--- How long the overlay fades in. The same value is used to fade it out again when the clip is
--- over. Short, so the swing feels immediate, but not zero - a hard cut makes the arm jump.
+-- Fade in / out of the overlay. Short, but not zero - a hard cut makes the arm jump.
 local ATTACK_BLEND_IN = 0.08;
 
--- The part of the swing that actually hurts, as a fraction of the punch clip. The window starts
--- after the wind-up and closes before the arm is pulled back, so walking into an enemy with the
--- cudgel dangling from the hand costs him nothing.
+-- The part of the swing that actually hurts, as a fraction of the punch clip. Used for the trade
+-- rule against enemy attacks.
 local ATTACK_HIT_START = 0.35;
 local ATTACK_HIT_END = 0.75;
 
--- A swing ALWAYS plays to the end of the clip. A press while one is running is dropped, it does
--- not rewind the clip and it does not queue a second swing.
---
--- The previous version let a press from halfway through restart the clip with
--- setOverlayTimePosition(0). Two presses in quick succession then looked exactly like "he starts
--- to punch and is snapped back to the start pose", because that is literally what happened.
---
--- Length of the punch clip in seconds. Only used when the build has no overlay timing functions,
--- see OVERLAY_TIMING_AVAILABLE below - otherwise the real clip length is used.
-local ATTACK_FALLBACK_DURATION = 1;
-
--- Pure safety net. The swing ends on the clip, not on this - but if the blender is never ticked
--- for some reason, this keeps the player from being stuck in "attacking" forever.
+-- Pure safety net. The swing ends on the clip, not on this.
 local ATTACK_TIMEOUT = 2.0;
 
 local isAttacking = false;
 local attackTime = 0;
-local hasHitThisSwing = false;
-
--- Whether this binary exposes getOverlayProgress / isOverlayAnimationActive.
---
--- Probed once in connect() rather than assumed. The overlay functions were added to the binding
--- in several rounds, and a lua script that calls one the running build does not have dies on the
--- spot - in connect() that takes the whole player down with it. With the probe the swing simply
--- falls back to its own timer, which is a little less exact and otherwise identical.
-local overlayTimingAvailable = false;
-
--- The player's own front ray hit detection in update(). The cudgel's kinematic contact
--- (WeaponStick.lua) does the job now. With both active an enemy was damaged TWICE per swing, and
--- whichever of the two killed it decided whether the EnemyDeadEvent carried a hitDirection or not -
--- one more reason the dead rhino flew off in random directions. Switch this back on only if the
--- cudgel is not attached.
-local USE_FRONT_RAY_HIT = false;
 
 ---------------------------------------------------------------------------------------------------
--- Enemy contact combat
+-- Enemy combat
 --
--- What the simple "touch = lose energy" version lacks, and what action games do instead:
---
---   1. Telegraph. Touching an enemy starts ITS attack (ANIM_ATTACK_1). The damage does not land
---      on the first touch, but at the impact moment of that attack (impactDelay), and only if the
---      player is still within reach. A player who jumps or steps away in time dodges the kick.
---      Set impactDelay to 0 for an enemy that should hurt on contact immediately.
---
+--   1. Telegraph. An enemy starts ITS attack (ANIM_ATTACK_1) as soon as the player comes within
+--      its attackReach (EnemyNearPlayerEvent from the enemy's script) or touches it. The damage
+--      lands at the impact moment of that attack (attackImpactDelay), and only if the player is
+--      still within reach. A player who jumps or steps away in time dodges.
 --   2. Trade rule. If the player's own swing is in its active window and he faces the enemy, the
---      player wins the exchange: the enemy's attack is not started (on contact) resp. does not
---      land (at impact). Timing the swing is rewarded.
+--      enemy's attack is not started resp. does not land (at impact).
+--   3. Hit reaction. Energy loss, sound, particle and the KnockbackState, which throws the player
+--      away from the enemy. Getting hit cancels the own swing.
+--   4. I-frames. PLAYER_IFRAME_TIME seconds of invulnerability with blinking after a hit.
+--   5. Pressure. The enemy attacks again after its cooldown while the player stays in reach
+--      (its script keeps sending EnemyNearPlayerEvent).
 --
---   3. Hit reaction. Energy loss, ANIM_TAKE_DAMAGE, hurt sound and particle, a knockback away from
---      the enemy and a short stagger in which the input is locked. Getting hit also cancels the
---      player's own swing.
---
---   4. I-frames. After a hit the player is invulnerable for IFRAME_TIME seconds and blinks, so one
---      enemy (or a group) cannot drain him in a row.
---
---   5. Pressure. The enemy attacks again after its cooldown as long as the player stays in reach -
---      standing still next to an enemy is not safe.
---
--- Everything that differs per enemy type (damage, timing, reach, knockback) lives in
--- EnemyProfiles.lua, keyed by the enemy's tag name. A new enemy type only needs an entry there.
+-- All values per enemy type live in EnemyProfiles (init.lua), keyed by the enemy's tag name.
 ---------------------------------------------------------------------------------------------------
-
--- Invulnerability after a hit, and how fast the player blinks meanwhile.
-local IFRAME_TIME = 1.2;
-local IFRAME_BLINK = true;
-local IFRAME_BLINK_INTERVAL = 0.08;
-
 local invulnerableTimer = 0;
 local blinkTimer = 0;
 local playerBlinkVisible = true;
-local blinkApiAvailable = true;
 
-local staggerTimer = 0;
-local staggerDuration = 0;
-local isStaggerLocked = false;
+-- Set by hitPlayer, used by the KnockbackState.
+local knockbackVelocityX = 0;
+local knockbackVelocityUp = 0;
+local knockbackTime = 0;
 
--- Only used when applyRequiredForceForJumpVelocity is not bound for lua, see applyKnockback().
-local knockbackFallbackX = 0;
-local knockbackApiLogged = false;
-
--- Per enemy attack state, keyed by the enemy's game object id. Only the id is stored and the
--- game object is looked up again on every use: an enemy can be deleted at any time (killed), and
--- a stored game object reference would then dangle.
+-- Per enemy attack state, keyed by the enemy's game object id. Entries are dropped on the enemy's
+-- EnemyDeadEvent, long before its delayed delete - so every id in here refers to a live enemy.
 local enemyCombat = {};
+
+-- Enemies killed but not deleted yet, keyed by game object id (from EnemyDeadEvent).
+local deadEnemies = {};
 
 ---------------------------------------------------------------------------------------------------
 -- Helpers
 ---------------------------------------------------------------------------------------------------
 
 function getEnergy()
-    if (energy == nil) then
-        return 100;
-    end
     return energy:getValueNumber();
 end
 
+function getLevel()
+    return level:getValueNumber();
+end
+
+-- Clamped to the max energy of the current level. The progress bar has a range of 100, so it
+-- shows the percentage.
 function setEnergy(value)
-    if (energy == nil) then
-        do return end;
+    local maxEnergy = getMaxEnergy(getLevel());
+    if (value > maxEnergy) then
+        value = maxEnergy;
     end
     energy:setValueNumber(value);
-    energyProgress:setValue(value);
+
+    energyPercent = math.floor(value * 100 / maxEnergy + 0.5);
+    energyProgress:setValue(energyPercent);
+
+    if (energyPercent < energyTrailPercent) then
+        -- Damage: the trail stays for a moment, see updateEnergyTrail.
+        energyTrailDelay = HUD_ENERGY_TRAIL_DELAY;
+    else
+        -- Heal: the trail simply follows.
+        energyTrailPercent = energyPercent;
+        energyTrailProgress:setValue(energyTrailPercent);
+    end
+end
+
+function updateEnergyTrail(dt)
+    if (energyTrailPercent <= energyPercent) then
+        do return end;
+    end
+
+    if (energyTrailDelay > 0) then
+        energyTrailDelay = energyTrailDelay - dt;
+        do return end;
+    end
+
+    energyTrailPercent = energyTrailPercent - HUD_ENERGY_TRAIL_SPEED * dt;
+    if (energyTrailPercent < energyPercent) then
+        energyTrailPercent = energyPercent;
+    end
+    energyTrailProgress:setValue(math.floor(energyTrailPercent + 0.5));
+end
+
+-- Writes all attributes into the status bar.
+function updateHud()
+    strengthText:setCaption("Strength: " .. strength:getValueNumber());
+    levelText:setCaption("Level: " .. getLevel());
+    experienceText:setCaption("Experience: " .. experience:getValueNumber() .. " / " .. ascension:getValueNumber());
+    coinsText:setCaption("Coins: " .. coins:getValueNumber());
+    killedEnemiesText:setCaption("Killed Enemies: " .. killedEnemies:getValueNumber());
+    setEnergy(getEnergy());
+end
+
+-- Adds experience and levels up as often as it is enough for. Every level up gives strength and max
+-- energy (see init.lua) and refills the energy.
+function addExperience(amount)
+    local value = experience:getValueNumber() + amount;
+    local hasLevelUp = false;
+
+    while (value >= ascension:getValueNumber()) do
+        value = value - ascension:getValueNumber();
+        level:setValueNumber(getLevel() + 1);
+        strength:setValueNumber(strength:getValueNumber() + STRENGTH_PER_LEVEL);
+        ascension:setValueNumber(getRequiredExperience(getLevel()));
+        hasLevelUp = true;
+    end
+
+    experience:setValueNumber(value);
+
+    if (true == hasLevelUp) then
+        setEnergy(getMaxEnergy(getLevel()));
+        log("[PrehistoricLax] Level up -> level: " .. getLevel() .. " strength: " .. strength:getValueNumber() .. " max energy: " .. getMaxEnergy(getLevel()));
+    end
+
+    updateHud();
 end
 
 -- +1 when the player faces right, -1 when he faces left.
@@ -249,11 +246,9 @@ function getFacingSign()
     return 1;
 end
 
--- Central damage entry point, so an enemy, a trap or a hard landing all go through one place.
--- Only energy and death are handled here. The visible reaction (animation, knockback, i-frames)
--- is up to the caller: an enemy hit uses hitPlayer(), a damage-over-time contact reacts itself.
+-- Central damage entry point for energy and death. The visible reaction is up to the caller.
 function applyDamage(amount)
-    if (isInvulnerable == true or invulnerableTimer > 0) then
+    if (true == isInvulnerable or invulnerableTimer > 0) then
         do return end;
     end
 
@@ -265,125 +260,53 @@ function applyDamage(amount)
 
     if (newEnergy <= 0) then
         -- requestState is queued and applied at the top of the next update, so it is safe to
-        -- call from any closure - even from one that fires while the walking state is still
-        -- in the middle of its own update.
+        -- call from any closure.
         playerController:requestState("RagDollState");
     end
 end
 
 -- Whether an enemy attack may hurt the player right now.
 function canPlayerBeHit()
-    if (playerController == nil) then
-        return false;
-    end
     if (true == isInvulnerable or invulnerableTimer > 0) then
         return false;
     end
     -- No hits while ragdolling or walking through a portal.
-    if (playerController:isInState("WalkingStateJumpNRun") == false) then
-        return false;
-    end
-    return true;
+    return playerController:isInState("WalkingStateJumpNRun");
 end
 
--- Shows or hides the player for the i-frame blink. Guarded, since not every build may bind
--- GameObject:setVisible for lua - then the blink is simply skipped.
 function setPlayerVisible(visible)
     playerBlinkVisible = visible;
-
-    if (false == blinkApiAvailable or prehistoricLax == nil) then
-        do return end;
-    end
-
-    if (pcall(function() prehistoricLax:setVisible(visible); end) == false) then
-        blinkApiAvailable = false;
-        log("[PrehistoricLax] GameObject:setVisible is not available for lua in this build - the i-frame blink is skipped.");
-    end
+    prehistoricLax:setVisible(visible);
 end
 
-function releaseStagger()
-    staggerTimer = 0;
-    staggerDuration = 0;
-    knockbackFallbackX = 0;
-
-    if (true == isStaggerLocked and playerController ~= nil) then
-        playerController:lockMovement("hit", false);
-    end
-    isStaggerLocked = false;
-end
-
--- Throws the player away from the enemy.
---
--- resetForce() first: it clears the velocity the walking state latched in the physics component.
--- That latch is re-applied on every physics substep and would pull the player straight back.
--- Then ONE impulse with applyRequiredForceForJumpVelocity - the same one shot command the jump
--- uses - and gravity does the rest. While the stagger locks the input, the walking state sends
--- no new velocity, so nothing overwrites the flight.
-function applyKnockback(directionX, horizontal, up)
-    local physicsComponent = playerController:getPhysicsComponent();
-    if (physicsComponent == nil) then
-        do return end;
-    end
-
-    local resetOk = pcall(function() physicsComponent:resetForce(); end);
-
-    local velocity = Vector3(directionX * horizontal, up, 0);
-    local impulseOk = pcall(function() physicsComponent:applyRequiredForceForJumpVelocity(velocity); end);
-
-    if (false == impulseOk) then
-        -- Fallback for a build without that binding: update() drives the horizontal part during
-        -- the stagger with the latched velocity command instead. No upward kick then.
-        knockbackFallbackX = directionX * horizontal;
-    end
-
-    if ((false == resetOk or false == impulseOk) and false == knockbackApiLogged) then
-        knockbackApiLogged = true;
-        log("[PrehistoricLax] Knockback runs in fallback mode. resetForce bound: " .. toString(resetOk) .. " applyRequiredForceForJumpVelocity bound: " .. toString(impulseOk));
-    end
-end
-
--- The complete hit reaction of the player. Returns true if the hit was taken.
-function hitPlayer(amount, sourcePosition, profile)
+-- The complete hit reaction of the player.
+function hitPlayer(sourcePosition, profile)
     if (false == canPlayerBeHit()) then
-        return false;
+        do return end;
     end
 
     -- Getting hit cancels the own swing.
     stopAttack();
 
-    applyDamage(amount);
+    applyDamage(profile.strength);
 
     local playerPosition = prehistoricLax:getPosition();
 
-    if (hitParticle ~= nil) then
-        hitParticle:setGlobalPosition(playerPosition);
-        if (hitParticle:isPlaying() == false or hitParticle:isActivated() == false) then
-            hitParticle:setActivated(true);
-        end
+    hitParticle:setGlobalPosition(playerPosition);
+    if (hitParticle:isPlaying() == false or hitParticle:isActivated() == false) then
+        hitParticle:setActivated(true);
     end
+    hurtSound:setActivated(true);
 
-    if (hurtSound ~= nil) then
-        hurtSound:setActivated(true);
-    end
-
-    log("[PrehistoricLax] Player hit for " .. toString(amount) .. " -> energy: " .. toString(getEnergy()));
+    log("[PrehistoricLax] Player hit for " .. toString(profile.strength) .. " -> energy: " .. toString(getEnergy()));
 
     -- The last hit: applyDamage already requested the RagDollState, which takes over from here.
     if (getEnergy() <= 0) then
-        return true;
+        do return end;
     end
 
-    invulnerableTimer = IFRAME_TIME;
-    blinkTimer = IFRAME_BLINK_INTERVAL;
-
-    staggerTimer = profile.staggerTime;
-    staggerDuration = profile.staggerTime;
-    if (false == isStaggerLocked) then
-        playerController:lockMovement("hit", true);
-        isStaggerLocked = true;
-    end
-
-    animationBlender:blend5(AnimationBlender.ANIM_TAKE_DAMAGE, AnimationBlender.BLEND_WHILE_ANIMATING, 0.05, false);
+    invulnerableTimer = PLAYER_IFRAME_TIME;
+    blinkTimer = PLAYER_IFRAME_BLINK_INTERVAL;
 
     -- Away from the enemy. Standing exactly on top of each other: backwards from the facing.
     local directionX = -getFacingSign();
@@ -393,40 +316,15 @@ function hitPlayer(amount, sourcePosition, profile)
         directionX = -1;
     end
 
-    applyKnockback(directionX, profile.knockbackHorizontal, profile.knockbackUp);
-
-    return true;
-end
-
-function getEnemyProfile(enemyGameObject)
-    return EnemyProfiles.get(enemyGameObject:getTagName());
-end
-
-function isEnemyAlive(enemyGameObject)
-    local enemyAttributes = enemyGameObject:getAttributesComponent();
-    if (enemyAttributes == nil) then
-        return true;
-    end
-
-    local enemyEnergy = enemyAttributes:getAttributeValueByName("Energy");
-    if (enemyEnergy == nil) then
-        return true;
-    end
-
-    return enemyEnergy:getValueNumber() > 0;
+    knockbackVelocityX = directionX * profile.playerKnockbackHorizontal;
+    knockbackVelocityUp = profile.playerKnockbackUp;
+    knockbackTime = profile.playerKnockbackTime;
+    playerController:requestState("KnockbackState");
 end
 
 function isPlayerInReach(enemyGameObject, profile)
     local delta = prehistoricLax:getPosition() - enemyGameObject:getPosition();
-    return math.abs(delta.x) <= profile.reach and math.abs(delta.y) <= profile.reachVertical;
-end
-
--- How far the current swing has come, 0 at the first frame of the punch clip and 1 at its last.
-function getAttackProgress()
-    if (true == overlayTimingAvailable) then
-        return animationBlender:getOverlayProgress();
-    end
-    return attackTime / ATTACK_FALLBACK_DURATION;
+    return math.abs(delta.x) <= profile.attackReach and math.abs(delta.y) <= profile.attackReachVertical;
 end
 
 -- Trade rule: the player's swing is in its active window and he faces the enemy.
@@ -435,21 +333,13 @@ function isPlayerSwingBeatingEnemy(enemyGameObject)
         return false;
     end
 
-    local progress = getAttackProgress();
+    local progress = animationBlender:getOverlayProgress();
     if (progress < ATTACK_HIT_START or progress > ATTACK_HIT_END) then
         return false;
     end
 
     local towardsEnemyX = enemyGameObject:getPosition().x - prehistoricLax:getPosition().x;
     return towardsEnemyX * getFacingSign() > 0;
-end
-
-function getEnemyAnimationBlender(enemyGameObject)
-    local animationComponent = enemyGameObject:getAnimationComponentV2();
-    if (animationComponent == nil) then
-        return nil;
-    end
-    return animationComponent:getAnimationBlender();
 end
 
 -- The moment the enemy's attack hurts.
@@ -464,7 +354,7 @@ function resolveEnemyImpact(enemyGameObject, profile)
         do return end;
     end
 
-    hitPlayer(profile.contactDamage, enemyGameObject:getPosition(), profile);
+    hitPlayer(enemyGameObject:getPosition(), profile);
 end
 
 function startEnemyAttack(enemyGameObject, profile)
@@ -476,19 +366,20 @@ function startEnemyAttack(enemyGameObject, profile)
         do return end;
     end
 
-    local enemyBlender = getEnemyAnimationBlender(enemyGameObject);
-    if (enemyBlender ~= nil) then
-        enemyBlender:blend5(AnimationBlender.ANIM_ATTACK_1, AnimationBlender.BLEND_WHILE_ANIMATING, 0.1, false);
-    end
+    -- Attention: looping on purpose. A non looping clip blocks every other blend until it is
+    -- complete, and the enemy's MovingBehavior slows the clip down while the enemy stands still
+    -- (pressed against the player) - the enemy got stuck in its attack. The recover timer below
+    -- ends the attack instead.
+    enemyGameObject:getAnimationComponentV2():getAnimationBlender():blend5(AnimationBlender.ANIM_ATTACK_1, AnimationBlender.BLEND_WHILE_ANIMATING, 0.1, true);
 
     state = {};
     state.profile = profile;
     state.cooldownTimer = profile.attackCooldown;
-    state.impactTimer = profile.impactDelay;
+    state.impactTimer = profile.attackImpactDelay;
     state.recoverTimer = profile.attackDuration;
     enemyCombat[enemyId] = state;
 
-    if (profile.impactDelay <= 0) then
+    if (profile.attackImpactDelay <= 0) then
         state.impactTimer = -1;
         resolveEnemyImpact(enemyGameObject, profile);
     end
@@ -497,14 +388,6 @@ end
 -- Advances one enemy's attack. Returns false if the entry can be dropped.
 function updateSingleEnemyCombat(enemyId, state, dt)
     local enemyGameObject = AppStateManager:getGameObjectController():getGameObjectFromId(enemyId);
-    if (enemyGameObject == nil) then
-        return false;
-    end
-
-    if (false == isEnemyAlive(enemyGameObject)) then
-        return false;
-    end
-
     local profile = state.profile;
 
     if (state.cooldownTimer > 0) then
@@ -523,33 +406,13 @@ function updateSingleEnemyCombat(enemyId, state, dt)
         state.recoverTimer = state.recoverTimer - dt;
         if (state.recoverTimer <= 0) then
             state.recoverTimer = 0;
-
-            -- The attack is not looping, so without this the enemy would freeze in its last frame.
-            -- Back to its locomotion clip: walking by default, or whatever the profile names.
-            local enemyBlender = getEnemyAnimationBlender(enemyGameObject);
-            if (enemyBlender ~= nil) then
-                local locomotionAnimationId = AnimationBlender.ANIM_WALK_NORTH;
-                if (profile.locomotionAnimation ~= nil) then
-                    locomotionAnimationId = AnimationBlender[profile.locomotionAnimation];
-                end
-                enemyBlender:blend5(locomotionAnimationId, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
-            end
+            -- Back to walking / running after the attack.
+            enemyGameObject:getAnimationComponentV2():getAnimationBlender():blend5(AnimationBlender[profile.locomotionAnimation], AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
         end
     end
 
-    local isBusy = (state.recoverTimer > 0 or state.impactTimer >= 0);
-
-    if (false == isBusy and state.cooldownTimer <= 0) then
-        if (true == canPlayerBeHit() and true == isPlayerInReach(enemyGameObject, profile)) then
-            -- Pressure: the player is still next to the enemy - attack again.
-            startEnemyAttack(enemyGameObject, profile);
-        else
-            -- Nothing left to do for this enemy until the next contact.
-            return false;
-        end
-    end
-
-    return true;
+    -- Done: the next EnemyNearPlayerEvent starts the next attack.
+    return state.cooldownTimer > 0 or state.recoverTimer > 0 or state.impactTimer >= 0;
 end
 
 function updateEnemyCombat(dt)
@@ -566,17 +429,15 @@ function updateEnemyCombat(dt)
     end
 end
 
--- I-frames, blink and stagger.
+-- I-frames and blink.
 function updateHitReaction(dt)
     if (invulnerableTimer > 0) then
         invulnerableTimer = invulnerableTimer - dt;
 
-        if (true == IFRAME_BLINK) then
-            blinkTimer = blinkTimer - dt;
-            if (blinkTimer <= 0) then
-                blinkTimer = IFRAME_BLINK_INTERVAL;
-                setPlayerVisible(false == playerBlinkVisible);
-            end
+        blinkTimer = blinkTimer - dt;
+        if (blinkTimer <= 0) then
+            blinkTimer = PLAYER_IFRAME_BLINK_INTERVAL;
+            setPlayerVisible(false == playerBlinkVisible);
         end
 
         if (invulnerableTimer <= 0) then
@@ -585,103 +446,23 @@ function updateHitReaction(dt)
         end
     end
 
-    if (staggerTimer > 0) then
-        staggerTimer = staggerTimer - dt;
-
-        if (knockbackFallbackX ~= 0 and staggerDuration > 0) then
-            local factor = staggerTimer / staggerDuration;
-            if (factor < 0) then
-                factor = 0;
-            end
-            playerController:getPhysicsComponent():applyRequiredForceForVelocity(Vector3(knockbackFallbackX * factor, 0, 0));
-        end
-
-        if (staggerTimer <= 0) then
-            releaseStagger();
-        end
-    end
 end
 
--- Hits an enemy once. Kept here rather than in the state, so a trap or a thrown rock can
--- use the very same path later.
-function damageEnemy(enemyGameObject)
-    local enemyAttributes = enemyGameObject:getAttributesComponent();
-    if (enemyAttributes == nil) then
-        do return end;
-    end
-
-    local enemyEnergy = enemyAttributes:getAttributeValueByName("Energy");
-    if (enemyEnergy == nil) then
-        do return end;
-    end
-
-    local damage = baseDamage;
-    if (mainGameObject ~= nil) then
-        local strength = mainGameObject:getAttributesComponent():getAttributeValueByName("Strength");
-        if (strength ~= nil) then
-            damage = baseDamage * strength:getValueNumber();
-        end
-    end
-
-    enemyEnergy:decrementValueNumber(damage);
-
-    log("[PrehistoricLax] Hit " .. enemyGameObject:getName() .. " for " .. toString(damage) .. " -> energy: " .. toString(enemyEnergy:getValueNumber()));
-
-    if (hitParticle ~= nil) then
-        hitParticle:setGlobalPosition(enemyGameObject:getPosition());
-        if (hitParticle:isPlaying() == false or hitParticle:isActivated() == false) then
-            hitParticle:setActivated(true);
-        end
-    end
-
-    if (enemyEnergy:getValueNumber() <= 0) then
-        enemyEnergy:setValueNumber(0);
-
-        if (mainGameObject ~= nil) then
-            local killedEnemies = mainGameObject:getAttributesComponent():getAttributeValueByName("KilledEnemies");
-            if (killedEnemies ~= nil) then
-                killedEnemies:incrementValueNumber(1);
-            end
-        end
-
-        if (EventType.EnemyDeadEvent ~= nil) then
-            local eventData = {};
-            eventData["enemyId"] = enemyGameObject:getId();
-            -- Without it the enemy's script could not know where the blow came from.
-            eventData["hitDirection"] = Vector3(getFacingSign(), 0, 0);
-            AppStateManager:getScriptEventManager():queueEvent(EventType.EnemyDeadEvent, eventData);
-        end
-    end
-end
-
--- Tells the cudgel script whether a real swing is going on. Without it the cudgel would cost an
--- enemy energy just by brushing past him while the player walks.
+-- Tells the cudgel script whether a real swing is going on and in which direction.
 function sendAttackEvent(isActive)
-    if (EventType.PlayerAttackEvent == nil) then
-        do return end;
-    end
-
     local eventData = {};
     eventData["isActive"] = isActive;
     eventData["attackId"] = attackId;
-    -- The cudgel uses it as the knockback direction of a killing blow.
     eventData["attackDirectionX"] = getFacingSign();
     AppStateManager:getScriptEventManager():queueEvent(EventType.PlayerAttackEvent, eventData);
 end
 
 function startAttack()
-    -- A new swing gets a new id. The cudgel remembers per enemy which id it already hit with,
-    -- so a kinematic contact firing on every frame of the swing still costs energy only once.
+    -- A new swing gets a new id, see attackId.
     attackId = attackId + 1;
     attackTime = 0;
-    hasHitThisSwing = false;
 
-    if (ATTACK_OVERLAY_BONE ~= "") then
-        animationBlender:setOverlayAnimationForBoneChain1(AnimationBlender.ANIM_ATTACK_1, ATTACK_OVERLAY_BONE, ATTACK_BLEND_IN, false);
-    else
-        animationBlender:setOverlayAnimation3(AnimationBlender.ANIM_ATTACK_1, ATTACK_BLEND_IN, false);
-    end
-
+    animationBlender:setOverlayAnimationForBoneChain1(AnimationBlender.ANIM_ATTACK_1, ATTACK_OVERLAY_BONE, ATTACK_BLEND_IN, false);
     isAttacking = true;
 
     sendAttackEvent(true);
@@ -694,15 +475,41 @@ function stopAttack()
 
     isAttacking = false;
     attackTime = 0;
-    hasHitThisSwing = false;
 
     -- A non looping overlay fades itself out when the clip is over, so this is only needed when
-    -- the swing is cut short - by a ragdoll, a portal or the safety timeout.
+    -- the swing is cut short - by a hit, a ragdoll, a portal or the safety timeout.
     if (true == animationBlender:isOverlayAnimationActive()) then
         animationBlender:clearOverlayAnimation(ATTACK_BLEND_IN);
     end
 
     sendAttackEvent(false);
+end
+
+-- The swing timing. The walking state stays untouched and keeps animating the player while he hits.
+function updateAttack(dt)
+    if (false == isAttacking) then
+        do return end;
+    end
+
+    -- Going down or stepping into a portal cancels the swing.
+    if (false == playerController:isInState("WalkingStateJumpNRun")) then
+        stopAttack();
+        do return end;
+    end
+
+    attackTime = attackTime + dt;
+
+    -- The swing is over only once the overlay is completely gone - clip finished AND faded out.
+    -- Attention: isOverlayBlendingOut() must NOT be used here, it cuts off the fade back.
+    if (false == animationBlender:isOverlayAnimationActive()) then
+        stopAttack();
+        do return end;
+    end
+
+    if (attackTime >= ATTACK_TIMEOUT) then
+        log("[PrehistoricLax] Attack safety timeout - the animation blender was not ticked.");
+        stopAttack();
+    end
 end
 
 ---------------------------------------------------------------------------------------------------
@@ -718,61 +525,59 @@ PrehistoricLax["connect"] = function(gameObject)
 
     mainGameObject = AppStateManager:getGameObjectController():getGameObjectFromId(MAIN_GAMEOBJECT_ID);
 
-    cameraComponent = AppStateManager:getGameObjectController():getGameObjectFromName("GameCamera"):getCameraComponent();
+    cameraComponent = cameraGameObject:getCameraComponent();
     -- Important: Camera switch
     cameraComponent:setActivated(true);
 
     AppStateManager:getGameObjectController():activatePlayerController(true, prehistoricLax:getId(), true);
 
     areaOfInterestComponent = prehistoricLax:getAreaOfInterestComponent();
-    attributesComponent = mainGameObject:getAttributesComponent();
 
-    -- The player's energy lives on the main game object, next to score and level, exactly
-    -- like in main.lua - the HUD reads it from there.
-    energy = mainGameObject:getAttributesComponent():getAttributeValueByName("Energy");
+    -- The player's attributes live on the main game object, next to score and level - the HUD
+    -- reads them from there, and they are saved.
+    attributesComponent = mainGameObject:getAttributesComponent();
+    energy = attributesComponent:getAttributeValueByName("Energy");
+    strength = attributesComponent:getAttributeValueByName("Strength");
+    experience = attributesComponent:getAttributeValueByName("Experience");
+    ascension = attributesComponent:getAttributeValueByName("Ascension");
+    level = attributesComponent:getAttributeValueByName("Level");
+    coins = attributesComponent:getAttributeValueByName("Coins");
+    killedEnemies = attributesComponent:getAttributeValueByName("KilledEnemies");
+
     energyProgress = mainGameObject:getMyGUIProgressBarComponentFromName("EnergyProgress");
-    hitParticle = mainGameObject:getParticleFxComponentFromName("HitParticle");
+    energyTrailProgress = mainGameObject:getMyGUIProgressBarComponentFromName("EnergyTrailProgress");
+    -- 0, so the first setEnergy (in updateHud below) takes the heal path and puts the trail in place.
+    energyTrailPercent = 0;
+    energyTrailDelay = 0;
+    strengthText = mainGameObject:getMyGUITextComponentFromName("Strength");
+    levelText = mainGameObject:getMyGUITextComponentFromName("Level");
+    experienceText = mainGameObject:getMyGUITextComponentFromName("Experience");
+    coinsText = mainGameObject:getMyGUITextComponentFromName("Coins");
+    killedEnemiesText = mainGameObject:getMyGUITextComponentFromName("KilledEnemies");
+
+    -- The needed experience always follows the formula in init.lua, also for a saved game made
+    -- with other balancing values.
+    ascension:setValueNumber(getRequiredExperience(getLevel()));
+    updateHud();
 
     playerController = prehistoricLax:getPlayerControllerJumpNRunComponent();
     animationBlender = playerController:getAnimationBlender();
+    hitParticle = prehistoricLax:getParticleFxComponentFromName("HitParticle");
     moneySound = prehistoricLax:getSimpleSoundComponentFromName("Money");
     hurtSound = prehistoricLax:getSimpleSoundComponentFromName("Hurt");
 
     isAttacking = false;
     attackTime = 0;
-    hasHitThisSwing = false;
-
     isInvulnerable = false;
     invulnerableTimer = 0;
     blinkTimer = 0;
     playerBlinkVisible = true;
-    staggerTimer = 0;
-    staggerDuration = 0;
-    isStaggerLocked = false;
-    knockbackFallbackX = 0;
     enemyCombat = {};
+    deadEnemies = {};
 
-    -- The punch runs at its own speed. Without this it would inherit the locomotion speed.
+    -- The punch runs at its own speed and weighting.
     animationBlender:setOverlaySpeed(ATTACK_SPEED);
-
-    -- Guarded on purpose: setOverlayInfluence is the newest of the overlay functions, so a
-    -- binary that was built before it was bound has everything else but not this one. Without
-    -- the guard the missing function takes the whole connect() down with it and nothing works
-    -- at all - with it, the swing simply runs at the default weighting.
-    if (pcall(function() animationBlender:setOverlayInfluence(ATTACK_CHAIN_INFLUENCE, ATTACK_BODY_INFLUENCE); end) == false) then
-        log("[PrehistoricLax] setOverlayInfluence is not available in this build - the swing uses the default weighting. Check that bindAnimationComponent has the .def line and rebuild.");
-    end
-
-    -- Same probe for the two functions the swing is TIMED on. Without them it runs on its own
-    -- clock instead.
-    overlayTimingAvailable = pcall(function()
-        local unusedProgress = animationBlender:getOverlayProgress();
-        local unusedActive = animationBlender:isOverlayAnimationActive();
-    end);
-
-    if (false == overlayTimingAvailable) then
-        log("[PrehistoricLax] The overlay timing functions are not available in this build - the swing falls back to a fixed " .. toString(ATTACK_FALLBACK_DURATION) .. " second timer.");
-    end
+    animationBlender:setOverlayInfluence(ATTACK_CHAIN_INFLUENCE, ATTACK_BODY_INFLUENCE);
 
     if (true == ATTACK_DEBUG) then
         animationBlender:setDebugLog(true);
@@ -804,18 +609,17 @@ PrehistoricLax["connect"] = function(gameObject)
     animationBlender:registerAnimation(AnimationBlender.ANIM_PICKUP_1, "Boy 1 Idle Pick Up Item");
     animationBlender:registerAnimation(AnimationBlender.ANIM_ACTION_1, "Boy 1 Pass Out");
     animationBlender:registerAnimation(AnimationBlender.ANIM_NO_IDEA, "Boy 1 Look Side");
-    
+
     -----------------------------------------------------------------------------------------
     -- State setup
     --
     -- The walking state is C++ and already registered by the component. Everything below is
     -- authored here in lua and only made ADDRESSABLE - registerLuaState does not switch.
-    --
-    -- Attention: only states that really take the player over belong here. The attack does
-    -- NOT, it is an overlay, see the block at the top.
+    -- The attack is NOT a state, it is an overlay, see the block at the top.
     -----------------------------------------------------------------------------------------
     playerController:registerLuaState("RagDollState", RagDollState);
     playerController:registerLuaState("PortalState", PortalState);
+    playerController:registerLuaState("KnockbackState", KnockbackState);
 
     playerController:reactOnStateChanged(function(oldStateName, newStateName)
         log("[PrehistoricLax] State: " .. oldStateName .. " -> " .. newStateName);
@@ -831,10 +635,11 @@ PrehistoricLax["connect"] = function(gameObject)
 
     playerController:reactOnActionPressed(function(otherGameObject)
         -- No swinging while ragdolling or walking through a portal.
-        if (playerController:isInState("WalkingStateJumpNRun") == false) then
+        if (false == playerController:isInState("WalkingStateJumpNRun")) then
             do return end;
         end
 
+        -- nil simply means: nothing in front of the player.
         if (otherGameObject ~= nil) then
             otherGameObject = AppStateManager:getGameObjectController():castGameObject(otherGameObject);
 
@@ -863,45 +668,20 @@ PrehistoricLax["connect"] = function(gameObject)
     playerController:reactOnJump(function(jumpCount)
         -- jumpCount is 1 for the jump off the ground, 2 and up for every air jump.
         if (jumpCount >= 2) then
-            local smokeParticle = prehistoricLax:getParticleFxComponentFromIndex(0);
-            if (smokeParticle ~= nil) then
-                smokeParticle:setActivated(true);
-            end
+            prehistoricLax:getParticleFxComponentFromIndex(0):setActivated(true);
         end
     end);
 
     playerController:reactOnLand(function(fallTime)
-        -- The longer the fall, the harder the landing. Below half a second it is an ordinary
-        -- hop and must not cost anything.
+        -- Below half a second it is an ordinary hop.
         if (fallTime > 0.5) then
-            local smokeParticle = prehistoricLax:getParticleFxComponentFromName("DustLand");
-            if (smokeParticle ~= nil) then
-                smokeParticle:setActivated(true);
-            end
+            prehistoricLax:getParticleFxComponentFromName("DustLand"):setActivated(true);
         end
     end);
-    
+
     playerController:reactOnAccelerationChanged(function(tempSpeed, topSpeed)
-        local smokeParticle = prehistoricLax:getParticleFxComponentFromName("DustStep");
-            if (smokeParticle ~= nil) then
-                smokeParticle:setActivated(true);
-            end
+        prehistoricLax:getParticleFxComponentFromName("DustStep"):setActivated(true);
     end);
-
-    --TODO: In physicsmaterialcomponent!
-    --playerController:reactOnWallContact(function(otherGameObject, wallNormal)
-        -- Always called, no matter what 'Use Wall Separation Mode' is set to. With the flag
-        -- on, C++ has already dropped the movement input pointing into the wall, so this is
-        -- purely for effects - or for a ledge grab once the flag is switched off.
-        --if (otherGameObject == nil) then
-        --    do return end;
-        --end
-
-       -- otherGameObject = AppStateManager:getGameObjectController():castGameObject(otherGameObject);
-       -- if (otherGameObject:getTagName() == "Spikes") then
-            --applyDamage(20);
-       -- end
-    --end);
 
     -----------------------------------------------------------------------------------------
     -- Pickups
@@ -911,115 +691,55 @@ PrehistoricLax["connect"] = function(gameObject)
         if (otherGameObject:getCategory() == "Item") then
             if (otherGameObject:getTagName() == "Coin") then
                 AppStateManager:getGameObjectController():deleteGameObject(otherGameObject:getId());
-                attributesComponent:addAttributeNumber("Coins", 1);
+                coins:setValueNumber(coins:getValueNumber() + 1);
                 moneySound:setActivated(true);
+                updateHud();
             elseif (otherGameObject:getTagName() == "Energy") then
                 AppStateManager:getGameObjectController():deleteGameObject(otherGameObject:getId());
-                setEnergy(getEnergy() + 25);
+                setEnergy(getEnergy() + ENERGY_PICKUP_AMOUNT);
             end
-        elseif (otherGameObject:getCategory() == "Enemy") then
-            -- Intentionally nothing: enemy damage goes through onPlayerEnemyContactOnce and the
-            -- enemy's attack now. Damaging here as well would hit the player twice, and without
-            -- the i-frames and the knockback of hitPlayer().
-        elseif (otherGameObject:getCategory() == "Quester") then
-
         end
+        -- Enemies are handled by the enemy combat above.
     end);
 
     -- Sent by main.lua when the enemy's weapon took the last energy away.
-    if (EventType.PlayerDeadEvent ~= nil) then
-        AppStateManager:getScriptEventManager():registerEventListener(EventType.PlayerDeadEvent, PrehistoricLax["onPlayerDead"]);
-    end
+    playerDeadListenerId = AppStateManager:getScriptEventManager():registerEventListener(EventType.PlayerDeadEvent, PrehistoricLax["onPlayerDead"]);
+    -- A killed enemy must not attack anymore while its corpse is still lying around, and the kill
+    -- gives experience.
+    enemyDeadListenerId = AppStateManager:getScriptEventManager():registerEventListener(EventType.EnemyDeadEvent, PrehistoricLax["onEnemyDead"]);
+    -- An enemy came within its attack reach.
+    enemyNearPlayerListenerId = AppStateManager:getScriptEventManager():registerEventListener(EventType.EnemyNearPlayerEvent, PrehistoricLax["onEnemyNearPlayer"]);
 end
 
 PrehistoricLax["disconnect"] = function()
+    AppStateManager:getScriptEventManager():removeEventListener(playerDeadListenerId);
+    AppStateManager:getScriptEventManager():removeEventListener(enemyDeadListenerId);
+    AppStateManager:getScriptEventManager():removeEventListener(enemyNearPlayerListenerId);
+    playerDeadListenerId = nil;
+    enemyDeadListenerId = nil;
+    enemyNearPlayerListenerId = nil;
+
     PointerManager:showMouse(true);
     cameraComponent:setActivated(false);
     AppStateManager:getGameObjectController():undoAll();
 
     isAttacking = false;
 
-    -- Release the stagger lock and make sure the player is not left invisible by the i-frame
-    -- blink, before the references are dropped.
-    releaseStagger();
+    -- Make sure the player is not left invisible by the i-frame blink.
     invulnerableTimer = 0;
     setPlayerVisible(true);
     enemyCombat = {};
+    deadEnemies = {};
 
     playerController = nil;
     animationBlender = nil;
 end
 
 ---------------------------------------------------------------------------------------------------
--- The swing timing. The walking state stays completely untouched and keeps animating the player
--- while he hits.
----------------------------------------------------------------------------------------------------
-function updateAttack(dt)
-    if (false == isAttacking) then
-        do return end;
-    end
-
-    -- Going down or stepping into a portal cancels the swing.
-    if (playerController:isInState("WalkingStateJumpNRun") == false) then
-        stopAttack();
-        do return end;
-    end
-
-    attackTime = attackTime + dt;
-
-    -- How far the swing has come, 0 at the first frame of the punch clip and 1 at its last.
-    local progress = getAttackProgress();
-
-    -----------------------------------------------------------------------------------------
-    -- Hit detection via the front rays - only as a fallback, see USE_FRONT_RAY_HIT.
-    -----------------------------------------------------------------------------------------
-    if (true == USE_FRONT_RAY_HIT and false == hasHitThisSwing and progress >= ATTACK_HIT_START and progress <= ATTACK_HIT_END) then
-        local target = playerController:getHitGameObjectFront();
-        if (target ~= nil) then
-            target = AppStateManager:getGameObjectController():castGameObject(target);
-            if (target:getCategory() == "Enemy") then
-                hasHitThisSwing = true;
-                damageEnemy(target);
-            end
-        end
-    end
-
-    -- The swing is over only once the overlay is completely gone - clip finished AND faded out.
-    --
-    -- Attention: isOverlayBlendingOut() must NOT be used here. It goes true the moment the last
-    -- frame of the clip is reached, while the fade back to the locomotion pose is still running,
-    -- and ending the swing there cuts off exactly the part that makes the punch look finished.
-    local swingIsOver = false;
-
-    if (true == overlayTimingAvailable) then
-        swingIsOver = (false == animationBlender:isOverlayAnimationActive());
-    else
-        swingIsOver = (attackTime >= ATTACK_FALLBACK_DURATION);
-    end
-
-    if (true == swingIsOver) then
-        stopAttack();
-        do return end;
-    end
-
-    if (attackTime >= ATTACK_TIMEOUT) then
-        log("[PrehistoricLax] Attack safety timeout - the animation blender was not ticked.");
-        stopAttack();
-    end
-end
-
----------------------------------------------------------------------------------------------------
 -- Called by the LuaScriptComponent every frame.
---
--- Attention: the former version returned right at the top while 'isDamaged' was true - and that
--- flag was set by onPlayerDangerContact but never cleared again. After the first touch of
--- something dangerous the swing was never timed again. The hit reaction has its own timers now.
 ---------------------------------------------------------------------------------------------------
 PrehistoricLax["update"] = function(dt)
-    if (playerController == nil) then
-        do return end;
-    end
-
+    updateEnergyTrail(dt);
     updateHitReaction(dt);
     updateEnemyCombat(dt);
     updateAttack(dt);
@@ -1027,6 +747,14 @@ end
 
 PrehistoricLax["onPlayerDead"] = function(eventData)
     playerController:requestState("RagDollState");
+end
+
+PrehistoricLax["onEnemyDead"] = function(eventData)
+    deadEnemies[eventData["enemyId"]] = true;
+    enemyCombat[eventData["enemyId"]] = nil;
+
+    killedEnemies:setValueNumber(killedEnemies:getValueNumber() + 1);
+    addExperience(getExperienceForKill(EnemyProfiles[eventData["enemyTagName"]], getLevel()));
 end
 
 -- Damage over time while touching something dangerous (spikes, lava). No knockback and no
@@ -1040,62 +768,88 @@ PrehistoricLax["onPlayerDangerContact"] = function(gameObject0, gameObject1, con
 
     if (animationBlender:isAnimationActive(AnimationBlender.ANIM_TAKE_DAMAGE) == false) then
         animationBlender:blend5(AnimationBlender.ANIM_TAKE_DAMAGE, AnimationBlender.BLEND_WHILE_ANIMATING, 0.1, false);
-        if (hurtSound ~= nil) then
-            hurtSound:setActivated(true);
-        end
+        hurtSound:setActivated(true);
     end
+end
+
+-- Starts the enemy's attack, if it may attack right now.
+function tryStartEnemyAttack(enemyGameObject)
+    -- A killed enemy does not attack anymore.
+    if (true == deadEnemies[enemyGameObject:getId()]) then
+        do return end;
+    end
+
+    if (false == canPlayerBeHit()) then
+        do return end;
+    end
+
+    -- Trade rule: the cudgel hits first, the enemy does not get to attack.
+    if (true == isPlayerSwingBeatingEnemy(enemyGameObject)) then
+        do return end;
+    end
+
+    startEnemyAttack(enemyGameObject, EnemyProfiles[enemyGameObject:getTagName()]);
+end
+
+-- Sent by the enemy's script every frame while the player is within its attack reach. Without this the enemy
+-- only attacked on body contact - and the cudgel reaches further, so a coyote that turns around on
+-- every hit never touched the player and never attacked.
+PrehistoricLax["onEnemyNearPlayer"] = function(eventData)
+    tryStartEnemyAttack(AppStateManager:getGameObjectController():getGameObjectFromId(eventData["enemyId"]));
+end
+
+-- Called once when the player's body starts touching an enemy's body.
+PrehistoricLax["onPlayerEnemyContactOnce"] = function(gameObject0, gameObject1, contact)
+    local enemyGameObject = AppStateManager:getGameObjectController():castGameObject(gameObject0);
+    if (enemyGameObject:getCategory() ~= "Enemy") then
+        enemyGameObject = AppStateManager:getGameObjectController():castGameObject(gameObject1);
+    end
+
+    tryStartEnemyAttack(enemyGameObject);
 end
 
 ---------------------------------------------------------------------------------------------------
 -- States
 --
 -- Same shape the lua state machine has always used: enter(gameObject),
--- execute(gameObject, dt) and exit(gameObject), all optional. They now run in the SAME state
+-- execute(gameObject, dt) and exit(gameObject), all optional. They run in the SAME state
 -- machine as the C++ walking state, so exactly one of them is active at a time.
 ---------------------------------------------------------------------------------------------------
 
 RagDollState = { };
 
-ragDollTime = 0;
+local ragDollTime = 0;
 
 RagDollState["enter"] = function(gameObject)
-    ragDollTime = 5;
+    ragDollTime = PLAYER_RAGDOLL_TIME;
     isInvulnerable = true;
 
-    -- A swing that was still in the air when the last energy went is dropped here, so the
-    -- overlay does not keep punching on a corpse.
+    -- A swing that was still in the air when the last energy went is dropped here.
     stopAttack();
 
-    -- The ragdoll owns the body now: no stagger lock, no knockback fallback, no blinking.
-    releaseStagger();
+    -- The ragdoll owns the body now: no blinking.
     invulnerableTimer = 0;
     setPlayerVisible(true);
 
-    -- No input while lying on the floor. The owner name matters: only 'ragdoll' can release
-    -- this lock again, so a pickup animation running at the same time cannot unlock it.
+    -- No input while lying on the floor. Only the owner 'ragdoll' can release this lock again.
     playerController:lockMovement("ragdoll", true);
-    local ragDollComponent = playerController:getPhysicsRagDollComponent();
-    ragDollComponent:setState("Ragdolling");
+    playerController:getPhysicsRagDollComponent():setState("Ragdolling");
+
+    -- ONE impulse backwards, then the physics alone decides: the body flies a bit, falls and stays.
+    --
+    -- Attention: not applyRequiredForceForVelocity / applyOmegaForce. Both commands are LATCHED by
+    -- the physics and re-applied in every substep until the next command arrives - and in this state
+    -- none arrives. The former per frame push of (4, 0, 0) was therefore held forever, with a vertical
+    -- velocity of 0 on top: the dead player floated and slid out of the level, spinning.
+    playerController:getPhysicsComponent():applyRequiredForceForJumpVelocity(Vector3(-getFacingSign() * PLAYER_DEATH_KNOCKBACK_HORIZONTAL, PLAYER_DEATH_KNOCKBACK_UP, 0));
 end
 
 RagDollState["execute"] = function(gameObject, dt)
-    -- Throw the body away from the direction the player was facing, but only for the first
-    -- second - after that the ragdoll is left to the physics.
-    if (ragDollTime >= 4) then
-        local pushDirection = Vector3(-4, 0, 0);
-        if (facingDirection == DIR_LEFT) then
-            pushDirection = Vector3(4, 0, 0);
-        end
-
-        playerController:getPhysicsComponent():applyRequiredForceForVelocity(pushDirection);
-        playerController:getPhysicsComponent():applyOmegaForce(Vector3(0, 0, -10));
-    end
-
     ragDollTime = ragDollTime - dt;
 
     if (ragDollTime <= 0) then
         if (getEnergy() <= 0) then
-            setEnergy(100);
+            setEnergy(getMaxEnergy(getLevel()));
         end
 
         --playerController:requestState("WalkingStateJumpNRun");
@@ -1103,17 +857,42 @@ RagDollState["execute"] = function(gameObject, dt)
 end
 
 RagDollState["exit"] = function(gameObject)
-    local ragDollComponent = playerController:getPhysicsRagDollComponent();
-    if (ragDollComponent ~= nil) then
-        ragDollComponent:setState("Inactive");
-    end
-
-    -- The ragdoll left the body with whatever velocity and spin the push gave it. Without this
-    -- the walking state would inherit both and the player would walk off sideways, spinning.
-    --playerController:getPhysicsComponent():resetForce();
+    playerController:getPhysicsRagDollComponent():setState("Inactive");
 
     playerController:lockMovement("ragdoll", false);
     isInvulnerable = false;
+end
+
+---------------------------------------------------------------------------------------------------
+-- Thrown away by an enemy hit (values from hitPlayer).
+--
+-- A state of its own, because the walking state sends its own velocity every frame - even with
+-- locked input - and overwrote the knockback at once. While this state runs, the walking state
+-- does not, so nothing else drives the body.
+---------------------------------------------------------------------------------------------------
+
+KnockbackState = { };
+
+local knockbackTimer = 0;
+
+KnockbackState["enter"] = function(gameObject)
+    knockbackTimer = knockbackTime;
+    animationBlender:blend5(AnimationBlender.ANIM_TAKE_DAMAGE, AnimationBlender.BLEND_WHILE_ANIMATING, 0.05, false);
+    playerController:getPhysicsComponent():applyRequiredForceForVelocity(Vector3(knockbackVelocityX, knockbackVelocityUp, 0));
+end
+
+KnockbackState["execute"] = function(gameObject, dt)
+    animationBlender:addTime(dt * playerController:getAnimationSpeed() / animationBlender:getLength(), "PlayerControllerJumpNRunComponent");
+
+    -- The velocity command is latched by the physics, so it must be refreshed every frame. The
+    -- horizontal part is held, the vertical part is left to gravity.
+    local physicsComponent = playerController:getPhysicsComponent();
+    physicsComponent:applyRequiredForceForVelocity(Vector3(knockbackVelocityX, physicsComponent:getVelocity().y, 0));
+
+    knockbackTimer = knockbackTimer - dt;
+    if (knockbackTimer <= 0) then
+        playerController:requestState("WalkingStateJumpNRun");
+    end
 end
 
 ---------------------------------------------------------------------------------------------------
@@ -1126,18 +905,7 @@ PortalState["enter"] = function(gameObject)
     playerController:lockMovement("portal", true);
 
     local portal = playerController:getInteractionGameObject();
-    if (portal == nil) then
-        playerController:lockMovement("portal", false);
-        playerController:requestState("WalkingStateJumpNRun");
-        do return end;
-    end
-
     local pathFollow = portal:getAiPathFollowComponent();
-    if (pathFollow == nil) then
-        playerController:lockMovement("portal", false);
-        playerController:requestState("WalkingStateJumpNRun");
-        do return end;
-    end
 
     local referenceId = portal:getReferenceId();
     AppStateManager:getGameObjectController():activateGameObjectComponentsFromReferenceId(referenceId, true);
@@ -1164,50 +932,3 @@ PortalState["exit"] = function(gameObject)
     playerController:lockMovement("portal", false);
     playerController:setInteractionGameObject(nil);
 end
-
----------------------------------------------------------------------------------------------------
--- Called once when the player's body starts touching an enemy's body. See the "Enemy contact
--- combat" block at the top: the touch starts the ENEMY's attack, the damage lands at its impact.
----------------------------------------------------------------------------------------------------
-PrehistoricLax["onPlayerEnemyContactOnce"] = function(gameObject0, gameObject1, contact)
-    if (prehistoricLax == nil or playerController == nil) then
-        do return end;
-    end
-
-    local enemyGameObject = nil;
-
-    if (gameObject0 ~= nil) then
-        local candidate = AppStateManager:getGameObjectController():castGameObject(gameObject0);
-        if (candidate:getCategory() == "Enemy") then
-            enemyGameObject = candidate;
-        end
-    end
-
-    if (enemyGameObject == nil and gameObject1 ~= nil) then
-        local candidate = AppStateManager:getGameObjectController():castGameObject(gameObject1);
-        if (candidate:getCategory() == "Enemy") then
-            enemyGameObject = candidate;
-        end
-    end
-
-    if (enemyGameObject == nil) then
-        do return end;
-    end
-
-    -- A dying enemy (energy 0, deleted delayed) does not attack anymore.
-    if (false == isEnemyAlive(enemyGameObject)) then
-        do return end;
-    end
-
-    if (false == canPlayerBeHit()) then
-        do return end;
-    end
-
-    -- Trade rule: the player's swing is already in its active window and faces the enemy - the
-    -- cudgel hits first, the enemy does not get to attack.
-    if (true == isPlayerSwingBeatingEnemy(enemyGameObject)) then
-        do return end;
-    end
-
-    startEnemyAttack(enemyGameObject, getEnemyProfile(enemyGameObject));
-end

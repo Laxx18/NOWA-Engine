@@ -955,7 +955,7 @@ namespace NOWA
                     Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SimpleSoundComponent] setupSound() -> activated=false, stop+destroy");
                 }
                 this->sound->stop();
-                this->destroySound();
+                // this->destroySound();
             }
         }
     }

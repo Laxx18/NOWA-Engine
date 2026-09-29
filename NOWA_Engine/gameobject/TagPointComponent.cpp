@@ -404,6 +404,15 @@ namespace NOWA
                     // _getDerivedScale(). We get its LOCAL-space transform (relative
                     // to the skeleton root) instead, and combine it manually with
                     // the character's world transform to get the bone's world transform.
+                    // Attention: the bone must be read in the BINDING pose. The source was placed in the
+                    // editor against that pose, and on the very first simulation start the skeleton still
+                    // shows it. But nothing resets the skeleton when the simulation stops, so on every
+                    // further start it still held the last animated pose of the previous run - the derived
+                    // transform (and the automatic bake below) then froze the source against a different
+                    // hand pose and it hung away from the hand. The animation takes over again in the next
+                    // frame anyway.
+                    this->skeletonInstance->resetToPose();
+
                     Ogre::Vector3 boneLocalPosition;
                     Ogre::Quaternion boneLocalOrientation;
                     extractBoneLocalTransform(this->attachedBone, boneLocalPosition, boneLocalOrientation);
@@ -714,6 +723,18 @@ namespace NOWA
         GameObjectComponent::disconnect();
 
         this->resetTagPoint();
+
+        // Back to the binding pose when the simulation stops. Without this the character stayed frozen
+        // in its last animated pose, so the editor showed a different pose than the one the source was
+        // placed against, and the next connect or 'Bake Offset Now' read the bone in that pose.
+        if (nullptr != this->skeletonInstance && false == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
+        {
+            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                this->skeletonInstance->resetToPose();
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "TagPointComponent::disconnect");
+        }
         return true;
     }
 
@@ -1119,6 +1140,11 @@ namespace NOWA
             {
                 return;
             }
+
+            // Attention: after a simulation run the skeleton is not in the bind pose any more, see
+            // connectV2Item(). Pressing 'Bake Offset Now' then would freeze the source against the
+            // last animated pose.
+            this->skeletonInstance->resetToPose();
 
             baked = this->internalComputeBaseLocalTransform(this->skeletonInstance->getBone(Ogre::IdString(boneName)), localPosition, localOrientation);
         };

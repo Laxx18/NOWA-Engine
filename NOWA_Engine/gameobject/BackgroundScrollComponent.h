@@ -165,6 +165,7 @@ namespace NOWA
 		bool firstTimePositionSet;
 		Ogre::Real xScroll;
 		Ogre::Real yScroll;
+        Ogre::Vector2 lastVelocity;
 
 		WorkspaceBackgroundComponent* workspaceBackgroundComponent;
 	};

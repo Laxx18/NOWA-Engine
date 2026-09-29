@@ -66,7 +66,7 @@
 				"value" : [3.14, 3.14, 3.14],
 				"background" : [1, 1, 1, 1]
 			},
-			"SpecularWorkflow" :
+			"specular" :
 			{
 				"value" : [1, 1, 1]
 			}
@@ -84,7 +84,7 @@
 				"value" : [1, 0, 0],
 				"background" : [1, 0, 0, 1]
 			},
-			"SpecularWorkflow" :
+			"specular" :
 			{
 				"value" : [1, 1, 1]
 			}
@@ -102,7 +102,7 @@
 				"value" : [0, 1, 0],
 				"background" : [0, 1, 0, 1]
 			},
-			"SpecularWorkflow" :
+			"specular" :
 			{
 				"value" : [1, 1, 1]
 			}
@@ -120,7 +120,7 @@
 				"value" : [0, 0, 1],
 				"background" : [0, 0, 1, 1]
 			},
-			"SpecularWorkflow" :
+			"specular" :
 			{
 				"value" : [1, 1, 1]
 			}
@@ -140,11 +140,9 @@
 				"texture" : "ground_dirt_gardenD.png",
 				"sampler" : "NOWA2_Sampler_0"
 			},
-			"SpecularWorkflow" :
+			"specular" :
 			{
-				"value" : [0.1, 0.1, 0.1],
-				"texture" : "ground_dirt_gardenS.png",
-				"sampler" : "NOWA2_Sampler_0"
+				"value" : [1, 1, 1]
 			},
 			"fresnel" :
 			{
@@ -184,7 +182,7 @@
 				"texture" : "decal.png",
 				"sampler" : "NOWA2_Sampler_0"
 			},
-			"SpecularWorkflow" :
+			"specular" :
 			{
 				"value" : [1, 1, 1]
 			},
@@ -218,7 +216,7 @@
 				"texture" : "decal2.png",
 				"sampler" : "NOWA2_Sampler_0"
 			},
-			"SpecularWorkflow" :
+			"specular" :
 			{
 				"value" : [1, 1, 1]
 			},
@@ -252,7 +250,7 @@
 				"texture" : "decal3.png",
 				"sampler" : "NOWA2_Sampler_0"
 			},
-			"SpecularWorkflow" :
+			"specular" :
 			{
 				"value" : [1, 1, 1]
 			},
@@ -286,7 +284,7 @@
 				"texture" : "decal4.png",
 				"sampler" : "NOWA2_Sampler_0"
 			},
-			"SpecularWorkflow" :
+			"specular" :
 			{
 				"value" : [1, 1, 1]
 			},
@@ -315,11 +313,9 @@
 				"texture" : "NOWA_1D.png",
 				"sampler" : "NOWA2_Sampler_0"
 			},
-			"SpecularWorkflow" :
+			"specular" :
 			{
-				"value" : [1, 1, 1],
-				"texture" : "NOWA_1B.png",
-				"sampler" : "NOWA2_Sampler_0"
+				"value" : [1, 1, 1]
 			},
 			"fresnel" :
 			{
@@ -348,11 +344,9 @@
 				"texture" : "NOWA_Big_1D.png",
 				"sampler" : "NOWA2_Sampler_0"
 			},
-			"SpecularWorkflow" :
+			"specular" :
 			{
-				"value" : [1, 1, 1],
-				"texture" : "NOWA_Big_1A.png",
-				"sampler" : "NOWA2_Sampler_0"
+				"value" : [1, 1, 1]
 			},
 			"fresnel" :
 			{

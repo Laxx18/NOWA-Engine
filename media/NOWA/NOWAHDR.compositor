@@ -1,0 +1,322 @@
+
+compositor_node NOWAHdrRenderingNode
+{
+	texture rt0			target_width target_height PFG_RGBA16_FLOAT msaa_auto explicit_resolve
+	texture rt1 		target_width target_height PFG_RGBA16_FLOAT msaa_auto explicit_resolve
+	
+	texture oldLumRt	           1             1 PFG_R16_FLOAT depth_pool 0
+
+
+	target rt0
+	{
+		pass render_scene
+		{
+			load
+			{
+				all				clear
+				clear_colour	0 0 0 1
+			}
+			store
+			{
+				colour	store_or_resolve
+				depth			dont_care
+				stencil			dont_care
+			}
+			// 0 - 2 transparent objects would be rendered through the ground and sky would be visible!
+			rq_first 	10
+			rq_last 	20
+			overlays	off
+			shadows		NOWAShadowNode
+		}
+		
+		//Render sky after opaque stuff (performance optimization)
+		pass render_quad
+		{
+			quad_normals	camera_direction
+			material 		NOWASkyPostprocess
+		}
+		
+		//Render transparent stuff after sky
+		pass render_scene
+		{
+			overlays	off
+			shadows		NOWAShadowNode reuse
+		}
+	}
+
+	//Initialize lumRt1 at startup, to avoid NaNs.
+	target oldLumRt
+	{
+		pass clear
+		{
+			num_initial 1
+			colour_value 0.01 0.01 0.01 1
+		}
+	}
+
+	out 0 rt0
+	out 1 rt1
+	out 2 oldLumRt
+}
+
+compositor_node NOWAHdrMsaaResolve
+{
+	in 0 hdr_msaa_rt
+	in 1 oldLumRt
+
+	texture resolvedRt target_width target_height PFG_RGBA16_FLOAT depth_pool 0
+
+	target resolvedRt
+	{
+		pass render_quad
+		{
+			load { all dont_care }
+			material HDR/Resolve_4xFP32_HDR_Box
+			input 0 hdr_msaa_rt
+			input 1 oldLumRt
+		}
+	}
+
+	out 0 resolvedRt
+}
+
+compositor_node NOWAHdrPostprocessingNode
+{
+	in 0 rt0
+	in 1 lumRt1
+	in 2 rt_output
+
+	//For maximum quality use these as FLOAT16_RGBA, however they're slower on
+	//AMD cards (0.748ms slower on AMD Radeon HD 7770 at 1920x1080).
+	//texture rtBlur0	256 256 PFG_RGBA16_FLOAT	depth_pool 0
+	//texture rtBlur1	256 256 PFG_RGBA16_FLOAT	depth_pool 0
+
+	texture rtBlur0	256 256 PFG_R10G10B10A2_UNORM	depth_pool 0
+	texture rtBlur1	256 256 PFG_R10G10B10A2_UNORM	depth_pool 0
+
+	texture lumRt0	  1   1 PFG_R16_FLOAT	depth_pool 0
+	//texture lumRt1  1   1 PFG_R16_FLOAT	depth_pool 0
+	texture rtIter0	 64  64 PFG_R16_FLOAT	depth_pool 0
+	texture rtIter1	 16  16 PFG_R16_FLOAT	depth_pool 0
+	texture rtIter2	  4   4 PFG_R16_FLOAT	depth_pool 0
+
+	//Calculate luminosity
+	target rtIter0
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/DownScale01_SumLumStart
+			input		0	rt0
+		}
+	}
+
+	target rtIter1
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/DownScale02_SumLumIterative
+			input		0	rtIter0
+		}
+	}
+
+	target rtIter2
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/DownScale02_SumLumIterative
+			input		0	rtIter1
+		}
+	}
+
+	target lumRt0
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/DownScale03_SumLumEnd
+			input		0	rtIter2
+			input		1	lumRt1
+		}
+	}
+
+	target lumRt1
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	Ogre/Copy/1xFP32
+			input		0	lumRt0
+		}
+	}
+
+	//Perform Bloom
+	target rtBlur0
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/BrightPass_Start
+			input		0	rt0
+			input		1	lumRt0
+		}
+	}
+
+	target rtBlur1
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/BoxBlurH
+			input		0	rtBlur0
+		}
+	}
+
+	target rtBlur0
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/BoxBlurV
+			input		0	rtBlur1
+		}
+	}
+
+	target rtBlur1
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/BoxBlurH
+			input		0	rtBlur0
+		}
+	}
+
+	target rtBlur0
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/BoxBlurV
+			input		0	rtBlur1
+		}
+	}
+
+	target rtBlur1
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/BoxBlurH
+			input		0	rtBlur0
+		}
+	}
+
+	target rtBlur0
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/BoxBlurH
+			input		0	rtBlur1
+		}
+	}
+
+	target rtBlur1
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/BoxBlurH
+			input		0	rtBlur0
+		}
+	}
+
+	target rtBlur0
+	{
+		pass render_quad
+		{
+			load		{ all dont_care }
+			material	HDR/BoxBlurH
+			input		0	rtBlur1
+		}
+	}
+
+	target rt_output
+	{
+		pass render_quad
+	    {
+			load { all dont_care }
+			//Ignore the alpha channel
+			material 	Ogre/Copy/4xFP32
+	    	input 0 	rt0
+		}
+		
+		pass render_quad
+		{
+			load		{ colour dont_care }
+			store
+			{
+				//Required by Metal as the overlays in the next pass will break the render encoder,
+				//causing this pass to be resolved and then the overlays would render over a black
+				//background (unfortunately, this also causes a performance hit).
+				colour store
+			}
+			material	HDR/FinalToneMapping
+			input		0	rt0
+			input		1	lumRt0
+			input		2	rtBlur0
+		}
+	}
+
+	out 0 rt_output
+}
+
+// workspace NOWAHdrWorkspace
+// {
+	// connect NOWAHdrRenderingNode 0		Glass 0
+	// connect NOWAHdrRenderingNode 1		Glass 1
+	
+	// connect Glass 1						NOWAHdrPostprocessingNode 0
+	// //#################################################################
+	// connect NOWAHdrRenderingNode 2		NOWAHdrPostprocessingNode 1
+	// //#################################################################
+	
+	
+	
+	// connect_output						NOWAHdrPostprocessingNode 2
+	
+	// connect	NOWAHdrPostprocessingNode 0	NOWAFinalComposition2 0
+// }
+
+// workspace NOWAHdrWorkspace
+// {
+	// connect NOWAHdrRenderingNode 0		NOWAGlass 0
+	// connect NOWAHdrRenderingNode 1		NOWAGlass 1
+	
+	// connect NOWAGlass 0					NOWAHdrPostprocessingNode 0
+	// connect NOWAHdrRenderingNode 2		NOWAHdrPostprocessingNode 1
+	
+	// connect_output					NOWAHdrPostprocessingNode 2
+	
+	// connect_output					NOWAFinalComposition 0
+	// connect	NOWAHdrPostprocessingNode 1	NOWAFinalComposition 1
+// }
+
+// workspace NOWAHdrWorkspace
+// {
+	// connect NOWAHdrRenderingNode 0			NOWAHdrPostprocessingNode 0
+	// connect NOWAHdrPostprocessingNode 0		NOWAGlass 0	
+	// //#################################################################
+	// connect NOWAHdrRenderingNode 2			NOWAHdrPostprocessingNode 1
+	// //#################################################################
+	
+	// connect NOWAHdrPostprocessingNode 1		NOWAGlass 1
+	
+	// connect_output							NOWAHdrPostprocessingNode 2
+	// connect_output							NOWAFinalComposition 0
+	
+	// connect NOWAGlass 0						NOWAFinalComposition 1
+// }

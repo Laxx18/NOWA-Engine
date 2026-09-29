@@ -4,51 +4,39 @@ module("Coyote", package.seeall);
 require("init");
 
 local coyote = nil;
+local player = nil;
+-- Event handlers compare against this id, never against coyote:getId(): an event can still reach
+-- this script after the game object was deleted, and then 'coyote' points to freed memory.
 local coyoteId = nil;
-local animationBlender = nil;
-
--- Handles returned by registerEventListener. removeEventListener takes exactly these ids.
+local profile = nil;
 local enemyHitListenerId = nil;
 local enemyDeadListenerId = nil;
 
--- Turn around when hit
---
--- A non lethal hit makes the coyote turn around and run back to the waypoint behind it.
---
--- Attention: AiPathFollowComponent:setInvertDirection() can NOT do this. It only stores the
--- attribute (the running path takes it over on the next connect() only), and Path::setInvertDirection()
--- jumps to an END of the waypoint list instead of turning around. AiPathFollowComponent:turnAround()
--- (KI::Path::turnAround) flips the direction on the LIVE path, so the waypoint the coyote is coming
--- from becomes its next target. Until that C++ addition is built, the call is caught and logged once.
---
--- The cooldown keeps a fast combo from flipping the coyote back and forth on every single hit.
-local TURN_AROUND_COOLDOWN = 0.6;
-local turnAroundTimer = 0;
-local turnAroundLogged = false;
-
--- Death sequence, same approach as the rhino (see Rhino.lua for why the push is delayed and why it
--- must be a one shot impulse). Slightly harder knockback, the coyote is lighter.
-local DEATH_PUSH_DELAY = 0.3;
-local DEATH_KNOCKBACK_HORIZONTAL = 5.0;
-local DEATH_KNOCKBACK_UP = 3.5;
-local DEATH_DELETE_DELAY = 2.5;
-
-local isDying = false;
-local dyingTime = 0;
-local deathPushDone = false;
-local deathDirectionX = 1;
-local missingApiLogged = false;
+-- Shown for ENEMY_ENERGY_BAR_TIME seconds after every hit.
+local energyBar = nil;
+local energyBarTimer = 0;
 
 Coyote = {}
+
+local function showEnergyBar(value)
+    energyBar:setCurrentValue(value);
+    energyBar:setActivated(true);
+    energyBarTimer = ENEMY_ENERGY_BAR_TIME;
+end
 
 Coyote["connect"] = function(gameObject)
     coyote = AppStateManager:getGameObjectController():castGameObject(gameObject);
     coyoteId = coyote:getId();
-    animationBlender = coyote:getAnimationComponentV2():getAnimationBlender();
+    profile = EnemyProfiles[coyote:getTagName()];
+    player = AppStateManager:getGameObjectController():getGameObjectFromName(PLAYER_NAME);
+
+    energyBar = coyote:getValueBarComponent();
+    setupEnemyEnergyBar(energyBar, profile);
+    energyBarTimer = 0;
 
     -- Attention: the locomotion clips MUST be the *_InPlace variants. 'Walk', 'Run' and 'Roll' carry
-    -- root motion: the mesh walks away from its scene node and snaps back at the end of every loop -
-    -- exactly the "runs away from its physics hull" effect the rhino had.
+    -- root motion: the mesh walks away from its scene node and snaps back at the end of every loop.
+    local animationBlender = coyote:getAnimationComponentV2():getAnimationBlender();
     animationBlender:registerAnimation(AnimationBlender.ANIM_IDLE_1, "Idle");
     animationBlender:registerAnimation(AnimationBlender.ANIM_IDLE_2, "Idle_2");
     animationBlender:registerAnimation(AnimationBlender.ANIM_IDLE_3, "Sleep");
@@ -59,177 +47,85 @@ Coyote["connect"] = function(gameObject)
     animationBlender:registerAnimation(AnimationBlender.ANIM_HIGH_JUMP_END, "Land");
     animationBlender:registerAnimation(AnimationBlender.ANIM_JUMP_END, "Land");
     animationBlender:registerAnimation(AnimationBlender.ANIM_FALL, "Fall");
-    -- The coyote has no bite or kick clip - the rolling charge is its attack.
+    -- No bite or kick clip - the rolling charge is the attack.
     animationBlender:registerAnimation(AnimationBlender.ANIM_ATTACK_1, "Roll_InPlace");
     animationBlender:registerAnimation(AnimationBlender.ANIM_ATTACK_2, "Roll_InPlace");
     -- No dedicated damage clip either. 'Fall' is one second long, short enough for a hit reaction.
     animationBlender:registerAnimation(AnimationBlender.ANIM_TAKE_DAMAGE, "Fall");
-    -- Defeat, only used when the coyote has no ragdoll component, see update().
     animationBlender:registerAnimation(AnimationBlender.ANIM_ACTION_1, "Failure");
     animationBlender:registerAnimation(AnimationBlender.ANIM_NO_IDEA, "Talk");
 
-    turnAroundTimer = 0;
-    isDying = false;
-    dyingTime = 0;
-    deathPushDone = false;
-    deathDirectionX = 1;
-
-    -- Non lethal hits, sent by WeaponStick.lua. Registered in init.lua.
-    if (EventType.EnemyHitEvent ~= nil) then
-        enemyHitListenerId = AppStateManager:getScriptEventManager():registerEventListener(EventType.EnemyHitEvent, Coyote["onEnemyHit"]);
-    end
-
-    if (EventType.EnemyDeadEvent ~= nil) then
-        enemyDeadListenerId = AppStateManager:getScriptEventManager():registerEventListener(EventType.EnemyDeadEvent, Coyote["onEnemyDead"]);
-    end
+    enemyHitListenerId = AppStateManager:getScriptEventManager():registerEventListener(EventType.EnemyHitEvent, Coyote["onEnemyHit"]);
+    enemyDeadListenerId = AppStateManager:getScriptEventManager():registerEventListener(EventType.EnemyDeadEvent, Coyote["onEnemyDead"]);
 end
 
 Coyote["disconnect"] = function()
     -- Called at simulation stop AND when the coyote is deleted while the simulation runs (killed).
-    -- The listeners must go, otherwise the next hit or kill of ANY enemy still calls into this script.
-    if (enemyHitListenerId ~= nil) then
-        AppStateManager:getScriptEventManager():removeEventListener(enemyHitListenerId);
-        enemyHitListenerId = nil;
-    end
-    if (enemyDeadListenerId ~= nil) then
-        AppStateManager:getScriptEventManager():removeEventListener(enemyDeadListenerId);
-        enemyDeadListenerId = nil;
-    end
+    AppStateManager:getScriptEventManager():removeEventListener(enemyHitListenerId);
+    AppStateManager:getScriptEventManager():removeEventListener(enemyDeadListenerId);
+    enemyHitListenerId = nil;
+    enemyDeadListenerId = nil;
 
     coyote = nil;
+    player = nil;
+    energyBar = nil;
     coyoteId = nil;
-    animationBlender = nil;
-    isDying = false;
-    dyingTime = 0;
-    deathPushDone = false;
+    profile = nil;
 end
 
----------------------------------------------------------------------------------------------------
--- EnemyHitEvent: sent by WeaponStick.lua for every hit that does NOT kill the enemy.
----------------------------------------------------------------------------------------------------
+-- A non lethal hit: the coyote turns around and runs to the waypoint it is coming from.
 Coyote["onEnemyHit"] = function(eventData)
-    if (coyote == nil or true == isDying) then
-        do return end;
-    end
-
-    -- The event fires for ANY hit enemy - only react if it's this one.
     if (eventData["enemyId"] ~= coyoteId) then
         do return end;
     end
 
-    if (turnAroundTimer > 0) then
-        do return end;
-    end
-
-    local pathFollowComponent = coyote:getAiPathFollowComponent();
-    if (pathFollowComponent == nil) then
-        do return end;
-    end
-
-    local turned = false;
-    local callOk = pcall(function() turned = pathFollowComponent:turnAround(); end);
-
-    if (false == callOk) then
-        if (false == turnAroundLogged) then
-            turnAroundLogged = true;
-            log("[Coyote] AiPathFollowComponent:turnAround() is not bound for lua in this build yet - the coyote does not turn around on a hit.");
-        end
-        do return end;
-    end
-
-    if (true == turned) then
-        turnAroundTimer = TURN_AROUND_COOLDOWN;
-    end
+    showEnergyBar(eventData["remainingEnergy"]);
+    coyote:getAiPathFollowComponent():turnAround();
+    coyote:getAnimationComponentV2():getAnimationBlender():blend5(AnimationBlender.ANIM_RUN, AnimationBlender.BLEND_WHILE_ANIMATING, 0.1, true);
 end
 
 Coyote["onEnemyDead"] = function(eventData)
-    if (coyote == nil) then
-        do return end;
-    end
-
-    -- The event fires for ANY killed enemy - only react if it's this one.
     if (eventData["enemyId"] ~= coyoteId) then
         do return end;
     end
 
-    -- Weapon and player script may both report the same kill.
-    if (true == isDying) then
-        do return end;
+    -- Only if the bar is up anyway (the enemy was hit shortly before). Killed with one blow, the
+    -- bar is not shown at all.
+    if (energyBarTimer > 0) then
+        showEnergyBar(0);
     end
 
-    isDying = true;
-    dyingTime = 0;
-    deathPushDone = false;
-
-    deathDirectionX = 1;
-    local hitDirection = eventData["hitDirection"];
-    if (hitDirection ~= nil and hitDirection.x < 0) then
-        deathDirectionX = -1;
+    -- WeaponStick already switched the AI off (BehaviorType.NONE), so the ragdoll can take over in
+    -- this very frame.
+    local directionX = 1;
+    if (eventData["hitDirection"].x < 0) then
+        directionX = -1;
     end
 
-    local pathFollowComponent = coyote:getAiPathFollowComponent();
-    if (pathFollowComponent ~= nil) then
-        pathFollowComponent:setActivated(false);
-    end
+    local ragDollComponent = coyote:getPhysicsRagDollComponentV2();
+    ragDollComponent:setState("Ragdolling");
+    ragDollComponent:applyRequiredForceForJumpVelocity(Vector3(directionX * profile.deathKnockbackHorizontal, profile.deathKnockbackUp, 0));
 
-    if (animationBlender ~= nil) then
-        animationBlender:blend5(AnimationBlender.ANIM_TAKE_DAMAGE, AnimationBlender.BLEND_WHILE_ANIMATING, 0.05, false);
-    end
-
-    AppStateManager:getGameObjectController():deleteDelayedGameObject(coyoteId, DEATH_PUSH_DELAY + DEATH_DELETE_DELAY);
+    AppStateManager:getGameObjectController():deleteDelayedGameObject(coyoteId, profile.deathDeleteDelay);
 end
 
 ---------------------------------------------------------------------------------------------------
 -- Called by the LuaScriptComponent every frame.
 ---------------------------------------------------------------------------------------------------
 Coyote["update"] = function(dt)
-    if (coyote == nil) then
-        do return end;
+    if (energyBarTimer > 0) then
+        energyBarTimer = energyBarTimer - dt;
+        if (energyBarTimer <= 0) then
+            energyBar:setActivated(false);
+        end
     end
 
-    if (turnAroundTimer > 0) then
-        turnAroundTimer = turnAroundTimer - dt;
-    end
-
-    if (false == isDying or true == deathPushDone) then
-        do return end;
-    end
-
-    dyingTime = dyingTime + dt;
-    if (dyingTime < DEATH_PUSH_DELAY) then
-        do return end;
-    end
-
-    deathPushDone = true;
-
-    -- With a ragdoll component the coyote dies like the rhino. Without one, the defeat clip plays
-    -- and the plain physics body gets the knockback.
-    local ragDollComponent = coyote:getPhysicsRagDollComponentV2();
-    local physicsComponent = ragDollComponent;
-    if (physicsComponent == nil) then
-        physicsComponent = coyote:getPhysicsActiveComponent();
-    end
-
-    if (physicsComponent == nil) then
-        do return end;
-    end
-
-    -- Clears the latched walking velocity of the path follow first. Same order as the rhino:
-    -- reset, switch the state, then one impulse.
-    local resetOk = pcall(function() physicsComponent:resetForce(); end);
-
-    if (ragDollComponent ~= nil) then
-        ragDollComponent:setState("Ragdolling");
-    elseif (animationBlender ~= nil) then
-        animationBlender:blend5(AnimationBlender.ANIM_ACTION_1, AnimationBlender.BLEND_WHILE_ANIMATING, 0.1, false);
-    end
-
-    local pushVelocity = Vector3(deathDirectionX * DEATH_KNOCKBACK_HORIZONTAL, DEATH_KNOCKBACK_UP, 0);
-    local pushOk = pcall(function() physicsComponent:applyRequiredForceForJumpVelocity(pushVelocity); end);
-
-    if ((false == resetOk or false == pushOk) and false == missingApiLogged) then
-        missingApiLogged = true;
-        log("[Coyote] resetForce or applyRequiredForceForJumpVelocity is not bound for lua in this build - the death knockback is skipped. resetForce: "
-            .. toString(resetOk) .. " applyRequiredForceForJumpVelocity: " .. toString(pushOk));
+    -- Tells the player's script every frame while the player is within the attack reach. The
+    -- player's script decides whether the attack may start (cooldown, i-frames, trade rule).
+    local delta = player:getPosition() - coyote:getPosition();
+    if (math.abs(delta.x) <= profile.attackReach and math.abs(delta.y) <= profile.attackReachVertical) then
+        local eventData = {};
+        eventData["enemyId"] = coyoteId;
+        AppStateManager:getScriptEventManager():queueEvent(EventType.EnemyNearPlayerEvent, eventData);
     end
 end

@@ -4210,7 +4210,7 @@ namespace NOWA
         range(new Variant(MyGUIProgressBarComponent::AttrRange(), static_cast<unsigned int>(100), this->attributes)),
         flowDirection(new Variant(MyGUIProgressBarComponent::AttrFlowDirection(), {"LeftToRight", "RightToLeft", "TopToBottom", "BottomToTop"}, this->attributes))
     {
-        std::vector<Ogre::String> skins({"ProgressBar", "ProgressBarFill"});
+        std::vector<Ogre::String> skins({"ProgressBar", "ProgressBarFill", "ProgressValueBar"});
         this->skin = new Variant(MyGUIComponent::AttrSkin(), skins, this->attributes);
     }
 

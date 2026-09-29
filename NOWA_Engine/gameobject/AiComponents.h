@@ -486,9 +486,8 @@ namespace NOWA
 		/**
          * @brief   Turns the agent around on its live path: the waypoint it is coming from becomes the next target
          *          and the traversal direction flips. Unlike setInvertDirection(), which jumps to an end of the list.
-         * @return  True if turned around, false if there is no waypoint behind (open path) or the path is not valid.
          */
-        bool turnAround(void);
+        void turnAround(void);
 	public:
 		static const Ogre::String AttrWaypointsCount(void) { return "Waypoints Count"; }
 		static const Ogre::String AttrWaypoint(void) { return "Waypoint Id "; }

@@ -6627,3 +6627,272 @@ particle_system DustStep
         rotation_speed_range_end    25
     }
 }
+
+// ============================================================================
+// Hit / impact particle effects for PrehistoricLax
+//
+// HitImpact        -> normal hit (e.g. landing a stomp on a small enemy).
+//                      Star burst + expanding ring. Yellow/orange, comic style.
+// HitImpactBig      -> heavier hit (e.g. stomping a big/boss enemy). Same idea,
+//                      just bigger, more particles, a second delayed ring.
+// HitDamagePlayer   -> player takes damage. Red/pink burst, no ring, so it
+//                      reads differently from dealing damage at a glance.
+//
+// All systems are one-shot bursts (emitter duration is short, no repeat).
+// Create at the impact point, destroy/pool after ~0.6-0.8s.
+// All values tuned for scale 1 unit == 1 meter.
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// Normal hit: radiating stars + one expanding ring.
+// ----------------------------------------------------------------------------
+particle_system HitImpact
+{
+    material                Particle/Star_02
+    particle_width          0.14
+    particle_height         0.14
+    cull_each               false
+    quota                   30
+    billboard_type          point
+    billboard_rotation_type vertex
+    sorted                  true
+
+    // Stars fly out radially in the plane facing the camera/ground.
+    emitter Point
+    {
+        position            0 0 0
+        angle               180
+        emission_rate       220
+        duration            0.04
+        time_to_live_min    0.25
+        time_to_live_max    0.40
+        direction           0 1 0
+        velocity_min        1.6
+        velocity_max        2.6
+        colour_range_start  1.0 0.85 0.20 1
+        colour_range_end    1.0 0.55 0.10 1
+    }
+
+    // Quick pop-in, then fade out fast.
+    affector ColourInterpolator
+    {
+        time0       0.0
+        colour0     1 1 1 1
+        time1       0.55
+        colour1     1 1 1 0.85
+        time2       1.0
+        colour2     1 1 1 0
+    }
+
+    // Stars shrink slightly while flying out (feels punchier than growing).
+    affector Scaler
+    {
+        rate -0.12
+    }
+
+    affector Rotator
+    {
+        rotation_range_start        0
+        rotation_range_end          360
+        rotation_speed_range_start  -180
+        rotation_speed_range_end     180
+    }
+
+    // Stars slow down quickly instead of flying forever.
+    affector LinearForce
+    {
+        force_vector        0 0 0
+        force_application   average
+    }
+}
+
+// Separate, second particle_system for the ring, so it can use its own material
+// and be layered under/over the stars. Attach both at the same position.
+particle_system HitImpactRing
+{
+    material                Particle/Ring_02
+    particle_width          0.05
+    particle_height         0.05
+    cull_each               false
+    quota                   4
+    billboard_type          oriented_common
+    common_direction        0 1 0
+    common_up_vector        0 0 1
+    sorted                  true
+
+    emitter Point
+    {
+        position            0 0.02 0
+        angle               0
+        emission_rate       20
+        duration            0.03
+        time_to_live        0.30
+        direction           0 1 0
+        velocity            0
+        colour              1 0.85 0.35 0.9
+    }
+
+    // The ring quad grows fast to sell the shockwave.
+    affector Scaler
+    {
+        rate 2.2
+    }
+
+    affector ColourInterpolator
+    {
+        time0       0.0
+        colour0     1 1 1 0.9
+        time1       0.4
+        colour1     1 1 1 0.6
+        time2       1.0
+        colour2     1 1 1 0
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Heavy hit: bigger star burst + two rings (immediate + slightly delayed).
+// ----------------------------------------------------------------------------
+particle_system HitImpactBig
+{
+    material                Particle/Star_04
+    particle_width          0.20
+    particle_height         0.20
+    cull_each               false
+    quota                   50
+    billboard_type          point
+    billboard_rotation_type vertex
+    sorted                  true
+
+    emitter Point
+    {
+        position            0 0 0
+        angle               180
+        emission_rate       320
+        duration            0.05
+        time_to_live_min    0.30
+        time_to_live_max    0.50
+        direction           0 1 0
+        velocity_min        2.2
+        velocity_max        3.6
+        colour_range_start  1.0 0.85 0.20 1
+        colour_range_end    1.0 0.45 0.05 1
+    }
+
+    affector ColourInterpolator
+    {
+        time0       0.0
+        colour0     1 1 1 1
+        time1       0.55
+        colour1     1 1 1 0.85
+        time2       1.0
+        colour2     1 1 1 0
+    }
+
+    affector Scaler
+    {
+        rate -0.15
+    }
+
+    affector Rotator
+    {
+        rotation_range_start        0
+        rotation_range_end          360
+        rotation_speed_range_start  -220
+        rotation_speed_range_end     220
+    }
+}
+
+particle_system HitImpactBigRing
+{
+    material                Particle/Ring_02
+    particle_width          0.08
+    particle_height         0.08
+    cull_each               false
+    quota                   6
+    billboard_type          oriented_common
+    common_direction        0 1 0
+    common_up_vector        0 0 1
+    sorted                  true
+
+    // First ring immediately, second one slightly delayed for a "double hit" feel.
+    emitter Point
+    {
+        position            0 0.02 0
+        angle               0
+        emission_rate       20
+        duration            0.03
+        repeat_delay        0.12
+        time_to_live        0.35
+        direction           0 1 0
+        velocity             0
+        colour              1 0.85 0.35 0.9
+    }
+
+    affector Scaler
+    {
+        rate 2.8
+    }
+
+    affector ColourInterpolator
+    {
+        time0       0.0
+        colour0     1 1 1 0.9
+        time1       0.4
+        colour1     1 1 1 0.6
+        time2       1.0
+        colour2     1 1 1 0
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Player takes damage: red/pink burst, no ring (reads as "ouch", not "hit").
+// ----------------------------------------------------------------------------
+particle_system HitDamagePlayer
+{
+    material                Particle/Star_01
+    particle_width          0.12
+    particle_height         0.12
+    cull_each               false
+    quota                   24
+    billboard_type          point
+    billboard_rotation_type vertex
+    sorted                  true
+
+    emitter Point
+    {
+        position            0 0 0
+        angle               180
+        emission_rate       180
+        duration            0.04
+        time_to_live_min    0.20
+        time_to_live_max    0.35
+        direction           0 1 0
+        velocity_min        1.4
+        velocity_max        2.2
+        colour_range_start  1.0 0.25 0.30 1
+        colour_range_end    1.0 0.55 0.55 1
+    }
+
+    affector ColourInterpolator
+    {
+        time0       0.0
+        colour0     1 1 1 1
+        time1       0.5
+        colour1     1 1 1 0.8
+        time2       1.0
+        colour2     1 1 1 0
+    }
+
+    affector Scaler
+    {
+        rate -0.10
+    }
+
+    affector Rotator
+    {
+        rotation_range_start        0
+        rotation_range_end          360
+        rotation_speed_range_start  -150
+        rotation_speed_range_end     150
+    }
+}

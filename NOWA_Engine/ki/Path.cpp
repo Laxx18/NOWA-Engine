@@ -173,33 +173,22 @@ namespace NOWA
             }
         }
 
-		bool Path::turnAround(void)
+		void Path::turnAround(void)
 		{
-			// Turns the agent around on the spot: the waypoint it is coming FROM becomes its next target,
-			// and the traversal direction flips, so setNextWayPoint() continues correctly from there.
-			//
-			// Attention: this is NOT setInvertDirection(). That one jumps to an END of the list (last
-			// waypoint for true, first for false), so whether it turns the agent around depends on where
-			// the agent currently is - with two waypoints and the agent walking towards the second one,
-			// setInvertDirection(true) keeps it walking towards the second one.
-			if (this->wayPoints.size() < 2 || false == this->valid || this->currentWaypointItr == this->wayPoints.end())
+			// The waypoint the agent comes FROM becomes the next target and the direction flips, so
+			// setNextWayPoint() simply continues the other way round from there.
+			if (this->wayPoints.size() < 2 || this->currentWaypointItr == this->wayPoints.end())
 			{
-				return false;
+				return;
 			}
 
-			const bool loop = (true == this->repeat && false == this->directionChange);
-
+			// Attention: at an end of the list the agent comes from the OTHER end (loop, or the first leg
+			// of a ping pong path), so the iterator wraps around. Without that the agent kept walking to
+			// the same waypoint.
 			if (1 == this->currentDirection)
 			{
-				// Walking forward: the agent comes from the previous waypoint.
 				if (this->currentWaypointItr == this->wayPoints.begin())
 				{
-					if (false == loop)
-					{
-						// Nothing behind the first waypoint of an open path.
-						return false;
-					}
-					// A loop: the previous waypoint of the first one is the last one.
 					this->currentWaypointItr = this->wayPoints.end() - 1;
 				}
 				else
@@ -210,14 +199,8 @@ namespace NOWA
 			}
 			else
 			{
-				// Walking backward: the agent comes from the next waypoint.
 				if (this->currentWaypointItr + 1 == this->wayPoints.end())
 				{
-					if (false == loop)
-					{
-						// Nothing behind the last waypoint of an open path.
-						return false;
-					}
 					this->currentWaypointItr = this->wayPoints.begin();
 				}
 				else
@@ -226,8 +209,6 @@ namespace NOWA
 				}
 				this->currentDirection = 1;
 			}
-
-			return true;
 		}
 
 		void Path::addWayPoint(const Ogre::Vector3& waypoint, const Ogre::Quaternion& orientation)

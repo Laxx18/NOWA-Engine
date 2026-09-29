@@ -20,6 +20,7 @@ namespace NOWA
         firstTimePositionSet(true),
         xScroll(0.0f),
         yScroll(0.0f),
+        lastVelocity(Ogre::Vector2::ZERO),
         workspaceBackgroundComponent(nullptr),
         active(new Variant(BackgroundScrollComponent::AttrActive(), true, this->attributes)),
         targetId(new Variant(BackgroundScrollComponent::AttrTargetId(), static_cast<unsigned long>(0), this->attributes, true)),
@@ -163,7 +164,26 @@ namespace NOWA
             this->targetSceneNode = targetGameObjectPtr->getSceneNode();
         }
 
-        return this->setupBackground();
+        bool result = this->setupBackground();
+
+        // Force this layer's visible scroll position to a known, correct baseline (0) the
+        // moment we connect, BEFORE the player sees a frame. Without this, whatever
+        // speedsXValues[index]/speedsYValues[index] was left over from a PREVIOUS play session
+        // (disconnect() only ever stopped the scroll VELOCITY, never reset the position - see
+        // there) stayed on screen as the starting offset, and the first few update() ticks had to
+        // visibly "catch up" from that stale offset - the "flies in from the right" symptom.
+        if (nullptr != this->workspaceBackgroundComponent)
+        {
+            const int layerIndex = static_cast<int>(this->gameObjectPtr->getOccurrenceIndexFromComponent(this));
+            if (layerIndex >= 0 && layerIndex < 9)
+            {
+                this->workspaceBackgroundComponent->resetBackgroundScrollPosition(static_cast<unsigned short>(layerIndex));
+            }
+        }
+
+        this->firstTimePositionSet = true;
+
+        return result;
     }
 
     bool BackgroundScrollComponent::disconnect(void)
@@ -174,25 +194,25 @@ namespace NOWA
         this->pausedLastPosition = Ogre::Vector2::ZERO;
         this->xScroll = 0.0f;
         this->yScroll = 0.0f;
+        this->lastVelocity = Ogre::Vector2::ZERO;
 
         if (nullptr == this->workspaceBackgroundComponent)
         {
             return true;
         }
 
-        for (unsigned short i = 0; i < 9; i++)
+        const int layerIndex = static_cast<int>(this->gameObjectPtr->getOccurrenceIndexFromComponent(this));
+        if (layerIndex >= 0 && layerIndex < 9)
         {
-            // Set uv back to zero
-            if (i == this->gameObjectPtr->getOccurrenceIndexFromComponent(this))
-            {
-                this->workspaceBackgroundComponent->setBackgroundScrollSpeedX(i, 0.0f);
-                this->workspaceBackgroundComponent->setBackgroundScrollSpeedY(i, 0.0f);
-                // Compiles the materials and its shaders again, so that default uv values are set (uv set to 0)
-                break;
-            }
+            // setBackgroundScrollSpeedX/Y(i, 0.0f) only stops the scroll VELOCITY now, it no
+            // longer resets the visible position (that comment was written for the old,
+            // position-based version). Explicit reset instead, so the layer is actually back at
+            // UV 0 on disconnect.
+            this->workspaceBackgroundComponent->setBackgroundScrollSpeedX(static_cast<unsigned short>(layerIndex), 0.0f);
+            this->workspaceBackgroundComponent->setBackgroundScrollSpeedY(static_cast<unsigned short>(layerIndex), 0.0f);
+            this->workspaceBackgroundComponent->resetBackgroundScrollPosition(static_cast<unsigned short>(layerIndex));
         }
 
-        // this->workspaceBackgroundComponent->compileBackgroundMaterial();
         return true;
     }
 
@@ -210,9 +230,8 @@ namespace NOWA
 
     void BackgroundScrollComponent::update(Ogre::Real dt, bool notSimulating)
     {
-        if (false == notSimulating && true == this->active->getBool() && nullptr != this->workspaceBackgroundComponent)
+        if (false == notSimulating && true == this->active->getBool() && nullptr != this->workspaceBackgroundComponent && dt > 0.0f)
         {
-            // Resolve the layer this component drives ONCE, not per frame in a 9 iteration loop.
             const int layerIndex = static_cast<int>(this->gameObjectPtr->getOccurrenceIndexFromComponent(this));
             if (layerIndex < 0 || layerIndex >= 9)
             {
@@ -223,77 +242,74 @@ namespace NOWA
             const bool followY = this->followGameObjectY->getBool();
             const bool followZ = this->followGameObjectZ->getBool();
 
-            // Scroll direction per axis. If a layer moves WITH the camera instead of against it,
-            // flip the sign here - this is the only place that decides the direction.
             const Ogre::Real signX = 1.0f;
             const Ogre::Real signY = -1.0f;
 
+            Ogre::Real velocityX = 0.0f;
+            Ogre::Real velocityY = 0.0f;
+
             if (true == followX || true == followY || true == followZ)
             {
-                // Parallax is driven by how far the CAMERA moved. Camera stands still -> the layer
-                // stands still, exactly.
                 Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
                 if (nullptr != camera)
                 {
                     const Ogre::Vector3 cameraPosition = camera->getPosition();
                     const Ogre::Real cameraHorizontal = cameraPosition.x;
-                    // Vertical source: y for a side scroller, z for a top down layer.
                     const Ogre::Real cameraVertical = (true == followY) ? cameraPosition.y : cameraPosition.z;
 
-                    // Camera teleports (FollowCamera2D placing the camera on the player at the start,
-                    // level or camera switches) must not scroll the layer. A real camera cannot move
-                    // this far in one update, so snap to the new position without scrolling.
                     const Ogre::Real maxPlausibleCameraDelta = 10.0f;
+                    const bool isTeleport = true == this->firstTimePositionSet || Ogre::Math::Abs(cameraHorizontal - this->lastPosition.x) > maxPlausibleCameraDelta || Ogre::Math::Abs(cameraVertical - this->lastPosition.y) > maxPlausibleCameraDelta;
 
-                    if (true == this->firstTimePositionSet || Ogre::Math::Abs(cameraHorizontal - this->lastPosition.x) > maxPlausibleCameraDelta || Ogre::Math::Abs(cameraVertical - this->lastPosition.y) > maxPlausibleCameraDelta)
+                    if (true == isTeleport)
                     {
                         this->lastPosition.x = cameraHorizontal;
                         this->lastPosition.y = cameraVertical;
+                        // A teleport must also cut any smoothed velocity dead - otherwise the
+                        // filter below would smoothly interpolate FROM whatever velocity it had
+                        // TOWARD zero over a few frames, instead of just being zero immediately.
+                        this->lastVelocity = Ogre::Vector2::ZERO;
                         this->firstTimePositionSet = false;
                     }
-
-                    // FIX: the old alpha "0.1f * dt" is 0.1 per SECOND, i.e. a time constant of about
-                    // 10 s: the layer needed seconds to react and kept drifting for 10-30 s after the
-                    // camera had stopped. Frame rate independent alpha instead; smoothingTimeSeconds is
-                    // the only value to tune (bigger = smoother but lags more, 0.05 - 0.15 is sane).
-                    const Ogre::Real smoothingTimeSeconds = 0.08f;
-                    const Ogre::Real smoothing = 1.0f - std::exp(-dt / smoothingTimeSeconds);
-
-                    if (true == followX)
+                    else
                     {
-                        const Ogre::Real filteredX = NOWA::MathHelper::getInstance()->lowPassFilter(cameraHorizontal, this->lastPosition.x, smoothing);
-                        // moveSpeed = uv units per world unit the camera moved. The delta is already
-                        // per frame, so deliberately no "* dt" here.
-                        this->xScroll += signX * (filteredX - this->lastPosition.x) * this->moveSpeedX->getReal();
-                        this->xScroll = fmodf(this->xScroll + 2.0f, 2.0f); // Wrap between [0,2)
-                        this->lastPosition.x = filteredX;
-                    }
-
-                    if (true == followY || true == followZ)
-                    {
-                        const Ogre::Real filteredY = NOWA::MathHelper::getInstance()->lowPassFilter(cameraVertical, this->lastPosition.y, smoothing);
-                        this->yScroll += signY * (filteredY - this->lastPosition.y) * this->moveSpeedY->getReal();
-                        this->yScroll = fmodf(this->yScroll + 2.0f, 2.0f); // Wrap between [0,2)
-                        this->lastPosition.y = filteredY;
+                        // Raw delta/dt - exactly 0 when the camera did not move, no filter here.
+                        if (true == followX)
+                        {
+                            velocityX = signX * (cameraHorizontal - this->lastPosition.x) * this->moveSpeedX->getReal() / dt;
+                        }
+                        if (true == followY || true == followZ)
+                        {
+                            velocityY = signY * (cameraVertical - this->lastPosition.y) * this->moveSpeedY->getReal() / dt;
+                        }
+                        this->lastPosition.x = cameraHorizontal;
+                        this->lastPosition.y = cameraVertical;
                     }
                 }
             }
 
-            // Axes that do NOT follow scroll on their own (clouds etc.): moveSpeed = uv units per
-            // second, constant, no filter.
             if (false == followX)
             {
-                this->xScroll += signX * this->moveSpeedX->getReal() * dt;
-                this->xScroll = fmodf(this->xScroll + 2.0f, 2.0f);
+                velocityX = signX * this->moveSpeedX->getReal();
             }
             if (false == followY && false == followZ)
             {
-                this->yScroll += signY * this->moveSpeedY->getReal() * dt;
-                this->yScroll = fmodf(this->yScroll + 2.0f, 2.0f);
+                velocityY = signY * this->moveSpeedY->getReal();
             }
 
-            this->workspaceBackgroundComponent->setBackgroundScrollSpeedX(static_cast<unsigned short>(layerIndex), this->xScroll);
-            this->workspaceBackgroundComponent->setBackgroundScrollSpeedY(static_cast<unsigned short>(layerIndex), this->yScroll);
+            // FIX: filter the VELOCITY itself, not the camera position. Velocity is legitimately
+            // exactly 0 once the camera stops (raw delta/dt above), and filtering a signal that
+            // has become exactly 0 decays smoothly to exactly 0 and stays there - a few smoothed
+            // frames of taper-off, no permanent residual creep (unlike filtering position, which
+            // chases a moving target and never fully arrives - that was the old bug).
+            const Ogre::Real velocitySmoothingTimeSeconds = 0.05f;
+            const Ogre::Real velocitySmoothing = 1.0f - std::exp(-dt / velocitySmoothingTimeSeconds);
+            velocityX = NOWA::MathHelper::getInstance()->lowPassFilter(velocityX, this->lastVelocity.x, velocitySmoothing);
+            velocityY = NOWA::MathHelper::getInstance()->lowPassFilter(velocityY, this->lastVelocity.y, velocitySmoothing);
+            this->lastVelocity.x = velocityX;
+            this->lastVelocity.y = velocityY;
+
+            this->workspaceBackgroundComponent->setBackgroundScrollSpeedX(static_cast<unsigned short>(layerIndex), velocityX);
+            this->workspaceBackgroundComponent->setBackgroundScrollSpeedY(static_cast<unsigned short>(layerIndex), velocityY);
         }
     }
 
