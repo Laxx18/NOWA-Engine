@@ -23,9 +23,11 @@ local animationBlenderEmma = nil;
 local animationBlenderLuizius = nil;
 local pathFollowEmma = nil;
 local agathePhysicsRagComp = nil;
+local inputDeviceComp = nil;
 
 local laxShouldTurn = false;
 local luiziusShouldTurn = false;
+local timeSinceLastToggle = 1;
 
 
 MainGameObject = {}
@@ -60,6 +62,7 @@ MainGameObject["connect"] = function(gameObject)
     pathFollowEmma = emma:getAiPathFollowComponent();
     pathFollowEmma:setActivated(false);
     agathePhysicsRagComp = agathe:getPhysicsRagDollComponentV2();
+    inputDeviceComp = mainGameObject:getInputDeviceComponent();
     
     animationBlenderLax:registerAnimation(AnimationBlender.ANIM_IDLE_1, "Boy 1 Idle");
     animationBlenderLax:registerAnimation(AnimationBlender.ANIM_IDLE_2, "Boy 1 Idle Turn Left");
@@ -334,5 +337,12 @@ MainGameObject["update"] = function(dt)
   if (true == luiziusShouldTurn) then
         local resultQuat = MathHelper:faceDirectionSlerp(luizius:getOrientation(), Vector3(1, 0, 0), luizius:getDefaultDirection(), dt, 10);
         luizius:getSceneNode():setOrientation(resultQuat);
+   end
+   
+   if (timeSinceLastToggle > 0) then
+        timeSinceLastToggle = timeSinceLastToggle - dt;
+   elseif inputDeviceComp:isActionDown(NOWA_A_ATTACK_1) then
+        AppStateManager:changeAppState("GameState");
+        timeSinceLastToggle = 1;
    end
 end

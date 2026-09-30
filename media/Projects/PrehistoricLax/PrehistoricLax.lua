@@ -532,7 +532,7 @@ PrehistoricLax["connect"] = function(gameObject)
     AppStateManager:getGameObjectController():activatePlayerController(true, prehistoricLax:getId(), true);
 
     areaOfInterestComponent = prehistoricLax:getAreaOfInterestComponent();
-
+    
     -- The player's attributes live on the main game object, next to score and level - the HUD
     -- reads them from there, and they are saved.
     attributesComponent = mainGameObject:getAttributesComponent();

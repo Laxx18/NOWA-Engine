@@ -106,6 +106,12 @@ namespace NOWA
 		Ogre::Vector2 getExitDirection(void) const;
 
 		Ogre::String getAxis(void) const;
+
+		/**
+         * @brief Places the source game object in front of this exit, if the exit of the previous scene requested this exit's name.
+         *        Called by the DotSceneImportModule after all post inits.
+         */
+        void applyArrival(void);
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrTargetSceneName(void) { return "Target Scene Name"; }

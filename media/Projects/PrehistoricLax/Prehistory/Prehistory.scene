@@ -274,6 +274,7 @@
 					<property type="7" name="ScriptFile" data="MainGameObject.lua"/>
 					<property type="12" name="CloneScript" data="false"/>
 					<property type="12" name="HasCommonScript" data="false"/>
+					<property type="12" name="ScriptGlobal" data="false"/>
 					<property type="2" name="OrderIndex" data="0"/>
 					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -325,8 +326,8 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="2" name="Id" data="3643551685"/>
 					<property type="12" name="Activated" data="true"/>
-					<property type="8" name="Position" data="0.75 0.75"/>
-					<property type="8" name="Size" data="0.1 0.05"/>
+					<property type="8" name="Position" data="0.85 0.9"/>
+					<property type="8" name="Size" data="0.12 0.05"/>
 					<property type="7" name="Align" data="HCenter"/>
 					<property type="7" name="Layer" data="Back"/>
 					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
@@ -334,11 +335,18 @@
 					<property type="2" name="ParentId" data="0"/>
 					<property type="7" name="Skin" data="WoodButton"/>
 					<property type="12" name="CommonWidget" data="false"/>
-					<property type="7" name="Caption" data="Skip"/>
-					<property type="2" name="FontHeight" data="22"/>
+					<property type="7" name="Caption" data="Press action button to skip"/>
+					<property type="2" name="FontHeight" data="14"/>
 					<property type="7" name="TextAlign" data="HCenter"/>
 					<property type="8" name="TextOffset" data="0 0"/>
 					<property type="10" name="TextColor" data="0.95 0.95 0.95 1"/>
+					<property type="7" name="ComponentInputDeviceComponent" data="InputDeviceComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="DeviceName" data="Win32InputManager"/>
+					<property type="12" name="IsExclusive" data="false"/>
 				</userData>
 			</item>
 		</node>
@@ -346,7 +354,7 @@
 			<position x="-20.0289" y="0.373539" z="-16.8277"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="" meshFile="Procedural.mesh" castShadows="true" visible="true">
+			<item name="Platform_0" meshFile="Procedural.mesh" castShadows="true" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="413156468"/>
@@ -1121,6 +1129,7 @@
 					<property type="6" name="SourceId" data="0"/>
 					<property type="9" name="OffsetPosition" data="0 0 0"/>
 					<property type="9" name="OffsetOrientation" data="0 0 0"/>
+					<property type="12" name="UseBakedOffset" data="false"/>
 					<property type="7" name="ComponentAiPathFollowComponent" data="AiPathFollowComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -2688,6 +2697,7 @@
 					<property type="6" name="SourceId" data="0"/>
 					<property type="9" name="OffsetPosition" data="0 0 0"/>
 					<property type="9" name="OffsetOrientation" data="0 0 0"/>
+					<property type="12" name="UseBakedOffset" data="false"/>
 				</userData>
 			</item>
 		</node>
@@ -2900,6 +2910,7 @@
 					<property type="6" name="SourceId" data="2887726787"/>
 					<property type="9" name="OffsetPosition" data="0 0 0"/>
 					<property type="9" name="OffsetOrientation" data="0 0 0"/>
+					<property type="12" name="UseBakedOffset" data="false"/>
 					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>

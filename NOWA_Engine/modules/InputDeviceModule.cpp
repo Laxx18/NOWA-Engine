@@ -23,9 +23,15 @@ namespace
 
 		const Ogre::Real a = Ogre::Math::Abs(in);
 		if (a <= deadzone)
+		{
 			return 0.0f;
+		}
 
-		const Ogre::Real sign = (in < 0.0f) ? -1.0f : 1.0f;
+		Ogre::Real sign = 1.0f;
+		if (in < 0.0f)
+		{
+			sign = -1.0f;
+		}
 
 		// Normalize to t in [0..1] after deadzone
 		const Ogre::Real t = (a - deadzone) / (1.0f - deadzone);
@@ -52,14 +58,270 @@ namespace
 		return sign * Clamp1(out);
 	}
 
-	Ogre::Real ApplyNotch(Ogre::Real v, Ogre::Real notch)
+	// Raw axis indices and trigger behavior of a joystick layout. -1 means: axis does not exist in this layout.
+	struct LayoutAxes
 	{
-		// If outside notch, subtract it so output starts at 0 exactly at notch
-		const Ogre::Real a = Ogre::Math::Abs(v);
-		if (a <= notch) return 0.0f;
-		const Ogre::Real sign = (v < 0.0f) ? -1.0f : 1.0f;
-		return sign * (a - notch);
+		int leftX;
+		int leftY;
+		int rightX;
+		int rightY;
+		int leftTrigger;
+		int rightTrigger;
+		// Linux evdev rescales triggers to [-32768..32767], so a released trigger sits at the minimum. XInput delivers [0..32767].
+		bool triggerRestsAtMin;
+	};
+
+	LayoutAxes getLayoutAxes(NOWA::InputDeviceModule::JoyStickLayout joyStickLayout)
+	{
+		LayoutAxes axes;
+		if (NOWA::InputDeviceModule::LAYOUT_XINPUT == joyStickLayout)
+		{
+			axes.leftY = 0;
+			axes.leftX = 1;
+			axes.rightY = 2;
+			axes.rightX = 3;
+			axes.leftTrigger = 4;
+			axes.rightTrigger = 5;
+			axes.triggerRestsAtMin = false;
+		}
+		else if (NOWA::InputDeviceModule::LAYOUT_LINUX_EVDEV == joyStickLayout)
+		{
+			axes.leftX = 0;
+			axes.leftY = 1;
+			axes.leftTrigger = 2;
+			axes.rightX = 3;
+			axes.rightY = 4;
+			axes.rightTrigger = 5;
+			axes.triggerRestsAtMin = true;
+		}
+		else
+		{
+			// Legacy NOWA layout, triggers are physical buttons
+			axes.leftY = 0;
+			axes.leftX = 1;
+			axes.rightY = 2;
+			axes.rightX = 3;
+			axes.leftTrigger = -1;
+			axes.rightTrigger = -1;
+			axes.triggerRestsAtMin = false;
+		}
+		return axes;
 	}
+
+	Ogre::Real normalizeTrigger(int absValue, bool triggerRestsAtMin)
+	{
+		Ogre::Real value = 0.0f;
+		if (true == triggerRestsAtMin)
+	{
+			value = (static_cast<Ogre::Real>(absValue) + 32768.0f) / 65535.0f;
+		}
+		else
+		{
+			value = static_cast<Ogre::Real>(absValue) / 32767.0f;
+	}
+		return Ogre::Math::Clamp(value, 0.0f, 1.0f);
+	}
+
+	const Ogre::Real TRIGGER_DIGITAL_THRESHOLD = 0.5f;
+	const Ogre::Real RAW_AXIS_DIGITAL_THRESHOLD = 0.6f;
+
+	struct KeyName
+	{
+		OIS::KeyCode keyCode;
+		const char* name;
+	};
+
+	// One table for both directions (key -> string, string -> key) and for the list of all bindable keys.
+	// Previously there were three separate lists which had drifted apart (e.g. "Y" could not be parsed back, "R-Control" parsed as L-Control, "Pause" was unreachable).
+	const KeyName keyNames[] =
+	{
+		{ OIS::KC_ESCAPE, "Esc" },
+		{ OIS::KC_1, "1" },
+		{ OIS::KC_2, "2" },
+		{ OIS::KC_3, "3" },
+		{ OIS::KC_4, "4" },
+		{ OIS::KC_5, "5" },
+		{ OIS::KC_6, "6" },
+		{ OIS::KC_7, "7" },
+		{ OIS::KC_8, "8" },
+		{ OIS::KC_9, "9" },
+		{ OIS::KC_0, "0" },
+		{ OIS::KC_MINUS, "-" },
+		{ OIS::KC_EQUALS, "=" },
+		{ OIS::KC_BACK, "Backspace" },
+		{ OIS::KC_TAB, "Tab" },
+		{ OIS::KC_Q, "Q" },
+		{ OIS::KC_W, "W" },
+		{ OIS::KC_E, "E" },
+		{ OIS::KC_R, "R" },
+		{ OIS::KC_T, "T" },
+		{ OIS::KC_Y, "Y" },
+		{ OIS::KC_U, "U" },
+		{ OIS::KC_I, "I" },
+		{ OIS::KC_O, "O" },
+		{ OIS::KC_P, "P" },
+		{ OIS::KC_LBRACKET, "(" },
+		{ OIS::KC_RBRACKET, ")" },
+		{ OIS::KC_RETURN, "Return" },
+		{ OIS::KC_LCONTROL, "L-Control" },
+		{ OIS::KC_A, "A" },
+		{ OIS::KC_S, "S" },
+		{ OIS::KC_D, "D" },
+		{ OIS::KC_F, "F" },
+		{ OIS::KC_G, "G" },
+		{ OIS::KC_H, "H" },
+		{ OIS::KC_J, "J" },
+		{ OIS::KC_K, "K" },
+		{ OIS::KC_L, "L" },
+		{ OIS::KC_SEMICOLON, ";" },
+		{ OIS::KC_APOSTROPHE, "´" },
+		{ OIS::KC_GRAVE, "^" },
+		{ OIS::KC_LSHIFT, "L-Shift" },
+		{ OIS::KC_BACKSLASH, "\"" },
+		{ OIS::KC_Z, "Z" },
+		{ OIS::KC_X, "X" },
+		{ OIS::KC_C, "C" },
+		{ OIS::KC_V, "V" },
+		{ OIS::KC_B, "B" },
+		{ OIS::KC_N, "N" },
+		{ OIS::KC_M, "M" },
+		{ OIS::KC_COMMA, "," },
+		{ OIS::KC_PERIOD, "." },
+		{ OIS::KC_SLASH, "Slash" },
+		{ OIS::KC_RSHIFT, "R-Shift" },
+		{ OIS::KC_MULTIPLY, "*" },
+		{ OIS::KC_LMENU, "L-Alt" },
+		{ OIS::KC_SPACE, "Space" },
+		{ OIS::KC_CAPITAL, "Capital" },
+		{ OIS::KC_F1, "F1" },
+		{ OIS::KC_F2, "F2" },
+		{ OIS::KC_F3, "F3" },
+		{ OIS::KC_F4, "F4" },
+		{ OIS::KC_F5, "F5" },
+		{ OIS::KC_F6, "F6" },
+		{ OIS::KC_F7, "F7" },
+		{ OIS::KC_F8, "F8" },
+		{ OIS::KC_F9, "F9" },
+		{ OIS::KC_F10, "F10" },
+		{ OIS::KC_NUMLOCK, "Numlock" },
+		{ OIS::KC_SCROLL, "Scroll" },
+		{ OIS::KC_NUMPAD7, "Num 7" },
+		{ OIS::KC_NUMPAD8, "Num 8" },
+		{ OIS::KC_NUMPAD9, "Num 9" },
+		{ OIS::KC_SUBTRACT, "Sub" },
+		{ OIS::KC_NUMPAD4, "Num 4" },
+		{ OIS::KC_NUMPAD5, "Num 5" },
+		{ OIS::KC_NUMPAD6, "Num 6" },
+		{ OIS::KC_ADD, "+" },
+		{ OIS::KC_NUMPAD1, "Num 1" },
+		{ OIS::KC_NUMPAD2, "Num 2" },
+		{ OIS::KC_NUMPAD3, "Num 3" },
+		{ OIS::KC_NUMPAD0, "Num 0" },
+		{ OIS::KC_DECIMAL, "Num ." },
+		{ OIS::KC_OEM_102, "<" },
+		{ OIS::KC_F11, "F11" },
+		{ OIS::KC_F12, "F12" },
+		{ OIS::KC_RCONTROL, "R-Control" },
+		{ OIS::KC_NUMPADCOMMA, "Num ," },
+		{ OIS::KC_DIVIDE, "Num /" },
+		{ OIS::KC_SYSRQ, "SysRQ" },
+		{ OIS::KC_RMENU, "R-Alt" },
+		{ OIS::KC_PAUSE, "Pause" },
+		{ OIS::KC_HOME, "Home" },
+		{ OIS::KC_UP, "Up" },
+		{ OIS::KC_PGUP, "Page-Up" },
+		{ OIS::KC_LEFT, "Left" },
+		{ OIS::KC_RIGHT, "Right" },
+		{ OIS::KC_END, "End" },
+		{ OIS::KC_DOWN, "Down" },
+		{ OIS::KC_PGDOWN, "Page-Down" },
+		{ OIS::KC_INSERT, "Insert" },
+		{ OIS::KC_DELETE, "Delete" }
+	};
+
+	struct ButtonName
+	{
+		NOWA::InputDeviceModule::JoyStickButton button;
+		const char* name;
+	};
+
+	const ButtonName buttonNames[] =
+	{
+		{ NOWA::InputDeviceModule::BUTTON_A, "A" },
+		{ NOWA::InputDeviceModule::BUTTON_B, "B" },
+		{ NOWA::InputDeviceModule::BUTTON_X, "X" },
+		{ NOWA::InputDeviceModule::BUTTON_Y, "Y" },
+		{ NOWA::InputDeviceModule::BUTTON_LB, "LB" },
+		{ NOWA::InputDeviceModule::BUTTON_RB, "RB" },
+		{ NOWA::InputDeviceModule::BUTTON_LT, "LT" },
+		{ NOWA::InputDeviceModule::BUTTON_RT, "RT" },
+		{ NOWA::InputDeviceModule::BUTTON_SELECT, "Select" },
+		{ NOWA::InputDeviceModule::BUTTON_START, "Start" },
+		{ NOWA::InputDeviceModule::BUTTON_LEFT_STICK, "Left Stick" },
+		{ NOWA::InputDeviceModule::BUTTON_RIGHT_STICK, "Right Stick" },
+		{ NOWA::InputDeviceModule::BUTTON_LEFT_STICK_UP, "Left Stick Up" },
+		{ NOWA::InputDeviceModule::BUTTON_LEFT_STICK_DOWN, "Left Stick Down" },
+		{ NOWA::InputDeviceModule::BUTTON_LEFT_STICK_LEFT, "Left Stick Left" },
+		{ NOWA::InputDeviceModule::BUTTON_LEFT_STICK_RIGHT, "Left Stick Right" },
+		{ NOWA::InputDeviceModule::BUTTON_RIGHT_STICK_UP, "Right Stick Up" },
+		{ NOWA::InputDeviceModule::BUTTON_RIGHT_STICK_DOWN, "Right Stick Down" },
+		{ NOWA::InputDeviceModule::BUTTON_RIGHT_STICK_LEFT, "Right Stick Left" },
+		{ NOWA::InputDeviceModule::BUTTON_RIGHT_STICK_RIGHT, "Right Stick Right" },
+		{ NOWA::InputDeviceModule::BUTTON_DPAD_UP, "D-Pad Up" },
+		{ NOWA::InputDeviceModule::BUTTON_DPAD_DOWN, "D-Pad Down" },
+		{ NOWA::InputDeviceModule::BUTTON_DPAD_LEFT, "D-Pad Left" },
+		{ NOWA::InputDeviceModule::BUTTON_DPAD_RIGHT, "D-Pad Right" }
+	};
+
+	// Older captions, still accepted when parsing
+	const ButtonName legacyButtonNames[] =
+	{
+		{ NOWA::InputDeviceModule::BUTTON_LEFT_STICK_UP, "Up" },
+		{ NOWA::InputDeviceModule::BUTTON_LEFT_STICK_DOWN, "Down" },
+		{ NOWA::InputDeviceModule::BUTTON_LEFT_STICK_LEFT, "Left" },
+		{ NOWA::InputDeviceModule::BUTTON_LEFT_STICK_RIGHT, "Right" }
+	};
+
+	struct ActionName
+	{
+		NOWA::InputDeviceModule::Action action;
+		const char* name;
+	};
+
+	const ActionName actionNames[] =
+	{
+		{ NOWA::InputDeviceModule::UP, "UP" },
+		{ NOWA::InputDeviceModule::DOWN, "DOWN" },
+		{ NOWA::InputDeviceModule::LEFT, "LEFT" },
+		{ NOWA::InputDeviceModule::RIGHT, "RIGHT" },
+		{ NOWA::InputDeviceModule::JUMP, "JUMP" },
+		{ NOWA::InputDeviceModule::RUN, "RUN" },
+		{ NOWA::InputDeviceModule::COWER, "COWER" },
+		{ NOWA::InputDeviceModule::ATTACK_1, "ATTACK_1" },
+		{ NOWA::InputDeviceModule::ATTACK_2, "ATTACK_2" },
+		{ NOWA::InputDeviceModule::DUCK, "DUCK" },
+		{ NOWA::InputDeviceModule::SNEAK, "SNEAK" },
+		{ NOWA::InputDeviceModule::ACTION, "ACTION" },
+		{ NOWA::InputDeviceModule::RELOAD, "RELOAD" },
+		{ NOWA::InputDeviceModule::INVENTORY, "INVENTORY" },
+		{ NOWA::InputDeviceModule::MAP, "MAP" },
+		{ NOWA::InputDeviceModule::SELECT, "SELECT" },
+		{ NOWA::InputDeviceModule::START, "START" },
+		{ NOWA::InputDeviceModule::SAVE, "SAVE" },
+		{ NOWA::InputDeviceModule::LOAD, "LOAD" },
+		{ NOWA::InputDeviceModule::CAMERA_FORWARD, "CAMERA_FORWARD" },
+		{ NOWA::InputDeviceModule::CAMERA_BACKWARD, "CAMERA_BACKWARD" },
+		{ NOWA::InputDeviceModule::CAMERA_LEFT, "CAMERA_LEFT" },
+		{ NOWA::InputDeviceModule::CAMERA_RIGHT, "CAMERA_RIGHT" },
+		{ NOWA::InputDeviceModule::CAMERA_UP, "CAMERA_UP" },
+		{ NOWA::InputDeviceModule::CAMERA_DOWN, "CAMERA_DOWN" },
+		{ NOWA::InputDeviceModule::CONSOLE, "CONSOLE" },
+		{ NOWA::InputDeviceModule::WEAPON_CHANGE_FORWARD, "WEAPON_CHANGE_FORWARD" },
+		{ NOWA::InputDeviceModule::WEAPON_CHANGE_BACKWARD, "WEAPON_CHANGE_BACKWARD" },
+		{ NOWA::InputDeviceModule::FLASH_LIGHT, "FLASH_LIGHT" },
+		{ NOWA::InputDeviceModule::PAUSE, "PAUSE" },
+		{ NOWA::InputDeviceModule::GRID, "GRID" }
+	};
 }
 
 namespace NOWA
@@ -67,400 +329,89 @@ namespace NOWA
 	InputDeviceModule::InputDeviceModule(const Ogre::String& deviceName, bool isKeyboard, OIS::Object* deviceObject)
 		: deviceName(deviceName),
 		isKeyboard(isKeyboard),
-		deviceObject(deviceObject),
 		occuppiedId(0),
+		deviceObject(deviceObject),
 		joyStickDeadZone(0.08f), // 0.05 was not enough for stick, so when user left the stick alone, it had a small move strengh remaining
 		rightStickMovement(Ogre::Vector2::ZERO),
 		leftStickMovement(Ogre::Vector2::ZERO),
 		povMovement(Ogre::Vector2::ZERO),
 		pressedButton(JoyStickButton::BUTTON_NONE),
-		timeSinceLastActionDown(0.2f),
-		timeSinceLastActionPressed(0.2f),
-		canPress(false)
+		analogActionThreshold(0.3f),
+		bLock(false),
+		joyStickLayout(LAYOUT_GENERIC),
+		companionModule(nullptr),
+		companionSoft(false),
+		companionOwner(nullptr),
+		lastInputFromJoyStick(false == isKeyboard)
 	{
-		this->pressedPov[0] = Action::NONE; // pov = point of view = Steuerkreuz :)
-		this->pressedPov[1] = Action::NONE; // pov = point of view = Steuerkreuz :)
-		this->pressedPov[2] = Action::NONE; // pov = point of view = Steuerkreuz :)
-		this->pressedPov[3] = Action::NONE; // pov = point of view = Steuerkreuz :)
+		this->pressedPov[0] = Action::NONE; // pov = point of view = D-pad
+		this->pressedPov[1] = Action::NONE;
+		this->pressedPov[2] = Action::NONE;
+		this->pressedPov[3] = Action::NONE;
+
+		// Each action has its own timers. Previously one timer and one canPress flag were shared by ALL actions,
+		// so querying e.g. isActionPressed(JUMP) and isActionPressed(ATTACK_1) in the same frame disturbed each other.
+		for (unsigned short i = 0; i < ACTION_SLOT_COUNT; i++)
+		{
+			this->timeSinceLastActionDown[i] = 0.2f;
+			this->timeSinceLastActionPressed[i] = 0.0f;
+			this->canPress[i] = false;
+		}
+
+		this->buildRawButtonTable();
 
 		this->setDefaultKeyMapping();
 
 		this->setDefaultButtonMapping();
 
-		this->allOISKeys.emplace(OIS::KC_ESCAPE);
-		this->allOISKeys.emplace(OIS::KC_1);
-		this->allOISKeys.emplace(OIS::KC_2);
-		this->allOISKeys.emplace(OIS::KC_3);
-		this->allOISKeys.emplace(OIS::KC_4);
-		this->allOISKeys.emplace(OIS::KC_5);
-		this->allOISKeys.emplace(OIS::KC_6);
-		this->allOISKeys.emplace(OIS::KC_7);
-		this->allOISKeys.emplace(OIS::KC_8);
-		this->allOISKeys.emplace(OIS::KC_9);
-		this->allOISKeys.emplace(OIS::KC_0);
-		this->allOISKeys.emplace(OIS::KC_MINUS);
-		this->allOISKeys.emplace(OIS::KC_EQUALS);
-		this->allOISKeys.emplace(OIS::KC_BACK);
-		this->allOISKeys.emplace(OIS::KC_TAB);
-		this->allOISKeys.emplace(OIS::KC_Q);
-		this->allOISKeys.emplace(OIS::KC_W);
-		this->allOISKeys.emplace(OIS::KC_E);
-		this->allOISKeys.emplace(OIS::KC_R);
-		this->allOISKeys.emplace(OIS::KC_T);
-		this->allOISKeys.emplace(OIS::KC_Y);
-		this->allOISKeys.emplace(OIS::KC_U);
-		this->allOISKeys.emplace(OIS::KC_I);
-		this->allOISKeys.emplace(OIS::KC_O);
-		this->allOISKeys.emplace(OIS::KC_P);
-		this->allOISKeys.emplace(OIS::KC_LBRACKET);
-		this->allOISKeys.emplace(OIS::KC_RBRACKET);
-		this->allOISKeys.emplace(OIS::KC_RETURN);
-		this->allOISKeys.emplace(OIS::KC_LCONTROL);
-		this->allOISKeys.emplace(OIS::KC_A);
-		this->allOISKeys.emplace(OIS::KC_S);
-		this->allOISKeys.emplace(OIS::KC_D);
-		this->allOISKeys.emplace(OIS::KC_F);
-		this->allOISKeys.emplace(OIS::KC_G);
-		this->allOISKeys.emplace(OIS::KC_H);
-		this->allOISKeys.emplace(OIS::KC_J);
-		this->allOISKeys.emplace(OIS::KC_K);
-		this->allOISKeys.emplace(OIS::KC_L);
-		this->allOISKeys.emplace(OIS::KC_SEMICOLON);
-		this->allOISKeys.emplace(OIS::KC_APOSTROPHE);
-		this->allOISKeys.emplace(OIS::KC_GRAVE);
-		this->allOISKeys.emplace(OIS::KC_LSHIFT);
-		this->allOISKeys.emplace(OIS::KC_BACKSLASH);
-		this->allOISKeys.emplace(OIS::KC_Z);
-		this->allOISKeys.emplace(OIS::KC_X);
-		this->allOISKeys.emplace(OIS::KC_C);
-		this->allOISKeys.emplace(OIS::KC_V);
-		this->allOISKeys.emplace(OIS::KC_B);
-		this->allOISKeys.emplace(OIS::KC_N);
-		this->allOISKeys.emplace(OIS::KC_M);
-		this->allOISKeys.emplace(OIS::KC_COMMA);
-		this->allOISKeys.emplace(OIS::KC_PERIOD);
-		this->allOISKeys.emplace(OIS::KC_SLASH);
-		this->allOISKeys.emplace(OIS::KC_RSHIFT);
-		this->allOISKeys.emplace(OIS::KC_MULTIPLY);
-		this->allOISKeys.emplace(OIS::KC_LMENU);
-		this->allOISKeys.emplace(OIS::KC_SPACE);
-		this->allOISKeys.emplace(OIS::KC_CAPITAL);
-		this->allOISKeys.emplace(OIS::KC_F1);
-		this->allOISKeys.emplace(OIS::KC_F2);
-		this->allOISKeys.emplace(OIS::KC_F3);
-		this->allOISKeys.emplace(OIS::KC_F4);
-		this->allOISKeys.emplace(OIS::KC_F5);
-		this->allOISKeys.emplace(OIS::KC_F6);
-		this->allOISKeys.emplace(OIS::KC_F7);
-		this->allOISKeys.emplace(OIS::KC_F8);
-		this->allOISKeys.emplace(OIS::KC_F9);
-		this->allOISKeys.emplace(OIS::KC_F10);
-		this->allOISKeys.emplace(OIS::KC_NUMLOCK);
-		this->allOISKeys.emplace(OIS::KC_SCROLL);
-		this->allOISKeys.emplace(OIS::KC_NUMPAD7);
-		this->allOISKeys.emplace(OIS::KC_NUMPAD8);
-		this->allOISKeys.emplace(OIS::KC_NUMPAD9);
-		this->allOISKeys.emplace(OIS::KC_SUBTRACT);
-		this->allOISKeys.emplace(OIS::KC_NUMPAD4);
-		this->allOISKeys.emplace(OIS::KC_NUMPAD5);
-		this->allOISKeys.emplace(OIS::KC_NUMPAD6);
-		this->allOISKeys.emplace(OIS::KC_ADD);
-		this->allOISKeys.emplace(OIS::KC_NUMPAD1);
-		this->allOISKeys.emplace(OIS::KC_NUMPAD2);
-		this->allOISKeys.emplace(OIS::KC_NUMPAD3);
-		this->allOISKeys.emplace(OIS::KC_NUMPAD0);
-		this->allOISKeys.emplace(OIS::KC_DECIMAL);
-		this->allOISKeys.emplace(OIS::KC_OEM_102);
-		this->allOISKeys.emplace(OIS::KC_F11);
-		this->allOISKeys.emplace(OIS::KC_F12);
-		this->allOISKeys.emplace(OIS::KC_RCONTROL);
-		this->allOISKeys.emplace(OIS::KC_NUMPADCOMMA);
-		this->allOISKeys.emplace(OIS::KC_DIVIDE);
-		this->allOISKeys.emplace(OIS::KC_SYSRQ);
-		this->allOISKeys.emplace(OIS::KC_RMENU);
-		this->allOISKeys.emplace(OIS::KC_PAUSE);
-		this->allOISKeys.emplace(OIS::KC_HOME);
-		this->allOISKeys.emplace(OIS::KC_UP);
-		this->allOISKeys.emplace(OIS::KC_PGUP);
-		this->allOISKeys.emplace(OIS::KC_LEFT);
-		this->allOISKeys.emplace(OIS::KC_RIGHT);
-		this->allOISKeys.emplace(OIS::KC_END);
-		this->allOISKeys.emplace(OIS::KC_DOWN);
-		this->allOISKeys.emplace(OIS::KC_PGDOWN);
-		this->allOISKeys.emplace(OIS::KC_INSERT);
-		this->allOISKeys.emplace(OIS::KC_DELETE);
+		for (const KeyName& keyName : keyNames)
+		{
+			this->allOISKeys.emplace(keyName.keyCode);
+		}
 
-		this->allButtons.emplace(JoyStickButton::BUTTON_A);
-		this->allButtons.emplace(JoyStickButton::BUTTON_B);
-		this->allButtons.emplace(JoyStickButton::BUTTON_X);
-		this->allButtons.emplace(JoyStickButton::BUTTON_Y);
-		this->allButtons.emplace(JoyStickButton::BUTTON_LB);
-		this->allButtons.emplace(JoyStickButton::BUTTON_RB);
-		this->allButtons.emplace(JoyStickButton::BUTTON_LT);
-		this->allButtons.emplace(JoyStickButton::BUTTON_RT);
-		this->allButtons.emplace(JoyStickButton::BUTTON_SELECT);
-		this->allButtons.emplace(JoyStickButton::BUTTON_START);
-		this->allButtons.emplace(JoyStickButton::BUTTON_LEFT_STICK);
-		this->allButtons.emplace(JoyStickButton::BUTTON_RIGHT_STICK);
-		this->allButtons.emplace(JoyStickButton::BUTTON_LEFT_STICK_UP);
-		this->allButtons.emplace(JoyStickButton::BUTTON_LEFT_STICK_DOWN);
-		this->allButtons.emplace(JoyStickButton::BUTTON_LEFT_STICK_LEFT);
-		this->allButtons.emplace(JoyStickButton::BUTTON_LEFT_STICK_RIGHT);
-		this->allButtons.emplace(JoyStickButton::BUTTON_RIGHT_STICK_UP);
-		this->allButtons.emplace(JoyStickButton::BUTTON_RIGHT_STICK_DOWN);
-		this->allButtons.emplace(JoyStickButton::BUTTON_RIGHT_STICK_LEFT);
-		this->allButtons.emplace(JoyStickButton::BUTTON_RIGHT_STICK_RIGHT);
+		for (const ButtonName& buttonName : buttonNames)
+		{
+			this->allButtons.emplace(buttonName.button);
+		}
 	}
 	
 	OIS::KeyCode InputDeviceModule::getMappedKeyFromString(const Ogre::String& key)
 	{
-		if ("Esc" == key)
-			return OIS::KC_ESCAPE;
-		else if ("1" == key)
-			return OIS::KC_1;
-		else if ("2" == key)
-			return OIS::KC_2;
-		else if ("3" == key)
-			return OIS::KC_3;
-		else if ("4" == key)
-			return OIS::KC_4;
-		else if ("5" == key)
-			return OIS::KC_5;
-		else if ("6" == key)
-			return OIS::KC_6;
-		else if ("7" == key)
-			return OIS::KC_7;
-		else if ("8" == key)
-			return OIS::KC_8;
-		else if ("9" == key)
-			return OIS::KC_9;
-		else if ("0" == key)
-			return OIS::KC_0;
-		else if ("-" == key)
-			return OIS::KC_MINUS;
-		else if ("=" == key)
-			return OIS::KC_EQUALS;
-		else if ("Backspace" == key)
-			return OIS::KC_BACK;
-		else if ("Tab" == key)
-			return OIS::KC_TAB;
-		else if ("Q" == key)
-			return OIS::KC_Q;
-		else if ("W" == key)
-			return OIS::KC_W;
-		else if ("E" == key)
-			return OIS::KC_E;
-		else if ("R" == key)
-			return OIS::KC_R;
-		else if ("T" == key)
-			return OIS::KC_T;
-		else if ("U" == key)
-			return OIS::KC_U;
-		else if ("I" == key)
-			return OIS::KC_I;
-		else if ("O" == key)
-			return OIS::KC_O;
-		else if ("P" == key)
-			return OIS::KC_P;
-		else if ("(" == key)
-			return OIS::KC_LBRACKET;
-		else if (")" == key)
-			return OIS::KC_RBRACKET;
-		else if ("Return" == key)
-			return OIS::KC_RETURN;
-		else if ("L-Control" == key)
-			return OIS::KC_LCONTROL;
-		else if ("A" == key)
-			return OIS::KC_A;
-		else if ("S" == key)
-			return OIS::KC_S;
-		else if ("D" == key)
-			return OIS::KC_D;
-		else if ("F" == key)
-			return OIS::KC_F;
-		else if ("G" == key)
-			return OIS::KC_G;
-		else if ("H" == key)
-			return OIS::KC_H;
-		else if ("J" == key)
-			return OIS::KC_J;
-		else if ("K" == key)
-			return OIS::KC_K;
-		else if ("L" == key)
-			return OIS::KC_L;
-		else if (";" == key)
-			return OIS::KC_SEMICOLON;
-		else if ("´" == key)
-			return OIS::KC_APOSTROPHE;
-		else if ("^" == key)
-			return OIS::KC_GRAVE;
-		else if ("L-Shift" == key)
-			return OIS::KC_LSHIFT;
-		else if ("\"" == key)
-			return OIS::KC_BACKSLASH;
-		else if ("Z" == key)
-			return OIS::KC_Z;
-		else if ("X" == key)
-			return OIS::KC_X;
-		else if ("C" == key)
-			return OIS::KC_C;
-		else if ("V" == key)
-			return OIS::KC_V;
-		else if ("B" == key)
-			return OIS::KC_B;
-		else if ("N" == key)
-			return OIS::KC_N;
-		else if ("M" == key)
-			return OIS::KC_M;
-		else if ("," == key)
-			return OIS::KC_COMMA;
-		else if ("." == key)
-			return OIS::KC_PERIOD;
-		else if ("Slash" == key)
-			return OIS::KC_SLASH;
-		else if ("R-Shift" == key)
-			return OIS::KC_RSHIFT;
-		else if ("*" == key)
-			return OIS::KC_MULTIPLY;
-		else if ("L-Alt" == key)
-			return OIS::KC_LMENU;
-		else if ("Space" == key)
-			return OIS::KC_SPACE;
-		else if ("Capital" == key)
-			return OIS::KC_CAPITAL;
-		else if ("F1" == key)
-			return OIS::KC_F1;
-		else if ("F2" == key)
-			return OIS::KC_F2;
-		else if ("F3" == key)
-			return OIS::KC_F3;
-		else if ("F4" == key)
-			return OIS::KC_F4;
-		else if ("F5" == key)
-			return OIS::KC_F5;
-		else if ("F6" == key)
-			return OIS::KC_F6;
-		else if ("F7" == key)
-			return OIS::KC_F7;
-		else if ("F8" == key)
-			return OIS::KC_F8;
-		else if ("F9" == key)
-			return OIS::KC_F9;
-		else if ("F10" == key)
-			return OIS::KC_F10;
-		else if ("Numlock" == key)
-			return OIS::KC_NUMLOCK;
-		else if ("Scroll" == key)
-			return OIS::KC_SCROLL;
-		else if ("Num 7" == key)
-			return OIS::KC_NUMPAD7;
-		else if ("Num 8" == key)
-			return OIS::KC_NUMPAD8;
-		else if ("Num 9" == key)
-			return OIS::KC_NUMPAD9;
-		else if ("Sub" == key)
-			return OIS::KC_SUBTRACT;
-		else if ("Num 4" == key)
-			return OIS::KC_NUMPAD4;
-		else if ("Num 5" == key)
-			return OIS::KC_NUMPAD5;
-		else if ("Num 6" == key)
-			return OIS::KC_NUMPAD6;
-		else if ("+" == key)
-			return OIS::KC_ADD;
-		else if ("Num 1" == key)
-			return OIS::KC_NUMPAD1;
-		else if ("Num 2" == key)
-			return OIS::KC_NUMPAD2;
-		else if ("Num 3" == key)
-			return OIS::KC_NUMPAD3;
-		else if ("Num 0" == key)
-			return OIS::KC_NUMPAD0;
-		else if ("Num ." == key)
-			return OIS::KC_DECIMAL;
-		else if ("F11" == key)
-			return OIS::KC_F11;
-		else if ("F12" == key)
-			return OIS::KC_F12;
-		else if ("L-Control" == key)
-			return OIS::KC_RCONTROL;
-		else if ("Num ," == key)
-			return OIS::KC_NUMPADCOMMA;
-		else if ("/" == key)
-			return OIS::KC_DIVIDE;
-		else if ("SysRQ" == key)
-			return OIS::KC_SYSRQ;
-		else if ("R-Alt" == key)
-			return OIS::KC_RMENU;
-		else if ("P" == key)
-			return OIS::KC_PAUSE;
-		else if ("Home" == key)
-			return OIS::KC_HOME;
-		else if ("Up" == key)
-			return OIS::KC_UP;
-		else if ("Page-Up" == key)
-			return OIS::KC_PGUP;
-		else if ("Left" == key)
-			return OIS::KC_LEFT;
-		else if ("Right" == key)
-			return OIS::KC_RIGHT;
-		else if ("End" == key)
-			return OIS::KC_END;
-		else if ("Down" == key)
-			return OIS::KC_DOWN;
-		else if ("Page-Down" == key)
-			return OIS::KC_PGDOWN;
-		else if ("Insert" == key)
-			return OIS::KC_INSERT;
-		else if ("Delete" == key)
-			return OIS::KC_DELETE;
+		for (const KeyName& keyName : keyNames)
+		{
+			if (key == keyName.name)
+			{
+				return keyName.keyCode;
+			}
+		}
 
-		return static_cast<OIS::KeyCode>(0);
+		// Legacy caption of the numpad divide key
+		if ("/" == key)
+		{
+			return OIS::KC_DIVIDE;
+		}
+
+		return OIS::KC_UNASSIGNED;
 	}
 
 	InputDeviceModule::JoyStickButton InputDeviceModule::getMappedButtonFromString(const Ogre::String& button)
 	{
-		if ("A" == button)
-			return JoyStickButton::BUTTON_A;
-		else if ("B" == button)
-			return JoyStickButton::BUTTON_B;
-		else if ("X" == button)
-			return JoyStickButton::BUTTON_X;
-		else if ("Y" == button)
-			return JoyStickButton::BUTTON_Y;
-		else if ("LB" == button)
-			return JoyStickButton::BUTTON_LB;
-		else if ("RB" == button)
-			return JoyStickButton::BUTTON_RB;
-		else if ("LT" == button)
-			return JoyStickButton::BUTTON_LT;
-		else if ("RT" == button)
-			return JoyStickButton::BUTTON_RT;
-		else if ("Select" == button)
-			return JoyStickButton::BUTTON_SELECT;
-		else if ("Start" == button)
-			return JoyStickButton::BUTTON_START;
-		else if ("Left Stick" == button)
-			return JoyStickButton::BUTTON_LEFT_STICK;
-		else if ("Right Stick" == button)
-			return JoyStickButton::BUTTON_RIGHT_STICK;
-		else if ("Up" == button)
-			return JoyStickButton::BUTTON_LEFT_STICK_UP;
-		else if ("Down" == button)
-			return JoyStickButton::BUTTON_LEFT_STICK_DOWN;
-		else if ("Left" == button)
-			return JoyStickButton::BUTTON_LEFT_STICK_LEFT;
-		else if ("Right" == button)
-			return JoyStickButton::BUTTON_LEFT_STICK_RIGHT;
-		if ("Right Stick Up" == button)
-			return JoyStickButton::BUTTON_RIGHT_STICK_UP;
-		else if ("Right Stick Down" == button)
-			return JoyStickButton::BUTTON_RIGHT_STICK_DOWN;
-		else if ("Right Stick Left" == button)
-			return JoyStickButton::BUTTON_RIGHT_STICK_LEFT;
-		else if ("Right Stick Right" == button)
-			return JoyStickButton::BUTTON_RIGHT_STICK_RIGHT;
-		else
+		for (const ButtonName& buttonName : buttonNames)
+		{
+			if (button == buttonName.name)
+			{
+				return buttonName.button;
+			}
+		}
+
+		for (const ButtonName& buttonName : legacyButtonNames)
+		{
+			if (button == buttonName.name)
+			{
+				return buttonName.button;
+			}
+		}
+
 			return JoyStickButton::BUTTON_NONE;
 	}
 
@@ -506,7 +457,13 @@ namespace NOWA
 
 	OIS::KeyCode InputDeviceModule::getMappedKey(InputDeviceModule::Action keyboardAction)
 	{
-		return this->keyboardMapping[keyboardAction];
+		// Note: Do not use operator[] here, it would insert new entries for unmapped actions and change the mapping count
+		auto foundMapping = this->keyboardMapping.find(keyboardAction);
+		if (foundMapping != this->keyboardMapping.cend())
+		{
+			return foundMapping->second;
+		}
+		return OIS::KC_UNASSIGNED;
 	}
 
 	Ogre::String InputDeviceModule::getStringFromMappedKeyAction(InputDeviceModule::Action action)
@@ -519,8 +476,9 @@ namespace NOWA
 	{
 		auto foundMapping = this->buttonMapping.find(action);
 		if (foundMapping != this->buttonMapping.cend())
-			return this->buttonMapping[action];
-		else
+		{
+			return foundMapping->second;
+		}
 			return InputDeviceModule::BUTTON_NONE;
 	}
 
@@ -532,526 +490,46 @@ namespace NOWA
 
 	Ogre::String InputDeviceModule::getStringFromMappedButton(JoyStickButton joyStickButton)
 	{
-		if (joyStickButton == JoyStickButton::BUTTON_A)
+		for (const ButtonName& buttonName : buttonNames)
 		{
-			return "A";
+			if (joyStickButton == buttonName.button)
+		{
+				return buttonName.name;
 		}
-		else if (joyStickButton == JoyStickButton::BUTTON_B)
-		{
-			return "B";
 		}
-		else if (joyStickButton == JoyStickButton::BUTTON_X)
-		{
-			return "X";
-		}
-		else if (joyStickButton == JoyStickButton::BUTTON_Y)
-		{
-			return "Y";
-		}
-		else if (joyStickButton == JoyStickButton::BUTTON_LB)
-		{
-			return "LB";
-		}
-		else if (joyStickButton == JoyStickButton::BUTTON_RB)
-		{
-			return "RB";
-		}
-		else if (joyStickButton == JoyStickButton::BUTTON_LT)
-		{
-			return "LT";
-		}
-		else if (joyStickButton == JoyStickButton::BUTTON_RT)
-		{
-			return "RT";
-		}
-		else if (joyStickButton == JoyStickButton::BUTTON_SELECT)
-		{
-			return "Select";
-		}
-		else if (joyStickButton == JoyStickButton::BUTTON_START)
-		{
-			return "Start";
-		}
-		else if (joyStickButton == JoyStickButton::BUTTON_LEFT_STICK)
-		{
-			return "Left Stick";
-		}
-		else if (joyStickButton == JoyStickButton::BUTTON_RIGHT_STICK)
-		{
-			return "Right Stick";
-		}
-		else if (joyStickButton == JoyStickButton::BUTTON_LEFT_STICK_UP)
-		{
-			return "Up";
-		}
-		else if (joyStickButton == JoyStickButton::BUTTON_LEFT_STICK_DOWN)
-		{
-			return "Down";
-		}
-		else if (joyStickButton == JoyStickButton::BUTTON_LEFT_STICK_LEFT)
-		{
-			return "Left";
-		}
-		else if (joyStickButton == JoyStickButton::BUTTON_LEFT_STICK_RIGHT)
-		{
-			return "Right";
-		}
-		else if (joyStickButton == JoyStickButton::BUTTON_RIGHT_STICK_UP)
-		{
-			return "Right Stick Up";
-		}
-		else if (joyStickButton == JoyStickButton::BUTTON_RIGHT_STICK_DOWN)
-		{
-			return "Right Stick Down";
-		}
-		else if (joyStickButton == JoyStickButton::BUTTON_RIGHT_STICK_LEFT)
-		{
-			return "Right Stick Left";
-		}
-		else if (joyStickButton == JoyStickButton::BUTTON_RIGHT_STICK_RIGHT)
-		{
-			return "Right Stick Right";
-		}
-		else
-		{
 			return "None";
 		}
-	}
 
 	Ogre::String InputDeviceModule::getStringFromMappedKey(OIS::KeyCode keyCode)
 	{
-		if (keyCode == OIS::KC_ESCAPE)
+		for (const KeyName& keyName : keyNames)
 		{
-			return "Esc";
-		}
-		else if (keyCode == OIS::KC_1)
-		{
-			return "1";
-		}
-		else if (keyCode == OIS::KC_2)
-		{
-			return "2";
-		}
-		else if (keyCode == OIS::KC_3)
-		{
-			return "3";
-		}
-		else if (keyCode == OIS::KC_4)
-		{
-			return "4";
-		}
-		else if (keyCode == OIS::KC_5)
-		{
-			return "5";
-		}
-		else if (keyCode == OIS::KC_6)
-		{
-			return "6";
-		}
-		else if (keyCode == OIS::KC_7)
-		{
-			return "7";
-		}
-		else if (keyCode == OIS::KC_8)
-		{
-			return "8";
-		}
-		else if (keyCode == OIS::KC_9)
-		{
-			return "9";
-		}
-		else if (keyCode == OIS::KC_0)
-		{
-			return "0";
-		}
-		else if (keyCode == OIS::KC_MINUS)    // - on main keyboard
-		{
-			return "-";
-		}
-		else if (keyCode == OIS::KC_EQUALS)
-		{
-			return "=";
-		}
-		else if (keyCode == OIS::KC_BACK)    // backspace
-		{
-			return "Backspace";
-		}
-		else if (keyCode == OIS::KC_TAB)
-		{
-			return "Tab";
-		}
-		else if (keyCode == OIS::KC_Q)
-		{
-			return "Q";
-		}
-		else if (keyCode == OIS::KC_W)
-		{
-			return "W";
-		}
-		else if (keyCode == OIS::KC_E)
-		{
-			return "E";
-		}
-		else if (keyCode == OIS::KC_R)
-		{
-			return "R";
-		}
-		else if (keyCode == OIS::KC_T)
-		{
-			return "T";
-		}
-		else if (keyCode == OIS::KC_Y)
-		{
-			return "Y";
-		}
-		else if (keyCode == OIS::KC_U)
-		{
-			return "U";
-		}
-		else if (keyCode == OIS::KC_I)
-		{
-			return "I";
-		}
-		else if (keyCode == OIS::KC_O)
-		{
-			return "O";
-		}
-		else if (keyCode == OIS::KC_P)
-		{
-			return "P";
-		}
-		else if (keyCode == OIS::KC_LBRACKET)
-		{
-			return "(";
-		}
-		else if (keyCode == OIS::KC_RBRACKET)
-		{
-			return ")";
-		}
-		else if (keyCode == OIS::KC_RETURN)    // Enter on main keyboard
-		{
-			return "Return";
-		}
-		else if (keyCode == OIS::KC_LCONTROL)
-		{
-			return "L-Control";
-		}
-		else if (keyCode == OIS::KC_A)
-		{
-			return "A";
-		}
-		else if (keyCode == OIS::KC_S)
-		{
-			return "S";
-		}
-		else if (keyCode == OIS::KC_D)
-		{
-			return "D";
-		}
-		else if (keyCode == OIS::KC_F)
-		{
-			return "F";
-		}
-		else if (keyCode == OIS::KC_G)
-		{
-			return "G";
-		}
-		else if (keyCode == OIS::KC_H)
-		{
-			return "H";
-		}
-		else if (keyCode == OIS::KC_J)
-		{
-			return "J";
-		}
-		else if (keyCode == OIS::KC_K)
-		{
-			return "K";
-		}
-		else if (keyCode == OIS::KC_L)
-		{
-			return "L";
-		}
-		else if (keyCode == OIS::KC_SEMICOLON)
-		{
-			return ";";
-		}
-		else if (keyCode == OIS::KC_APOSTROPHE)
-		{
-			return "´";
-		}
-		else if (keyCode == OIS::KC_GRAVE)    // accent
-		{
-			return "^";
-		}
-		else if (keyCode == OIS::KC_LSHIFT)
-		{
-			return "L-Shift";
-		}
-		else if (keyCode == OIS::KC_BACKSLASH)
-		{
-			return "\"";
-		}
-		else if (keyCode == OIS::KC_Z)
-		{
-			return "Z";
-		}
-		else if (keyCode == OIS::KC_X)
-		{
-			return "X";
-		}
-		else if (keyCode == OIS::KC_C)
-		{
-			return "C";
-		}
-		else if (keyCode == OIS::KC_V)
-		{
-			return "V";
-		}
-		else if (keyCode == OIS::KC_B)
-		{
-			return "B";
-		}
-		else if (keyCode == OIS::KC_N)
-		{
-			return "N";
-		}
-		else if (keyCode == OIS::KC_M)
-		{
-			return "M";
-		}
-		else if (keyCode == OIS::KC_COMMA)
-		{
-			return ",";
-		}
-		else if (keyCode == OIS::KC_PERIOD)    // . on main keyboard
-		{
-			return ".";
-		}
-		else if (keyCode == OIS::KC_SLASH)    // / on main keyboard
-		{
-			return "Slash";
-		}
-		else if (keyCode == OIS::KC_RSHIFT)
-		{
-			return "R-Shift";
-		}
-		else if (keyCode == OIS::KC_MULTIPLY)    // * on numeric keypad
-		{
-			return "*";
-		}
-		else if (keyCode == OIS::KC_LMENU)    // left Alt
-		{
-			return "L-Alt";
-		}
-		else if (keyCode == OIS::KC_SPACE)
-		{
-			return "Space";
-		}
-		else if (keyCode == OIS::KC_CAPITAL)
-		{
-			return "Capital";
-		}
-		else if (keyCode == OIS::KC_F1)
-		{
-			return "F1";
-		}
-		else if (keyCode == OIS::KC_F2)
-		{
-			return "F2";
-		}
-		else if (keyCode == OIS::KC_F3)
-		{
-			return "F3";
-		}
-		else if (keyCode == OIS::KC_F4)
-		{
-			return "F4";
-		}
-		else if (keyCode == OIS::KC_F5)
-		{
-			return "F5";
-		}
-		else if (keyCode == OIS::KC_F6)
-		{
-			return "F6";
-		}
-		else if (keyCode == OIS::KC_F7)
-		{
-			return "F7";
-		}
-		else if (keyCode == OIS::KC_F8)
-		{
-			return "F8";
-		}
-		else if (keyCode == OIS::KC_F9)
-		{
-			return "F9";
-		}
-		else if (keyCode == OIS::KC_F10)
-		{
-			return "F10";
-		}
-		else if (keyCode == OIS::KC_NUMLOCK)
-		{
-			return "Numlock";
-		}
-		else if (keyCode == OIS::KC_SCROLL)    // Scroll Lock
-		{
-			return "Scroll";
-		}
-		else if (keyCode == OIS::KC_NUMPAD7)
-		{
-			return "Num 7";
-		}
-		else if (keyCode == OIS::KC_NUMPAD8)
-		{
-			return "Num 8";
-		}
-		else if (keyCode == OIS::KC_NUMPAD9)
-		{
-			return "Num 9";
-		}
-		else if (keyCode == OIS::KC_SUBTRACT)    // - on numeric keypad
-		{
-			return "Sub";
-		}
-		else if (keyCode == OIS::KC_NUMPAD4)
-		{
-			return "Num 4";
-		}
-		else if (keyCode == OIS::KC_NUMPAD5)
-		{
-			return "Num 5";
-		}
-		else if (keyCode == OIS::KC_NUMPAD6)
-		{
-			return "Num 6";
-		}
-		else if (keyCode == OIS::KC_ADD)    // + on numeric keypad
-		{
-			return "+";
-		}
-		else if (keyCode == OIS::KC_NUMPAD1)
-		{
-			return "Num 1";
-		}
-		else if (keyCode == OIS::KC_NUMPAD2)
-		{
-			return "Num 2";
-		}
-		else if (keyCode == OIS::KC_NUMPAD3)
-		{
-			return "Num 3";
-		}
-		else if (keyCode == OIS::KC_NUMPAD0)
-		{
-			return "Num 0";
-		}
-		else if (keyCode == OIS::KC_DECIMAL)    // . on numeric keypad
-		{
-			return "Num .";
-		}
-		else if (keyCode == OIS::KC_OEM_102)    // < > | on UK/Germany keyboards
-		{
-			return "<";
-		}
-		else if (keyCode == OIS::KC_F11)
-		{
-			return "F11";
-		}
-		else if (keyCode == OIS::KC_F12)
-		{
-			return "F12";
-		}
-		else if (keyCode == OIS::KC_RCONTROL)
-		{
-			return "R-Control";
-		}
-		else if (keyCode == OIS::KC_NUMPADCOMMA) // on numeric keypad (NEC PC98)
-		{
-			return "Num ,";
-		}
-		else if (keyCode == OIS::KC_DIVIDE)    // / on numeric keypad
+			if (keyCode == keyName.keyCode)
 		{
-			return "Num /";
+				return keyName.name;
 		}
-		else if (keyCode == OIS::KC_SYSRQ)
-		{
-			return "SysRQ";
-		}
-		else if (keyCode == OIS::KC_RMENU)    // right Alt
-		{
-			return "R-Alt";
-		}
-		else if (keyCode == OIS::KC_PAUSE)    // Pause
-		{
-			return "Pause";
-		}
-		else if (keyCode == OIS::KC_HOME)    // Home on arrow keypad
-		{
-			return "Home";
-		}
-		else if (keyCode == OIS::KC_UP)    // UpArrow on arrow keypad
-		{
-			return "Up";
-		}
-		else if (keyCode == OIS::KC_PGUP)    // PgUp on arrow keypad
-		{
-			return "Page-Up";
-		}
-		else if (keyCode == OIS::KC_LEFT)    // LeftArrow on arrow keypad
-		{
-			return "Left";
 		}
-		else if (keyCode == OIS::KC_RIGHT)    // RightArrow on arrow keypad
-		{
-			return "Right";
-		}
-		else if (keyCode == OIS::KC_END)    // End on arrow keypad
-		{
-			return "End";
-		}
-		else if (keyCode == OIS::KC_DOWN)    // DownArrow on arrow keypad
-		{
-			return "Down";
-		}
-		else if (keyCode == OIS::KC_PGDOWN)    // PgDn on arrow keypad
-		{
-			return "Page-Down";
-		}
-		else if (keyCode == OIS::KC_INSERT)    // Insert on arrow keypad
-		{
-			return "Insert";
-		}
-		else if (keyCode == OIS::KC_DELETE)    // Delete on arrow keypad
-		{
-			return "Delete";
-		}
-		else
-		{
 			return "";
 		}
-	}
 	
 	std::vector<Ogre::String> InputDeviceModule::getAllKeyStrings(void)
 	{
-		std::vector<Ogre::String> keys(this->allOISKeys.size());
-		unsigned short i = 0;
+		std::vector<Ogre::String> keys;
+		keys.reserve(this->allOISKeys.size());
 		for (OIS::KeyCode key : this->allOISKeys)
 		{
-			keys[i++] = this->getStringFromMappedKey(key);
+			keys.emplace_back(this->getStringFromMappedKey(key));
 		}
 		return keys;
 	}
 
 	std::vector<Ogre::String> InputDeviceModule::getAllButtonStrings(void)
 	{
-		std::vector<Ogre::String> buttons(this->allButtons.size());
-		unsigned short i = 0;
+		std::vector<Ogre::String> buttons;
+		buttons.reserve(this->allButtons.size());
 		for (JoyStickButton button : this->allButtons)
 		{
-			buttons[i++] = this->getStringFromMappedButton(button);
+			buttons.emplace_back(this->getStringFromMappedButton(button));
 		}
 		return buttons;
 	}
@@ -1069,16 +547,29 @@ namespace NOWA
 	void InputDeviceModule::setJoyStickDeadZone(Ogre::Real deadZone)
 	{
 		this->joyStickDeadZone = deadZone;
+		if (nullptr != this->companionModule)
+		{
+			this->companionModule->setJoyStickDeadZone(deadZone);
+		}
 	}
 
 	bool InputDeviceModule::hasActiveJoyStick(void) const
 	{
-		return InputDeviceCore::getSingletonPtr()->getJoystick(0) != nullptr;
+		// Previously this returned whether ANY joystick exists globally, which is wrong for splitscreen.
+		if (false == this->isKeyboard)
+		{
+			return nullptr != this->deviceObject;
+		}
+		return nullptr != this->companionModule;
 	}
 
 	void InputDeviceModule::setAnalogActionThreshold(Ogre::Real t)
 	{
 		this->analogActionThreshold = Ogre::Math::Clamp(t, 0.0f, 1.0f);
+		if (nullptr != this->companionModule)
+		{
+			this->companionModule->setAnalogActionThreshold(t);
+		}
 	}
 
 	Ogre::Real InputDeviceModule::getAnalogActionThreshold(void) const
@@ -1094,13 +585,25 @@ namespace NOWA
         }
 
 		// Keyboard device: compose LEFT/RIGHT keys into an axis
-		if (InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModules().front() == this)
+		if (true == this->isKeyboard)
 		{
-			const bool left = InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(this->getMappedKey(InputDeviceModule::LEFT));
-			const bool right = InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(this->getMappedKey(InputDeviceModule::RIGHT));
+			const bool left = this->isActionDownOwnDevice(InputDeviceModule::LEFT);
+			const bool right = this->isActionDownOwnDevice(InputDeviceModule::RIGHT);
 
-			if (left && !right)  return -1.0f;
-			if (right && !left)  return  1.0f;
+			if (true == left && false == right)
+			{
+				return -1.0f;
+			}
+			if (true == right && false == left)
+			{
+				return 1.0f;
+			}
+
+			// No key pressed: use the analog stick of the companion gamepad (if any)
+			if (nullptr != this->companionModule)
+			{
+				return this->companionModule->getSteerAxis();
+			}
 			return 0.0f;
 		}
 
@@ -1111,9 +614,9 @@ namespace NOWA
 
 	void InputDeviceModule::clearKeyMapping(unsigned short tilIndex)
 	{
-		if (tilIndex > this->keyboardMapping.size())
+		if (tilIndex > ACTION_MAPPING_COUNT)
 		{
-			tilIndex = this->keyboardMapping.size();
+			tilIndex = ACTION_MAPPING_COUNT;
 		}
 
 		for (unsigned short i = 0; i < tilIndex; i++)
@@ -1124,9 +627,9 @@ namespace NOWA
 
 	void InputDeviceModule::clearButtonMapping(unsigned short tilIndex)
 	{
-		if (tilIndex > this->buttonMapping.size())
+		if (tilIndex > ACTION_MAPPING_COUNT)
 		{
-			tilIndex = this->buttonMapping.size();
+			tilIndex = ACTION_MAPPING_COUNT;
 		}
 
 		for (unsigned short i = 0; i < tilIndex; i++)
@@ -1137,6 +640,10 @@ namespace NOWA
 
 	void InputDeviceModule::setDefaultKeyMapping(void)
 	{
+		// Start with all actions unassigned, so that a reset also removes custom bindings of actions which have no default key
+		this->keyboardMapping.clear();
+		this->clearKeyMapping(ACTION_MAPPING_COUNT);
+
 		this->keyboardMapping[Action::JUMP] = OIS::KC_SPACE;
 		this->keyboardMapping[Action::RUN] = OIS::KC_RCONTROL;
 		this->keyboardMapping[Action::COWER] = OIS::KC_X;
@@ -1172,40 +679,174 @@ namespace NOWA
 
 	void InputDeviceModule::setDefaultButtonMapping(void)
 	{
-		this->buttonMapping[Action::JUMP] = JoyStickButton::BUTTON_X;
-		this->buttonMapping[Action::RUN] = JoyStickButton::BUTTON_A; // Should this not be two buttons?
-		this->buttonMapping[Action::ATTACK_1] = JoyStickButton::BUTTON_B;
-		this->buttonMapping[Action::ACTION] = JoyStickButton::BUTTON_Y;
-		this->buttonMapping[Action::RELOAD] = JoyStickButton::BUTTON_RB;
-		this->buttonMapping[Action::INVENTORY] = JoyStickButton::BUTTON_SELECT;
-		this->buttonMapping[Action::MAP] = JoyStickButton::BUTTON_RB;
-		this->buttonMapping[Action::PAUSE] = JoyStickButton::BUTTON_LEFT_STICK;
+		// Logical buttons (Xbox naming). Because raw indices are translated via the joystick layout,
+		// this default is correct for Xbox pads, the Steam Deck and generic pads alike.
+		// Note: The D-pad always moves (UP/DOWN/LEFT/RIGHT), so it is intentionally not used for other actions.
+		this->buttonMapping.clear();
+		this->clearButtonMapping(ACTION_MAPPING_COUNT);
+
+		this->buttonMapping[Action::JUMP] = JoyStickButton::BUTTON_A;
+		this->buttonMapping[Action::ACTION] = JoyStickButton::BUTTON_B;
+		this->buttonMapping[Action::ATTACK_1] = JoyStickButton::BUTTON_X;
+		this->buttonMapping[Action::ATTACK_2] = JoyStickButton::BUTTON_Y;
+		this->buttonMapping[Action::RUN] = JoyStickButton::BUTTON_RT;
+		this->buttonMapping[Action::SNEAK] = JoyStickButton::BUTTON_LT;
+		this->buttonMapping[Action::WEAPON_CHANGE_FORWARD] = JoyStickButton::BUTTON_RB;
+		this->buttonMapping[Action::WEAPON_CHANGE_BACKWARD] = JoyStickButton::BUTTON_LB;
+		this->buttonMapping[Action::COWER] = JoyStickButton::BUTTON_LEFT_STICK;
+		this->buttonMapping[Action::RELOAD] = JoyStickButton::BUTTON_RIGHT_STICK;
+		this->buttonMapping[Action::MAP] = JoyStickButton::BUTTON_SELECT;
 		this->buttonMapping[Action::START] = JoyStickButton::BUTTON_START;
-		this->buttonMapping[Action::FLASH_LIGHT] = JoyStickButton::BUTTON_RIGHT_STICK;
+		this->buttonMapping[Action::PAUSE] = JoyStickButton::BUTTON_START;
 		this->buttonMapping[Action::UP] = JoyStickButton::BUTTON_LEFT_STICK_UP;
 		this->buttonMapping[Action::DOWN] = JoyStickButton::BUTTON_LEFT_STICK_DOWN;
 		this->buttonMapping[Action::LEFT] = JoyStickButton::BUTTON_LEFT_STICK_LEFT;
 		this->buttonMapping[Action::RIGHT] = JoyStickButton::BUTTON_LEFT_STICK_RIGHT;
+		this->buttonMapping[Action::CAMERA_FORWARD] = JoyStickButton::BUTTON_RIGHT_STICK_UP;
+		this->buttonMapping[Action::CAMERA_BACKWARD] = JoyStickButton::BUTTON_RIGHT_STICK_DOWN;
+		this->buttonMapping[Action::CAMERA_LEFT] = JoyStickButton::BUTTON_RIGHT_STICK_LEFT;
+		this->buttonMapping[Action::CAMERA_RIGHT] = JoyStickButton::BUTTON_RIGHT_STICK_RIGHT;
 	}
 
 	Ogre::Real InputDeviceModule::getLeftStickHorizontalMovingStrength(void) const
 	{
+		if (true == this->isKeyboard)
+		{
+			if (nullptr != this->companionModule)
+			{
+				return this->companionModule->getLeftStickHorizontalMovingStrength();
+			}
+			return 0.0f;
+		}
 		return this->leftStickMovement.x;
 	}
 
 	Ogre::Real InputDeviceModule::getLeftStickVerticalMovingStrength(void) const
 	{
+		if (true == this->isKeyboard)
+		{
+			if (nullptr != this->companionModule)
+			{
+				return this->companionModule->getLeftStickVerticalMovingStrength();
+			}
+			return 0.0f;
+		}
 		return this->leftStickMovement.y;
 	}
 
 	Ogre::Real InputDeviceModule::getRightStickHorizontalMovingStrength(void) const
 	{
+		if (true == this->isKeyboard)
+		{
+			if (nullptr != this->companionModule)
+			{
+				return this->companionModule->getRightStickHorizontalMovingStrength();
+			}
+			return 0.0f;
+		}
 		return this->rightStickMovement.x;
 	}
 
 	Ogre::Real InputDeviceModule::getRightStickVerticalMovingStrength(void) const
 	{
+		if (true == this->isKeyboard)
+		{
+			if (nullptr != this->companionModule)
+			{
+				return this->companionModule->getRightStickVerticalMovingStrength();
+			}
+			return 0.0f;
+		}
 		return this->rightStickMovement.y;
+	}
+
+	bool InputDeviceModule::isActionDownOwnDevice(InputDeviceModule::Action action)
+	{
+        if (true == this->bLock)
+        {
+            return false;
+        }
+
+		// Note: Previously the keyboard path was chosen via "getKeyboardInputDeviceModules().front() == this". The main keyboard module was a separate
+		// instance, so it always went down the joystick path and e.g. isActionDown(NOWA_A_MAP) on the main module never worked.
+		if (true == this->isKeyboard)
+		{
+			OIS::Keyboard* keyboard = static_cast<OIS::Keyboard*>(this->deviceObject);
+			if (nullptr == keyboard)
+			{
+				return false;
+			}
+			const OIS::KeyCode keyCode = this->getMappedKey(action);
+			if (OIS::KC_UNASSIGNED == keyCode)
+		{
+				return false;
+			}
+			return keyboard->isKeyDown(keyCode);
+		}
+
+		// ==============================
+		// JOYSTICK PATH
+		// ==============================
+
+		bool somethingDown = false;
+
+		// Treat analog stick as "action down" only if it crosses a threshold.
+		// Otherwise tiny stick drift / tiny deflection triggers LEFT/RIGHT immediately.
+		const Ogre::Real actionThreshold = this->analogActionThreshold;
+
+		if (InputDeviceModule::UP == action)
+		{
+			if (Ogre::Math::Abs(this->leftStickMovement.y) >= actionThreshold)
+			{
+				somethingDown |= (this->leftStickMovement.y < 0.0f);
+			}
+			else
+			{
+				somethingDown |= (this->pressedPov[0] == Action::UP);
+		}
+		}
+		else if (InputDeviceModule::DOWN == action)
+		{
+			if (Ogre::Math::Abs(this->leftStickMovement.y) >= actionThreshold)
+			{
+				somethingDown |= (this->leftStickMovement.y > 0.0f);
+			}
+			else
+			{
+				somethingDown |= (this->pressedPov[0] == Action::DOWN);
+		}
+		}
+		else if (InputDeviceModule::LEFT == action)
+		{
+			if (Ogre::Math::Abs(this->leftStickMovement.x) >= actionThreshold)
+			{
+				somethingDown |= (this->leftStickMovement.x < 0.0f);
+			}
+			else
+			{
+				somethingDown |= (this->pressedPov[1] == Action::LEFT);
+		}
+		}
+		else if (InputDeviceModule::RIGHT == action)
+		{
+			if (Ogre::Math::Abs(this->leftStickMovement.x) >= actionThreshold)
+			{
+				somethingDown |= (this->leftStickMovement.x > 0.0f);
+			}
+			else
+			{
+				somethingDown |= (this->pressedPov[1] == Action::RIGHT);
+		}
+		}
+
+		// Additionally the mapped button (this also allows remapping directions, e.g. to the D-pad of a second stick)
+		const JoyStickButton mappedButton = this->getMappedButton(action);
+		if (JoyStickButton::BUTTON_NONE != mappedButton)
+		{
+			somethingDown |= this->isButtonDownOwnDevice(mappedButton);
+		}
+
+		return somethingDown;
 	}
 
 	bool InputDeviceModule::isActionDown(InputDeviceModule::Action action)
@@ -1215,58 +856,13 @@ namespace NOWA
             return false;
         }
 
-		bool somethingDown = false;
+		bool somethingDown = this->isActionDownOwnDevice(action);
 
-		// Keyboard can only be the first player ...
-		if (InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModules().front() == this)
+		// "Auto" device: keyboard and companion gamepad are merged
+		if (false == somethingDown && nullptr != this->companionModule)
 		{
-			somethingDown |= InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(this->getMappedKey(action));
-			return somethingDown;
-		}
-
-		// ==============================
-		// JOYSTICK PATH
-		// ==============================
-
-		// IMPORTANT:
-		// Treat analog stick as "action down" only if it crosses a threshold.
-		// Otherwise tiny stick drift / tiny deflection triggers LEFT/RIGHT immediately.
-		const Ogre::Real actionThreshold = this->analogActionThreshold; // new member, see below
-
-		if (InputDeviceModule::UP == action)
-		{
-			if (Ogre::Math::Abs(this->leftStickMovement.y) >= actionThreshold)
-				somethingDown |= (this->leftStickMovement.y < 0.0f);
-			else
-				somethingDown |= (this->pressedPov[0] == Action::UP);
-		}
-		else if (InputDeviceModule::DOWN == action)
-		{
-			if (Ogre::Math::Abs(this->leftStickMovement.y) >= actionThreshold)
-				somethingDown |= (this->leftStickMovement.y > 0.0f);
-			else
-				somethingDown |= (this->pressedPov[0] == Action::DOWN);
-		}
-		else if (InputDeviceModule::LEFT == action)
-		{
-			if (Ogre::Math::Abs(this->leftStickMovement.x) >= actionThreshold)
-				somethingDown |= (this->leftStickMovement.x < 0.0f);
-			else
-				somethingDown |= (this->pressedPov[1] == Action::LEFT);
-		}
-		else if (InputDeviceModule::RIGHT == action)
-		{
-			if (Ogre::Math::Abs(this->leftStickMovement.x) >= actionThreshold)
-				somethingDown |= (this->leftStickMovement.x > 0.0f);
-			else
-				somethingDown |= (this->pressedPov[1] == Action::RIGHT);
-		}
-		else
-		{
-			// Other actions: use mapped button (your existing behavior)
-			if (JoyStickButton::BUTTON_NONE != this->pressedButton)
-				somethingDown |= this->isButtonDown(this->getMappedButton(action));
-		}
+			somethingDown = this->companionModule->isActionDownOwnDevice(action);
+	}
 
 		return somethingDown;
 	}
@@ -1278,7 +874,19 @@ namespace NOWA
             return false;
         }
 
-		return InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(keyCode);
+		// A gamepad module must not see the keyboard, else in splitscreen a gamepad player would react on keyboard keys
+		if (false == this->isKeyboard)
+		{
+			return false;
+		}
+
+		OIS::Keyboard* keyboard = static_cast<OIS::Keyboard*>(this->deviceObject);
+		if (nullptr == keyboard)
+		{
+			return false;
+		}
+
+		return keyboard->isKeyDown(keyCode);
 	}
 
 	bool InputDeviceModule::isActionDownAmount(InputDeviceModule::Action action, Ogre::Real dt, Ogre::Real actionDuration)
@@ -1288,149 +896,147 @@ namespace NOWA
             return false;
         }
 
-		if (this->timeSinceLastActionDown >= 0.0f)
+		const unsigned short index = static_cast<unsigned short>(action);
+		if (index >= ACTION_SLOT_COUNT)
 		{
-			this->timeSinceLastActionDown = this->timeSinceLastActionDown - dt;
-			if (true == this->isActionDown(action))
+			return false;
+		}
+
+		const bool down = this->isActionDown(action);
+
+		if (this->timeSinceLastActionDown[index] >= 0.0f)
+		{
+			this->timeSinceLastActionDown[index] = this->timeSinceLastActionDown[index] - dt;
+			if (true == down)
 			{
 				return true;
 			}
+			}
+
+		if (false == down)
+			{
+			this->timeSinceLastActionDown[index] = actionDuration;
+			}
+
+		return false;
 		}
 
-		if (false == this->isActionDown(action))
+	bool InputDeviceModule::isActionPressed(InputDeviceModule::Action action, Ogre::Real dt, Ogre::Real durationBetweenTheAction)
+	{
+		if (true == this->bLock)
 		{
-			this->timeSinceLastActionDown = actionDuration;
+		return false;
+	}
+
+		const unsigned short index = static_cast<unsigned short>(action);
+		if (index >= ACTION_SLOT_COUNT)
+	{
+			return false;
+	}
+
+		if (this->timeSinceLastActionPressed[index] >= 0.0f)
+        {
+			this->timeSinceLastActionPressed[index] = this->timeSinceLastActionPressed[index] - dt;
+        }
+
+		if (this->timeSinceLastActionPressed[index] <= 0.0f)
+		{
+			const bool down = this->isActionDown(action);
+
+			if (false == down)
+		{
+				this->canPress[index] = true;
+			}
+			else if (true == this->canPress[index])
+			{
+				this->canPress[index] = false;
+				this->timeSinceLastActionPressed[index] = durationBetweenTheAction;
+				return true;
+			}
 		}
 
 		return false;
 	}
 
-	bool InputDeviceModule::isActionPressed(InputDeviceModule::Action action, Ogre::Real dt, Ogre::Real durationBetweenTheAction)
+	bool InputDeviceModule::isButtonDownOwnDevice(JoyStickButton button) const
 	{
-        if (true == this->bLock)
+		if (true == this->bLock || JoyStickButton::BUTTON_NONE == button)
         {
             return false;
         }
 
-		if (this->timeSinceLastActionPressed >= 0.0f)
+		// Previously only the LAST found button was compared, so holding RUN and pressing JUMP at the same time lost one of both
+		for (size_t i = 0; i < this->pressedButtons.size(); i++)
 		{
-			this->timeSinceLastActionPressed = this->timeSinceLastActionPressed - dt;
-		}
-
-		if (this->timeSinceLastActionPressed <= 0.0f)
-		{
-			if (false == this->isActionDown(action))
+			if (this->pressedButtons[i] == button)
 			{
-				this->canPress = true;
-			}
-
-			if (true == this->isActionDown(action) && true == this->canPress)
-			{
-				this->canPress = false;
-				this->timeSinceLastActionPressed = durationBetweenTheAction;
 				return true;
 			}
 		}
-
 		return false;
 	}
 
 	bool InputDeviceModule::isButtonDown(JoyStickButton button) const
 	{
-		return this->pressedButton == button;
+		if (true == this->isKeyboard)
+	{
+			if (nullptr != this->companionModule)
+        {
+				return this->companionModule->isButtonDownOwnDevice(button);
+			}
+            return false;
+        }
+		return this->isButtonDownOwnDevice(button);
 	}
 
 	bool InputDeviceModule::areButtonsDown2(JoyStickButton button1, JoyStickButton button2) const
 	{
-        if (true == this->bLock)
-        {
-            return false;
-        }
-
-		short pressedButtonCount = -1;
-
-		for (size_t i = 0; i < this->pressedButtons.size(); i++)
-		{
-			if (this->pressedButtons[i] == button1 || this->pressedButtons[i] == button2)
-			{
-				pressedButtonCount++;
-			}
-		}
-
-		return pressedButtonCount == 2 - 1;
+		return true == this->isButtonDown(button1) && true == this->isButtonDown(button2);
 	}
 
 	bool InputDeviceModule::areButtonsDown3(JoyStickButton button1, JoyStickButton button2, JoyStickButton button3) const
-	{
-        if (true == this->bLock)
-        {
-            return false;
-        }
-
-		short pressedButtonCount = -1;
-
-		for (size_t i = 0; i < this->pressedButtons.size(); i++)
-		{
-			if (this->pressedButtons[i] == button1 || this->pressedButtons[i] == button2 || this->pressedButtons[i] == button3)
 			{
-				pressedButtonCount++;
-			}
+		return true == this->areButtonsDown2(button1, button2) && true == this->isButtonDown(button3);
 		}
-
-		return pressedButtonCount == 3 - 1;
-	}
 
 	bool InputDeviceModule::areButtonsDown4(JoyStickButton button1, JoyStickButton button2, JoyStickButton button3, JoyStickButton button4) const
 	{
-        if (true == this->bLock)
-        {
-            return false;
-        }
-
-		short pressedButtonCount = -1;
-
-		for (size_t i = 0; i < this->pressedButtons.size(); i++)
-		{
-			if (this->pressedButtons[i] == button1 || this->pressedButtons[i] == button2 || this->pressedButtons[i] == button3 || this->pressedButtons[i] == button4)
-			{
-				pressedButtonCount++;
-			}
-		}
-
-		return pressedButtonCount == 4 - 1;
+		return true == this->areButtonsDown3(button1, button2, button3) && true == this->isButtonDown(button4);
 	}
-
-	/*bool InputDeviceModule::areButtonsDown(std::vector<JoyStickButton> buttons) const
-	{
-	    if (true == this->bLock)
-        {
-            return false;
-        }
-
-		short pressedButtonCount = -1;
-
-		for (size_t i = 0; i < this->pressedButtons.size(); i++)
-		{
-			for (size_t j = 0; j < buttons.size(); j++)
-			{
-				if (buttons[j] == this->pressedButtons[i])
-				{
-					pressedButtonCount++;
-				}
-			}
-		}
-		
-		return pressedButtonCount == buttons.size() - 1;
-	}*/
 
 	InputDeviceModule::JoyStickButton InputDeviceModule::getPressedButton(void) const
 	{
+		if (true == this->isKeyboard)
+	{
+			if (nullptr != this->companionModule)
+        {
+				return this->companionModule->getPressedButton();
+			}
+			return JoyStickButton::BUTTON_NONE;
+		}
 		return this->pressedButton;
-	}
+        }
 
 	std::vector<InputDeviceModule::JoyStickButton> InputDeviceModule::getPressedButtons(void) const
-	{
+		{
+		if (true == this->isKeyboard)
+			{
+			if (nullptr != this->companionModule)
+				{
+				return this->companionModule->getPressedButtons();
+				}
+			return std::vector<InputDeviceModule::JoyStickButton>();
+			}
 		return this->pressedButtons;
+		}
+		
+	void InputDeviceModule::addPressedButton(JoyStickButton button)
+	{
+		if (JoyStickButton::BUTTON_NONE == button)
+	{
+			return;
+	}
+		this->pressedButtons.emplace_back(button);
 	}
 
 	void InputDeviceModule::update(Ogre::Real dt)
@@ -1440,7 +1046,7 @@ namespace NOWA
             return;
         }
 
-		if (true == this->isKeyboard)
+		if (true == this->isKeyboard || nullptr == this->deviceObject)
 		{
 			return;
 		}
@@ -1449,22 +1055,25 @@ namespace NOWA
 
 		// Evaluate which buttons are pressed (maybe more at once) and add them to list
 		this->pressedButtons.clear();
-		JoyStickButton foundButton = JoyStickButton::BUTTON_NONE;
 
 		const OIS::JoyStickState& joystickState = joyStick->getJoyStickState();
+		const LayoutAxes layoutAxes = getLayoutAxes(this->joyStickLayout);
 
-		// ----------------------------
-		// Helpers (local, no header changes)
-		// ----------------------------
-		auto clamp1 = [](Ogre::Real v) -> Ogre::Real
+		auto readAxis = [&](int axisIndex) -> Ogre::Real
+		{
+			if (axisIndex < 0 || axisIndex >= static_cast<int>(joystickState.mAxes.size()))
 			{
-				return Ogre::Math::Clamp(v, -1.0f, 1.0f);
+				return 0.0f;
+			}
+			return Clamp1(static_cast<Ogre::Real>(joystickState.mAxes[axisIndex].abs) / 32767.0f);
 			};
 
 		auto applyDeadzone = [&](Ogre::Real v, Ogre::Real deadzone) -> Ogre::Real
 			{
 				if (Ogre::Math::Abs(v) < deadzone)
+			{
 					return 0.0f;
+			}
 				return v;
 			};
 
@@ -1473,17 +1082,20 @@ namespace NOWA
 		auto applyExpo = [&](Ogre::Real v, Ogre::Real expo) -> Ogre::Real
 			{
 				const Ogre::Real a = Ogre::Math::Abs(v);
-				const Ogre::Real s = (v < 0.0f) ? -1.0f : 1.0f;
+			Ogre::Real s = 1.0f;
+			if (v < 0.0f)
+			{
+				s = -1.0f;
+			}
 				const Ogre::Real cubic = a * a * a;
 				const Ogre::Real out = (1.0f - expo) * a + expo * cubic;
 				return s * out;
 			};
 
-		// This is the KEY for your sensitivity issue:
 		// Only treat stick as a DIGITAL button if pushed far enough.
-		// Small deflections will NOT trigger BUTTON_LEFT_STICK_LEFT/RIGHT.
-		const Ogre::Real stickDigitalThreshold = 0.55f; // try 0.45..0.75 depending on taste
-		const Ogre::Real stickExpo = 0.70f;             // try 0.35..0.70 for steering feel
+		const Ogre::Real stickDigitalThreshold = 0.55f;
+		const Ogre::Real stickExpo = 0.70f;
+		const Ogre::Real digitalThreshold = 0.90f;
 
 		// ----------------------------
 		// POV / D-Pad
@@ -1493,160 +1105,161 @@ namespace NOWA
 		this->pressedPov[2] = Action::NONE;
 		this->pressedPov[3] = Action::NONE;
 
-		// Keep your existing POV behavior, but guard indices
+		const int povCount = joyStick->getNumberOfComponents(OIS::OIS_POV);
 
-		if (joystickState.mPOV[0].direction & OIS::Pov::West)
+		if (povCount > 0)
+		{
+			const int direction = joystickState.mPOV[0].direction;
+
+			// Note: Previously only west/east were evaluated, so the D-pad could not be used for up/down at all
+			if (0 != (direction & OIS::Pov::North))
+			{
+				this->pressedPov[0] = Action::UP;
+				this->addPressedButton(BUTTON_DPAD_UP);
+			}
+			else if (0 != (direction & OIS::Pov::South))
+			{
+				this->pressedPov[0] = Action::DOWN;
+				this->addPressedButton(BUTTON_DPAD_DOWN);
+			}
+
+			if (0 != (direction & OIS::Pov::West))
 		{
 			this->pressedPov[1] = Action::LEFT;
-			this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_LEFT);
-			foundButton = BUTTON_LEFT_STICK_LEFT;
+				this->addPressedButton(BUTTON_DPAD_LEFT);
 		}
-		else if (joystickState.mPOV[0].direction & OIS::Pov::East)
+			else if (0 != (direction & OIS::Pov::East))
 		{
 			this->pressedPov[1] = Action::RIGHT;
-			this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_RIGHT);
-			foundButton = BUTTON_LEFT_STICK_RIGHT;
+				this->addPressedButton(BUTTON_DPAD_RIGHT);
+			}
 		}
 
-		// Right stick POV handling (only if you actually have those POVs)
-		if (joystickState.mPOV[2].direction & OIS::Pov::North)
+		// Some old generic pads report the right stick as additional hats (legacy behavior, only for the generic layout)
+		if (LAYOUT_GENERIC == this->joyStickLayout && povCount > 3)
 		{
-			this->pressedPov[1] = Action::UP;
-			this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_UP);
-			foundButton = BUTTON_RIGHT_STICK_UP;
+			if (0 != (joystickState.mPOV[2].direction & OIS::Pov::North))
+		{
+				this->addPressedButton(BUTTON_RIGHT_STICK_UP);
 		}
-		else if (joystickState.mPOV[2].direction & OIS::Pov::South)
+			else if (0 != (joystickState.mPOV[2].direction & OIS::Pov::South))
 		{
-			this->pressedPov[1] = Action::DOWN;
-			this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_DOWN);
-			foundButton = BUTTON_RIGHT_STICK_DOWN;
+				this->addPressedButton(BUTTON_RIGHT_STICK_DOWN);
 		}
 
-		if (joystickState.mPOV[3].direction & OIS::Pov::West)
+			if (0 != (joystickState.mPOV[3].direction & OIS::Pov::West))
 		{
-			this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_LEFT);
-			foundButton = BUTTON_RIGHT_STICK_LEFT;
+				this->addPressedButton(BUTTON_RIGHT_STICK_LEFT);
 		}
-		else if (joystickState.mPOV[3].direction & OIS::Pov::East)
+			else if (0 != (joystickState.mPOV[3].direction & OIS::Pov::East))
 		{
-			this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_RIGHT);
-			foundButton = BUTTON_RIGHT_STICK_RIGHT;
+				this->addPressedButton(BUTTON_RIGHT_STICK_RIGHT);
+			}
 		}
 
 		// ----------------------------
-		// Analog sticks (MAIN FIX AREA)
+		// Analog sticks
 		// ----------------------------
-		// IMPORTANT: keep your original scaling assumption and just fix sensitivity.
-		// (Your statement: "Before it didn't steer at rest" -> center is fine.)
 
-		// Left stick Y (up/down)  axis 0 in your code
-		this->leftStickMovement.y = clamp1(static_cast<Ogre::Real>(joystickState.mAxes[0].abs) / 32767.0f);
+		// Left stick Y (up is negative)
+		this->leftStickMovement.y = readAxis(layoutAxes.leftY);
 		this->leftStickMovement.y = applyDeadzone(this->leftStickMovement.y, this->joyStickDeadZone);
 		this->leftStickMovement.y = applyExpo(this->leftStickMovement.y, stickExpo);
 
-		// Only generate DIGITAL button if pushed far enough:
 		if (this->leftStickMovement.y <= -stickDigitalThreshold)
 		{
-			this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_UP);
-			foundButton = BUTTON_LEFT_STICK_UP;
+			this->addPressedButton(BUTTON_LEFT_STICK_UP);
 		}
 		else if (this->leftStickMovement.y >= stickDigitalThreshold)
 		{
-			this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_DOWN);
-			foundButton = BUTTON_LEFT_STICK_DOWN;
+			this->addPressedButton(BUTTON_LEFT_STICK_DOWN);
 		}
 
-		// Range is -1..+1
-		Ogre::Real rawLX = Ogre::Math::Clamp(static_cast<Ogre::Real>(joystickState.mAxes[1].abs) / 32767.0f, -1.0f, 1.0f);
-
-		// rawLX = ApplyNotch(rawLX, 0.10f);               // <- makes first ~10% do nothing
-		rawLX = rawLX / (1.0f - 0.10f);                 // renormalize back to [-1..1]
+		// Left stick X, range is -1..+1, full output is already reached at 90% deflection
+		Ogre::Real rawLX = readAxis(layoutAxes.leftX);
+		rawLX = rawLX / (1.0f - 0.10f);
 		rawLX = Clamp1(rawLX);
 
-		// HARD precision steering mapping (this is the fix)
-		this->leftStickMovement.x = MapSteeringPrecision(
-			rawLX,
-			/*deadzone*/        0.18f,
-			/*precisionZone*/   0.55f,
-			/*precisionMaxOut*/ 0.08f
-		);
+		// Precision steering mapping
+		this->leftStickMovement.x = MapSteeringPrecision(rawLX, 0.18f, 0.55f, 0.08f);
 
-		// IMPORTANT: do NOT create digital LEFT/RIGHT buttons from small analog values.
-		// If you still need menu navigation, only trigger digital when REALLY pushed:
-		const Ogre::Real digitalThreshold = 0.90f;
 		if (this->leftStickMovement.x <= -digitalThreshold)
 		{
-			this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_LEFT);
-			foundButton = BUTTON_LEFT_STICK_LEFT;
+			this->addPressedButton(BUTTON_LEFT_STICK_LEFT);
 		}
 		else if (this->leftStickMovement.x >= digitalThreshold)
 		{
-			this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_RIGHT);
-			foundButton = BUTTON_LEFT_STICK_RIGHT;
+			this->addPressedButton(BUTTON_LEFT_STICK_RIGHT);
 		}
 
-
-		// Right stick Y axis 2
-		this->rightStickMovement.y = clamp1(static_cast<Ogre::Real>(joystickState.mAxes[2].abs) / 32767.0f);
+		// Right stick Y
+		this->rightStickMovement.y = readAxis(layoutAxes.rightY);
 		this->rightStickMovement.y = applyDeadzone(this->rightStickMovement.y, this->joyStickDeadZone);
 		this->rightStickMovement.y = applyExpo(this->rightStickMovement.y, stickExpo);
 
 		if (this->rightStickMovement.y <= -stickDigitalThreshold)
 		{
-			this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_UP);
-			foundButton = BUTTON_RIGHT_STICK_UP;
+			this->addPressedButton(BUTTON_RIGHT_STICK_UP);
 		}
 		else if (this->rightStickMovement.y >= stickDigitalThreshold)
 		{
-			this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_DOWN);
-			foundButton = BUTTON_RIGHT_STICK_DOWN;
+			this->addPressedButton(BUTTON_RIGHT_STICK_DOWN);
 		}
 
-		// Range is -1..+1
-		Ogre::Real rawRX = Ogre::Math::Clamp(static_cast<Ogre::Real>(joystickState.mAxes[3].abs) / 32767.0f, -1.0f, 1.0f);
-
-		// rawRX = ApplyNotch(rawRX, 0.10f);               // <- makes first ~10% do nothing
-		rawRX = rawRX / (1.0f - 0.10f);                 // renormalize back to [-1..1]
+		// Right stick X
+		Ogre::Real rawRX = readAxis(layoutAxes.rightX);
+		rawRX = rawRX / (1.0f - 0.10f);
 		rawRX = Clamp1(rawRX);
 
-		// HARD precision steering mapping (same as left stick)
-		this->rightStickMovement.x = MapSteeringPrecision(
-			rawRX,
-			/*deadzone*/        0.18f,
-			/*precisionZone*/   0.55f,
-			/*precisionMaxOut*/ 0.08f
-		);
+		this->rightStickMovement.x = MapSteeringPrecision(rawRX, 0.18f, 0.55f, 0.08f);
 
-		// Only generate digital button when REALLY pushed (optional)
 		if (this->rightStickMovement.x <= -digitalThreshold)
 		{
-			this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_LEFT);
-			foundButton = BUTTON_RIGHT_STICK_LEFT;
+			this->addPressedButton(BUTTON_RIGHT_STICK_LEFT);
 		}
 		else if (this->rightStickMovement.x >= digitalThreshold)
 		{
-			this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_RIGHT);
-			foundButton = BUTTON_RIGHT_STICK_RIGHT;
+			this->addPressedButton(BUTTON_RIGHT_STICK_RIGHT);
 		}
 
-
 		// ----------------------------
-		// Physical controller buttons
+		// Analog triggers (XInput / Linux evdev deliver LT/RT as axes)
 		// ----------------------------
-		unsigned short j = 0;
-		for (std::vector<bool>::const_iterator i = joystickState.mButtons.begin(),
-			e = joystickState.mButtons.end(); i != e; ++i)
+		if (layoutAxes.leftTrigger >= 0 && layoutAxes.leftTrigger < static_cast<int>(joystickState.mAxes.size()))
 		{
-			if (*i == true)
+			if (normalizeTrigger(joystickState.mAxes[layoutAxes.leftTrigger].abs, layoutAxes.triggerRestsAtMin) > TRIGGER_DIGITAL_THRESHOLD)
 			{
-				foundButton = static_cast<JoyStickButton>(j);
-				this->pressedButtons.emplace_back(foundButton);
+				this->addPressedButton(BUTTON_LT);
 			}
-			j++;
+		}
+		if (layoutAxes.rightTrigger >= 0 && layoutAxes.rightTrigger < static_cast<int>(joystickState.mAxes.size()))
+		{
+			if (normalizeTrigger(joystickState.mAxes[layoutAxes.rightTrigger].abs, layoutAxes.triggerRestsAtMin) > TRIGGER_DIGITAL_THRESHOLD)
+			{
+				this->addPressedButton(BUTTON_RT);
+			}
 		}
 
-		// Note: Buttons have priority and will overwrite pov
-		this->pressedButton = foundButton;
+		// ----------------------------
+		// Physical controller buttons, translated from raw index into logical buttons
+		// ----------------------------
+		for (size_t j = 0; j < joystickState.mButtons.size(); j++)
+		{
+			if (true == joystickState.mButtons[j])
+			{
+				this->addPressedButton(this->translateRawButton(static_cast<int>(j)));
+			}
+		}
+
+		// Note: Buttons have priority and will overwrite pov/sticks as "the" pressed button
+		if (true == this->pressedButtons.empty())
+		{
+			this->pressedButton = JoyStickButton::BUTTON_NONE;
+		}
+		else
+		{
+			this->pressedButton = this->pressedButtons.back();
+		}
     }
 
     void InputDeviceModule::lockDevice(bool bLock)
@@ -1654,5 +1267,287 @@ namespace NOWA
         this->bLock = bLock;
     }
 
+	OIS::Object* InputDeviceModule::getDeviceObject(void) const
+	{
+		return this->deviceObject;
+	}
+
+	void InputDeviceModule::setJoyStickLayout(JoyStickLayout joyStickLayout)
+	{
+		this->joyStickLayout = joyStickLayout;
+		this->buildRawButtonTable();
+	}
+
+	InputDeviceModule::JoyStickLayout InputDeviceModule::getJoyStickLayout(void) const
+	{
+		return this->joyStickLayout;
+	}
+
+	void InputDeviceModule::buildRawButtonTable(void)
+	{
+		for (unsigned short i = 0; i < MAX_RAW_BUTTONS; i++)
+		{
+			this->rawButtonTable[i] = BUTTON_NONE;
+		}
+
+		if (LAYOUT_XINPUT == this->joyStickLayout)
+		{
+			// OIS Win32 XInput path: raw index i = XInput wButtons bit (i + 4)
+			this->rawButtonTable[0] = BUTTON_START;
+			this->rawButtonTable[1] = BUTTON_SELECT;
+			this->rawButtonTable[2] = BUTTON_LEFT_STICK;
+			this->rawButtonTable[3] = BUTTON_RIGHT_STICK;
+			this->rawButtonTable[4] = BUTTON_LB;
+			this->rawButtonTable[5] = BUTTON_RB;
+			this->rawButtonTable[8] = BUTTON_A;
+			this->rawButtonTable[9] = BUTTON_B;
+			this->rawButtonTable[10] = BUTTON_X;
+			this->rawButtonTable[11] = BUTTON_Y;
+		}
+		else if (LAYOUT_LINUX_EVDEV == this->joyStickLayout)
+		{
+			// OIS Linux: buttons are numbered in ascending evdev code order (BTN_SOUTH, BTN_EAST, BTN_NORTH, BTN_WEST, BTN_TL, BTN_TR, BTN_SELECT, BTN_START, BTN_MODE, BTN_THUMBL, BTN_THUMBR)
+			this->rawButtonTable[0] = BUTTON_A;
+			this->rawButtonTable[1] = BUTTON_B;
+			this->rawButtonTable[2] = BUTTON_X;
+			this->rawButtonTable[3] = BUTTON_Y;
+			this->rawButtonTable[4] = BUTTON_LB;
+			this->rawButtonTable[5] = BUTTON_RB;
+			this->rawButtonTable[6] = BUTTON_SELECT;
+			this->rawButtonTable[7] = BUTTON_START;
+			// 8 = Guide button, reserved by Steam
+			this->rawButtonTable[9] = BUTTON_LEFT_STICK;
+			this->rawButtonTable[10] = BUTTON_RIGHT_STICK;
+		}
+		else
+		{
+			// Legacy NOWA layout: raw index == enum value for the 12 physical buttons.
+			// Note: Previously ANY raw index was casted, so e.g. a 13th physical button was reported as BUTTON_LEFT_STICK_UP.
+			for (unsigned short i = 0; i <= static_cast<unsigned short>(BUTTON_RIGHT_STICK); i++)
+			{
+				this->rawButtonTable[i] = static_cast<JoyStickButton>(i);
+			}
+		}
+	}
+
+	InputDeviceModule::JoyStickButton InputDeviceModule::translateRawButton(int rawButton) const
+	{
+		if (rawButton < 0 || rawButton >= static_cast<int>(MAX_RAW_BUTTONS))
+		{
+			return BUTTON_NONE;
+		}
+		return this->rawButtonTable[rawButton];
+	}
+
+	InputDeviceModule::JoyStickButton InputDeviceModule::translateRawAxis(int axis, int absValue) const
+	{
+		const LayoutAxes layoutAxes = getLayoutAxes(this->joyStickLayout);
+
+		if (axis == layoutAxes.leftTrigger)
+		{
+			if (normalizeTrigger(absValue, layoutAxes.triggerRestsAtMin) > TRIGGER_DIGITAL_THRESHOLD)
+			{
+				return BUTTON_LT;
+			}
+			return BUTTON_NONE;
+		}
+		if (axis == layoutAxes.rightTrigger)
+		{
+			if (normalizeTrigger(absValue, layoutAxes.triggerRestsAtMin) > TRIGGER_DIGITAL_THRESHOLD)
+			{
+				return BUTTON_RT;
+			}
+			return BUTTON_NONE;
+		}
+
+		const Ogre::Real value = Clamp1(static_cast<Ogre::Real>(absValue) / 32767.0f);
+
+		if (axis == layoutAxes.leftX)
+		{
+			if (value <= -RAW_AXIS_DIGITAL_THRESHOLD)
+			{
+				return BUTTON_LEFT_STICK_LEFT;
+			}
+			if (value >= RAW_AXIS_DIGITAL_THRESHOLD)
+			{
+				return BUTTON_LEFT_STICK_RIGHT;
+			}
+		}
+		else if (axis == layoutAxes.leftY)
+		{
+			if (value <= -RAW_AXIS_DIGITAL_THRESHOLD)
+			{
+				return BUTTON_LEFT_STICK_UP;
+			}
+			if (value >= RAW_AXIS_DIGITAL_THRESHOLD)
+			{
+				return BUTTON_LEFT_STICK_DOWN;
+			}
+		}
+		else if (axis == layoutAxes.rightX)
+		{
+			if (value <= -RAW_AXIS_DIGITAL_THRESHOLD)
+			{
+				return BUTTON_RIGHT_STICK_LEFT;
+			}
+			if (value >= RAW_AXIS_DIGITAL_THRESHOLD)
+			{
+				return BUTTON_RIGHT_STICK_RIGHT;
+			}
+		}
+		else if (axis == layoutAxes.rightY)
+		{
+			if (value <= -RAW_AXIS_DIGITAL_THRESHOLD)
+			{
+				return BUTTON_RIGHT_STICK_UP;
+			}
+			if (value >= RAW_AXIS_DIGITAL_THRESHOLD)
+			{
+				return BUTTON_RIGHT_STICK_DOWN;
+			}
+		}
+
+		return BUTTON_NONE;
+	}
+
+	InputDeviceModule::JoyStickButton InputDeviceModule::translatePov(int povDirection) const
+	{
+		if (0 != (povDirection & OIS::Pov::North))
+		{
+			return BUTTON_DPAD_UP;
+		}
+		if (0 != (povDirection & OIS::Pov::South))
+		{
+			return BUTTON_DPAD_DOWN;
+		}
+		if (0 != (povDirection & OIS::Pov::West))
+		{
+			return BUTTON_DPAD_LEFT;
+		}
+		if (0 != (povDirection & OIS::Pov::East))
+		{
+			return BUTTON_DPAD_RIGHT;
+		}
+		return BUTTON_NONE;
+	}
+
+	void InputDeviceModule::setCompanionModule(InputDeviceModule* companionModule, bool soft)
+	{
+		if (nullptr != this->companionModule && this->companionModule != companionModule)
+		{
+			this->companionModule->companionOwner = nullptr;
+		}
+
+		this->companionModule = companionModule;
+		this->companionSoft = soft;
+
+		if (nullptr != this->companionModule)
+		{
+			this->companionModule->companionOwner = this;
+		}
+	}
+
+	InputDeviceModule* InputDeviceModule::getCompanionModule(void) const
+	{
+		return this->companionModule;
+	}
+
+	bool InputDeviceModule::isCompanionSoft(void) const
+	{
+		return this->companionSoft;
+	}
+
+	InputDeviceModule* InputDeviceModule::getCompanionOwner(void) const
+	{
+		return this->companionOwner;
+	}
+
+	void InputDeviceModule::setLastInputFromJoyStick(bool lastInputFromJoyStick)
+	{
+		this->lastInputFromJoyStick = lastInputFromJoyStick;
+	}
+
+	bool InputDeviceModule::isLastInputFromJoyStick(void) const
+	{
+		return this->lastInputFromJoyStick;
+	}
+
+	bool InputDeviceModule::isJoinInputDown(void)
+	{
+		return true == this->isActionDownOwnDevice(InputDeviceModule::JUMP) || true == this->isActionDownOwnDevice(InputDeviceModule::START);
+	}
+
+	Ogre::String InputDeviceModule::getActionName(Action action)
+	{
+		for (const ActionName& actionName : actionNames)
+		{
+			if (action == actionName.action)
+			{
+				return actionName.name;
+			}
+		}
+		return "NONE";
+	}
+
+	InputDeviceModule::Action InputDeviceModule::getActionFromName(const Ogre::String& actionName)
+	{
+		for (const ActionName& entry : actionNames)
+		{
+			if (actionName == entry.name)
+			{
+				return entry.action;
+			}
+		}
+		return Action::NONE;
+	}
+
+	Ogre::String InputDeviceModule::getJoyStickLayoutName(JoyStickLayout joyStickLayout)
+	{
+		if (LAYOUT_XINPUT == joyStickLayout)
+		{
+			return "XInput";
+		}
+		else if (LAYOUT_LINUX_EVDEV == joyStickLayout)
+		{
+			return "LinuxEvdev";
+		}
+		return "Generic";
+	}
+
+	InputDeviceModule::JoyStickLayout InputDeviceModule::getJoyStickLayoutFromName(const Ogre::String& layoutName)
+	{
+		if ("XInput" == layoutName)
+		{
+			return LAYOUT_XINPUT;
+		}
+		else if ("LinuxEvdev" == layoutName)
+		{
+			return LAYOUT_LINUX_EVDEV;
+		}
+		return LAYOUT_GENERIC;
+	}
+
+	InputDeviceModule::JoyStickLayout InputDeviceModule::detectJoyStickLayout(OIS::JoyStick* joyStick)
+	{
+#if defined OIS_LINUX_PLATFORM
+		return LAYOUT_LINUX_EVDEV;
+#else
+		if (nullptr == joyStick)
+		{
+			return LAYOUT_GENERIC;
+		}
+
+		// OIS translates every XInput device (Xbox pads, Steam Input virtual pad, Steam Deck under Proton) to exactly 12 buttons, 6 axes and 1 pov
+		const int buttonCount = joyStick->getNumberOfComponents(OIS::OIS_Button);
+		const int axisCount = joyStick->getNumberOfComponents(OIS::OIS_Axis);
+		const int povCount = joyStick->getNumberOfComponents(OIS::OIS_POV);
+
+		if (12 == buttonCount && 6 == axisCount && 1 == povCount)
+		{
+			return LAYOUT_XINPUT;
+		}
+		return LAYOUT_GENERIC;
+#endif
+	}
 
 } // namespace end

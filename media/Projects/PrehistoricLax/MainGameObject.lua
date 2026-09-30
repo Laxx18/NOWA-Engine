@@ -3,22 +3,33 @@ module("MainGameObject", package.seeall);
 
 require("init");
 
-mainGameObject = nil
+local mainGameObject = nil;
+local explorationMap = nil;
+local inputDeviceComp = nil;
 
--- physicsActiveComponent = nil;
+local timeSinceLastToggle = 1;
 
 MainGameObject = {}
 
 MainGameObject["connect"] = function(gameObject)
-    --mainGameObject = AppStateManager:getGameObjectController():castGameObject(gameObject);
-    --physicsActiveComponent = mainGameObject:getPhysicsActiveComponent();
+    mainGameObject = AppStateManager:getGameObjectController():castGameObject(gameObject);
+    explorationMap = mainGameObject:getExplorationMapComponent();
+
+    local prehistoricLax = AppStateManager:getGameObjectController():getGameObjectFromName(PLAYER_NAME);
+    inputDeviceComp = prehistoricLax:getInputDeviceComponent();
+
+    timeSinceLastToggle = 1;
 end
 
 MainGameObject["disconnect"] = function()
 
 end
 
---MainGameObject["update"] = function(dt)
-    --physicsActiveComponent:applyOmegaForce(Vector3(0, 10, 0));
---end
-
+MainGameObject["update"] = function(dt)
+    if (timeSinceLastToggle > 0) then
+        timeSinceLastToggle = timeSinceLastToggle - dt;
+    elseif inputDeviceComp:isActionDown(NOWA_A_MAP) then
+        explorationMap:toggleFullMap();
+        timeSinceLastToggle = 1;
+    end
+end

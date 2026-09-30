@@ -154,6 +154,7 @@ extern "C"
 #include "gameobject/WindComponent.h"
 #include "gameobject/GraphicsConfigurationComponent.h"
 #include "gameobject/VehicleDrivingManipulation.h"
+#include "gameobject/PlayerStartComponent.h"
 
 namespace NOWA
 {
@@ -342,6 +343,7 @@ namespace NOWA
     typedef boost::shared_ptr<NOWA::GraphicsConfigurationComponent> GraphicsConfigurationCompPtr;
 
 	typedef boost::shared_ptr<NOWA::BackgroundScrollComponent> BackgroundScrollCompPtr;
+    typedef boost::shared_ptr<NOWA::PlayerStartComponent> PlayerStartCompPtr;
 }; // namespace end
 
 // Modules

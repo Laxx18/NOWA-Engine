@@ -769,102 +769,17 @@ namespace NOWA
         return stream << ent.getName();
     }*/
 
-    // bool areButtonsDown(luabind::object buttons)
-    //{
-    //	short pressedButtonCount = -1;
-    //	short buttonsCount = 0;
-
-    //	// https://sourceforge.net/p/luabind/mailman/message/6187131/
-    //	// Checks if the correct buttons are pressed, order is not relevant
-    //	const auto pressedButtons = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getPressedButtons();
-    //	for (size_t i = 0; i < pressedButtons.size(); i++)
-    //	{
-    //		for (luabind::iterator it(buttons), end; it != end; ++it)
-    //		{
-    //			Ogre::String strKey = object_cast<Ogre::String>(it.key());
-
-    //			luabind::object val = *it;
-
-    //			if (luabind::type(val) == LUA_TNUMBER)
-    //			{
-    //				if (val == pressedButtons[i])
-    //				{
-    //					pressedButtonCount++;
-    //				}
-    //			}
-    //			buttonsCount++;
-    //		}
-    //	}
-    //	return pressedButtonCount == buttonsCount - 1;
-    //}
-
-    // bool areButtonsDown(luabind::argument const& buttons)
-    //{
-    //	short pressedButtonCount = -1;
-    //	short buttonsCount = 0;
-
-    //	// https://sourceforge.net/p/luabind/mailman/message/6187131/
-    //	// Checks if the correct buttons are pressed, order is not relevant
-    //	const auto pressedButtons = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getPressedButtons();
-    //	for (size_t i = 0; i < pressedButtons.size(); i++)
-    //	{
-    //		for (luabind::iterator it(buttons), end; it != end; ++it)
-    //		{
-    //			Ogre::String strKey = object_cast<Ogre::String>(it.key());
-
-    //			luabind::object val = *it;
-
-    //			if (luabind::type(val) == LUA_TNUMBER)
-    //			{
-    //				if (val == pressedButtons[i])
-    //				{
-    //					pressedButtonCount++;
-    //				}
-    //			}
-    //			buttonsCount++;
-    //		}
-    //	}
-    //	return pressedButtonCount == buttonsCount - 1;
-    //}
-
-    // Not used?
+    // Note: The previous implementations counted "pressedButtonCount == buttonsCount - 1", which was only true if NO OTHER button was pressed at the same time
+    // (e.g. holding RT for running made isButtonDown(BUTTON_A) false). They now forward to the InputDeviceModule, which checks all simultaneously pressed buttons.
+    // The main keyboard module also delivers the buttons of its companion gamepad ("Auto" device, or the first free gamepad in menus).
     bool isButtonDown(InputDeviceModule::JoyStickButton button)
     {
-        short pressedButtonCount = -1;
-        short buttonsCount = 0;
-
-        // https://sourceforge.net/p/luabind/mailman/message/6187131/
-        // Checks if the correct buttons are pressed, order is not relevant
-        const auto pressedButtons = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getPressedButtons();
-        for (size_t i = 0; i < pressedButtons.size(); i++)
-        {
-            if (pressedButtons[i] == button)
-            {
-                pressedButtonCount++;
-            }
-            buttonsCount++;
-        }
-        return pressedButtonCount == buttonsCount - 1;
+        return NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isButtonDown(button);
     }
 
-    // Not used?
     bool areTwoButtonsDown(InputDeviceModule::JoyStickButton button1, InputDeviceModule::JoyStickButton button2)
     {
-        short pressedButtonCount = -1;
-        short buttonsCount = 0;
-
-        // https://sourceforge.net/p/luabind/mailman/message/6187131/
-        // Checks if the correct buttons are pressed, order is not relevant
-        const auto pressedButtons = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getPressedButtons();
-        for (size_t i = 0; i < pressedButtons.size(); i++)
-        {
-            if (pressedButtons[i] == button1 || pressedButtons[i] == button2)
-            {
-                pressedButtonCount++;
-            }
-            buttonsCount++;
-        }
-        return pressedButtonCount == buttonsCount - 1;
+        return NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->areButtonsDown2(button1, button2);
     }
 
     luabind::object getPressedButtons(InputDeviceModule* instance)
@@ -876,52 +791,32 @@ namespace NOWA
         unsigned int i = 0;
         for (auto it = pressedButtons.cbegin(); it != pressedButtons.cend(); ++it)
         {
-            obj[i++] = *it;
+            obj[i++] = static_cast<int>(*it);
         }
 
         return obj;
     }
 
-    // Not used?
+    // Second gamepad. Note: Previously getJoystickInputDeviceModule(1) was used, which searches for the module OCCUPIED by game object id 1 (not the second gamepad)
+    // and delivered null -> crash. Now the gamepad is taken by index.
     bool isButtonDown2(InputDeviceModule::JoyStickButton button)
     {
-        short pressedButtonCount = -1;
-        short buttonsCount = 0;
-
-        // https://sourceforge.net/p/luabind/mailman/message/6187131/
-        // Checks if the correct buttons are pressed, order is not relevant
-        // TODO: (1) is wrong
-        const auto pressedButtons = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(1)->getPressedButtons();
-        for (size_t i = 0; i < pressedButtons.size(); i++)
+        InputDeviceModule* joystickModule = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModuleByIndex(1);
+        if (nullptr == joystickModule)
         {
-            if (pressedButtons[i] == button)
-            {
-                pressedButtonCount++;
-            }
-            buttonsCount++;
+            return false;
         }
-        return pressedButtonCount == buttonsCount - 1;
+        return joystickModule->isButtonDown(button);
     }
 
-    // Not used?
     bool areTwoButtonsDown2(InputDeviceModule::JoyStickButton button1, InputDeviceModule::JoyStickButton button2)
     {
-        short pressedButtonCount = -1;
-        short buttonsCount = 0;
-
-        // https://sourceforge.net/p/luabind/mailman/message/6187131/
-        // Checks if the correct buttons are pressed, order is not relevant
-        // TODO: (1) is wrong
-        const auto pressedButtons = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(1)->getPressedButtons();
-        for (size_t i = 0; i < pressedButtons.size(); i++)
+        InputDeviceModule* joystickModule = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModuleByIndex(1);
+        if (nullptr == joystickModule)
         {
-            if (pressedButtons[i] == button1 || pressedButtons[i] == button2)
-            {
-                pressedButtonCount++;
-            }
-            buttonsCount++;
+            return false;
         }
-        return pressedButtonCount == buttonsCount - 1;
+        return joystickModule->areButtonsDown2(button1, button2);
     }
 
     void bindInput(lua_State* lua)
@@ -930,10 +825,22 @@ namespace NOWA
         OIS::Mouse* mouse;
         OIS::Keyboard* keyboard;
         */
-        module(lua)[class_<OIS::Mouse>("Mouse")
-                .def("getMouseState", &OIS::Mouse::getMouseState)
-                .enum_("MouseButtonID")[value("MB_LEFT", OIS::MB_Left), value("MB_RIGHT", OIS::MB_Right), value("MB_MIDDLE", OIS::MB_Middle), value("MB_BUTTON_3", OIS::MB_Button3), value("MB_BUTTON_4", OIS::MB_Button4),
-                    value("MB_BUTTON_5", OIS::MB_Button5), value("MB_BUTTON_6", OIS::MB_Button6), value("MB_BUTTON_7", OIS::MB_Button7)]];
+        module(lua)
+        [
+            class_<OIS::Mouse>("Mouse")
+            .def("getMouseState", &OIS::Mouse::getMouseState)
+            .enum_("MouseButtonID")
+            [
+                value("MB_LEFT", OIS::MB_Left), 
+                value("MB_RIGHT", OIS::MB_Right), 
+                value("MB_MIDDLE", OIS::MB_Middle), 
+                value("MB_BUTTON_3", OIS::MB_Button3), 
+                value("MB_BUTTON_4", OIS::MB_Button4),
+                value("MB_BUTTON_5", OIS::MB_Button5), 
+                value("MB_BUTTON_6", OIS::MB_Button6), 
+                value("MB_BUTTON_7", OIS::MB_Button7)
+            ]
+        ];
 
         AddClassToCollection("Mouse", "class", "OIS mouse class.");
         AddClassToCollection("Mouse", "MouseState getMouseState()", "Gets the mouse button state.");
@@ -945,7 +852,11 @@ namespace NOWA
         AddClassToCollection("Mouse", "MB_BUTTON_6", "6 mouse button.");
         AddClassToCollection("Mouse", "MB_BUTTON_7", "7 mouse button.");
 
-        module(lua)[class_<OIS::Axis>("Axis").def_readwrite("abs", &OIS::Axis::abs).def_readwrite("rel", &OIS::Axis::rel)
+        module(lua)
+        [
+            class_<OIS::Axis>("Axis")
+            .def_readwrite("abs", &OIS::Axis::abs)
+            .def_readwrite("rel", &OIS::Axis::rel)
             // .def_readwrite("absOnly", &OIS::Axis::absOnly)
         ];
         AddClassToCollection("Axis", "class", "Axis of OIS mouse.");
@@ -953,13 +864,16 @@ namespace NOWA
         AddClassToCollection("Axis", "rel", "type");
         // AddClassToCollection("Axis", "absOnly()", "?");
 
-        module(lua)[class_<OIS::MouseState>("MouseState")
-                .def("buttonDown", &OIS::MouseState::buttonDown)
-                .def_readwrite("width", &OIS::MouseState::width)
-                .def_readwrite("height", &OIS::MouseState::height)
-                .def_readwrite("X", &OIS::MouseState::X)
-                .def_readwrite("Y", &OIS::MouseState::Y)
-                .def_readwrite("Z", &OIS::MouseState::Z)];
+        module(lua)
+        [
+            class_<OIS::MouseState>("MouseState")
+            .def("buttonDown", &OIS::MouseState::buttonDown)
+            .def_readwrite("width", &OIS::MouseState::width)
+            .def_readwrite("height", &OIS::MouseState::height)
+            .def_readwrite("X", &OIS::MouseState::X)
+            .def_readwrite("Y", &OIS::MouseState::Y)
+            .def_readwrite("Z", &OIS::MouseState::Z)
+        ];
         AddClassToCollection("MouseState", "class", "MouseState of OIS mouse.");
         AddClassToCollection("MouseState", "width", "type");
         AddClassToCollection("MouseState", "height", "type");
@@ -967,10 +881,20 @@ namespace NOWA
         AddClassToCollection("MouseState", "Y", "type");
         AddClassToCollection("MouseState", "Z", "type");
 
-        module(lua)[class_<OIS::Keyboard>("Keyboard")
-                .enum_("Modifier")[value("Alt", OIS::Keyboard::Alt), value("Shift", OIS::Keyboard::Shift), value("Ctrl", OIS::Keyboard::Ctrl), value("CapsLock", OIS::Keyboard::CapsLock), value("NumLock", OIS::Keyboard::NumLock)]
-                .def("isKeyDown", &OIS::Keyboard::isKeyDown)
-                .def("isModifierDown", &OIS::Keyboard::isModifierDown)];
+        module(lua)
+        [
+            class_<OIS::Keyboard>("Keyboard")
+            .enum_("Modifier")
+            [
+                value("Alt", OIS::Keyboard::Alt), 
+                value("Shift", OIS::Keyboard::Shift), 
+                value("Ctrl", OIS::Keyboard::Ctrl), 
+                value("CapsLock", OIS::Keyboard::CapsLock), 
+                value("NumLock", OIS::Keyboard::NumLock)
+            ]
+            .def("isKeyDown", &OIS::Keyboard::isKeyDown)
+            .def("isModifierDown", &OIS::Keyboard::isModifierDown)
+        ];
 
         AddClassToCollection("Keyboard", "class", "OIS Keyboard class.");
         AddClassToCollection("Keyboard", "bool isKeyDown(KeyCode key)", "Gets whether a specifig key is down.");
@@ -981,39 +905,45 @@ namespace NOWA
         AddClassToCollection("Keyboard", "CapsLock", "CapsLock modifier.");
         AddClassToCollection("Keyboard", "NumLock", "NumLock modifier.");
 
-        module(lua)[class_<OIS::KeyEvent>("KeyEvent")
-                // .def_readwrite("key", &OIS::KeyEvent::key)
-                // .def_readwrite("text", &OIS::KeyEvent::text)
-                .enum_("KeyCode")[value("KC_UNASSIGNED", OIS::KeyCode::KC_UNASSIGNED), value("KC_ESCAPE", OIS::KeyCode::KC_ESCAPE), value("KC_1", OIS::KeyCode::KC_1), value("KC_2", OIS::KeyCode::KC_2), value("KC_3", OIS::KeyCode::KC_3),
-                    value("KC_4", OIS::KeyCode::KC_4), value("KC_5", OIS::KeyCode::KC_5), value("KC_6", OIS::KeyCode::KC_6), value("KC_7", OIS::KeyCode::KC_7), value("KC_8", OIS::KeyCode::KC_8), value("KC_9", OIS::KeyCode::KC_9),
-                    value("KC_0", OIS::KeyCode::KC_0), value("KC_MINUS", OIS::KeyCode::KC_MINUS), value("KC_EQUALS", OIS::KeyCode::KC_EQUALS), value("KC_BACK", OIS::KeyCode::KC_BACK), value("KC_TAB", OIS::KeyCode::KC_TAB),
-                    value("KC_Q", OIS::KeyCode::KC_Q), value("KC_W", OIS::KeyCode::KC_W), value("KC_E", OIS::KeyCode::KC_E), value("KC_R", OIS::KeyCode::KC_R), value("KC_T", OIS::KeyCode::KC_T), value("KC_Y", OIS::KeyCode::KC_Y),
-                    value("KC_U", OIS::KeyCode::KC_U), value("KC_I", OIS::KeyCode::KC_I), value("KC_O", OIS::KeyCode::KC_O), value("KC_P", OIS::KeyCode::KC_P), value("KC_LBRACKET", OIS::KeyCode::KC_LBRACKET),
-                    value("KC_RBRACKET", OIS::KeyCode::KC_RBRACKET), value("KC_RETURN", OIS::KeyCode::KC_RETURN), value("KC_LCONTROL", OIS::KeyCode::KC_LCONTROL), value("KC_A", OIS::KeyCode::KC_A), value("KC_S", OIS::KeyCode::KC_S),
-                    value("KC_D", OIS::KeyCode::KC_D), value("KC_F", OIS::KeyCode::KC_F), value("KC_G", OIS::KeyCode::KC_G), value("KC_H", OIS::KeyCode::KC_H), value("KC_J", OIS::KeyCode::KC_J), value("KC_K", OIS::KeyCode::KC_K),
-                    value("KC_L", OIS::KeyCode::KC_L), value("KC_SEMICOLON", OIS::KeyCode::KC_SEMICOLON), value("KC_APOSTROPHE", OIS::KeyCode::KC_APOSTROPHE), value("KC_GRAVE", OIS::KeyCode::KC_GRAVE), value("KC_LSHIFT", OIS::KeyCode::KC_LSHIFT),
-                    value("KC_BACKSLASH", OIS::KeyCode::KC_BACKSLASH), value("KC_Z", OIS::KeyCode::KC_Z), value("KC_X", OIS::KeyCode::KC_X), value("KC_C", OIS::KeyCode::KC_C), value("KC_V", OIS::KeyCode::KC_V), value("KC_B", OIS::KeyCode::KC_B),
-                    value("KC_N", OIS::KeyCode::KC_N), value("KC_M", OIS::KeyCode::KC_M), value("KC_COMMA", OIS::KeyCode::KC_COMMA), value("KC_PERIOD", OIS::KeyCode::KC_PERIOD), value("KC_SLASH", OIS::KeyCode::KC_SLASH),
-                    value("KC_RSHIFT", OIS::KeyCode::KC_RSHIFT), value("KC_MULTIPLY", OIS::KeyCode::KC_MULTIPLY), value("KC_LMENU", OIS::KeyCode::KC_LMENU), value("KC_SPACE", OIS::KeyCode::KC_SPACE), value("KC_CAPITAL", OIS::KeyCode::KC_CAPITAL),
-                    value("KC_F1", OIS::KeyCode::KC_F1), value("KC_F2", OIS::KeyCode::KC_F2), value("KC_F3", OIS::KeyCode::KC_F3), value("KC_F4", OIS::KeyCode::KC_F4), value("KC_F5", OIS::KeyCode::KC_F5), value("KC_F6", OIS::KeyCode::KC_F6),
-                    value("KC_F7", OIS::KeyCode::KC_F7), value("KC_F8", OIS::KeyCode::KC_F8), value("KC_F9", OIS::KeyCode::KC_F9), value("KC_F10", OIS::KeyCode::KC_F10), value("KC_NUMLOCK", OIS::KeyCode::KC_NUMLOCK),
-                    value("KC_SCROLL", OIS::KeyCode::KC_SCROLL), value("KC_NUMPAD7", OIS::KeyCode::KC_NUMPAD7), value("KC_NUMPAD8", OIS::KeyCode::KC_NUMPAD8), value("KC_NUMPAD9", OIS::KeyCode::KC_NUMPAD9),
-                    value("KC_SUBTRACT", OIS::KeyCode::KC_SUBTRACT), value("KC_NUMPAD4", OIS::KeyCode::KC_NUMPAD4), value("KC_NUMPAD5", OIS::KeyCode::KC_NUMPAD5), value("KC_NUMPAD6", OIS::KeyCode::KC_NUMPAD6), value("KC_ADD", OIS::KeyCode::KC_ADD),
-                    value("KC_NUMPAD1", OIS::KeyCode::KC_NUMPAD1), value("KC_NUMPAD2", OIS::KeyCode::KC_NUMPAD2), value("KC_NUMPAD3", OIS::KeyCode::KC_NUMPAD3), value("KC_NUMPAD0", OIS::KeyCode::KC_NUMPAD0),
-                    value("KC_DECIMAL", OIS::KeyCode::KC_DECIMAL), value("KC_OEM_102", OIS::KeyCode::KC_OEM_102), value("KC_F11", OIS::KeyCode::KC_F11), value("KC_F12", OIS::KeyCode::KC_F12), value("KC_F13", OIS::KeyCode::KC_F13),
-                    value("KC_F14", OIS::KeyCode::KC_F14), value("KC_F15", OIS::KeyCode::KC_F15), value("KC_KANA", OIS::KeyCode::KC_KANA), value("KC_ABNT_C1", OIS::KeyCode::KC_ABNT_C1), value("KC_CONVERT", OIS::KeyCode::KC_CONVERT),
-                    value("KC_NOCONVERT", OIS::KeyCode::KC_NOCONVERT), value("KC_YEN", OIS::KeyCode::KC_YEN), value("KC_ABNT_C2", OIS::KeyCode::KC_ABNT_C2), value("KC_NUMPADEQUALS", OIS::KeyCode::KC_NUMPADEQUALS),
-                    value("KC_PREVTRACK", OIS::KeyCode::KC_PREVTRACK), value("KC_AT", OIS::KeyCode::KC_AT), value("KC_COLON", OIS::KeyCode::KC_COLON), value("KC_UNDERLINE", OIS::KeyCode::KC_UNDERLINE), value("KC_KANJI", OIS::KeyCode::KC_KANJI),
-                    value("KC_STOP", OIS::KeyCode::KC_STOP), value("KC_AX", OIS::KeyCode::KC_AX), value("KC_UNLABELED", OIS::KeyCode::KC_UNLABELED), value("KC_NEXTTRACK", OIS::KeyCode::KC_NEXTTRACK),
-                    value("KC_NUMPADENTER", OIS::KeyCode::KC_NUMPADENTER), value("KC_RCONTROL", OIS::KeyCode::KC_RCONTROL), value("KC_MUTE", OIS::KeyCode::KC_MUTE), value("KC_CALCULATOR", OIS::KeyCode::KC_CALCULATOR),
-                    value("KC_PLAYPAUSE", OIS::KeyCode::KC_PLAYPAUSE), value("KC_MEDIASTOP", OIS::KeyCode::KC_MEDIASTOP), value("KC_VOLUMEDOWN", OIS::KeyCode::KC_VOLUMEDOWN), value("KC_VOLUMEUP", OIS::KeyCode::KC_VOLUMEUP),
-                    value("KC_WEBHOME", OIS::KeyCode::KC_WEBHOME), value("KC_NUMPADCOMMA", OIS::KeyCode::KC_NUMPADCOMMA), value("KC_DIVIDE", OIS::KeyCode::KC_DIVIDE), value("KC_SYSRQ", OIS::KeyCode::KC_SYSRQ),
-                    value("KC_RMENU", OIS::KeyCode::KC_RMENU), value("KC_PAUSE", OIS::KeyCode::KC_PAUSE), value("KC_HOME", OIS::KeyCode::KC_HOME), value("KC_UP", OIS::KeyCode::KC_UP), value("KC_PGUP", OIS::KeyCode::KC_PGUP),
-                    value("KC_LEFT", OIS::KeyCode::KC_LEFT), value("KC_RIGHT", OIS::KeyCode::KC_RIGHT), value("KC_END", OIS::KeyCode::KC_END), value("KC_DOWN", OIS::KeyCode::KC_DOWN), value("KC_PGDOWN", OIS::KeyCode::KC_PGDOWN),
-                    value("KC_INSERT", OIS::KeyCode::KC_INSERT), value("KC_DELETE", OIS::KeyCode::KC_DELETE), value("KC_LWIN", OIS::KeyCode::KC_LWIN), value("KC_RWIN", OIS::KeyCode::KC_RWIN), value("KC_APPS", OIS::KeyCode::KC_APPS),
-                    value("KC_POWER", OIS::KeyCode::KC_POWER), value("KC_SLEEP", OIS::KeyCode::KC_SLEEP), value("KC_WAKE", OIS::KeyCode::KC_WAKE), value("KC_WEBSEARCH", OIS::KeyCode::KC_WEBSEARCH),
-                    value("KC_WEBFAVORITES", OIS::KeyCode::KC_WEBFAVORITES), value("KC_WEBREFRESH", OIS::KeyCode::KC_WEBREFRESH), value("KC_WEBSTOP", OIS::KeyCode::KC_WEBSTOP), value("KC_WEBFORWARD", OIS::KeyCode::KC_WEBFORWARD),
-                    value("KC_WEBBACK", OIS::KeyCode::KC_WEBBACK), value("KC_MYCOMPUTER", OIS::KeyCode::KC_MYCOMPUTER), value("KC_MAIL", OIS::KeyCode::KC_MAIL), value("KC_MEDIASELECT", OIS::KeyCode::KC_MEDIASELECT)]];
+        module(lua)
+        [
+            class_<OIS::KeyEvent>("KeyEvent")
+            // .def_readwrite("key", &OIS::KeyEvent::key)
+            // .def_readwrite("text", &OIS::KeyEvent::text)
+            .enum_("KeyCode")
+            [
+                value("KC_UNASSIGNED", OIS::KeyCode::KC_UNASSIGNED), value("KC_ESCAPE", OIS::KeyCode::KC_ESCAPE), value("KC_1", OIS::KeyCode::KC_1), value("KC_2", OIS::KeyCode::KC_2), value("KC_3", OIS::KeyCode::KC_3),
+                value("KC_4", OIS::KeyCode::KC_4), value("KC_5", OIS::KeyCode::KC_5), value("KC_6", OIS::KeyCode::KC_6), value("KC_7", OIS::KeyCode::KC_7), value("KC_8", OIS::KeyCode::KC_8), value("KC_9", OIS::KeyCode::KC_9),
+                value("KC_0", OIS::KeyCode::KC_0), value("KC_MINUS", OIS::KeyCode::KC_MINUS), value("KC_EQUALS", OIS::KeyCode::KC_EQUALS), value("KC_BACK", OIS::KeyCode::KC_BACK), value("KC_TAB", OIS::KeyCode::KC_TAB),
+                value("KC_Q", OIS::KeyCode::KC_Q), value("KC_W", OIS::KeyCode::KC_W), value("KC_E", OIS::KeyCode::KC_E), value("KC_R", OIS::KeyCode::KC_R), value("KC_T", OIS::KeyCode::KC_T), value("KC_Y", OIS::KeyCode::KC_Y),
+                value("KC_U", OIS::KeyCode::KC_U), value("KC_I", OIS::KeyCode::KC_I), value("KC_O", OIS::KeyCode::KC_O), value("KC_P", OIS::KeyCode::KC_P), value("KC_LBRACKET", OIS::KeyCode::KC_LBRACKET),
+                value("KC_RBRACKET", OIS::KeyCode::KC_RBRACKET), value("KC_RETURN", OIS::KeyCode::KC_RETURN), value("KC_LCONTROL", OIS::KeyCode::KC_LCONTROL), value("KC_A", OIS::KeyCode::KC_A), value("KC_S", OIS::KeyCode::KC_S),
+                value("KC_D", OIS::KeyCode::KC_D), value("KC_F", OIS::KeyCode::KC_F), value("KC_G", OIS::KeyCode::KC_G), value("KC_H", OIS::KeyCode::KC_H), value("KC_J", OIS::KeyCode::KC_J), value("KC_K", OIS::KeyCode::KC_K),
+                value("KC_L", OIS::KeyCode::KC_L), value("KC_SEMICOLON", OIS::KeyCode::KC_SEMICOLON), value("KC_APOSTROPHE", OIS::KeyCode::KC_APOSTROPHE), value("KC_GRAVE", OIS::KeyCode::KC_GRAVE), value("KC_LSHIFT", OIS::KeyCode::KC_LSHIFT),
+                value("KC_BACKSLASH", OIS::KeyCode::KC_BACKSLASH), value("KC_Z", OIS::KeyCode::KC_Z), value("KC_X", OIS::KeyCode::KC_X), value("KC_C", OIS::KeyCode::KC_C), value("KC_V", OIS::KeyCode::KC_V), value("KC_B", OIS::KeyCode::KC_B),
+                value("KC_N", OIS::KeyCode::KC_N), value("KC_M", OIS::KeyCode::KC_M), value("KC_COMMA", OIS::KeyCode::KC_COMMA), value("KC_PERIOD", OIS::KeyCode::KC_PERIOD), value("KC_SLASH", OIS::KeyCode::KC_SLASH),
+                value("KC_RSHIFT", OIS::KeyCode::KC_RSHIFT), value("KC_MULTIPLY", OIS::KeyCode::KC_MULTIPLY), value("KC_LMENU", OIS::KeyCode::KC_LMENU), value("KC_SPACE", OIS::KeyCode::KC_SPACE), value("KC_CAPITAL", OIS::KeyCode::KC_CAPITAL),
+                value("KC_F1", OIS::KeyCode::KC_F1), value("KC_F2", OIS::KeyCode::KC_F2), value("KC_F3", OIS::KeyCode::KC_F3), value("KC_F4", OIS::KeyCode::KC_F4), value("KC_F5", OIS::KeyCode::KC_F5), value("KC_F6", OIS::KeyCode::KC_F6),
+                value("KC_F7", OIS::KeyCode::KC_F7), value("KC_F8", OIS::KeyCode::KC_F8), value("KC_F9", OIS::KeyCode::KC_F9), value("KC_F10", OIS::KeyCode::KC_F10), value("KC_NUMLOCK", OIS::KeyCode::KC_NUMLOCK),
+                value("KC_SCROLL", OIS::KeyCode::KC_SCROLL), value("KC_NUMPAD7", OIS::KeyCode::KC_NUMPAD7), value("KC_NUMPAD8", OIS::KeyCode::KC_NUMPAD8), value("KC_NUMPAD9", OIS::KeyCode::KC_NUMPAD9),
+                value("KC_SUBTRACT", OIS::KeyCode::KC_SUBTRACT), value("KC_NUMPAD4", OIS::KeyCode::KC_NUMPAD4), value("KC_NUMPAD5", OIS::KeyCode::KC_NUMPAD5), value("KC_NUMPAD6", OIS::KeyCode::KC_NUMPAD6), value("KC_ADD", OIS::KeyCode::KC_ADD),
+                value("KC_NUMPAD1", OIS::KeyCode::KC_NUMPAD1), value("KC_NUMPAD2", OIS::KeyCode::KC_NUMPAD2), value("KC_NUMPAD3", OIS::KeyCode::KC_NUMPAD3), value("KC_NUMPAD0", OIS::KeyCode::KC_NUMPAD0),
+                value("KC_DECIMAL", OIS::KeyCode::KC_DECIMAL), value("KC_OEM_102", OIS::KeyCode::KC_OEM_102), value("KC_F11", OIS::KeyCode::KC_F11), value("KC_F12", OIS::KeyCode::KC_F12), value("KC_F13", OIS::KeyCode::KC_F13),
+                value("KC_F14", OIS::KeyCode::KC_F14), value("KC_F15", OIS::KeyCode::KC_F15), value("KC_KANA", OIS::KeyCode::KC_KANA), value("KC_ABNT_C1", OIS::KeyCode::KC_ABNT_C1), value("KC_CONVERT", OIS::KeyCode::KC_CONVERT),
+                value("KC_NOCONVERT", OIS::KeyCode::KC_NOCONVERT), value("KC_YEN", OIS::KeyCode::KC_YEN), value("KC_ABNT_C2", OIS::KeyCode::KC_ABNT_C2), value("KC_NUMPADEQUALS", OIS::KeyCode::KC_NUMPADEQUALS),
+                value("KC_PREVTRACK", OIS::KeyCode::KC_PREVTRACK), value("KC_AT", OIS::KeyCode::KC_AT), value("KC_COLON", OIS::KeyCode::KC_COLON), value("KC_UNDERLINE", OIS::KeyCode::KC_UNDERLINE), value("KC_KANJI", OIS::KeyCode::KC_KANJI),
+                value("KC_STOP", OIS::KeyCode::KC_STOP), value("KC_AX", OIS::KeyCode::KC_AX), value("KC_UNLABELED", OIS::KeyCode::KC_UNLABELED), value("KC_NEXTTRACK", OIS::KeyCode::KC_NEXTTRACK),
+                value("KC_NUMPADENTER", OIS::KeyCode::KC_NUMPADENTER), value("KC_RCONTROL", OIS::KeyCode::KC_RCONTROL), value("KC_MUTE", OIS::KeyCode::KC_MUTE), value("KC_CALCULATOR", OIS::KeyCode::KC_CALCULATOR),
+                value("KC_PLAYPAUSE", OIS::KeyCode::KC_PLAYPAUSE), value("KC_MEDIASTOP", OIS::KeyCode::KC_MEDIASTOP), value("KC_VOLUMEDOWN", OIS::KeyCode::KC_VOLUMEDOWN), value("KC_VOLUMEUP", OIS::KeyCode::KC_VOLUMEUP),
+                value("KC_WEBHOME", OIS::KeyCode::KC_WEBHOME), value("KC_NUMPADCOMMA", OIS::KeyCode::KC_NUMPADCOMMA), value("KC_DIVIDE", OIS::KeyCode::KC_DIVIDE), value("KC_SYSRQ", OIS::KeyCode::KC_SYSRQ),
+                value("KC_RMENU", OIS::KeyCode::KC_RMENU), value("KC_PAUSE", OIS::KeyCode::KC_PAUSE), value("KC_HOME", OIS::KeyCode::KC_HOME), value("KC_UP", OIS::KeyCode::KC_UP), value("KC_PGUP", OIS::KeyCode::KC_PGUP),
+                value("KC_LEFT", OIS::KeyCode::KC_LEFT), value("KC_RIGHT", OIS::KeyCode::KC_RIGHT), value("KC_END", OIS::KeyCode::KC_END), value("KC_DOWN", OIS::KeyCode::KC_DOWN), value("KC_PGDOWN", OIS::KeyCode::KC_PGDOWN),
+                value("KC_INSERT", OIS::KeyCode::KC_INSERT), value("KC_DELETE", OIS::KeyCode::KC_DELETE), value("KC_LWIN", OIS::KeyCode::KC_LWIN), value("KC_RWIN", OIS::KeyCode::KC_RWIN), value("KC_APPS", OIS::KeyCode::KC_APPS),
+                value("KC_POWER", OIS::KeyCode::KC_POWER), value("KC_SLEEP", OIS::KeyCode::KC_SLEEP), value("KC_WAKE", OIS::KeyCode::KC_WAKE), value("KC_WEBSEARCH", OIS::KeyCode::KC_WEBSEARCH),
+                value("KC_WEBFAVORITES", OIS::KeyCode::KC_WEBFAVORITES), value("KC_WEBREFRESH", OIS::KeyCode::KC_WEBREFRESH), value("KC_WEBSTOP", OIS::KeyCode::KC_WEBSTOP), value("KC_WEBFORWARD", OIS::KeyCode::KC_WEBFORWARD),
+                value("KC_WEBBACK", OIS::KeyCode::KC_WEBBACK), value("KC_MYCOMPUTER", OIS::KeyCode::KC_MYCOMPUTER), value("KC_MAIL", OIS::KeyCode::KC_MAIL), value("KC_MEDIASELECT", OIS::KeyCode::KC_MEDIASELECT)
+            ]
+        ];
 
         AddClassToCollection("KeyEvent", "class", "OIS Keyboard key event class.");
         AddClassToCollection("KeyEvent", "KC_1", "KC_1 key.");
@@ -1160,91 +1090,117 @@ namespace NOWA
         AddClassToCollection("KeyEvent", "KC_MAIL", "KC_MAIL key.");
         AddClassToCollection("KeyEvent", "KC_MEDIASELECT", "KC_MEDIASELECT key.");
 
-        module(lua)[class_<InputDeviceModule>("InputDeviceModule")
-                .enum_("Action")[value("UP", InputDeviceModule::UP), value("DOWN", InputDeviceModule::DOWN), value("LEFT", InputDeviceModule::LEFT), value("RIGHT", InputDeviceModule::RIGHT), value("JUMP", InputDeviceModule::JUMP),
-                    value("RUN", InputDeviceModule::RUN), value("COWER", InputDeviceModule::COWER), value("DUCK", InputDeviceModule::DUCK), value("SNEAK", InputDeviceModule::SNEAK), value("ATTACK_1", InputDeviceModule::ATTACK_1),
-                    value("ATTACK_2", InputDeviceModule::ATTACK_2), value("ACTION", InputDeviceModule::ACTION), value("RELOAD", InputDeviceModule::RELOAD), value("INVENTORY", InputDeviceModule::INVENTORY), value("MAP", InputDeviceModule::MAP),
-                    value("PAUSE", InputDeviceModule::PAUSE), value("START", InputDeviceModule::START), value("SAVE", InputDeviceModule::SAVE), value("LOAD", InputDeviceModule::LOAD), value("CAMERA_FORWARD", InputDeviceModule::CAMERA_FORWARD),
-                    value("CAMERA_BACKWARD", InputDeviceModule::CAMERA_BACKWARD), value("CAMERA_LEFT", InputDeviceModule::CAMERA_LEFT), value("CAMERA_RIGHT", InputDeviceModule::CAMERA_RIGHT), value("CAMERA_UP", InputDeviceModule::CAMERA_UP),
-                    value("CAMERA_DOWN", InputDeviceModule::CAMERA_DOWN), value("CONSOLE", InputDeviceModule::CONSOLE), value("WEAPON_CHANGE_FORWARD", InputDeviceModule::WEAPON_CHANGE_FORWARD),
-                    value("WEAPON_CHANGE_BACKWARD", InputDeviceModule::WEAPON_CHANGE_BACKWARD), value("FLASH_LIGHT", InputDeviceModule::FLASH_LIGHT), value("SELECT", InputDeviceModule::SELECT), value("GRID", InputDeviceModule::GRID)]
-                .enum_("JoyStickButton")[value("BUTTON_A", InputDeviceModule::BUTTON_A), value("BUTTON_B", InputDeviceModule::BUTTON_B), value("BUTTON_X", InputDeviceModule::BUTTON_X), value("BUTTON_Y", InputDeviceModule::BUTTON_Y),
-                    value("BUTTON_LB", InputDeviceModule::BUTTON_LB), value("BUTTON_RB", InputDeviceModule::BUTTON_RB), value("BUTTON_LT", InputDeviceModule::BUTTON_LT), value("BUTTON_RT", InputDeviceModule::BUTTON_RT),
-                    value("BUTTON_SELECT", InputDeviceModule::BUTTON_SELECT), value("BUTTON_START", InputDeviceModule::BUTTON_START), value("BUTTON_LEFT_STICK", InputDeviceModule::BUTTON_LEFT_STICK),
-                    value("BUTTON_RIGHT_STICK", InputDeviceModule::BUTTON_RIGHT_STICK), value("BUTTON_UP", InputDeviceModule::BUTTON_LEFT_STICK_UP), value("BUTTON_DOWN", InputDeviceModule::BUTTON_LEFT_STICK_DOWN),
-                    value("BUTTON_LEFT", InputDeviceModule::BUTTON_LEFT_STICK_LEFT), value("BUTTON_RIGHT", InputDeviceModule::BUTTON_LEFT_STICK_RIGHT), value("BUTTON_RIGHT_STICK_UP", InputDeviceModule::BUTTON_RIGHT_STICK_UP),
-                    value("BUTTON_RIGHT_STICK_DOWN", InputDeviceModule::BUTTON_RIGHT_STICK_DOWN), value("BUTTON_RIGHT_STICK_LEFT", InputDeviceModule::BUTTON_RIGHT_STICK_LEFT),
-                    value("BUTTON_RIGHT_STICK_RIGHT", InputDeviceModule::BUTTON_RIGHT_STICK_RIGHT), value("BUTTON_NONE", InputDeviceModule::BUTTON_NONE)]
-                .def("getDeviceName", &InputDeviceModule::getDeviceName)
-                .def("isKeyboardDevice", &InputDeviceModule::isKeyboardDevice)
-                .def("getMappedKey", &InputDeviceModule::getMappedKey)
-                .def("getStringFromMappedKey", &InputDeviceModule::getStringFromMappedKey)
-                .def("getMappedKeyFromString", &InputDeviceModule::getMappedKeyFromString)
-                .def("getMappedButton", &InputDeviceModule::getMappedButton)
-                .def("getStringFromMappedButton", &InputDeviceModule::getStringFromMappedButton)
-                .def("setJoyStickDeadZone", &InputDeviceModule::setJoyStickDeadZone)
-                .def("hasActiveJoyStick", &InputDeviceModule::hasActiveJoyStick)
-                .def("getLeftStickHorizontalMovingStrength", &InputDeviceModule::getLeftStickHorizontalMovingStrength)
-                .def("getLeftStickVerticalMovingStrength", &InputDeviceModule::getLeftStickVerticalMovingStrength)
-                .def("getRightStickHorizontalMovingStrength", &InputDeviceModule::getRightStickHorizontalMovingStrength)
-                .def("getRightStickVerticalMovingStrength", &InputDeviceModule::getRightStickVerticalMovingStrength)
-                .def("isKeyDown", &InputDeviceModule::isKeyDown)
-                .def("isButtonDown", &InputDeviceModule::isButtonDown)
-                .def("isActionDown", &InputDeviceModule::isActionDown)
-                .def("isActionDownAmount", &InputDeviceModule::isActionDownAmount)
-                .def("isActionDownPressed", &InputDeviceModule::isActionPressed)
+        module(lua)
+        [
+            class_<InputDeviceModule>("InputDeviceModule")
+            .enum_("Action")
+            [
+                value("UP", InputDeviceModule::UP), value("DOWN", InputDeviceModule::DOWN), value("LEFT", InputDeviceModule::LEFT), value("RIGHT", InputDeviceModule::RIGHT), value("JUMP", InputDeviceModule::JUMP),
+                value("RUN", InputDeviceModule::RUN), value("COWER", InputDeviceModule::COWER), value("DUCK", InputDeviceModule::DUCK), value("SNEAK", InputDeviceModule::SNEAK), value("ATTACK_1", InputDeviceModule::ATTACK_1),
+                value("ATTACK_2", InputDeviceModule::ATTACK_2), value("ACTION", InputDeviceModule::ACTION), value("RELOAD", InputDeviceModule::RELOAD), value("INVENTORY", InputDeviceModule::INVENTORY), value("MAP", InputDeviceModule::MAP),
+                value("PAUSE", InputDeviceModule::PAUSE), value("START", InputDeviceModule::START), value("SAVE", InputDeviceModule::SAVE), value("LOAD", InputDeviceModule::LOAD), value("CAMERA_FORWARD", InputDeviceModule::CAMERA_FORWARD),
+                value("CAMERA_BACKWARD", InputDeviceModule::CAMERA_BACKWARD), value("CAMERA_LEFT", InputDeviceModule::CAMERA_LEFT), value("CAMERA_RIGHT", InputDeviceModule::CAMERA_RIGHT), value("CAMERA_UP", InputDeviceModule::CAMERA_UP),
+                value("CAMERA_DOWN", InputDeviceModule::CAMERA_DOWN), value("CONSOLE", InputDeviceModule::CONSOLE), value("WEAPON_CHANGE_FORWARD", InputDeviceModule::WEAPON_CHANGE_FORWARD),
+                value("WEAPON_CHANGE_BACKWARD", InputDeviceModule::WEAPON_CHANGE_BACKWARD), value("FLASH_LIGHT", InputDeviceModule::FLASH_LIGHT), value("SELECT", InputDeviceModule::SELECT), value("GRID", InputDeviceModule::GRID),
+                value("NONE", InputDeviceModule::NONE)
+            ]
+            .enum_("JoyStickButton")
+            [
+                value("BUTTON_A", InputDeviceModule::BUTTON_A), value("BUTTON_B", InputDeviceModule::BUTTON_B), value("BUTTON_X", InputDeviceModule::BUTTON_X), value("BUTTON_Y", InputDeviceModule::BUTTON_Y),
+                value("BUTTON_LB", InputDeviceModule::BUTTON_LB), value("BUTTON_RB", InputDeviceModule::BUTTON_RB), value("BUTTON_LT", InputDeviceModule::BUTTON_LT), value("BUTTON_RT", InputDeviceModule::BUTTON_RT),
+                value("BUTTON_SELECT", InputDeviceModule::BUTTON_SELECT), value("BUTTON_START", InputDeviceModule::BUTTON_START), value("BUTTON_LEFT_STICK", InputDeviceModule::BUTTON_LEFT_STICK),
+                value("BUTTON_RIGHT_STICK", InputDeviceModule::BUTTON_RIGHT_STICK), value("BUTTON_UP", InputDeviceModule::BUTTON_LEFT_STICK_UP), value("BUTTON_DOWN", InputDeviceModule::BUTTON_LEFT_STICK_DOWN),
+                value("BUTTON_LEFT", InputDeviceModule::BUTTON_LEFT_STICK_LEFT), value("BUTTON_RIGHT", InputDeviceModule::BUTTON_LEFT_STICK_RIGHT), value("BUTTON_RIGHT_STICK_UP", InputDeviceModule::BUTTON_RIGHT_STICK_UP),
+                value("BUTTON_RIGHT_STICK_DOWN", InputDeviceModule::BUTTON_RIGHT_STICK_DOWN), value("BUTTON_RIGHT_STICK_LEFT", InputDeviceModule::BUTTON_RIGHT_STICK_LEFT),
+                value("BUTTON_RIGHT_STICK_RIGHT", InputDeviceModule::BUTTON_RIGHT_STICK_RIGHT),
+                // Clearer names for the left stick directions (BUTTON_UP/DOWN/LEFT/RIGHT stay for existing scripts)
+                value("BUTTON_LEFT_STICK_UP", InputDeviceModule::BUTTON_LEFT_STICK_UP), value("BUTTON_LEFT_STICK_DOWN", InputDeviceModule::BUTTON_LEFT_STICK_DOWN), value("BUTTON_LEFT_STICK_LEFT", InputDeviceModule::BUTTON_LEFT_STICK_LEFT),
+                value("BUTTON_LEFT_STICK_RIGHT", InputDeviceModule::BUTTON_LEFT_STICK_RIGHT),
+                // D-pad (previously the D-pad was reported as BUTTON_LEFT / BUTTON_RIGHT and had no up/down at all)
+                value("BUTTON_DPAD_UP", InputDeviceModule::BUTTON_DPAD_UP), value("BUTTON_DPAD_DOWN", InputDeviceModule::BUTTON_DPAD_DOWN), value("BUTTON_DPAD_LEFT", InputDeviceModule::BUTTON_DPAD_LEFT),
+                value("BUTTON_DPAD_RIGHT", InputDeviceModule::BUTTON_DPAD_RIGHT), value("BUTTON_NONE", InputDeviceModule::BUTTON_NONE)
+            ]
+            .def("getDeviceName", &InputDeviceModule::getDeviceName)
+            .def("isKeyboardDevice", &InputDeviceModule::isKeyboardDevice)
+            .def("getMappedKey", &InputDeviceModule::getMappedKey)
+            .def("getStringFromMappedKey", &InputDeviceModule::getStringFromMappedKey)
+            .def("getMappedKeyFromString", &InputDeviceModule::getMappedKeyFromString)
+            .def("getMappedButton", &InputDeviceModule::getMappedButton)
+            .def("getStringFromMappedButton", &InputDeviceModule::getStringFromMappedButton)
+            .def("setJoyStickDeadZone", &InputDeviceModule::setJoyStickDeadZone)
+            .def("hasActiveJoyStick", &InputDeviceModule::hasActiveJoyStick)
+            .def("getLeftStickHorizontalMovingStrength", &InputDeviceModule::getLeftStickHorizontalMovingStrength)
+            .def("getLeftStickVerticalMovingStrength", &InputDeviceModule::getLeftStickVerticalMovingStrength)
+            .def("getRightStickHorizontalMovingStrength", &InputDeviceModule::getRightStickHorizontalMovingStrength)
+            .def("getRightStickVerticalMovingStrength", &InputDeviceModule::getRightStickVerticalMovingStrength)
+            .def("isKeyDown", &InputDeviceModule::isKeyDown)
+            .def("isButtonDown", &InputDeviceModule::isButtonDown)
+            .def("isActionDown", &InputDeviceModule::isActionDown)
+            .def("isActionDownAmount", &InputDeviceModule::isActionDownAmount)
+            .def("isActionDownPressed", &InputDeviceModule::isActionPressed)
 
-                // https://sourceforge.net/p/luabind/mailman/message/21021347/
-                // .def("areButtonsDown", &InputDeviceModule::areButtonsDown, luabind::copy_table(boost::arg<3>())) // _1 is for this, _2 is the actual in parameter // boost::arg<2>()
-                // .def("areButtonsDown", &InputDeviceModule::areButtonsDown, raw(boost::bind(InputDeviceModule::areButtonsDown, _2)))
-                // .def("areButtonsDown", &areButtonsDown, raw(boost::arg<3>()))
-                .def("areButtonsDown2", &InputDeviceModule::areButtonsDown2)
-                .def("areButtonsDown3", &InputDeviceModule::areButtonsDown3)
-                .def("areButtonsDown4", &InputDeviceModule::areButtonsDown4)
-                // .def("toAngleAxis", (void(Quaternion::*)(Radian&, Vector3&) const) &Quaternion::ToAngleAxis)
-                .def("getPressedButton", &InputDeviceModule::getPressedButton)
-                .def("getPressedButtons", &getPressedButtons)
-                .def("setAnalogActionThreshold", &InputDeviceModule::setAnalogActionThreshold)
-                .def("getAnalogActionThreshold", &InputDeviceModule::getAnalogActionThreshold)
-                .def("getSteerAxis", &InputDeviceModule::getSteerAxis)];
+            // https://sourceforge.net/p/luabind/mailman/message/21021347/
+            // .def("areButtonsDown", &InputDeviceModule::areButtonsDown, luabind::copy_table(boost::arg<3>())) // _1 is for this, _2 is the actual in parameter // boost::arg<2>()
+            // .def("areButtonsDown", &InputDeviceModule::areButtonsDown, raw(boost::bind(InputDeviceModule::areButtonsDown, _2)))
+            // .def("areButtonsDown", &areButtonsDown, raw(boost::arg<3>()))
+            .def("areButtonsDown2", &InputDeviceModule::areButtonsDown2)
+            .def("areButtonsDown3", &InputDeviceModule::areButtonsDown3)
+            .def("areButtonsDown4", &InputDeviceModule::areButtonsDown4)
+            // .def("toAngleAxis", (void(Quaternion::*)(Radian&, Vector3&) const) &Quaternion::ToAngleAxis)
+            .def("getPressedButton", &InputDeviceModule::getPressedButton)
+            .def("getPressedButtons", &getPressedButtons)
+            .def("setAnalogActionThreshold", &InputDeviceModule::setAnalogActionThreshold)
+            .def("getAnalogActionThreshold", &InputDeviceModule::getAnalogActionThreshold)
+            .def("getSteerAxis", &InputDeviceModule::getSteerAxis)
+            .def("isOccupied", &InputDeviceModule::isOccupied)
+            .def("getOccupiedId", &InputDeviceModule::getOccupiedId)
+            .def("getCompanionModule", &InputDeviceModule::getCompanionModule)
+            .def("isLastInputFromJoyStick", &InputDeviceModule::isLastInputFromJoyStick)
+            .def("isJoinInputDown", &InputDeviceModule::isJoinInputDown)
+        ];
 
         object globalVars = globals(lua);
         AddClassToCollection("InputDeviceModule", "class", "Class for controlling an input device like keyboard or joystick.");
         AddClassToCollection("InputDeviceModule", "String getDeviceName()", "Gets the device name.");
         AddClassToCollection("InputDeviceModule", "bool isKeyboardDevice()", "Gets Whether its a keyboard device. If false, its a joystick device.");
         AddClassToCollection("InputDeviceModule", "KeyCode getMappedKey(Action action)", "Gets the OIS key that is mapped as action.");
-        AddClassToCollection("InputDeviceModule", "String getStringFromMappedKey(Action action)", "Gets the OIS key as string that is mapped as action.");
+        AddClassToCollection("InputDeviceModule", "String getStringFromMappedKey(KeyCode keyCode)", "Gets the given OIS key as string.");
         AddClassToCollection("InputDeviceModule", "KeyCode getMappedKeyFromString(String key)", "Gets the OIS key from string key.");
         AddClassToCollection("InputDeviceModule", "JoyStickButton getMappedButton(Action action)", "Gets the OIS joystick button that is mapped as action.");
-        AddClassToCollection("InputDeviceModule", "String getStringFromMappedButton(Action action)", "Gets the OIS joystick button as string that is mapped as action.");
+        AddClassToCollection("InputDeviceModule", "String getStringFromMappedButton(JoyStickButton button)", "Gets the given joystick button as string.");
         AddClassToCollection("InputDeviceModule", "void setJoyStickDeadZone(float deadZone)", "Sets the joystick dead zone.");
-        AddClassToCollection("InputDeviceModule", "bool hasActiveJoyStick()", "Gets whether a joystick is plugged in and active.");
+        AddClassToCollection("InputDeviceModule", "bool hasActiveJoyStick()", "Gets whether this device can deliver gamepad input: A gamepad, or a keyboard with a companion gamepad ('Auto' device).");
         AddClassToCollection("InputDeviceModule", "float getLeftStickHorizontalMovingStrength()",
             "Gets the strength of the left stick horizontal moving."
             " If 0 horizontal stick is not moved. When moved right values are in range (0, 1]. When moved left values are in range (0, -1].");
         AddClassToCollection("InputDeviceModule", "float getLeftStickVerticalMovingStrength()",
             "Gets the strength of the left stick vertical moving."
-            " If 0 horizontal stick is not moved. When moved right values are in range (0, 1]. When moved left values are in range (0, -1].");
-        AddClassToCollection("InputDeviceModule", "float getLeftStickHorizontalMovingStrength()",
+            " If 0 vertical stick is not moved. When moved up values are in range [-1, 0). When moved down values are in range (0, 1].");
+        AddClassToCollection("InputDeviceModule", "float getRightStickHorizontalMovingStrength()",
             "Gets the strength of the right stick horizontal moving."
             " If 0 horizontal stick is not moved. When moved right values are in range (0, 1]. When moved left values are in range (0, -1].");
-        AddClassToCollection("InputDeviceModule", "float getLeftStickVerticalMovingStrength()",
+        AddClassToCollection("InputDeviceModule", "float getRightStickVerticalMovingStrength()",
             "Gets the strength of the right stick vertical moving."
-            " If 0 horizontal stick is not moved. When moved right values are in range (0, 1]. When moved left values are in range (0, -1].");
+            " If 0 vertical stick is not moved. When moved up values are in range [-1, 0). When moved down values are in range (0, 1].");
         AddClassToCollection("InputDeviceModule", "bool isKeyDown(KeyCode key)", "Gets whether a specifig key is down.");
         AddClassToCollection("InputDeviceModule", "bool isButtonDown(JoyStickButton button)", "Gets whether a specifig joystick button is down.");
         AddClassToCollection("InputDeviceModule", "bool isActionDown(Action action)", "Gets whether a specifig mapped action is down.");
         AddClassToCollection("InputDeviceModule", "bool isActionDownAmount(Action action, number dt, number actionDuration)",
             "Gets whether a specifig mapped action is down, but only max for the specifig action duration. Default value is 0.2 seconds.");
-        AddClassToCollection("InputDeviceModule", "bool isActionPressed(Action action, number dt, number durationBetweenTheAction)", "Gets whether a specifig mapped action is pressed.");
+        AddClassToCollection("InputDeviceModule", "bool isActionDownPressed(Action action, number dt, number durationBetweenTheAction)", "Gets whether a specifig mapped action is pressed. Each action has its own timer.");
         AddClassToCollection("InputDeviceModule", "bool areButtonsDown2(JoyStickButton button1, JoyStickButton button2)", "Gets whether two specific joystick buttons are down at the same time.");
         AddClassToCollection("InputDeviceModule", "bool areButtonsDown3(JoyStickButton button1, JoyStickButton button2, JoyStickButton button3)", "Gets whether three specific joystick buttons are down at the same time.");
-        AddClassToCollection("InputDeviceModule", "bool areButtonsDown3(JoyStickButton button1, JoyStickButton button2, JoyStickButton button3, JoyStickButton button4)", "Gets whether four specific joystick buttons are down at the same time.");
+        AddClassToCollection("InputDeviceModule", "bool areButtonsDown4(JoyStickButton button1, JoyStickButton button2, JoyStickButton button3, JoyStickButton button4)", "Gets whether four specific joystick buttons are down at the same time.");
         AddClassToCollection("InputDeviceModule", "JoyStickButton getPressedButton()", "Gets the currently pressed joystick button.");
         AddClassToCollection("InputDeviceModule", "Table[number][JoyStickButton] getPressedButtons()", "Gets the currently simultanously pressed joystick buttons.");
         AddClassToCollection("InputDeviceModule", "void setAnalogActionThreshold(float t)", "Sets the threshold for treating stick as digital actions (LEFT/RIGHT/UP/DOWN).");
         AddClassToCollection("InputDeviceModule", "float getAnalogActionThreshold()", "Gets the threshold for treating stick as digital actions (LEFT/RIGHT/UP/DOWN).");
         AddClassToCollection("InputDeviceModule", "float getSteerAxis()", "Returns steering axis in [-1..1] from keyboard or left stick.");
+        AddClassToCollection("InputDeviceModule", "bool isOccupied()", "Gets whether this device is assigned to a game object.");
+        AddClassToCollection("InputDeviceModule", "number getOccupiedId()", "Gets the id of the game object this device is assigned to, or 0.");
+        AddClassToCollection("InputDeviceModule", "InputDeviceModule getCompanionModule()", "Gets the companion gamepad of a keyboard device ('Auto' device), or nil.");
+        AddClassToCollection("InputDeviceModule", "bool isLastInputFromJoyStick()", "Gets whether the last input on this device (or its companion gamepad) came from a gamepad. Use it to show gamepad or keyboard button prompts.");
+        AddClassToCollection("InputDeviceModule", "bool isJoinInputDown()", "Gets whether the mapped jump or start is pressed on this device itself (used for 'press a button to join').");
 
         // For both
         globalVars["NOWA_A_UP"] = InputDeviceModule::UP;
@@ -1277,6 +1233,7 @@ namespace NOWA
         globalVars["NOWA_A_WEAPON_CHANGE_BACKWARD"] = InputDeviceModule::WEAPON_CHANGE_BACKWARD;
         globalVars["NOWA_A_FLASH_LIGHT"] = InputDeviceModule::FLASH_LIGHT;
         globalVars["NOWA_A_SELECT"] = InputDeviceModule::SELECT;
+        globalVars["NOWA_A_GRID"] = InputDeviceModule::GRID;
 
         AddClassToCollection("InputMapping", "NOWA_A_UP", "Mapped up action (does not matter if keyboard or joystick is used).");
         AddClassToCollection("NOWA_A_UP", "singleton", "Mapped up action (does not matter if keyboard or joystick is used).");
@@ -1312,8 +1269,8 @@ namespace NOWA
         AddClassToCollection("NOWA_A_LOAD", "singleton", "Mapped load action (does not matter if keyboard or joystick is used).");
         AddClassToCollection("InputMapping", "NOWA_A_PAUSE", "Mapped pause action (does not matter if keyboard or joystick is used).");
         AddClassToCollection("NOWA_A_PAUSE", "singleton", "Mapped pause action (does not matter if keyboard or joystick is used).");
-        AddClassToCollection("InputMapping", "NOWA_A_MENU", "Mapped menu action (does not matter if keyboard or joystick is used).");
-        AddClassToCollection("NOWA_A_MENU", "singleton", "Mapped menu action (does not matter if keyboard or joystick is used).");
+        AddClassToCollection("InputMapping", "NOWA_A_START", "Mapped start (menu) action (does not matter if keyboard or joystick is used).");
+        AddClassToCollection("NOWA_A_START", "singleton", "Mapped start (menu) action (does not matter if keyboard or joystick is used).");
         AddClassToCollection("InputMapping", "NOWA_A_MAP", "Mapped map action (does not matter if keyboard or joystick is used).");
         AddClassToCollection("NOWA_A_MAP", "singleton", "Mapped map action (does not matter if keyboard or joystick is used).");
         AddClassToCollection("InputMapping", "NOWA_A_CAMERA_FORWARD", "Mapped camera forward action (does not matter if keyboard or joystick is used).");
@@ -1338,6 +1295,8 @@ namespace NOWA
         AddClassToCollection("NOWA_A_FLASH_LIGHT", "singleton", "Mapped flash light action (does not matter if keyboard or joystick is used).");
         AddClassToCollection("InputMapping", "NOWA_A_SELECT", "Mapped select action (does not matter if keyboard or joystick is used).");
         AddClassToCollection("NOWA_A_SELECT", "singleton", "Mapped select action (does not matter if keyboard or joystick is used).");
+        AddClassToCollection("InputMapping", "NOWA_A_GRID", "Mapped grid action (does not matter if keyboard or joystick is used).");
+        AddClassToCollection("NOWA_A_GRID", "singleton", "Mapped grid action (does not matter if keyboard or joystick is used).");
     }
 
     void bindMovableObject(lua_State* lua)
@@ -4289,33 +4248,36 @@ namespace NOWA
 
     void bindGameProgressModule(lua_State* lua)
     {
-        module(lua)[class_<GameProgressModule>("GameProgressModule")
-                // .def("getInstance", &GameProgressModule::getInstance) //returns static singleton instance
-                // .def("addScene", &GameProgressModule::addScene)
-                // .def("loadScene", &GameProgressModule::loadScene)
-                // .def("loadSceneShowProgress", &GameProgressModule::loadSceneShowProgress)
-                // .def("setPlayerName", &GameProgressModule::setPlayerName)
-                // .def("determinePlayerStartLocation", &GameProgressModule::determinePlayerStartLocation)
-                .def("getCurrentSceneName", &GameProgressModule::getCurrentSceneName)
-                .def("saveProgress", &GameProgressModule::saveProgress)
-                .def("saveValue", &saveValue)
-                .def("saveValues", &saveValues)
-                .def("loadProgress", &GameProgressModule::loadProgress)
-                .def("loadValue", &loadValue)
-                .def("loadValues", &loadValues)
-                .def("getGlobalValue", &GameProgressModule::getGlobalValue)
-                .def("setGlobalBoolValue", &GameProgressModule::setGlobalBoolValue)
-                // Lua knows only about number!
-                // .def("setGlobalIntValue", &GameProgressModule::setGlobalIntValue)
-                // .def("setGlobalUIntValue", &GameProgressModule::setGlobalUIntValue)
-                // .def("setGlobalULongValue", &GameProgressModule::setGlobalULongValue)
-                .def("setGlobalNumberValue", &GameProgressModule::setGlobalRealValue)
-                .def("setGlobalStringValue", &GameProgressModule::setGlobalStringValue)
-                .def("setGlobalVector2Value", &GameProgressModule::setGlobalVector2Value)
-                .def("setGlobalVector3Value", &GameProgressModule::setGlobalVector3Value)
-                .def("setGlobalVector4Value", &GameProgressModule::setGlobalVector4Value)
-                .def("changeScene", &GameProgressModule::changeScene)
-                .def("changeSceneShowProgress", &GameProgressModule::changeSceneShowProgress)];
+        module(lua)
+        [
+            class_<GameProgressModule>("GameProgressModule")
+            // .def("getInstance", &GameProgressModule::getInstance) //returns static singleton instance
+            // .def("addScene", &GameProgressModule::addScene)
+            // .def("loadScene", &GameProgressModule::loadScene)
+            // .def("loadSceneShowProgress", &GameProgressModule::loadSceneShowProgress)
+            // .def("setPlayerName", &GameProgressModule::setPlayerName)
+            .def("getCurrentSceneName", &GameProgressModule::getCurrentSceneName)
+            .def("saveProgress", &GameProgressModule::saveProgress)
+            .def("saveValue", &saveValue)
+            .def("saveValues", &saveValues)
+            .def("loadProgress", &GameProgressModule::loadProgress)
+            .def("loadValue", &loadValue)
+            .def("loadValues", &loadValues)
+            .def("getGlobalValue", &GameProgressModule::getGlobalValue)
+            .def("setGlobalBoolValue", &GameProgressModule::setGlobalBoolValue)
+            // Lua knows only about number!
+            // .def("setGlobalIntValue", &GameProgressModule::setGlobalIntValue)
+            // .def("setGlobalUIntValue", &GameProgressModule::setGlobalUIntValue)
+            // .def("setGlobalULongValue", &GameProgressModule::setGlobalULongValue)
+            .def("setGlobalNumberValue", &GameProgressModule::setGlobalRealValue)
+            .def("setGlobalStringValue", &GameProgressModule::setGlobalStringValue)
+            .def("setGlobalVector2Value", &GameProgressModule::setGlobalVector2Value)
+            .def("setGlobalVector3Value", &GameProgressModule::setGlobalVector3Value)
+            .def("setGlobalVector4Value", &GameProgressModule::setGlobalVector4Value)
+            .def("changeScene", &GameProgressModule::changeScene)
+            .def("setRequestedTargetLocationName", &GameProgressModule::setRequestedTargetLocationName)
+            .def("changeSceneShowProgress", &GameProgressModule::changeSceneShowProgress)
+        ];
 
         // object globalVars = globals(lua);
         // globalVars["GameProgressModule"] = AppStateManager::getSingletonPtr()->getGameProgressModule();
@@ -4359,7 +4321,8 @@ namespace NOWA
         AddClassToCollection("GameProgressModule", "Variant setGlobalVector4Value(String attributeName, Vector4 value)",
             "Sets the Vector4 value for the given attribute name and returns the global Variant. Note: Global values are stored directly in GameProgressModule. "
             "They can be used for the whole game logic, like which boss has been defeated etc.");
-        AddClassToCollection("GameProgressModule", "void changeScene(String sceneName)", "Changes the current scene to the new given one.");
+        AddClassToCollection("GameProgressModule", "void changeScene(String sceneName)", "Changes the current scene to the new given one. Note: if there is an exitcomponent in a scene. this may be used: "
+            " AppStateManager:getGameProgressModule():setRequestedTargetLocationName('StartUpperEast'); AppStateManager:getGameProgressModule():changeScene('Level3');");
         AddClassToCollection("GameProgressModule", "void changeSceneShowProgress(String sceneName)", "Changes the current scene to the new given one. Also shows the loading progress.");
     }
 
@@ -10938,25 +10901,33 @@ namespace NOWA
 
     void bindCore(lua_State* lua)
     {
-        module(lua)[class_<Core>("Core")
-                .def("getSingletonPtr", &Core::getSingletonPtr)
-                .def("getCurrentSceneBoundLeftNear", &Core::getCurrentSceneBoundLeftNear)
-                .def("getCurrentSceneBoundRightFar", &Core::getCurrentSceneBoundRightFar)
-                .def("isGame", &Core::getIsGame)
-                .def("getCurrentDateAndTime", &getCurrentDateAndTime)
-                .def("getCurrentDateAndTime2", &Core::getCurrentDateAndTime)
-                .def("setCurrentSaveGameName", &Core::setCurrentSaveGameName)
-                .def("getCurrentSaveGameName", &Core::getCurrentSaveGameName)
-                .def("getSaveFilePathName", &Core::getSaveFilePathName)
-                .def("getSceneSnapshotsInProject", &getSceneSnapshotsInProject)
-                .def("getSaveNamesInProject", &getSaveNamesInProject)
-                .def("getProjectName", &Core::getProjectName)
-                .def("getSceneName", &Core::getSceneName)];
+        module(lua)
+        [
+            class_<Core>("Core")
+            .def("getSingletonPtr", &Core::getSingletonPtr)
+            .def("getCurrentSceneBoundLeftNear", &Core::getCurrentSceneBoundLeftNear)
+            .def("getCurrentSceneBoundRightFar", &Core::getCurrentSceneBoundRightFar)
+            .def("isGame", &Core::getIsGame)
+            .def("getCurrentDateAndTime", &getCurrentDateAndTime)
+            .def("getCurrentDateAndTime2", &Core::getCurrentDateAndTime)
+            .def("setCurrentSaveGameName", &Core::setCurrentSaveGameName)
+            .def("getCurrentSaveGameName", &Core::getCurrentSaveGameName)
+            .def("getSaveFilePathName", &Core::getSaveFilePathName)
+            .def("getSceneSnapshotsInProject", &getSceneSnapshotsInProject)
+            .def("getSaveNamesInProject", &getSaveNamesInProject)
+            .def("getProjectName", &Core::getProjectName)
+            .def("getSceneName", &Core::getSceneName)
+        ];
 
         object globalVars = globals(lua);
         globalVars["Core"] = Core::getSingletonPtr();
 
-        module(lua)[class_<InputDeviceCore>("InputDeviceCore").def("getSingletonPtr", &InputDeviceCore::getSingletonPtr).def("getKeyboard", &InputDeviceCore::getKeyboard).def("getMouse", &InputDeviceCore::getMouse)
+        module(lua)
+        [
+            class_<InputDeviceCore>("InputDeviceCore")
+            .def("getSingletonPtr", &InputDeviceCore::getSingletonPtr)
+            .def("getKeyboard", &InputDeviceCore::getKeyboard)
+            .def("getMouse", &InputDeviceCore::getMouse)
             // .def("gettJoystick1", &InputDeviceCore::getJoystick(0))
             // .def("gettJoystick2", &InputDeviceCore::getJoystick(1))
         ];

@@ -22,6 +22,18 @@ namespace NOWA
         // layers.xml if menus are still affected.
         const Ogre::String FADE_LAYER_NAME = "Back";
 
+        // Upper limit for the time a fade advances per frame. Attention: the MyGUI controllers get the Ogre frame time, and the
+        // first frames after a scene load (rendering suspended, shaders compiled, loading frames throttled) report hundreds of
+        // milliseconds up to seconds. Without this limit the stall and the whole fade were consumed by the very first frame, i.e.
+        // the black screen vanished at once and the settling scene (camera catching up with the player) was visible.
+        // With the limit a fade takes at least duration * 30 frames; at a normal frame rate nothing changes.
+        const float MAX_FADE_TIME_STEP = 1.0f / 30.0f;
+
+        // How long a FADE_IN holds the full black before it starts to fade. This is the time the freshly loaded scene gets to
+        // settle behind the black screen (simulation start, player controller, game camera). A FADE_OUT has no stall anymore:
+        // it held the scene fully VISIBLE for that time, so a scene change could start before the screen was black.
+        const float FADE_IN_STALL_DURATION = 1.0f;
+
         // v2 replacement for the old shared, named v1 overlay
         // ("Overlays/FadeInOut") + "Materials/OverlayMaterial" datablock.
         // Lazily created once, on the render thread, and never destroyed —
@@ -86,12 +98,16 @@ namespace NOWA
                 currentDurationValue(startDurationValue),
                 totalDuration(totalDuration),
                 speedMultiplier(speedMultiplier),
-                stallDuration(1.0f), // same fixed 1s stall the original FaderProcess used
+                stallDuration(0.0f),
                 selectedEaseFunction(easeFunction),
                 finishedFlag(finishedFlag),
                 alphaOut(alphaOut),
                 durationOut(durationOut)
             {
+                if (true == this->isFadeIn)
+                {
+                    this->stallDuration = FADE_IN_STALL_DURATION;
+                }
             }
 
         protected:
@@ -104,6 +120,12 @@ namespace NOWA
 
             virtual bool addTime(MyGUI::Widget* _widget, float _time) override
             {
+                // See MAX_FADE_TIME_STEP.
+                if (_time > MAX_FADE_TIME_STEP)
+                {
+                    _time = MAX_FADE_TIME_STEP;
+                }
+
                 this->stallDuration -= _time * this->speedMultiplier;
                 if (this->stallDuration > 0.0f)
                 {

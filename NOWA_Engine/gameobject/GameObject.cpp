@@ -2319,17 +2319,13 @@ namespace NOWA
                         auto* showDummyItemAttr = compPtr->getAttribute("Show Dummy Item");
                         if (nullptr != showDummyItemAttr)
                         {
-                            NOWA::GraphicsModule::RenderCommand cmd = [this, visible, showDummyItemAttr]()
-                            {
-                                this->movableObject->setVisible(visible && showDummyItemAttr->getBool());
-                            };
-                            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setVisible");
+                            this->movableObject->setVisible(visible && showDummyItemAttr->getBool());
                         }
                     }
                 }
             }
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "GameObject::setVisible");
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "GameObject::setVisible");
     }
 
     void GameObject::applyRuntimeVisibility(bool visible)

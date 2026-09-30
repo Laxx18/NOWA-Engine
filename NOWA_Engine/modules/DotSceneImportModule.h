@@ -11,6 +11,48 @@
 namespace NOWA
 {
     /**
+     * @brief Exit ("door") of a scene, as needed for the mini map.
+     */
+    struct SceneExitInfo
+    {
+        SceneExitInfo() : position(Ogre::Vector3::ZERO), exitDirection(Ogre::Vector2::ZERO)
+        {
+        }
+
+        // Game object name of the exit - its location name, which the exits of other scenes refer to via 'TargetLocationName'.
+        Ogre::String name;
+        Ogre::Vector3 position;
+        Ogre::Vector2 exitDirection;
+        Ogre::String targetSceneName;
+        Ogre::String targetLocationName;
+    };
+
+    /**
+     * @brief Lightweight description of a scene for the mini map: bounds, exits and the positions of all locations a player can arrive at.
+     */
+    struct SceneMapInfo
+    {
+        SceneMapInfo() :
+            valid(false),
+            hasBounds(false),
+            mostLeftNearPosition(Ogre::Vector3(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY)),
+            mostRightFarPosition(Ogre::Vector3(Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY))
+        {
+        }
+
+        Ogre::String sceneName;
+        // False, if the scene file does not exist or could not be parsed.
+        bool valid;
+        // False, if the scene has never been saved with bounds (NOWA-Design calculates them when saving).
+        bool hasBounds;
+        Ogre::Vector3 mostLeftNearPosition;
+        Ogre::Vector3 mostRightFarPosition;
+        std::vector<SceneExitInfo> exits;
+        // Positions of all game objects with an ExitComponent or a PlayerStartComponent, by game object name.
+        std::map<Ogre::String, Ogre::Vector3> locationPositions;
+    };
+
+    /**
      * @class DotSceneImportModule
      * @brief This class is responsible for loading an external virtual environment
      */
@@ -158,6 +200,19 @@ namespace NOWA
          * @note			Only for MiniMapModule, because it knows, what it does
          */
         DotSceneImportModule(Ogre::SceneManager* sceneManager, const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& resourceGroupName);
+
+        /**
+         * @brief		Reads only what the mini map needs from the scene file: bounds, exits and arrival locations. Creates nothing.
+         * @note		Only for MiniMapModule, requires the constructor above. Decodes an encrypted scene file, like parseScene does.
+         * @return		sceneMapInfo	The scene info. 'valid' is false, if the scene file does not exist or could not be parsed.
+         */
+        SceneMapInfo parseSceneMapInfo(void);
+
+        /**
+         * @brief		Reads the whole scene file of 'scenePath' into content and decodes it, if the file is encrypted.
+         * @return		success	False, if the file does not exist.
+         */
+        bool readSceneFileContent(std::string& content) const;
 
         void postInitData(void);
 

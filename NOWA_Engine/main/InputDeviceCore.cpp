@@ -131,17 +131,30 @@ namespace
 
 namespace NOWA
 {
-    InputDeviceCore::InputDeviceCore()
-        : mouse(nullptr),
+    // Logical device names. The same strings are used by the InputDeviceComponent.
+    //  "Auto":       Keyboard plus the first free gamepad, merged into one device (single player, Steam Deck). If there is no keyboard, only the gamepad is used.
+    //  "Join":       No device until a free device presses JUMP or START (splitscreen lobby). Handled by the InputDeviceComponent.
+    //  "Keyboard":   The (first) keyboard only.
+    //  "Gamepad N":  The N-th connected gamepad only (1-based).
+    // Physical OIS vendor names (e.g. "Win32InputManager") are still accepted.
+    const Ogre::String InputDeviceCore_DeviceAuto = "Auto";
+    const Ogre::String InputDeviceCore_DeviceJoin = "Join";
+    const Ogre::String InputDeviceCore_DeviceKeyboard = "Keyboard";
+    const Ogre::String InputDeviceCore_DeviceGamepadPrefix = "Gamepad ";
+    const unsigned short InputDeviceCore_MinListedGamepads = 4;
+
+    InputDeviceCore::InputDeviceCore() :
+        mouse(nullptr),
         keyboard(nullptr),
         inputSystem(nullptr),
         mainInputDeviceModule(nullptr),
-        joystickIndex(0),
         bSelectDown(false),
         bLock(false),
         keyDispatchDepth(0),
         mouseDispatchDepth(0),
-        joystickDispatchDepth(0)
+        joystickDispatchDepth(0),
+        joyStickLayoutOverride("Auto"),
+        diagnosticRawButtonLogCount(0)
     {
     }
 
@@ -164,11 +177,8 @@ namespace NOWA
     {
         if (nullptr != this->inputSystem)
         {
-            if (nullptr != this->mainInputDeviceModule)
-            {
-                delete this->mainInputDeviceModule;
-                this->mainInputDeviceModule = nullptr;
-            }
+            // Note: The main keyboard module is keyboardInputDeviceModules[0] (no separate instance anymore), so it must not be deleted twice
+            this->mainInputDeviceModule = nullptr;
 
             for (size_t i = 0; i < this->keyboardInputDeviceModules.size(); i++)
             {
@@ -189,6 +199,12 @@ namespace NOWA
                 this->inputSystem->destroyInputObject(this->mouse);
                 this->mouse = 0;
             }
+
+            for (size_t i = 0; i < this->additionalKeyboards.size(); i++)
+            {
+                this->inputSystem->destroyInputObject(this->additionalKeyboards[i]);
+            }
+            this->additionalKeyboards.clear();
 
             if (this->keyboard)
             {
@@ -258,16 +274,15 @@ namespace NOWA
             for (int keyboardIndex = 0; keyboardIndex < numKeyboards; keyboardIndex++)
             {
                 OIS::Keyboard* kb = static_cast<OIS::Keyboard*>(this->inputSystem->createInputObject(OIS::OISKeyboard, true));
+                kb->setEventCallback(this);
 
                 if (keyboardIndex == 0)
                 {
                     this->keyboard = kb;
-                    this->mainInputDeviceModule = new InputDeviceModule("MainKeyboard", true, this->keyboard);
-                    this->keyboard->setEventCallback(this);
                 }
                 else
                 {
-                    kb->setEventCallback(this);
+                    this->additionalKeyboards.push_back(kb);
                 }
 
                 std::string deviceName = kb->vendor();
@@ -281,6 +296,20 @@ namespace NOWA
                 }
                 this->addDevice(deviceName, true, kb);
             }
+
+            // No keyboard at all (e.g. console like setups): create a virtual keyboard module without device object.
+            // Its isActionDown etc. simply deliver false, but it can still carry a companion gamepad, so that all code using
+            // getMainKeyboardInputDeviceModule() keeps working and menus can be controlled with the gamepad.
+            if (true == this->keyboardInputDeviceModules.empty())
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[InputDeviceCore] No keyboard found, creating virtual keyboard module. Gamepads will be used.");
+                this->addDevice("VirtualKeyboard", true, nullptr);
+            }
+
+            // BUGFIX: Previously the main module was a SEPARATE InputDeviceModule instance ("MainKeyboard"). The configuration (Core::loadCustomConfiguration and the
+            // ConfigurationState) remapped keys on that instance, but game objects got keyboardInputDeviceModules[0] assigned via their InputDeviceComponent,
+            // which never saw the remapped keys. Now the main module IS the first keyboard module.
+            this->mainInputDeviceModule = this->keyboardInputDeviceModules[0];
 
             if (this->inputSystem->getNumberOfDevices(OIS::OISMouse) > 0)
             {
@@ -323,6 +352,8 @@ namespace NOWA
 
                 this->addDevice(deviceName, false, joystick);
             }
+
+            this->updateSoftCompanion();
         }
     }
 
@@ -339,13 +370,19 @@ namespace NOWA
             this->keyboard->capture();
         }
 
-        if (false == this->joysticks.empty())
+        for (size_t i = 0; i < this->additionalKeyboards.size(); i++)
         {
-            this->joysticks[this->joystickIndex]->capture();
-            this->joystickIndex = (this->joystickIndex + 1) % this->getJoyStickCount();
+            this->additionalKeyboards[i]->capture();
         }
 
-        for (size_t i = 0; i < this->getJoyStickCount(); i++)
+        // BUGFIX: Previously only ONE joystick was captured per frame (round robin), but all were updated.
+        // With 4 gamepads each pad was only read every 4th frame, which caused laggy / missed inputs in splitscreen.
+        for (size_t i = 0; i < this->joysticks.size(); i++)
+        {
+            this->joysticks[i]->capture();
+        }
+
+        for (size_t i = 0; i < this->joystickInputDeviceModules.size(); i++)
         {
             this->joystickInputDeviceModules[i]->update(dt);
         }
@@ -626,6 +663,12 @@ namespace NOWA
             break;
         }
 
+        // Keyboard input: button prompts should show keys again
+        for (const auto& module : this->keyboardInputDeviceModules)
+        {
+            module->setLastInputFromJoyStick(false);
+        }
+
         if (NOWA_K_SELECT == tempKeyEvent.key)
         {
             this->bSelectDown = true;
@@ -727,7 +770,7 @@ namespace NOWA
             MyGUI::InputManager::getInstancePtr()->injectMouseMove(state.X.abs, state.Y.abs, state.Z.abs);
         }
 
-        // Deine bestehende Listener-Dispatch-Logik unverändert
+        // Dispatch to the registered mouse listeners
         this->mouseDispatchDepth++;
 
         for (size_t i = this->mouseListenerStack.size(); i-- > 0;)
@@ -757,7 +800,10 @@ namespace NOWA
 
     bool InputDeviceCore::mousePressed(const OIS::MouseEvent& e, OIS::MouseButtonID id)
     {
-        this->bSelectDown = this->getKeyboard()->isKeyDown(NOWA_K_SELECT);
+        if (nullptr != this->keyboard)
+        {
+            this->bSelectDown = this->keyboard->isKeyDown(NOWA_K_SELECT);
+        }
 
         int mX = e.state.X.abs;
         int mY = e.state.Y.abs;
@@ -839,6 +885,11 @@ namespace NOWA
 
     bool InputDeviceCore::povMoved(const OIS::JoyStickEvent& e, int pov)
     {
+        if (OIS::Pov::Centered != e.state.mPOV[pov].direction)
+        {
+            this->markJoyStickInput(e.device);
+        }
+
         this->joystickDispatchDepth++;
 
         for (size_t i = this->joystickListenerStack.size(); i-- > 0;)
@@ -871,6 +922,15 @@ namespace NOWA
 
     bool InputDeviceCore::axisMoved(const OIS::JoyStickEvent& e, int axis)
     {
+        InputDeviceModule* axisModule = this->getInputDeviceModuleFromDeviceObject(e.device);
+        if (nullptr != axisModule && axis >= 0 && axis < static_cast<int>(e.state.mAxes.size()))
+        {
+            if (InputDeviceModule::BUTTON_NONE != axisModule->translateRawAxis(axis, e.state.mAxes[axis].abs))
+            {
+                this->markJoyStickInput(e.device);
+            }
+        }
+
         this->joystickDispatchDepth++;
 
         for (size_t i = this->joystickListenerStack.size(); i-- > 0;)
@@ -935,6 +995,21 @@ namespace NOWA
 
     bool InputDeviceCore::buttonPressed(const OIS::JoyStickEvent& e, int button)
     {
+        this->markJoyStickInput(e.device);
+
+        // Throttled diagnostic: shows how raw OIS button indices are translated, to verify the detected layout of a new controller
+        InputDeviceModule* buttonModule = this->getInputDeviceModuleFromDeviceObject(e.device);
+        if (nullptr != buttonModule)
+        {
+            this->diagnosticRawButtonLogCount++;
+            if (this->diagnosticRawButtonLogCount <= 32 || 0 == this->diagnosticRawButtonLogCount % 50)
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[InputDeviceCore] Diagnostic: '" + buttonModule->getDeviceName() + "' raw button " + Ogre::StringConverter::toString(button) + " -> '" +
+                                                                                      buttonModule->getStringFromMappedButton(buttonModule->translateRawButton(button)) +
+                                                                                      "' (layout: " + InputDeviceModule::getJoyStickLayoutName(buttonModule->getJoyStickLayout()) + ")");
+            }
+        }
+
         this->joystickDispatchDepth++;
 
         for (size_t i = this->joystickListenerStack.size(); i-- > 0;)
@@ -1028,12 +1103,70 @@ namespace NOWA
     {
         if (true == isKeyboard)
         {
-            this->keyboardInputDeviceModules.push_back(new InputDeviceModule(deviceName, isKeyboard, deviceObject));
+            InputDeviceModule* keyboardModule = new InputDeviceModule(deviceName, isKeyboard, deviceObject);
+            this->keyboardInputDeviceModules.push_back(keyboardModule);
+
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[InputDeviceCore] Keyboard device added: '" + deviceName + "' (logical name: '" + InputDeviceCore_DeviceKeyboard + "')");
         }
         else
         {
-            this->joystickInputDeviceModules.push_back(new InputDeviceModule(deviceName, isKeyboard, deviceObject));
+            InputDeviceModule* joystickModule = new InputDeviceModule(deviceName, isKeyboard, deviceObject);
+            this->joystickInputDeviceModules.push_back(joystickModule);
+
+            this->applyJoyStickLayout(joystickModule);
+
+            // Gamepads share the gamepad button profile, which is stored in the main keyboard module (see remapGamepadButton)
+            if (nullptr != this->mainInputDeviceModule)
+            {
+                for (unsigned short i = 0; i < InputDeviceModule::ACTION_MAPPING_COUNT; i++)
+                {
+                    const InputDeviceModule::Action action = static_cast<InputDeviceModule::Action>(i);
+                    joystickModule->remapButton(action, this->mainInputDeviceModule->getMappedButton(action));
+                }
+            }
+
+            OIS::JoyStick* joyStick = static_cast<OIS::JoyStick*>(deviceObject);
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL,
+                "[InputDeviceCore] Gamepad device added: '" + deviceName + "' (logical name: '" + InputDeviceCore_DeviceGamepadPrefix + Ogre::StringConverter::toString(this->joystickInputDeviceModules.size()) +
+                    "'), buttons: " + Ogre::StringConverter::toString(joyStick->getNumberOfComponents(OIS::OIS_Button)) + ", axes: " + Ogre::StringConverter::toString(joyStick->getNumberOfComponents(OIS::OIS_Axis)) +
+                    ", povs: " + Ogre::StringConverter::toString(joyStick->getNumberOfComponents(OIS::OIS_POV)) + ", layout: " + InputDeviceModule::getJoyStickLayoutName(joystickModule->getJoyStickLayout()));
         }
+    }
+
+    void InputDeviceCore::applyJoyStickLayout(InputDeviceModule* joystickModule)
+    {
+        if (nullptr == joystickModule || true == joystickModule->isKeyboardDevice())
+        {
+            return;
+        }
+
+        if ("Auto" == this->joyStickLayoutOverride || true == this->joyStickLayoutOverride.empty())
+        {
+            joystickModule->setJoyStickLayout(InputDeviceModule::detectJoyStickLayout(static_cast<OIS::JoyStick*>(joystickModule->getDeviceObject())));
+        }
+        else
+        {
+            joystickModule->setJoyStickLayout(InputDeviceModule::getJoyStickLayoutFromName(this->joyStickLayoutOverride));
+        }
+    }
+
+    void InputDeviceCore::setJoyStickLayoutOverride(const Ogre::String& layoutName)
+    {
+        this->joyStickLayoutOverride = layoutName;
+        if (true == this->joyStickLayoutOverride.empty())
+        {
+            this->joyStickLayoutOverride = "Auto";
+        }
+
+        for (size_t i = 0; i < this->joystickInputDeviceModules.size(); i++)
+        {
+            this->applyJoyStickLayout(this->joystickInputDeviceModules[i]);
+        }
+    }
+
+    const Ogre::String& InputDeviceCore::getJoyStickLayoutOverride(void) const
+    {
+        return this->joyStickLayoutOverride;
     }
 
     unsigned short InputDeviceCore::getJoyStickCount(void) const
@@ -1046,43 +1179,431 @@ namespace NOWA
         return this->joysticks;
     }
 
-    InputDeviceModule* InputDeviceCore::assignDevice(const Ogre::String& deviceName, unsigned long id)
+    std::vector<Ogre::String> InputDeviceCore::getLogicalDeviceNames(void) const
     {
+        std::vector<Ogre::String> deviceNames;
+        deviceNames.push_back(InputDeviceCore_DeviceAuto);
+        deviceNames.push_back(InputDeviceCore_DeviceJoin);
+        deviceNames.push_back(InputDeviceCore_DeviceKeyboard);
+
+        // Always offer at least 4 gamepads, so that splitscreen scenes can be authored without all pads being plugged in
+        size_t gamepadCount = this->joystickInputDeviceModules.size();
+        if (gamepadCount < InputDeviceCore_MinListedGamepads)
+        {
+            gamepadCount = InputDeviceCore_MinListedGamepads;
+        }
+        for (size_t i = 0; i < gamepadCount; i++)
+        {
+            deviceNames.push_back(InputDeviceCore_DeviceGamepadPrefix + Ogre::StringConverter::toString(i + 1));
+        }
+        return deviceNames;
+    }
+
+    Ogre::String InputDeviceCore::getLogicalDeviceName(InputDeviceModule* inputDeviceModule) const
+    {
+        if (nullptr == inputDeviceModule)
+        {
+            return Ogre::String();
+        }
+
+        if (true == inputDeviceModule->isKeyboardDevice())
+        {
+            return InputDeviceCore_DeviceKeyboard;
+        }
+
+        for (size_t i = 0; i < this->joystickInputDeviceModules.size(); i++)
+        {
+            if (inputDeviceModule == this->joystickInputDeviceModules[i])
+            {
+                return InputDeviceCore_DeviceGamepadPrefix + Ogre::StringConverter::toString(i + 1);
+            }
+        }
+        return inputDeviceModule->getDeviceName();
+    }
+
+    InputDeviceModule* InputDeviceCore::findModuleByName(const Ogre::String& deviceName) const
+    {
+        if (InputDeviceCore_DeviceKeyboard == deviceName)
+        {
+            if (false == this->keyboardInputDeviceModules.empty())
+            {
+                return this->keyboardInputDeviceModules[0];
+            }
+            return nullptr;
+        }
+
+        if (0 == deviceName.find(InputDeviceCore_DeviceGamepadPrefix))
+        {
+            const int gamepadNumber = Ogre::StringConverter::parseInt(deviceName.substr(InputDeviceCore_DeviceGamepadPrefix.size()), 0);
+            if (gamepadNumber >= 1 && gamepadNumber <= static_cast<int>(this->joystickInputDeviceModules.size()))
+            {
+                return this->joystickInputDeviceModules[gamepadNumber - 1];
+            }
+            return nullptr;
+        }
+
+        // Physical vendor name (legacy)
         for (const auto& module : this->keyboardInputDeviceModules)
         {
-            if ((module->getDeviceName() == deviceName && false == module->isOccupied()) || module->getOccupiedId() == id)
+            if (module->getDeviceName() == deviceName)
             {
-                module->setOccupiedId(id);
                 return module;
             }
         }
         for (const auto& module : this->joystickInputDeviceModules)
         {
-            if ((module->getDeviceName() == deviceName && false == module->isOccupied()) || module->getOccupiedId() == id)
+            if (module->getDeviceName() == deviceName)
             {
-                module->setOccupiedId(id);
                 return module;
             }
         }
         return nullptr;
     }
 
-    void InputDeviceCore::releaseDevice(unsigned long id)
+    InputDeviceModule* InputDeviceCore::getPrimaryModuleOf(unsigned long id) const
     {
+        if (0 == id)
+        {
+            return nullptr;
+        }
+
         for (const auto& module : this->keyboardInputDeviceModules)
         {
-            if (module->getOccupiedId() == id && module->isOccupied())
+            if (id == module->getOccupiedId())
             {
-                module->releaseOccupation();
-                break;
+                return module;
             }
         }
         for (const auto& module : this->joystickInputDeviceModules)
         {
-            if (module->getOccupiedId() == id && module->isOccupied())
+            // A hard companion belongs to its keyboard owner, it is not the primary module
+            if (id == module->getOccupiedId() && nullptr == module->getCompanionOwner())
             {
+                return module;
+            }
+        }
+        return nullptr;
+    }
+
+    void InputDeviceCore::detachFromCompanionOwner(InputDeviceModule* module)
+    {
+        if (nullptr != module && nullptr != module->getCompanionOwner())
+        {
+            module->getCompanionOwner()->setCompanionModule(nullptr, false);
+        }
+    }
+
+    InputDeviceModule* InputDeviceCore::occupyModule(InputDeviceModule* module, unsigned long id)
+    {
+        const unsigned long otherId = module->getOccupiedId();
+
+        if (0 != otherId && otherId != id)
+        {
+            InputDeviceModule* owner = module->getCompanionOwner();
+            if (nullptr != owner && false == owner->isCompanionSoft())
+            {
+                // The module is only the companion gamepad of another "Auto" player: Take just the gamepad, the other player keeps the keyboard
+                owner->setCompanionModule(nullptr, false);
                 module->releaseOccupation();
-                break;
+            }
+            else
+            {
+                // The module is the primary device of another game object: Evict that game object completely.
+                // Its InputDeviceComponent notices this via EventDataInputDeviceOccupied and deactivates itself.
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
+                    "[InputDeviceCore] Device '" + module->getDeviceName() + "' taken over from game object id: " + Ogre::StringConverter::toString(otherId) + " by game object id: " + Ogre::StringConverter::toString(id));
+                this->releaseDeviceInternal(otherId);
+            }
+        }
+
+        // A free gamepad may still be the soft (menu) companion of the unoccupied main keyboard
+        this->detachFromCompanionOwner(module);
+
+        // A keyboard which is occupied explicitly, must not keep the soft (menu) companion
+        if (true == module->isKeyboardDevice() && nullptr != module->getCompanionModule() && true == module->isCompanionSoft())
+        {
+            module->setCompanionModule(nullptr, false);
+        }
+
+        module->setOccupiedId(id);
+        return module;
+    }
+
+    InputDeviceModule* InputDeviceCore::getFirstFreeJoystickModule(void) const
+    {
+        for (const auto& module : this->joystickInputDeviceModules)
+        {
+            if (false == module->isOccupied())
+            {
+                return module;
+            }
+        }
+        return nullptr;
+    }
+
+    InputDeviceModule* InputDeviceCore::assignAutoDevice(unsigned long id)
+    {
+        InputDeviceModule* keyboardModule = nullptr;
+        if (false == this->keyboardInputDeviceModules.empty() && nullptr != this->keyboardInputDeviceModules[0]->getDeviceObject())
+        {
+            keyboardModule = this->keyboardInputDeviceModules[0];
+        }
+
+        InputDeviceModule* currentPrimary = this->getPrimaryModuleOf(id);
+
+        if (nullptr != keyboardModule)
+        {
+            if (currentPrimary != keyboardModule)
+            {
+                this->releaseDeviceInternal(id);
+                this->occupyModule(keyboardModule, id);
+            }
+
+            // Attach a gamepad, if not yet done and one is free
+            if (nullptr == keyboardModule->getCompanionModule() || true == keyboardModule->isCompanionSoft())
+            {
+                if (nullptr != keyboardModule->getCompanionModule())
+                {
+                    keyboardModule->setCompanionModule(nullptr, false);
+                }
+
+                InputDeviceModule* joystickModule = this->getFirstFreeJoystickModule();
+                if (nullptr != joystickModule)
+                {
+                    this->detachFromCompanionOwner(joystickModule);
+                    joystickModule->setOccupiedId(id);
+                    keyboardModule->setCompanionModule(joystickModule, false);
+                }
+            }
+            return keyboardModule;
+        }
+
+        // No keyboard: Gamepad only
+        if (nullptr != currentPrimary && false == currentPrimary->isKeyboardDevice())
+        {
+            return currentPrimary;
+        }
+
+        this->releaseDeviceInternal(id);
+
+        InputDeviceModule* joystickModule = this->getFirstFreeJoystickModule();
+        if (nullptr == joystickModule)
+        {
+            return nullptr;
+        }
+        return this->occupyModule(joystickModule, id);
+    }
+
+    InputDeviceModule* InputDeviceCore::assignDevice(const Ogre::String& deviceName, unsigned long id)
+    {
+        if (0 == id)
+        {
+            return nullptr;
+        }
+
+        InputDeviceModule* resultModule = nullptr;
+
+        if (InputDeviceCore_DeviceAuto == deviceName)
+        {
+            resultModule = this->assignAutoDevice(id);
+        }
+        else
+        {
+            InputDeviceModule* module = this->findModuleByName(deviceName);
+            if (nullptr != module)
+            {
+                if (module == this->getPrimaryModuleOf(id))
+                {
+                    resultModule = module;
+                }
+                else
+                {
+                    // Switching device: release everything this game object held before
+                    this->releaseDeviceInternal(id);
+                    resultModule = this->occupyModule(module, id);
+                }
+            }
+        }
+
+        this->updateSoftCompanion();
+        return resultModule;
+    }
+
+    void InputDeviceCore::releaseDeviceInternal(unsigned long id)
+    {
+        if (0 == id)
+        {
+            return;
+        }
+
+        // Note: Previously the loops stopped after the first module, but an "Auto" device occupies keyboard AND gamepad
+        for (const auto& module : this->keyboardInputDeviceModules)
+        {
+            if (id == module->getOccupiedId())
+            {
+                InputDeviceModule* companionModule = module->getCompanionModule();
+                if (nullptr != companionModule && false == module->isCompanionSoft())
+                {
+                    module->setCompanionModule(nullptr, false);
+                    companionModule->releaseOccupation();
+                }
+                module->releaseOccupation();
+            }
+        }
+        for (const auto& module : this->joystickInputDeviceModules)
+        {
+            if (id == module->getOccupiedId())
+            {
+                this->detachFromCompanionOwner(module);
+                module->releaseOccupation();
+            }
+        }
+    }
+
+    void InputDeviceCore::releaseDevice(unsigned long id)
+    {
+        this->releaseDeviceInternal(id);
+        this->updateSoftCompanion();
+    }
+
+    void InputDeviceCore::updateSoftCompanion(void)
+    {
+        if (nullptr == this->mainInputDeviceModule)
+        {
+            return;
+        }
+
+        InputDeviceModule* mainModule = this->mainInputDeviceModule;
+
+        if (true == mainModule->isOccupied())
+        {
+            if (nullptr != mainModule->getCompanionModule() && true == mainModule->isCompanionSoft())
+            {
+                mainModule->setCompanionModule(nullptr, false);
+            }
+            return;
+        }
+
+        // The unoccupied main keyboard (used by menus and code which works with getMainKeyboardInputDeviceModule()) gets the first free gamepad as soft companion,
+        // so that menus and e.g. the map toggle also work with a gamepad (Steam Deck). The gamepad stays free and can be assigned any time.
+        InputDeviceModule* companionModule = mainModule->getCompanionModule();
+        if (nullptr != companionModule && false == companionModule->isOccupied())
+        {
+            return;
+        }
+
+        InputDeviceModule* joystickModule = this->getFirstFreeJoystickModule();
+        if (joystickModule != companionModule)
+        {
+            if (nullptr != joystickModule)
+            {
+                this->detachFromCompanionOwner(joystickModule);
+            }
+            mainModule->setCompanionModule(joystickModule, true);
+        }
+    }
+
+    InputDeviceModule* InputDeviceCore::findJoinRequestModule(void)
+    {
+        for (const auto& module : this->keyboardInputDeviceModules)
+        {
+            if (false == module->isOccupied() && nullptr != module->getDeviceObject() && true == module->isJoinInputDown())
+            {
+                return module;
+            }
+        }
+        for (const auto& module : this->joystickInputDeviceModules)
+        {
+            if (false == module->isOccupied() && true == module->isJoinInputDown())
+            {
+                return module;
+            }
+        }
+        return nullptr;
+    }
+
+    bool InputDeviceCore::isActionDownOnAnyDevice(unsigned short action)
+    {
+        if (true == this->bLock || action >= InputDeviceModule::ACTION_SLOT_COUNT)
+        {
+            return false;
+        }
+
+        const InputDeviceModule::Action inputAction = static_cast<InputDeviceModule::Action>(action);
+
+        for (const auto& module : this->keyboardInputDeviceModules)
+        {
+            if (true == module->isActionDownOwnDevice(inputAction))
+            {
+                return true;
+            }
+        }
+        for (const auto& module : this->joystickInputDeviceModules)
+        {
+            if (true == module->isActionDownOwnDevice(inputAction))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void InputDeviceCore::remapGamepadButton(unsigned short action, unsigned short button)
+    {
+        if (action >= InputDeviceModule::ACTION_MAPPING_COUNT)
+        {
+            return;
+        }
+
+        const InputDeviceModule::Action inputAction = static_cast<InputDeviceModule::Action>(action);
+        const InputDeviceModule::JoyStickButton joyStickButton = static_cast<InputDeviceModule::JoyStickButton>(button);
+
+        // The main keyboard module stores the gamepad profile, so it is saved/loaded even if no gamepad is connected
+        if (nullptr != this->mainInputDeviceModule)
+        {
+            this->mainInputDeviceModule->remapButton(inputAction, joyStickButton);
+        }
+
+        for (const auto& module : this->joystickInputDeviceModules)
+        {
+            module->remapButton(inputAction, joyStickButton);
+        }
+    }
+
+    void InputDeviceCore::applyGamepadButtonProfile(void)
+    {
+        if (nullptr == this->mainInputDeviceModule)
+        {
+            return;
+        }
+
+        for (const auto& module : this->joystickInputDeviceModules)
+        {
+            for (unsigned short i = 0; i < InputDeviceModule::ACTION_MAPPING_COUNT; i++)
+            {
+                const InputDeviceModule::Action action = static_cast<InputDeviceModule::Action>(i);
+                module->remapButton(action, this->mainInputDeviceModule->getMappedButton(action));
+            }
+        }
+    }
+
+    void InputDeviceCore::applyKeyboardMappingToAllKeyboards(void)
+    {
+        if (nullptr == this->mainInputDeviceModule)
+        {
+            return;
+        }
+
+        for (const auto& module : this->keyboardInputDeviceModules)
+        {
+            if (module == this->mainInputDeviceModule)
+            {
+                continue;
+            }
+            for (unsigned short i = 0; i < InputDeviceModule::ACTION_MAPPING_COUNT; i++)
+            {
+                const InputDeviceModule::Action action = static_cast<InputDeviceModule::Action>(i);
+                module->remapKey(action, this->mainInputDeviceModule->getMappedKey(action));
             }
         }
     }
@@ -1124,9 +1645,43 @@ namespace NOWA
 
     InputDeviceModule* InputDeviceCore::getJoystickInputDeviceModule(unsigned long id) const
     {
+        // Note: Looks up by the OCCUPYING game object id, not by index. Use getJoystickInputDeviceModuleByIndex for the n-th gamepad.
         for (const auto& module : this->joystickInputDeviceModules)
         {
             if (id == module->getOccupiedId())
+            {
+                return module;
+            }
+        }
+        return nullptr;
+    }
+
+    InputDeviceModule* InputDeviceCore::getJoystickInputDeviceModuleByIndex(size_t index) const
+    {
+        if (index < this->joystickInputDeviceModules.size())
+        {
+            return this->joystickInputDeviceModules[index];
+        }
+        return nullptr;
+    }
+
+    InputDeviceModule* InputDeviceCore::getInputDeviceModuleFromDeviceObject(const OIS::Object* deviceObject) const
+    {
+        if (nullptr == deviceObject)
+        {
+            return nullptr;
+        }
+
+        for (const auto& module : this->joystickInputDeviceModules)
+        {
+            if (deviceObject == module->getDeviceObject())
+            {
+                return module;
+            }
+        }
+        for (const auto& module : this->keyboardInputDeviceModules)
+        {
+            if (deviceObject == module->getDeviceObject())
             {
                 return module;
             }
@@ -1149,6 +1704,21 @@ namespace NOWA
         return this->bSelectDown;
     }
 
+    void InputDeviceCore::markJoyStickInput(const OIS::Object* deviceObject)
+    {
+        InputDeviceModule* module = this->getInputDeviceModuleFromDeviceObject(deviceObject);
+        if (nullptr == module)
+        {
+            return;
+        }
+
+        module->setLastInputFromJoyStick(true);
+        if (nullptr != module->getCompanionOwner())
+        {
+            module->getCompanionOwner()->setLastInputFromJoyStick(true);
+        }
+    }
+
     void InputDeviceCore::setMousePosition(int x, int y)
     {
         if (nullptr == this->mouse)
@@ -1156,6 +1726,7 @@ namespace NOWA
             return;
         }
 
+#if defined(_WIN32)
         HWND hwnd = nullptr;
         NOWA::Core::getSingletonPtr()->getOgreRenderWindow()->getCustomAttribute("WINDOW", &hwnd);
 
@@ -1172,9 +1743,10 @@ namespace NOWA
         }
 
         SetCursorPos(screenPosition.x, screenPosition.y);
+#endif
 
-        // OIS-Absolute-Position synchronisieren.
-        // Nicht GetCursorPos() im nächsten Event verwenden.
+        // Synchronize the OIS absolute position.
+        // Do not use GetCursorPos() in the next event.
         OIS::MouseState& state = const_cast<OIS::MouseState&>(this->mouse->getMouseState());
 
         state.X.abs = x;

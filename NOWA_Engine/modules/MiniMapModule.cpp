@@ -1,281 +1,448 @@
 ﻿#include "NOWAPrecompiled.h"
 #include "MiniMapModule.h"
 #include "gameobject/GameObjectController.h"
-#include "main/Core.h"
 #include "main/AppStateManager.h"
+#include "main/Core.h"
+
+#include <algorithm>
+#include <deque>
+
+namespace
+{
+    // Free border around the whole map, relative to the widget, on each side.
+    const Ogre::Real MAP_MARGIN = 0.05f;
+}
 
 namespace NOWA
 {
-	MiniMapModule::MiniMapModule(const Ogre::String& appStateName)
-		: appStateName(appStateName),
-		sceneManager(nullptr)
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MiniMapModule] Module created");
-	}
+    MiniMapModule::MiniMapModule(const Ogre::String& appStateName) : appStateName(appStateName)
+    {
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MiniMapModule] Module created");
+    }
 
-	MiniMapModule::~MiniMapModule()
-	{
+    MiniMapModule::~MiniMapModule()
+    {
+    }
 
-	}
-	
-	void MiniMapModule::destroyContent(void)
-	{
-		this->sceneManager = nullptr;
-		this->resultMiniMapDataList.clear();
-	}
+    void MiniMapModule::destroyContent(void)
+    {
+        this->resultMiniMapDataList.clear();
+        this->sceneMapInfoCache.clear();
+        this->gameObjectPositionCache.clear();
+        this->clearExploration();
+    }
 
-	void MiniMapModule::calculatePositionsForChildren(const std::pair<Ogre::Vector2, Ogre::String>& exitData, bool xyAxis, const Ogre::Vector2& viewPortSize,
-		MiniMapModule::MiniMapTile& parentMiniMapTile, std::vector<MiniMapData>& resultMiniMapDataList, std::vector<Ogre::String>& visitedScenes)
-	{
-		for (size_t i = 0; i < visitedScenes.size(); i++)
-		{
-			// If the scene has already been visited skip
-			if (exitData.second + ".scene" == visitedScenes[i])
-				return;
-		}
-		
-		std::unique_ptr<DotSceneImportModule> dotSceneImportModulePtr = std::make_unique<DotSceneImportModule>(
-			DotSceneImportModule(this->sceneManager, Core::getSingletonPtr()->getProjectName(), exitData.second + ".scene", "Projects"));
+    void MiniMapModule::clearSceneCache(void)
+    {
+        this->sceneMapInfoCache.clear();
+        this->gameObjectPositionCache.clear();
+    }
 
-		auto bounds = dotSceneImportModulePtr->parseBounds();
+    void MiniMapModule::clearExploration(void)
+    {
+        this->visitedScenes.clear();
+        this->exploredCells.clear();
+        this->revealedScenes.clear();
+        this->mapMarkerStates.clear();
+    }
 
-		if (bounds.first.x != Ogre::Math::POS_INFINITY)
-		{
-			Ogre::Vector2 size = Ogre::Vector2::ZERO;
-			Ogre::Vector2 origin = Ogre::Vector2::ZERO;
+    void MiniMapModule::setCellExplored(const Ogre::String& sceneName, int cellX, int cellY)
+    {
+        if (true == sceneName.empty())
+        {
+            return;
+        }
+        this->exploredCells[sceneName].insert(std::make_pair(cellX, cellY));
+        this->visitedScenes.insert(sceneName);
+    }
 
-			if (true == xyAxis)
-			{
-				size.x = Ogre::Math::Abs(bounds.second.x - bounds.first.x);
-				size.y = Ogre::Math::Abs(bounds.second.y - bounds.first.y);
-				size /= viewPortSize;
-				origin = Ogre::Vector2(bounds.first.x, bounds.first.y);
-				origin /= viewPortSize;
-			}
-			else
-			{
-				size.x = Ogre::Math::Abs(bounds.second.z - bounds.first.z);
-				size.y = Ogre::Math::Abs(bounds.second.y - bounds.first.y);
-				size /= viewPortSize;
-				origin = Ogre::Vector2(bounds.first.x, bounds.first.z);
-				origin /= viewPortSize;
-			}
+    bool MiniMapModule::getIsCellExplored(const Ogre::String& sceneName, int cellX, int cellY) const
+    {
+        auto it = this->exploredCells.find(sceneName);
+        if (this->exploredCells.end() == it)
+        {
+            return false;
+        }
+        return it->second.end() != it->second.find(std::make_pair(cellX, cellY));
+    }
 
-			MiniMapModule::MiniMapTile miniMapTile;
+    const std::map<Ogre::String, std::set<std::pair<int, int>>>& MiniMapModule::getExploredCells(void) const
+    {
+        return this->exploredCells;
+    }
 
-			miniMapTile.sceneName = exitData.second;
-			miniMapTile.size = size;
-			miniMapTile.entryDirection = exitData.first;
-			parentMiniMapTile.children.emplace_back(miniMapTile);
-			miniMapTile.parentMiniMapTile = &parentMiniMapTile;
+    void MiniMapModule::setSceneRevealed(const Ogre::String& sceneName, bool revealed)
+    {
+        if (true == sceneName.empty())
+        {
+            return;
+        }
 
-			// Calculate the position depending on the parent mini map tile position and size and the entry direction
-			miniMapTile.position.x = parentMiniMapTile.position.x + (parentMiniMapTile.size.x * miniMapTile.entryDirection.x);
+        if (true == revealed)
+        {
+            this->revealedScenes.insert(sceneName);
+        }
+        else
+        {
+            this->revealedScenes.erase(sceneName);
+        }
+    }
 
-			// Note for y: take negative entry direction, because x is growing from left to right, but y is growing from top to bottom (down instead up)
-			miniMapTile.position.y = parentMiniMapTile.position.y + (parentMiniMapTile.size.y * -miniMapTile.entryDirection.y);
+    bool MiniMapModule::getIsSceneRevealed(const Ogre::String& sceneName) const
+    {
+        return this->revealedScenes.end() != this->revealedScenes.find(sceneName);
+    }
 
-			// Add to visited scenes
-			visitedScenes.emplace_back(exitData.second + ".scene");
+    const std::set<Ogre::String>& MiniMapModule::getRevealedScenes(void) const
+    {
+        return this->revealedScenes;
+    }
 
-			// Add to flat result mini map data list
-			MiniMapModule::MiniMapData resultMiniMapData;
-			resultMiniMapData.size = miniMapTile.size;
-			resultMiniMapData.position = miniMapTile.position;
-			resultMiniMapData.origin = origin;
-			resultMiniMapData.sceneName = miniMapTile.sceneName;
-			
+    void MiniMapModule::setMapMarkerState(const Ogre::String& markerId, const Ogre::String& state)
+    {
+        if (true == state.empty())
+        {
+            this->mapMarkerStates.erase(markerId);
+            return;
+        }
+        this->mapMarkerStates[markerId] = state;
+    }
 
-			resultMiniMapDataList.emplace_back(resultMiniMapData);
+    Ogre::String MiniMapModule::getMapMarkerState(const Ogre::String& markerId) const
+    {
+        auto it = this->mapMarkerStates.find(markerId);
+        if (this->mapMarkerStates.end() == it)
+        {
+            return "";
+        }
+        return it->second;
+    }
 
-			std::vector<std::pair<Ogre::Vector2, Ogre::String>> exitData = dotSceneImportModulePtr->parseExitDirectionsNextScenes();
+    const std::map<Ogre::String, Ogre::String>& MiniMapModule::getMapMarkerStates(void) const
+    {
+        return this->mapMarkerStates;
+    }
 
-			for (int i = 0; i < exitData.size(); i++)
-			{
-				this->calculatePositionsForChildren(exitData[i], xyAxis, viewPortSize, miniMapTile, resultMiniMapDataList, visitedScenes);
-			}
-		}
-		else
-		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[MiniMapModule] Could not parse bounds, because none are set so far for scene: '" + exitData.second + "'");
-		}
-	}
+    std::pair<bool, Ogre::Vector3> MiniMapModule::getGameObjectPositionInScene(const Ogre::String& sceneName, unsigned long id)
+    {
+        const Ogre::String key = sceneName + ":" + Ogre::StringConverter::toString(id);
+        auto it = this->gameObjectPositionCache.find(key);
+        if (this->gameObjectPositionCache.end() != it)
+        {
+            return it->second;
+        }
 
-	std::vector<MiniMapModule::MiniMapData> MiniMapModule::parseMinimaps(Ogre::SceneManager* sceneManager, bool xyAxis, const Ogre::Vector2& startPosition, 
-		const Ogre::Vector2& viewPortSize)
-	{
-		this->resultMiniMapDataList.clear();
+        DotSceneImportModule dotSceneImportModule(nullptr, Core::getSingletonPtr()->getProjectName(), sceneName + ".scene", "Projects");
+        std::pair<bool, Ogre::Vector3> positionData = dotSceneImportModule.parseGameObjectPosition(id);
+        this->gameObjectPositionCache.emplace(key, positionData);
+        return positionData;
+    }
 
-		if (0.0f == viewPortSize.x || 0.0f == viewPortSize.y)
-		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[MiniMapModule] Could not create mini map because the view port size is zero!");
-			return this->resultMiniMapDataList;
-		}
-		
-		// Only parse once
-		// if (nullptr == this->sceneManager)
-		{
-			this->sceneManager = sceneManager;
+    void MiniMapModule::setSceneVisited(const Ogre::String& sceneName, bool visited)
+    {
+        if (true == sceneName.empty())
+        {
+            return;
+        }
 
-			std::vector<Ogre::String> sceneFileNames = Core::getSingletonPtr()->getSceneFileNames("Projects", Core::getSingletonPtr()->getProjectName());
-			
-			auto itr = std::find(sceneFileNames.begin(), sceneFileNames.end(), "global.scene");
-			if (itr != sceneFileNames.end())
-				sceneFileNames.erase(itr);
+        if (true == visited)
+        {
+            this->visitedScenes.insert(sceneName);
+        }
+        else
+        {
+            this->visitedScenes.erase(sceneName);
+        }
+    }
 
-			if (true == sceneFileNames.empty())
-				return resultMiniMapDataList;
+    bool MiniMapModule::getIsSceneVisited(const Ogre::String& sceneName) const
+    {
+        return this->visitedScenes.end() != this->visitedScenes.find(sceneName);
+    }
 
-			std::unique_ptr<DotSceneImportModule> dotSceneImportModulePtr = std::make_unique<DotSceneImportModule>(
-				DotSceneImportModule(this->sceneManager, Core::getSingletonPtr()->getProjectName(), sceneFileNames[0], "Projects"));
+    const std::set<Ogre::String>& MiniMapModule::getVisitedScenes(void) const
+    {
+        return this->visitedScenes;
+    }
 
-			auto bounds = dotSceneImportModulePtr->parseBounds();
+    Ogre::Vector2 MiniMapModule::toMapPlane(const Ogre::Vector3& position, bool xyAxis)
+    {
+        if (true == xyAxis)
+        {
+            return Ogre::Vector2(position.x, position.y);
+        }
+        // Top view: -Z is up on the map.
+        return Ogre::Vector2(position.x, -position.z);
+    }
 
-			if (bounds.first.x != Ogre::Math::POS_INFINITY)
-			{
-				// Gather and prepare data
+    Ogre::Vector2 MiniMapModule::toMapDirection(const Ogre::Vector2& exitDirection, bool xyAxis)
+    {
+        if (true == xyAxis)
+        {
+            return exitDirection;
+        }
+        // For 'X,Z' the second component of an exit direction is z - flipped like in toMapPlane.
+        return Ogre::Vector2(exitDirection.x, -exitDirection.y);
+    }
 
-				Ogre::Vector2 size = Ogre::Vector2::ZERO;
-				Ogre::Vector2 origin = Ogre::Vector2::ZERO;
+    const SceneMapInfo& MiniMapModule::getSceneMapInfo(const Ogre::String& sceneName)
+    {
+        auto it = this->sceneMapInfoCache.find(sceneName);
+        if (this->sceneMapInfoCache.end() != it)
+        {
+            return it->second;
+        }
 
-				if (true == xyAxis)
-				{
-					size.x = Ogre::Math::Abs(bounds.second.x - bounds.first.x);
-					size.y = Ogre::Math::Abs(bounds.second.y - bounds.first.y);
-					size /= viewPortSize;
-					origin = Ogre::Vector2(bounds.first.x, bounds.first.y);
-					origin /= viewPortSize;
-				}
-				else
-				{
-					size.x = Ogre::Math::Abs(bounds.second.z - bounds.first.z);
-					size.y = Ogre::Math::Abs(bounds.second.y - bounds.first.y);
-					size /= viewPortSize;
-					origin = Ogre::Vector2(bounds.first.x, bounds.first.z);
-					origin /= viewPortSize;
-				}
+        // Read once, only bounds, exits and arrival locations - no game objects are created.
+        DotSceneImportModule dotSceneImportModule(nullptr, Core::getSingletonPtr()->getProjectName(), sceneName + ".scene", "Projects");
+        SceneMapInfo sceneMapInfo = dotSceneImportModule.parseSceneMapInfo();
 
-				MiniMapModule::MiniMapTile miniMapTile;
+        if (false == sceneMapInfo.valid)
+        {
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_NORMAL, "[MiniMapModule] Scene: '" + sceneName + "' does not exist or could not be read. It is left out of the mini map.");
+        }
+        else if (false == sceneMapInfo.hasBounds)
+        {
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MiniMapModule] Scene: '" + sceneName + "' has no bounds yet. Save it once in NOWA-Design. It is left out of the mini map.");
+        }
 
-				Ogre::String sceneName = sceneFileNames[0];
-				size_t dot = sceneName.rfind(".scene");
-				if (dot != std::string::npos)
-				{
-					sceneName.resize(dot);
-				}
+        // A missing scene is cached as well, so it is not searched again for every exit that leads to it.
+        auto result = this->sceneMapInfoCache.emplace(sceneName, sceneMapInfo);
+        return result.first->second;
+    }
 
-				miniMapTile.sceneName = sceneName;
-				miniMapTile.size = size;
-				miniMapTile.position = startPosition;
+    std::vector<MiniMapModule::SceneLayout> MiniMapModule::computeSceneLayout(const Ogre::String& currentSceneName, bool xyAxis)
+    {
+        std::vector<SceneLayout> sceneLayouts;
 
-				// Add to flat result mini map data list
-				MiniMapModule::MiniMapData resultMiniMapData;
-				resultMiniMapData.size = miniMapTile.size;
-				resultMiniMapData.position = miniMapTile.position;
-				resultMiniMapData.origin = origin;
-				resultMiniMapData.sceneName = miniMapTile.sceneName;
-				resultMiniMapDataList.emplace_back(resultMiniMapData);
+        if (true == currentSceneName.empty())
+        {
+            return sceneLayouts;
+        }
 
-				std::vector<std::pair<Ogre::Vector2, Ogre::String>> exitData = dotSceneImportModulePtr->parseExitDirectionsNextScenes();
-				
-				// Calculate the position for each world in contrast to its neighbour worlds
+        auto createSceneLayout = [xyAxis](const SceneMapInfo& sceneMapInfo) -> SceneLayout
+        {
+            const Ogre::Vector2 a = MiniMapModule::toMapPlane(sceneMapInfo.mostLeftNearPosition, xyAxis);
+            const Ogre::Vector2 b = MiniMapModule::toMapPlane(sceneMapInfo.mostRightFarPosition, xyAxis);
 
-				std::vector<Ogre::String> visitedScenes;
-				visitedScenes.emplace_back(sceneFileNames[0]);
+            SceneLayout sceneLayout;
+            sceneLayout.sceneName = sceneMapInfo.sceneName;
+            sceneLayout.worldOrigin = Ogre::Vector2(std::min(a.x, b.x), std::min(a.y, b.y));
+            sceneLayout.worldSize = Ogre::Vector2(Ogre::Math::Abs(b.x - a.x), Ogre::Math::Abs(b.y - a.y));
+            sceneLayout.exits = sceneMapInfo.exits;
+            return sceneLayout;
+        };
 
-				for (int i = 0; i < exitData.size(); i++)
-				{
-					this->calculatePositionsForChildren(exitData[i], xyAxis, viewPortSize, miniMapTile, resultMiniMapDataList, visitedScenes);
-				}
-			}
-			else
-			{
-				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[MiniMapModule] Could not parse bounds, because none are set so far for scene: '" + sceneFileNames[0] + "'");
-			}
-		}
-		return resultMiniMapDataList;
-	}
+        const SceneMapInfo& rootSceneMapInfo = this->getSceneMapInfo(currentSceneName);
+        if (false == rootSceneMapInfo.hasBounds)
+        {
+            return sceneLayouts;
+        }
 
-	std::pair<bool, Ogre::Vector2> MiniMapModule::parseGameObjectMinimapPosition(const Ogre::String& sceneName, unsigned long id, bool xyAxis, const Ogre::Vector2& viewPortSize)
-	{
-		bool success = false;
-		Ogre::Vector2 resultPosition = Ogre::Vector2::ZERO;
+        std::set<Ogre::String> placedSceneNames;
+        std::deque<size_t> openList;
 
-		// e.g. 522345323
-		if (true == sceneName.empty())
-		{
-			auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(id);
-			if (nullptr != gameObjectPtr)
-			{
-				auto data = this->calculateGameObjectPosition(gameObjectPtr->getPosition(), xyAxis, viewPortSize);
-				success = data.first;
-				resultPosition = data.second;
-			}
-		}
-		else
-		{
-			// e.g. scene4:522345323
-			std::unique_ptr<DotSceneImportModule> dotSceneImportModulePtr = std::make_unique<DotSceneImportModule>(
-				DotSceneImportModule(this->sceneManager, Core::getSingletonPtr()->getProjectName(), sceneName + ".scene", "Projects"));
-			auto positionData = dotSceneImportModulePtr->parseGameObjectPosition(id);
-			if (true == positionData.first)
-			{
-				auto data = this->calculateGameObjectPosition(positionData.second, xyAxis, viewPortSize);
-				success = data.first;
-				resultPosition = data.second;
-			}
-		}
+        sceneLayouts.emplace_back(createSceneLayout(rootSceneMapInfo));
+        placedSceneNames.insert(currentSceneName);
+        openList.push_back(0);
 
-		return std::make_pair(success, resultPosition);
-	}
+        // Breadth first through the exits. Each scene is placed once, by the first exit that reaches it.
+        while (false == openList.empty())
+        {
+            // Copy, because sceneLayouts may reallocate below.
+            const SceneLayout parent = sceneLayouts[openList.front()];
+            openList.pop_front();
 
-	std::pair<bool, Ogre::Vector2> MiniMapModule::calculateGameObjectPosition(const Ogre::Vector3& position, bool xyAxis, const Ogre::Vector2 & viewPortSize)
-	{
-		bool success = false;
+            for (const SceneExitInfo& exitInfo : parent.exits)
+            {
+                if (true == exitInfo.targetSceneName.empty() || placedSceneNames.end() != placedSceneNames.find(exitInfo.targetSceneName))
+                {
+                    continue;
+                }
 
-		// Get the current world
-		Ogre::String currentWorld = Core::getSingletonPtr()->getSceneName();
-		
-		// Found global id like player, get its current position
-		Ogre::Vector3 currentPosition = position;
+                // Note: std::map references stay valid when further scenes are inserted into the cache.
+                const SceneMapInfo& childSceneMapInfo = this->getSceneMapInfo(exitInfo.targetSceneName);
+                if (false == childSceneMapInfo.hasBounds)
+                {
+                    continue;
+                }
 
-		Ogre::Vector2 miniMapPosition = Ogre::Vector2::ZERO;
+                SceneLayout child = createSceneLayout(childSceneMapInfo);
+                child.parentSceneName = parent.sceneName;
+                child.entryDirection = MiniMapModule::toMapDirection(exitInfo.exitDirection, xyAxis);
 
-		miniMapPosition = Ogre::Vector2(currentPosition.x, xyAxis ? currentPosition.y : currentPosition.z);
-		miniMapPosition /= viewPortSize;
+                // Where the exit lies in map space.
+                const Ogre::Vector2 exitMapPosition = parent.mapOffset + (MiniMapModule::toMapPlane(exitInfo.position, xyAxis) - parent.worldOrigin);
 
-		Ogre::Vector2 currentWorldPosition = Ogre::Vector2::ZERO;
-		Ogre::Vector2 currentWorldSize = Ogre::Vector2::ZERO;
-		Ogre::Vector2 currentSceneOrigin = Ogre::Vector2::ZERO;
+                auto targetLocationIt = childSceneMapInfo.locationPositions.end();
+                if (false == exitInfo.targetLocationName.empty())
+                {
+                    targetLocationIt = childSceneMapInfo.locationPositions.find(exitInfo.targetLocationName);
+                }
 
-		for (size_t i = 0; i < this->resultMiniMapDataList.size(); i++)
-		{
-			if (this->resultMiniMapDataList[i].sceneName == currentWorld)
-			{
-				currentWorldPosition = this->resultMiniMapDataList[i].position;
-				currentWorldSize = this->resultMiniMapDataList[i].size;
-				currentSceneOrigin = this->resultMiniMapDataList[i].origin;
-				break;
-			}
-		}
+                if (childSceneMapInfo.locationPositions.end() != targetLocationIt)
+                {
+                    // The exit and the location it leads to meet. Uses positions relative to the bounds only, so where a level sits in world
+                    // space does not matter.
+                    child.mapOffset = exitMapPosition - (MiniMapModule::toMapPlane(targetLocationIt->second, xyAxis) - child.worldOrigin);
+                }
+                else
+                {
+                    // No matching location in the target scene: put it next to the parent on the side of the exit, centered on the exit.
+                    Ogre::Vector2 direction = child.entryDirection;
+                    if (true == direction.isZeroLength())
+                    {
+                        direction = Ogre::Vector2::UNIT_X;
+                    }
 
-		/*
-		E.g.	Player.x = -11
-				Level.x1 = -21
-				Level.x2 = 157
-				Level.w = 178
-				Player.Level.x = Player.x - Level.x
+                    if (Ogre::Math::Abs(direction.x) >= Ogre::Math::Abs(direction.y))
+                    {
+                        if (direction.x > 0.0f)
+                        {
+                            child.mapOffset.x = parent.mapOffset.x + parent.worldSize.x;
+                        }
+                        else
+                        {
+                            child.mapOffset.x = parent.mapOffset.x - child.worldSize.x;
+                        }
+                        child.mapOffset.y = exitMapPosition.y - child.worldSize.y * 0.5f;
+                    }
+                    else
+                    {
+                        if (direction.y > 0.0f)
+                        {
+                            child.mapOffset.y = parent.mapOffset.y + parent.worldSize.y;
+                        }
+                        else
+                        {
+                            child.mapOffset.y = parent.mapOffset.y - child.worldSize.y;
+                        }
+                        child.mapOffset.x = exitMapPosition.x - child.worldSize.x * 0.5f;
+                    }
+                }
 
+                placedSceneNames.insert(child.sceneName);
+                sceneLayouts.emplace_back(child);
+                openList.push_back(sceneLayouts.size() - 1);
+            }
+        }
 
-		*/
-		if (Ogre::Vector2::ZERO != currentWorldSize)
-		{
-			miniMapPosition.x = (miniMapPosition.x - currentSceneOrigin.x) + currentWorldPosition.x;
-			miniMapPosition.y = (currentSceneOrigin.y - miniMapPosition.y) + currentWorldPosition.y + currentWorldSize.y;
-			success = true;
-		}
+        return sceneLayouts;
+    }
 
-		return std::make_pair(success, miniMapPosition);
-	}
+    std::vector<MiniMapModule::MiniMapData> MiniMapModule::parseMinimaps(const Ogre::String& currentSceneName, bool xyAxis, const Ogre::Vector2& widgetPixelSize, const Ogre::Vector2& anchorPosition, Ogre::Real scaleFactor)
+    {
+        this->resultMiniMapDataList.clear();
+
+        if (widgetPixelSize.x <= 0.0f || widgetPixelSize.y <= 0.0f)
+        {
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[MiniMapModule] Could not create mini map because the widget size is zero!");
+            return this->resultMiniMapDataList;
+        }
+
+        if (scaleFactor <= 0.0f)
+        {
+            scaleFactor = 1.0f;
+        }
+
+        const std::vector<SceneLayout> sceneLayouts = this->computeSceneLayout(currentSceneName, xyAxis);
+        if (true == sceneLayouts.empty())
+        {
+            return this->resultMiniMapDataList;
+        }
+
+        // Extent of the whole map.
+        Ogre::Vector2 mapMin(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY);
+        Ogre::Vector2 mapMax(Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY);
+        for (const SceneLayout& sceneLayout : sceneLayouts)
+        {
+            mapMin.x = std::min(mapMin.x, sceneLayout.mapOffset.x);
+            mapMin.y = std::min(mapMin.y, sceneLayout.mapOffset.y);
+            mapMax.x = std::max(mapMax.x, sceneLayout.mapOffset.x + sceneLayout.worldSize.x);
+            mapMax.y = std::max(mapMax.y, sceneLayout.mapOffset.y + sceneLayout.worldSize.y);
+        }
+
+        const Ogre::Vector2 mapSize(std::max(mapMax.x - mapMin.x, 0.001f), std::max(mapMax.y - mapMin.y, 0.001f));
+
+        // One scale for both axes (in pixels), so levels keep their aspect ratio. At scale factor 1 the whole map fits into the widget.
+        const Ogre::Real usable = 1.0f - 2.0f * MAP_MARGIN;
+        const Ogre::Real pixelsPerUnit = std::min(widgetPixelSize.x * usable / mapSize.x, widgetPixelSize.y * usable / mapSize.y) * scaleFactor;
+        const Ogre::Vector2 relativePerUnit(pixelsPerUnit / widgetPixelSize.x, pixelsPerUnit / widgetPixelSize.y);
+
+        // The center of the map is placed at the anchor position.
+        const Ogre::Vector2 mapTopLeft = anchorPosition - (mapSize * relativePerUnit) * 0.5f;
+
+        for (const SceneLayout& sceneLayout : sceneLayouts)
+        {
+            MiniMapData miniMapData;
+            miniMapData.sceneName = sceneLayout.sceneName;
+            miniMapData.size = sceneLayout.worldSize * relativePerUnit;
+            miniMapData.position.x = mapTopLeft.x + (sceneLayout.mapOffset.x - mapMin.x) * relativePerUnit.x;
+            // Map space y grows upwards, widget y downwards.
+            miniMapData.position.y = mapTopLeft.y + (mapMax.y - (sceneLayout.mapOffset.y + sceneLayout.worldSize.y)) * relativePerUnit.y;
+            miniMapData.worldOrigin = sceneLayout.worldOrigin;
+            miniMapData.worldSize = sceneLayout.worldSize;
+            miniMapData.isCurrentScene = sceneLayout.sceneName == currentSceneName;
+            this->resultMiniMapDataList.emplace_back(miniMapData);
+        }
+
+        // Stable order: the per tile attributes of the mini map component (skin, color, tooltip) are stored by index.
+        std::sort(this->resultMiniMapDataList.begin(), this->resultMiniMapDataList.end(),
+            [](const MiniMapData& a, const MiniMapData& b)
+            {
+                return a.sceneName < b.sceneName;
+            });
+
+        return this->resultMiniMapDataList;
+    }
+
+    std::pair<bool, Ogre::Vector2> MiniMapModule::parseGameObjectMinimapPosition(const Ogre::String& sceneName, unsigned long id, bool xyAxis)
+    {
+        if (true == sceneName.empty())
+        {
+            // E.g. '522345323': a game object of the current scene, e.g. the global player - its live position.
+            auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(id);
+            if (nullptr == gameObjectPtr)
+            {
+                return std::make_pair(false, Ogre::Vector2::ZERO);
+            }
+            return this->calculateGameObjectPosition(Core::getSingletonPtr()->getSceneName(), gameObjectPtr->getPosition(), xyAxis);
+        }
+
+        // E.g. 'Level4:522345323': the position stored in that scene file.
+        auto positionData = this->getGameObjectPositionInScene(sceneName, id);
+        if (false == positionData.first)
+        {
+            return std::make_pair(false, Ogre::Vector2::ZERO);
+        }
+        return this->calculateGameObjectPosition(sceneName, positionData.second, xyAxis);
+    }
+
+    std::pair<bool, Ogre::Vector2> MiniMapModule::calculateGameObjectPosition(const Ogre::String& sceneName, const Ogre::Vector3& position, bool xyAxis) const
+    {
+        for (const MiniMapData& miniMapData : this->resultMiniMapDataList)
+        {
+            if (miniMapData.sceneName != sceneName)
+            {
+                continue;
+            }
+
+            if (miniMapData.worldSize.x <= 0.0f || miniMapData.worldSize.y <= 0.0f)
+            {
+                return std::make_pair(false, Ogre::Vector2::ZERO);
+            }
+
+            // Position within the scene bounds, 0 .. 1 on both axes.
+            const Ogre::Vector2 local = (MiniMapModule::toMapPlane(position, xyAxis) - miniMapData.worldOrigin) / miniMapData.worldSize;
+
+            Ogre::Vector2 result;
+            result.x = miniMapData.position.x + local.x * miniMapData.size.x;
+            // Widget y grows downwards.
+            result.y = miniMapData.position.y + (1.0f - local.y) * miniMapData.size.y;
+            return std::make_pair(true, result);
+        }
+
+        return std::make_pair(false, Ogre::Vector2::ZERO);
+    }
 
 } // namespace end

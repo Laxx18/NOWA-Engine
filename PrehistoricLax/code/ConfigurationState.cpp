@@ -3,6 +3,56 @@
 
 using namespace NOWA;
 
+// BUGFIX: the controls tab shows ACTION_COUNT (7) rows - "Move up/down/left/right", "Jump",
+// "Action 1", "Action 2" - but InputDeviceModule::Action has OTHER entries (RUN, COWER)
+// sitting between JUMP and ATTACK_1/ATTACK_2. populateControlsOptions() and
+// applyControlsSettings() used to just do "static_cast<InputDeviceModule::Action>(i)" for the
+// raw UI row index i, silently assuming row 5 -> enum value 5 and row 6 -> enum value 6. Enum
+// value 5 is RUN, not ATTACK_1 - and 6 is COWER, not ATTACK_2. That's why binding "Action 2"
+// remapped COWER instead of ATTACK_2. This table is now the ONE place that says which Action
+// each UI row actually is - both populateControlsOptions (reading current bindings into the
+// textboxes) and applyControlsSettings (writing edited textboxes back) use it, so they can't
+// drift apart from each other or from actionLabels in createControlsTab again.
+// NOTE: sized with a literal 7, not ConfigurationState::ACTION_COUNT - that member is private
+// to the class, and this table sits at file scope (outside any member function), so it has no
+// access to it. Must stay in sync with ACTION_COUNT in the header if that ever changes.
+static const InputDeviceModule::Action actionRowMapping[7] = { InputDeviceModule::UP, InputDeviceModule::DOWN, InputDeviceModule::LEFT, InputDeviceModule::RIGHT, InputDeviceModule::JUMP,
+    InputDeviceModule::ATTACK_1, InputDeviceModule::ATTACK_2 };
+
+namespace
+{
+    // Binds the given caption to the currently active (focused) textbox, if the caption is not already used by another row.
+    // Used for gamepad buttons and triggers (keyboard keys are handled directly in keyPressed).
+    template <class TextboxVector, class ActiveVector>
+    void bindCaptionToActiveTextbox(TextboxVector& textboxes, ActiveVector& textboxActive, const Ogre::String& caption)
+    {
+        for (size_t i = 0; i < textboxes.size(); i++)
+        {
+            if (true == textboxActive[i])
+            {
+                bool alreadyExisting = false;
+                for (size_t j = 0; j < textboxes.size(); j++)
+                {
+                    if (j != i && textboxes[j]->getCaption() == caption)
+                    {
+                        alreadyExisting = true;
+                        break;
+                    }
+                }
+
+                if (false == alreadyExisting && false == caption.empty())
+                {
+                    textboxes[i]->setCaption(caption);
+                }
+
+                textboxActive[i] = false;
+                textboxes[i]->setTextShadow(false);
+                break;
+            }
+        }
+    }
+}
+
 ConfigurationState::ConfigurationState()
     : AppState()
 {
@@ -581,8 +631,11 @@ void ConfigurationState::createControlsTab(void)
     this->controlsPanel = this->rootWindow->createWidgetReal<MyGUI::Widget>("WoodPanel", 0.02f, 0.14f, 0.96f, 0.66f, MyGUI::Align::Left | MyGUI::Align::Top);
     this->controlsPanel->setVisible(false);
 
-    this->hasJoystick = InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->hasActiveJoyStick();
+    // Note: Previously the main keyboard module was asked, which is not a gamepad. Now: Is any gamepad connected?
+    this->hasJoystick = InputDeviceCore::getSingletonPtr()->getJoyStickCount() > 0;
 
+    // Row i here must stay in sync with actionRowMapping[i] at the top of this file - that
+    // table is what actually maps each row to its InputDeviceModule::Action.
     static const char* actionLabels[ACTION_COUNT] = { "Move up:", "Move down:", "Move left:", "Move right:", "Jump:", "Action 1:", "Action 2:" };
 
     const Ogre::Real rowHeight = 0.09f;
@@ -634,7 +687,7 @@ void ConfigurationState::populateControlsOptions(void)
 
     for (unsigned short i = 0; i < ACTION_COUNT; i++)
     {
-        auto keyCode = keyboardModule->getMappedKey(static_cast<InputDeviceModule::Action>(i));
+        auto keyCode = keyboardModule->getMappedKey(actionRowMapping[i]);
         Ogre::String strKeyCode = keyboardModule->getStringFromMappedKey(keyCode);
         this->oldKeyValue[i] = strKeyCode;
         this->keyConfigTextboxes[i]->setCaption(strKeyCode);
@@ -642,15 +695,12 @@ void ConfigurationState::populateControlsOptions(void)
 
     if (true == this->hasJoystick)
     {
-        // NOTE: assumes InputDeviceCore exposes a joystick counterpart to
-        // getMainKeyboardInputDeviceModule() not tied to a game object id.
-        // If your InputDeviceCore names it differently, adjust this one call.
-        auto joystickModule = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(0);
-
+        // The gamepad profile (shared by all gamepads) is stored in the main keyboard module, so it is also available and saved if no gamepad is connected.
+        // Note: Previously getJoystickInputDeviceModule(0) was used, which searches for the module OCCUPIED by game object id 0 (not the first gamepad) and could deliver null.
         for (unsigned short i = 0; i < ACTION_COUNT; i++)
         {
-            auto button = joystickModule->getMappedButton(static_cast<InputDeviceModule::Action>(i));
-            Ogre::String strButton = joystickModule->getStringFromMappedButton(button);
+            auto button = keyboardModule->getMappedButton(actionRowMapping[i]);
+            Ogre::String strButton = keyboardModule->getStringFromMappedButton(button);
             this->oldButtonValue[i] = strButton;
             this->buttonConfigTextboxes[i]->setCaption(strButton);
         }
@@ -692,17 +742,25 @@ void ConfigurationState::applyControlsSettings(void)
     for (unsigned short i = 0; i < ACTION_COUNT; i++)
     {
         OIS::KeyCode key = keyboardModule->getMappedKeyFromString(this->keyConfigTextboxes[i]->getCaption());
-        keyboardModule->remapKey(static_cast<InputDeviceModule::Action>(i), key);
+        // Never destroy a binding because a caption could not be parsed
+        if (OIS::KC_UNASSIGNED != key)
+        {
+            keyboardModule->remapKey(actionRowMapping[i], key);
+        }
     }
+    // The main keyboard module is the one the players use, other keyboards get the same mapping
+    InputDeviceCore::getSingletonPtr()->applyKeyboardMappingToAllKeyboards();
 
     if (true == this->hasJoystick)
     {
-        auto joystickModule = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(0);
-
         for (unsigned short i = 0; i < ACTION_COUNT; i++)
         {
-            auto button = joystickModule->getMappedButtonFromString(this->buttonConfigTextboxes[i]->getCaption());
-            joystickModule->remapButton(static_cast<InputDeviceModule::Action>(i), button);
+            auto button = keyboardModule->getMappedButtonFromString(this->buttonConfigTextboxes[i]->getCaption());
+            if (InputDeviceModule::BUTTON_NONE != button)
+            {
+                // Stores the button in the gamepad profile and applies it to all connected gamepads
+                InputDeviceCore::getSingletonPtr()->remapGamepadButton(static_cast<unsigned short>(actionRowMapping[i]), static_cast<unsigned short>(button));
+            }
         }
     }
 
@@ -767,12 +825,37 @@ bool ConfigurationState::keyPressed(const OIS::KeyEvent& keyEventRef)
 {
     NOWA::Core::getSingletonPtr()->keyPressed(keyEventRef);
 
-    if (InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(OIS::KC_ESCAPE))
+    if (OIS::KC_ESCAPE == keyEventRef.key)
     {
-        this->bQuit = true;
+        // Escape while waiting for a key/button just cancels the rebinding, instead of quitting
+        bool wasRebinding = false;
+        for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
+        {
+            if (true == this->keyTextboxActive[i])
+            {
+                this->keyTextboxActive[i] = false;
+                this->keyConfigTextboxes[i]->setTextShadow(false);
+                wasRebinding = true;
+            }
+        }
+        for (unsigned short i = 0; i < this->buttonConfigTextboxes.size(); i++)
+        {
+            if (true == this->buttonTextboxActive[i])
+            {
+                this->buttonTextboxActive[i] = false;
+                this->buttonConfigTextboxes[i]->setTextShadow(false);
+                wasRebinding = true;
+            }
+        }
+
+        if (false == wasRebinding)
+        {
+            this->bQuit = true;
+        }
         return true;
     }
 
+#if defined(_WIN32)
     if (keyEventRef.key == OIS::KC_TAB)
     {
         if (GetAsyncKeyState(KF_ALTDOWN))
@@ -781,6 +864,7 @@ bool ConfigurationState::keyPressed(const OIS::KeyEvent& keyEventRef)
             return true;
         }
     }
+#endif
 
     auto keyboardModule = InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule();
 
@@ -841,6 +925,23 @@ bool ConfigurationState::mouseReleased(const OIS::MouseEvent& evt, OIS::MouseBut
 
 bool ConfigurationState::axisMoved(const OIS::JoyStickEvent& evt, int axis)
 {
+    if (false == this->hasJoystick || axis < 0 || axis >= static_cast<int>(evt.state.mAxes.size()))
+    {
+        return true;
+    }
+
+    // XInput / Linux deliver the triggers as axes, so LT/RT can only be bound here
+    InputDeviceModule* joystickModule = InputDeviceCore::getSingletonPtr()->getInputDeviceModuleFromDeviceObject(evt.device);
+    if (nullptr == joystickModule)
+    {
+        return true;
+    }
+
+    InputDeviceModule::JoyStickButton button = joystickModule->translateRawAxis(axis, evt.state.mAxes[axis].abs);
+    if (InputDeviceModule::BUTTON_LT == button || InputDeviceModule::BUTTON_RT == button)
+    {
+        bindCaptionToActiveTextbox(this->buttonConfigTextboxes, this->buttonTextboxActive, joystickModule->getStringFromMappedButton(button));
+    }
     return true;
 }
 
@@ -851,36 +952,21 @@ bool ConfigurationState::buttonPressed(const OIS::JoyStickEvent& evt, int button
         return true;
     }
 
-    // NOTE: same assumption as populateControlsOptions/applyControlsSettings —
-    // adjust the accessor name if your InputDeviceCore differs.
-    auto joystickModule = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(0);
-
-    for (unsigned short i = 0; i < this->buttonConfigTextboxes.size(); i++)
+    // The event carries the device, so the raw button index can be translated with the layout of THAT gamepad
+    // (previously the raw index was casted directly, which is wrong e.g. for Xbox pads / Steam Deck: raw 0 is Start there, not X).
+    InputDeviceModule* joystickModule = InputDeviceCore::getSingletonPtr()->getInputDeviceModuleFromDeviceObject(evt.device);
+    if (nullptr == joystickModule)
     {
-        if (true == this->buttonTextboxActive[i])
-        {
-            Ogre::String strButton = joystickModule->getStringFromMappedButton(static_cast<InputDeviceModule::JoyStickButton>(button));
-
-            bool alreadyExisting = false;
-            for (unsigned short j = 0; j < this->buttonConfigTextboxes.size(); j++)
-            {
-                if (j != i && this->buttonConfigTextboxes[j]->getCaption() == strButton)
-                {
-                    alreadyExisting = true;
-                    break;
-                }
-            }
-
-            if (false == alreadyExisting && false == strButton.empty())
-            {
-                this->buttonConfigTextboxes[i]->setCaption(strButton);
-            }
-
-            this->buttonTextboxActive[i] = false;
-            this->buttonConfigTextboxes[i]->setTextShadow(false);
-            break;
-        }
+        return true;
     }
+
+    InputDeviceModule::JoyStickButton logicalButton = joystickModule->translateRawButton(button);
+    if (InputDeviceModule::BUTTON_NONE == logicalButton)
+    {
+        return true;
+    }
+
+    bindCaptionToActiveTextbox(this->buttonConfigTextboxes, this->buttonTextboxActive, joystickModule->getStringFromMappedButton(logicalButton));
 
     return true;
 }

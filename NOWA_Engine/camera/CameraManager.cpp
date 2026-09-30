@@ -176,7 +176,6 @@ namespace NOWA
 
 	BaseCamera* CameraManager::getActiveCameraBehavior(Ogre::Camera* camera) const
 	{
-		Ogre::String cameraName = camera->getName();
 		auto it = this->cameraDataMap.find(camera);
 		if (it != this->cameraDataMap.end())
 		{

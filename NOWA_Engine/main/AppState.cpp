@@ -155,8 +155,11 @@ namespace NOWA
         // Start game
         NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->start();
 
-        // Set the start position for the player
-        NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->determinePlayerStartLocation(castEventData->getProjectParameter().sceneName);
+        // Note: no GameProgressModule::determinePlayerStartLocation() anymore. The player has already been placed while the scene was parsed
+        // (DotSceneImportModule::postInitData): by the exit ("door") whose name the previous scene's exit requested (ExitComponent::applyArrival),
+        // or by the PlayerStartComponent otherwise. determinePlayerStartLocation() placed the player a second time, immediately and again
+        // 0.1 seconds later, which caused a visible jump after a scene change.
+
         // Activate player controller, so that user can move player
         NOWA::GameObjectPtr player = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->getPlayerName());
         if (nullptr != player)

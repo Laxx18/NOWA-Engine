@@ -26,6 +26,11 @@ void GameState::start(const NOWA::SceneParameter& sceneParameter)
 	NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 2.0f, NOWA::Interpolator::EaseInCubic)));
 }
 
+void GameState::beforeSceneLoaded(void)
+{
+	NOWA::FaderProcess::showBlackScreenImmediate();
+}
+
 void GameState::exit(void)
 {
 	NOWA::AppState::exit();

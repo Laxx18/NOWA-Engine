@@ -91,7 +91,6 @@ public:
 		//	// Start game
 		//	NOWA::GameObjectController::instance()->get()->start();
 		//	// Set the start position for the player
-		//	NOWA::GameProgressModule::instance()->get()->determinePlayerStartLocation(castEventData->getProjectParameter().sceneName);
 		//	// Activate player controller, so that user can move player
 		//	NOWA::GameObjectPtr player = NOWA::GameObjectController::instance()->get()->getGameObjectFromName(NOWA::GameProgressModule::instance()->get()->getPlayerName());
 		//	if (nullptr != player)

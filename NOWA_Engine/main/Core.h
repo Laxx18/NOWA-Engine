@@ -323,6 +323,25 @@ namespace NOWA
 		 */
 		void saveCustomConfiguration(void);
 
+		 /**
+         * @brief		Gets the folder for all files the engine writes (config, ogre.cfg, log, shader cache, crash.log): <UserData>/NOWA/<ExecutableName>/ (with trailing slash).
+         *				On Windows %APPDATA%, under Proton/Wine the same path inside the prefix, on native Linux the XDG data directory.
+         */
+        Ogre::String getUserDataFolder(void);
+
+        /**
+         * @brief		Gets the file path of a file in the user data folder: <UserData>/NOWA/<ExecutableName>/<fileName>.
+         */
+        Ogre::String getUserConfigurationFilePathName(const Ogre::String& fileName);
+
+        /**
+         * @brief		Sets whether the frame rate is limited to getOptionDesiredFramesUpdates() ("LimitFrameRate" in the config).
+         *				False = open end frame rate (VSync still paces, if on). Default: false on PC, true on a Steam Deck.
+         */
+        void setOptionFrameRateLimitEnabled(bool frameRateLimitEnabled);
+
+        bool getOptionFrameRateLimitEnabled(void) const;
+
         /**
          * @brief Initialized the lua console and MyGUI stuff. Hence this function must be called after graphicsmodule is available.
          */
@@ -1207,6 +1226,10 @@ namespace NOWA
 		Ogre::String decrypt(const Ogre::String& text, int key);
 
 		void createCustomTextures(void);
+
+		bool readCustomConfigurationFile(const Ogre::String& filePathName, bool isLegacyFile);
+
+        void writeCustomConfigurationFile(const Ogre::String& filePathName);
 	private:
 		Ogre::Root* root;
 		Ogre::Window* renderWindow;
@@ -1240,7 +1263,8 @@ namespace NOWA
 		Ogre::Vector3 mostRightFarPosition;
 
 		/// Menue options
-		Ogre::Real optionLODBias;
+        Ogre::Real optionLODBias;
+        bool optionFrameRateLimitEnabled;
 		int	optionTextureFiltering;
 		int	optionAnisotropyLevel;
 		int optionQualityLevel;

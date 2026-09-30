@@ -687,7 +687,7 @@ void DesignState::simulate(bool pause, bool withUndo)
                 this->editorManager->startSimulation();
             }
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "DesignState::simulate_1");
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::simulate_1");
     }
     else
     {
@@ -1022,21 +1022,31 @@ void DesignState::handleSceneLoaded(NOWA::EventDataPtr eventData)
     // and the scene has been changed, remain in simulation and maybe activate player controller, so that the player may continue his game play
     if (true == castEventData->getSceneChanged())
     {
-        this->simulate(false, false); // With undo false, how to solve this: when stopping, that the old scene is loaded?
+        auto projectParameter = castEventData->getProjectParameter();
 
-        // Set project parameter for project manager when a new scene has been loaded in running simulation
-        if (nullptr != this->projectManager)
+        // Attention: must NOT run inline here. This handler runs on the logic thread, and simulate() waits for render commands, which in turn
+        // wait for the logic thread - a deadlock (the "Level2 is loaded, then everything hangs" bug). Non-blocking, so this handler returns at once.
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, projectParameter]()
         {
-            this->projectManager->setProjectParameter(castEventData->getProjectParameter());
-        }
+            this->simulate(false, false); // With undo false, how to solve this: when stopping, that the old scene is loaded?
 
-        NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->determinePlayerStartLocation(castEventData->getProjectParameter().sceneName);
+            // Set project parameter for project manager when a new scene has been loaded in running simulation
+            if (nullptr != this->projectManager)
+            {
+                this->projectManager->setProjectParameter(projectParameter);
+            }
 
-        NOWA::GameObjectPtr player = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->getPlayerName());
-        if (nullptr != player)
-        {
-            NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->activatePlayerController(true, player->getId(), true);
-        }
+            // Note: no GameProgressModule::determinePlayerStartLocation() anymore. The player has already been placed while the scene was parsed
+            // (DotSceneImportModule::postInitData): by the exit ("door") whose name the previous scene's exit requested (ExitComponent::applyArrival),
+            // or by the PlayerStartComponent otherwise. A second placement here caused a visible jump.
+
+            NOWA::GameObjectPtr player = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->getPlayerName());
+            if (nullptr != player)
+            {
+                NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->activatePlayerController(true, player->getId(), true);
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::handleSceneLoaded simulate");
     }
 }
 
@@ -1959,7 +1969,7 @@ void DesignState::renderUpdate(Ogre::Real dt)
 
     bool isSimulating = this->gameObjectController->getIsSimulating();
 
-    if (false == isSimulating && nullptr != focusWidget && false == ms.buttonDown(OIS::MB_Right) && nullptr == NOWA::InputDeviceCore::getSingletonPtr()->getJoystick())
+    if (false == isSimulating && nullptr != focusWidget && false == ms.buttonDown(OIS::MB_Right))
     {
         return;
     }

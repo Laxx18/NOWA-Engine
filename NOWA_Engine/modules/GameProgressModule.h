@@ -17,6 +17,7 @@ namespace NOWA
 	{
 	public:
 		friend class ExitComponent;
+        friend class PlayerStartComponent;
 		friend class LoadSceneProcess;
 		friend class LoadProgressProcess;
 		friend class AppState; // Only AppState may create this class
@@ -87,8 +88,6 @@ namespace NOWA
 		unsigned int getScenesCount(void) const;
 
 		Ogre::String getPlayerName(void) const;
-
-		void determinePlayerStartLocation(const Ogre::String& currentSceneName);
 
 		/**
 		* @brief		Loads the given scene.
@@ -216,6 +215,25 @@ namespace NOWA
 		void changeSceneShowProgress(const Ogre::String& sceneName);
 
 		/**
+         * @brief Sets the name of the game object with a PlayerStartComponent in the next scene, at which the player appears.
+         *        Set by an ExitComponent right before it changes the scene, cleared after the scene has been parsed.
+         */
+        void setRequestedTargetLocationName(const Ogre::String& targetLocationName);
+
+        /**
+         * @brief Gets the requested target location name, empty if the scene was not entered through an exit.
+         */
+        Ogre::String getRequestedTargetLocationName(void) const;
+
+		/**
+         * @brief While true (set during loading a save game snapshot), neither a PlayerStartComponent nor an ExitComponent moves the player,
+         *        so that the saved transform wins.
+         */
+        void setKeepPlayerTransform(bool keepPlayerTransform);
+
+        bool getKeepPlayerTransform(void) const;
+
+		/**
 		 * @brief		Gets the current (for this scene) scene manager, or null if not existing.
 		 */
 		Ogre::SceneManager* getCurrentSceneManager(void);
@@ -229,6 +247,11 @@ namespace NOWA
 		void setPlayerName(const Ogre::String& playerName);
 
 		bool internalReadGlobalAttributes(const Ogre::String& globalAttributesStream);
+
+		/**
+         * @brief Returns true (and logs) if a scene load is already pending, so that a second request is ignored.
+         */
+        bool internalIsSceneLoadAlreadyRequested(const Ogre::String& sceneName);
 	private:
 		std::pair<bool, Ogre::String> getSaveFileContent(const Ogre::String& saveName);
 	private:
@@ -246,6 +269,8 @@ namespace NOWA
 		Ogre::String userSaveName;
 
 		Ogre::String currentSceneName;
+        Ogre::String requestedTargetLocationName;
+        bool keepPlayerTransform;
 	};
 
 }; //namespace end

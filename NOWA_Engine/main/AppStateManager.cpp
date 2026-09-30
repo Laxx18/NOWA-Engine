@@ -12,6 +12,16 @@
 #include "utilities/Timer.h"
 #include <chrono>
 
+#if defined(_WIN32)
+// timeBeginPeriod / timeEndPeriod: 1 ms scheduler granularity for the idle wait of the logic loop
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <mmsystem.h>
+#include <windows.h>
+#pragma comment(lib, "winmm.lib")
+#endif
+
 namespace
 {
     enum eAppStateOperation
@@ -55,6 +65,8 @@ namespace NOWA
             graphicsModule->requestStall();
             graphicsModule->clearSceneResources();
             graphicsModule->releaseStall();
+
+            this->state->beforeSceneLoaded();
 
             switch (this->stateOperation)
             {
@@ -482,7 +494,18 @@ namespace NOWA
     {
         this->markCurrentThreadAsLogicThread();
 
-        const double fixedDt = 1.0 / static_cast<double>(Core::getSingletonPtr()->getOptionDesiredSimulationUpdates());
+        // The simulation rate is an engine/game constant (physics, gameplay and Lua timing depend on it), NOT a player setting.
+        // Rendering is decoupled via interpolation, so 60 logic steps per second are enough also for 90/120/144 Hz displays.
+        unsigned int simulationUpdates = static_cast<unsigned int>(Core::getSingletonPtr()->getOptionDesiredSimulationUpdates());
+        if (simulationUpdates < 30)
+        {
+            simulationUpdates = 30;
+        }
+        else if (simulationUpdates > 240)
+        {
+            simulationUpdates = 240;
+        }
+        const double fixedDt = 1.0 / static_cast<double>(simulationUpdates);
         // Allow real catch-up instead of dropping time on every minor hitch.
         // This must be large enough to consume whatever maxDeltaTime can dump
         // into the accumulator in one frame.
@@ -511,6 +534,20 @@ namespace NOWA
         NOWA::GraphicsModule* graphicsModule = NOWA::GraphicsModule::getInstance();
         graphicsModule->setFrameTime(static_cast<Ogre::Real>(fixedDt));
 
+        // Target frame time of the adaptive quality: derived from the frame rate limit, but never more than 60 fps, so that a 144 Hz display
+        // does not lower the shadow quality just to reach 144 fps. The 5 percent margin keeps a VSync-paced 60 Hz frame (16.67 ms)
+        // from counting as "too slow" (previously the fixed 16.6 ms target was below the VSync interval).
+        int adaptiveTargetFrames = static_cast<int>(Core::getSingletonPtr()->getOptionDesiredFramesUpdates());
+        if (adaptiveTargetFrames <= 0 || adaptiveTargetFrames > 60)
+        {
+            adaptiveTargetFrames = 60;
+        }
+        else if (adaptiveTargetFrames < 30)
+        {
+            adaptiveTargetFrames = 30;
+        }
+        const Ogre::Real adaptiveTargetFrameTimeMs = (1000.0f / static_cast<Ogre::Real>(adaptiveTargetFrames)) * 1.05f;
+
         // Configure fps performance profiles
         AppStateManager::getSingletonPtr()->getWorkspaceModule()->configureAdaptiveQuality(
             {
@@ -519,7 +556,20 @@ namespace NOWA
                 {150.0f, 0.8f},                                                     // level 2
                 {80.0f, 0.75f},                                                     // level 3: worst
             },
-            /*targetFrameTimeMs*/ 16.6f);
+            /*targetFrameTimeMs*/ adaptiveTargetFrameTimeMs);
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+            "[AppStateManager] Logic loop: " + Ogre::StringConverter::toString(simulationUpdates) + " simulation steps per second, frame rate limit: " + Ogre::StringConverter::toString(Core::getSingletonPtr()->getOptionFrameRateLimitEnabled()) +
+                ", desired frames per second: " + Ogre::StringConverter::toString(Core::getSingletonPtr()->getOptionDesiredFramesUpdates()) + ", VSync: " + Ogre::StringConverter::toString(this->vsyncOn));
+
+#if defined(_WIN32)
+        // Attention: Without this the Windows scheduler granularity is ~15.6 ms, and the idle wait below could oversleep a whole logic step.
+        // Under Proton/Wine this is supported as well. Reset with timeEndPeriod when the loop ends.
+        timeBeginPeriod(1);
+#endif
+
+        // Time before the next step, below which the loop only yields instead of sleeping, because a sleep may oversleep by up to ~1 ms
+        const double spinThreshold = 0.0015;
 
         // From here on processAll() runs every iteration, so enqueueAndWait() from the
         // render thread has a consumer and may block. See the flag's use in enqueueAndWait().
@@ -533,7 +583,7 @@ namespace NOWA
             double frameTime = newTime - currentTime;
             currentTime = newTime;
 
-            frameTime = std::min(frameTime, maxDeltaTime);
+            frameTime = (std::min)(frameTime, maxDeltaTime);
             accumulator += frameTime;
 
             if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->bSceneLoading)
@@ -586,7 +636,26 @@ namespace NOWA
             {
                 Ogre::Threads::Sleep(500);
             }
+
+            // Idle until the next logic step is due.
+            // Attention: Previously this loop spun without any pause between the steps, so the logic thread burned a complete CPU core
+            // (and called renderUpdate millions of times per second). On a Steam Deck CPU and GPU share one power budget of ~15 W,
+            // so a spinning core directly costs GPU clock, frame rate, heat and battery. Only the last ~1.5 ms before a step are yielded,
+            // so the step timing stays as exact as before.
+            const double timeUntilNextStep = fixedDt - accumulator - (clockSeconds() - currentTime);
+            if (timeUntilNextStep > spinThreshold)
+            {
+                std::this_thread::sleep_for(std::chrono::duration<double>(timeUntilNextStep - spinThreshold));
+            }
+            else if (timeUntilNextStep > 0.0)
+            {
+                std::this_thread::yield();
+            }
         }
+
+#if defined(_WIN32)
+        timeEndPeriod(1);
+#endif
 
         // Shutdown phase begins here.
         // Attention: bStall alone would make the render thread skip rendering, but the render

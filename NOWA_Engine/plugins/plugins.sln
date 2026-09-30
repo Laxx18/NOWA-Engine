@@ -165,6 +165,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralConveyorLoopCompo
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralPipeComponent", "ProceduralPipeComponent\ProceduralPipeComponent.vcxproj", "{D29E4C1C-0B35-4C77-BF13-1EFCBBA3336B}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralFlowCurtainComponent", "ProceduralFlowCurtainComponent\ProceduralFlowCurtainComponent.vcxproj", "{B109B0A0-038A-4688-8E7F-C9E0AC67378C}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ExplorationMapComponent", "ExplorationMapComponent\ExplorationMapComponent.vcxproj", "{C6A2959A-6445-475D-8004-15318648F8AF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -455,6 +459,14 @@ Global
 		{D29E4C1C-0B35-4C77-BF13-1EFCBBA3336B}.Debug|x64.Build.0 = Debug|x64
 		{D29E4C1C-0B35-4C77-BF13-1EFCBBA3336B}.Release|x64.ActiveCfg = Release|x64
 		{D29E4C1C-0B35-4C77-BF13-1EFCBBA3336B}.Release|x64.Build.0 = Release|x64
+		{B109B0A0-038A-4688-8E7F-C9E0AC67378C}.Debug|x64.ActiveCfg = Debug|x64
+		{B109B0A0-038A-4688-8E7F-C9E0AC67378C}.Debug|x64.Build.0 = Debug|x64
+		{B109B0A0-038A-4688-8E7F-C9E0AC67378C}.Release|x64.ActiveCfg = Release|x64
+		{B109B0A0-038A-4688-8E7F-C9E0AC67378C}.Release|x64.Build.0 = Release|x64
+		{C6A2959A-6445-475D-8004-15318648F8AF}.Debug|x64.ActiveCfg = Debug|x64
+		{C6A2959A-6445-475D-8004-15318648F8AF}.Debug|x64.Build.0 = Debug|x64
+		{C6A2959A-6445-475D-8004-15318648F8AF}.Release|x64.ActiveCfg = Release|x64
+		{C6A2959A-6445-475D-8004-15318648F8AF}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

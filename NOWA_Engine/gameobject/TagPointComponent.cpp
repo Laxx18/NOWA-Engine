@@ -353,7 +353,7 @@ namespace NOWA
                 if (nullptr == sourceGameObjectPtr)
                 {
                     // TEMPORARY DIAGNOSTICS
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TagPoint-DIAG] ABORTED: no source game object for id: " + Ogre::StringConverter::toString(this->sourceId->getULong()));
+                    // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TagPoint-DIAG] ABORTED: no source game object for id: " + Ogre::StringConverter::toString(this->sourceId->getULong()));
                     return;
                 }
 
@@ -368,19 +368,19 @@ namespace NOWA
                 // TEMPORARY DIAGNOSTICS - without a source physics component the update
                 // closure further down is never registered, and then nothing ever drives the
                 // body. The dynamic_cast result decides which of the two drive paths is taken.
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TagPoint-DIAG] source: " + sourceGameObjectPtr->getName() +
+                /*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TagPoint-DIAG] source: " + sourceGameObjectPtr->getName() +
                                                                                         " physicsActiveComponent: " + Ogre::String(nullptr != this->sourcePhysicsActiveComponent ? "FOUND" : "NULL") +
-                                                                                        " isKinematic: " + Ogre::String(nullptr != dynamic_cast<PhysicsActiveKinematicComponent*>(this->sourcePhysicsActiveComponent) ? "YES" : "no"));
+                                                                                        " isKinematic: " + Ogre::String(nullptr != dynamic_cast<PhysicsActiveKinematicComponent*>(this->sourcePhysicsActiveComponent) ? "YES" : "no"));*/
 
                 // Resolve the bone by name
                 Ogre::IdString boneIdString(this->tagPoints->getListSelectedValue());
                 this->attachedBone = this->skeletonInstance->getBone(boneIdString);
 
                 // TEMPORARY DIAGNOSTICS
-                if (nullptr == this->attachedBone)
+                /*if (nullptr == this->attachedBone)
                 {
                     Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TagPoint-DIAG] ABORTED: bone '" + this->tagPoints->getListSelectedValue() + "' NOT FOUND on the skeleton.");
-                }
+                }*/
 
                 if (nullptr != this->attachedBone)
                 {
@@ -582,7 +582,7 @@ namespace NOWA
 
         // TEMPORARY DIAGNOSTICS - logged BEFORE the early return, so "the closure never runs"
         // can be told apart from "it runs but returns immediately".
-        {
+       /* {
             static unsigned int diagEnterCounter = 0;
             diagEnterCounter++;
             if (diagEnterCounter % 300 == 1)
@@ -590,7 +590,7 @@ namespace NOWA
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TagPoint-DIAG] updateV2PhysicsFromTagPoint ENTERED #" + Ogre::StringConverter::toString(diagEnterCounter) + " tagPointV2: " +
                                                                                         Ogre::String(nullptr != this->tagPointV2 ? "ok" : "NULL") + " sourcePhysics: " + Ogre::String(nullptr != this->sourcePhysicsActiveComponent ? "ok" : "NULL"));
             }
-        }
+        }*/
 
         // attachedBone and the character's scene node are dereferenced below now, so they are
         // part of the guard.
@@ -680,33 +680,33 @@ namespace NOWA
             //                                   body. createDynamicBody() removed its force
             //                                   and torque callback, so a deferred transform
             //                                   command would have no consumer.
-            {
-                static unsigned int diagCounter = 0;
-                diagCounter++;
-                if (diagCounter % 30 == 1)
-                {
-                    // boneLocal is the decisive value: if it never changes while an animation is
-                    // playing, the bone transform being read is the bind pose and not the
-                    // animated one - then no amount of physics work downstream can help.
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TagPoint-DIAG] #" + Ogre::StringConverter::toString(diagCounter) + " boneLocal: " + Ogre::StringConverter::toString(boneLocalPosition) +
-                                                                                            " charWorld: " + Ogre::StringConverter::toString(characterWorldPosition) + " bone: " + Ogre::StringConverter::toString(boneWorldPosition) +
-                                                                                            " computedWorld: " + Ogre::StringConverter::toString(tagPointWorldPosition) +
-                                                                                            " bodyAfterSet: " + Ogre::StringConverter::toString(sourcePhysicsActiveKinematicComponent->getPosition()));
-                }
-            }
+            //{
+            //    static unsigned int diagCounter = 0;
+            //    diagCounter++;
+            //    if (diagCounter % 30 == 1)
+            //    {
+            //        // boneLocal is the decisive value: if it never changes while an animation is
+            //        // playing, the bone transform being read is the bind pose and not the
+            //        // animated one - then no amount of physics work downstream can help.
+            //        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TagPoint-DIAG] #" + Ogre::StringConverter::toString(diagCounter) + " boneLocal: " + Ogre::StringConverter::toString(boneLocalPosition) +
+            //                                                                                " charWorld: " + Ogre::StringConverter::toString(characterWorldPosition) + " bone: " + Ogre::StringConverter::toString(boneWorldPosition) +
+            //                                                                                " computedWorld: " + Ogre::StringConverter::toString(tagPointWorldPosition) +
+            //                                                                                " bodyAfterSet: " + Ogre::StringConverter::toString(sourcePhysicsActiveKinematicComponent->getPosition()));
+            //    }
+            //}
         }
         else
         {
             // TEMPORARY DIAGNOSTICS - if this fires for the cudgel, the dynamic_cast to
             // PhysicsActiveKinematicComponent failed and the wrong drive path is used.
-            {
+            /*{
                 static unsigned int diagJointCounter = 0;
                 diagJointCounter++;
                 if (diagJointCounter % 300 == 1)
                 {
                     Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TagPoint-DIAG] NON-KINEMATIC drive path used for: " + this->sourcePhysicsActiveComponent->getOwner()->getName());
                 }
-            }
+            }*/
 
             // Non-kinematic body: the JointKinematicComponent was created in
             // connectV2Item and drives the body via a target position/rotation.

@@ -429,6 +429,14 @@ void ResourcesPanelMeshes::loadMeshes(const Ogre::String& filter)
                 parent->add(child);
             }
         }
+        // Add Flow Curtain
+        {
+            if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralFlowCurtainComponent"))
+            {
+                child = new MyGUI::TreeControl::Node("Flow Curtain", "Data");
+                parent->add(child);
+            }
+        }
 		// Add Geometry
 		{
 			if (NOWA::GameObjectFactory::getInstance()->getComponentFactory()->hasComponent("ProceduralGeometryComponent"))

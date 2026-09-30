@@ -100,6 +100,66 @@ namespace NOWA
         bool isSelectDown(void) const;
 
         void setMousePosition(int x, int y);
+
+        /**
+         * @brief		Gets the logical device names: "Auto", "Join", "Keyboard", "Gamepad 1" ... "Gamepad N" (at least 4 gamepads are listed).
+         */
+        std::vector<Ogre::String> getLogicalDeviceNames(void) const;
+
+        /**
+         * @brief		Gets the logical name ("Keyboard" or "Gamepad N") of the given module.
+         */
+        Ogre::String getLogicalDeviceName(InputDeviceModule* inputDeviceModule) const;
+
+        /**
+         * @brief		Finds a module by logical name ("Keyboard", "Gamepad N") or physical OIS vendor name. "Auto" and "Join" are not resolved here.
+         */
+        InputDeviceModule* findModuleByName(const Ogre::String& deviceName) const;
+
+        /**
+         * @brief		Gets the n-th gamepad module (0-based), independent of occupation.
+         */
+        InputDeviceModule* getJoystickInputDeviceModuleByIndex(size_t index) const;
+
+        /**
+         * @brief		Gets the module for an OIS device (e.g. OIS::JoyStickEvent::device), so that listeners know which gamepad fired an event.
+         */
+        InputDeviceModule* getInputDeviceModuleFromDeviceObject(const OIS::Object* deviceObject) const;
+
+        /**
+         * @brief		Gets a free device (keyboard or gamepad), on which currently the mapped JUMP or START is pressed, or null. Used for "Join" (splitscreen).
+         */
+        InputDeviceModule* findJoinRequestModule(void);
+
+        /**
+         * @brief		Gets whether the action is down on ANY device (all keyboards and gamepads, occupied or not). Useful for menus.
+         * @param[in]	action	InputDeviceModule::Action as number.
+         */
+        bool isActionDownOnAnyDevice(unsigned short action);
+
+        /**
+         * @brief		Remaps a gamepad button in the gamepad profile (stored in the main keyboard module, so it is saved even without connected gamepad) and applies it to all gamepads.
+         * @param[in]	action	InputDeviceModule::Action as number.
+         * @param[in]	button	InputDeviceModule::JoyStickButton as number.
+         */
+        void remapGamepadButton(unsigned short action, unsigned short button);
+
+        /**
+         * @brief		Copies the gamepad profile of the main keyboard module to all gamepad modules (after loading the configuration).
+         */
+        void applyGamepadButtonProfile(void);
+
+        /**
+         * @brief		Copies the key mapping of the main keyboard module to all other keyboard modules.
+         */
+        void applyKeyboardMappingToAllKeyboards(void);
+
+        /**
+         * @brief		Sets the raw gamepad layout: "Auto" (detected per gamepad), "Generic", "XInput" or "LinuxEvdev".
+         */
+        void setJoyStickLayoutOverride(const Ogre::String& layoutName);
+
+        const Ogre::String& getJoyStickLayoutOverride(void) const;
     private:
         InputDeviceCore();
 
@@ -125,6 +185,24 @@ namespace NOWA
         void flushPendingJoystickRemovals(void);
 
         void addDevice(const Ogre::String& deviceName, bool isKeyboard, OIS::Object* deviceObject);
+
+        void applyJoyStickLayout(InputDeviceModule* joystickModule);
+
+        InputDeviceModule* getPrimaryModuleOf(unsigned long id) const;
+
+        void detachFromCompanionOwner(InputDeviceModule* module);
+
+        InputDeviceModule* occupyModule(InputDeviceModule* module, unsigned long id);
+
+        InputDeviceModule* getFirstFreeJoystickModule(void) const;
+
+        InputDeviceModule* assignAutoDevice(unsigned long id);
+
+        void releaseDeviceInternal(unsigned long id);
+
+        void updateSoftCompanion(void);
+
+        void markJoyStickInput(const OIS::Object* deviceObject);
     private:
         OIS::Mouse* mouse;
         OIS::Keyboard* keyboard;
@@ -157,10 +235,12 @@ namespace NOWA
 
         JoyStickConfig joyStickConfig;
 
-        unsigned short joystickIndex;
-
         bool bSelectDown;
         bool bLock;
+
+        std::vector<OIS::Keyboard*> additionalKeyboards;
+        Ogre::String joyStickLayoutOverride;
+        unsigned int diagnosticRawButtonLogCount;
     };
 
 }; // namespace end

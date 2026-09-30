@@ -7670,6 +7670,191 @@ return {
 			}
 		}
 	},
+	ExplorationMapComponent =
+	{
+		type = "class",
+		description = "Usage: A Metroid / Castlevania like exploration map. All scenes connected via exit components (doors) with the current scene are laid out on a grid of cells. Cells the target (e.g. the player) walks through are explored, scenes can be revealed via Lua (map station). Shows room borders, door gaps, the player and markers (save points, teleporters, bosses, items, shops, locked doors, secrets). Two views: a mini map in a corner and a full map with completion, legend, zoom and clickable markers. Requirements: Place it on a global game object, e.g. the MainGameObject. Each scene needs saved bounds. The graphics come from 'ExplorationMap.png'.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Sets whether the map is active. Deactivated, nothing is shown.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Gets whether the map is active.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			showMiniMap =
+			{
+				type = "method",
+				description = "Shows or hides the mini map in the corner.",
+				args = "(boolean show)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isMiniMapShown =
+			{
+				type = "function",
+				description = "Gets whether the mini map is shown.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			showFullMap =
+			{
+				type = "method",
+				description = "Shows or hides the full map. Hiding it returns to the mini map, if that is enabled.",
+				args = "(boolean show)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isFullMapShown =
+			{
+				type = "function",
+				description = "Gets whether the full map is shown.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			toggleFullMap =
+			{
+				type = "method",
+				description = "Toggles the full map.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			panFullMap =
+			{
+				type = "method",
+				description = "Moves the full map by the given pixels.",
+				args = "(number deltaX, number deltaY)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			zoomFullMap =
+			{
+				type = "method",
+				description = "Zooms the full map, e.g. 1.25 zooms in, 0.8 zooms out.",
+				args = "(number factor)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			addMarker =
+			{
+				type = "method",
+				description = "Adds or replaces a marker. Scene name empty = current scene. Types: 'SavePoint', 'Teleporter', 'Boss', 'Item', 'Shop', 'LockedDoor', 'Secret', 'Custom'.",
+				args = "(string markerId, string sceneName, Vector3 position, string type, string label)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			removeMarker =
+			{
+				type = "method",
+				description = "Removes a marker added via addMarker.",
+				args = "(string markerId)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setMarkerState =
+			{
+				type = "method",
+				description = "Sets the marker state: 'normal', 'collected' (item taken, boss defeated) or 'hidden'. Kept across scene changes. For markers configured as attribute, the id is their 'Marker Target'.",
+				args = "(string markerId, string state)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getMarkerState =
+			{
+				type = "function",
+				description = "Gets the marker state.",
+				args = "(string markerId)",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setMarkerTypeDisplayName =
+			{
+				type = "method",
+				description = "Sets the legend text for a marker type, e.g. for localization.",
+				args = "(string type, string displayName)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			reactOnMarkerClicked =
+			{
+				type = "method",
+				description = "Called when a marker is clicked on the full map, e.g. for fast travel via teleporters.",
+				args = "(func closure, markerId)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			revealScene =
+			{
+				type = "method",
+				description = "Reveals a whole scene without exploring it (map station, map item). Drawn hatched.",
+				args = "(string sceneName)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isSceneRevealed =
+			{
+				type = "function",
+				description = "Gets whether a scene is revealed.",
+				args = "(string sceneName)",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			revealAllScenes =
+			{
+				type = "method",
+				description = "Reveals all scenes on the map.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCompletionPercent =
+			{
+				type = "function",
+				description = "Gets the explored cells of all scenes on the map in percent (0 - 100).",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			resetExploration =
+			{
+				type = "method",
+				description = "Forgets explored cells, revealed scenes and marker states, e.g. for a new game.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setSceneColor =
+			{
+				type = "method",
+				description = "Sets the room colour of a scene.",
+				args = "(string sceneName, Vector3 color)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setSceneDisplayName =
+			{
+				type = "method",
+				description = "Sets the name shown on the full map for a scene.",
+				args = "(string sceneName, string displayName)",
+				returns = "(nil)",
+				valuetype = "nil"
+			}
+		}
+	},
 	FadeComponent =
 	{
 		type = "class",
@@ -10606,6 +10791,30 @@ return {
 				returns = "(DistortionComponent)",
 				valuetype = "DistortionComponent"
 			},
+			getExplorationMapComponentFromIndex =
+			{
+				type = "function",
+				description = "Gets the exploration map component by the given occurence index.",
+				args = "(number occurrenceIndex)",
+				returns = "(ExplorationMapComponent)",
+				valuetype = "ExplorationMapComponent"
+			},
+			getExplorationMapComponent =
+			{
+				type = "function",
+				description = "Gets the exploration map component.",
+				args = "()",
+				returns = "(ExplorationMapComponent)",
+				valuetype = "ExplorationMapComponent"
+			},
+			getExplorationMapComponentFromName =
+			{
+				type = "function",
+				description = "Gets the exploration map component.",
+				args = "(string name)",
+				returns = "(ExplorationMapComponent)",
+				valuetype = "ExplorationMapComponent"
+			},
 			getFollowTargetComponentFromIndex =
 			{
 				type = "function",
@@ -11333,6 +11542,30 @@ return {
 				args = "(string name)",
 				returns = "(ProceduralConveyorLoopComponent)",
 				valuetype = "ProceduralConveyorLoopComponent"
+			},
+			getProceduralFlowCurtainComponent =
+			{
+				type = "function",
+				description = "Gets the component. Use this if the game object has this component only once.",
+				args = "()",
+				returns = "(ProceduralFlowCurtainComponent)",
+				valuetype = "ProceduralFlowCurtainComponent"
+			},
+			getProceduralFlowCurtainComponent2 =
+			{
+				type = "function",
+				description = "Gets the component by the given occurrence index, since a game object may have this component several times.",
+				args = "(number occurrenceIndex)",
+				returns = "(ProceduralFlowCurtainComponent)",
+				valuetype = "ProceduralFlowCurtainComponent"
+			},
+			getProceduralFlowCurtainComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component by its custom name.",
+				args = "(string name)",
+				returns = "(ProceduralFlowCurtainComponent)",
+				valuetype = "ProceduralFlowCurtainComponent"
 			},
 			getProceduralGeometryComponent =
 			{
@@ -13390,6 +13623,14 @@ return {
 				returns = "(DistortionComponent)",
 				valuetype = "DistortionComponent"
 			},
+			castExplorationMapComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(ExplorationMapComponent other)",
+				returns = "(ExplorationMapComponent)",
+				valuetype = "ExplorationMapComponent"
+			},
 			castFollowTargetComponent =
 			{
 				type = "function",
@@ -13669,6 +13910,14 @@ return {
 				args = "(ProceduralConveyorLoopComponent other)",
 				returns = "(ProceduralConveyorLoopComponent)",
 				valuetype = "ProceduralConveyorLoopComponent"
+			},
+			castProceduralFlowCurtainComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(ProceduralFlowCurtainComponent other)",
+				returns = "(ProceduralFlowCurtainComponent)",
+				valuetype = "ProceduralFlowCurtainComponent"
 			},
 			castProceduralGeometryComponent =
 			{
@@ -14291,7 +14540,7 @@ return {
 			changeScene =
 			{
 				type = "method",
-				description = "Changes the current scene to the new given one.",
+				description = "Changes the current scene to the new given one. Note: if there is an exitcomponent in a scene. this may be used:  AppStateManager:getGameProgressModule():setRequestedTargetLocationName('StartUpperEast'); AppStateManager:getGameProgressModule():changeScene('Level3');",
 				args = "(string sceneName)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -14718,7 +14967,7 @@ return {
 			setDeviceName =
 			{
 				type = "method",
-				description = "Sets the given device name. Note: It should only be chosen delivered from the @getActualizedDeviceList().",
+				description = "Sets the given logical device name ('Auto', 'Join', 'Keyboard', 'Gamepad 1' ...). Note: It should only be chosen delivered from the @getActualizedDeviceList(). Note: A device held by another game object is taken over, the other game object gets deactivated.",
 				args = "(string deviceName)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -14726,15 +14975,31 @@ return {
 			getDeviceName =
 			{
 				type = "function",
-				description = "Gets the selected device name.",
+				description = "Gets the selected logical device name, e.g. 'Auto', 'Join', 'Keyboard' or 'Gamepad 1'.",
 				args = "()",
 				returns = "(string)",
 				valuetype = "string"
 			},
+			getAssignedDeviceName =
+			{
+				type = "function",
+				description = "Gets the device which is really assigned, e.g. 'Keyboard' or 'Gamepad 2' (useful after 'Join' or 'Auto'). Empty if no device is assigned yet.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			isLastInputFromJoyStick =
+			{
+				type = "function",
+				description = "Gets whether the last input of the assigned device came from a gamepad. Use it to show gamepad or keyboard button prompts.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
 			getActualizedDeviceList =
 			{
 				type = "function",
-				description = "Gets all available devices. If none available or all occupied, 'No Device Available' will be delivered. By default 'Choose Device' is set, which is an invalid item and should be checked if chosen. Use @checkDevice or @hasValidDevice to check if the given selected device is valid, instead of checking those strings.",
+				description = "Gets all logical devices: 'Choose Device', 'Auto', 'Join', 'Keyboard', 'Gamepad 1' ... 'Gamepad N'. 'Choose Device' is an invalid item. Use @checkDevice or @hasValidDevice to check if the given selected device is valid, instead of checking those strings.",
 				args = "()",
 				returns = "(Table[number][string])",
 				valuetype = "Table[number][string]"
@@ -14758,7 +15023,7 @@ return {
 			hasValidDevice =
 			{
 				type = "function",
-				description = "Gets after calling @setDeviceName, whether the set device is valid.",
+				description = "Gets after calling @setDeviceName, whether a device is really assigned. In 'Join' mode this becomes true, after a player pressed Jump or Start on a free device.",
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
@@ -14838,7 +15103,7 @@ return {
 			hasActiveJoyStick =
 			{
 				type = "function",
-				description = "Gets whether a joystick is plugged in and active.",
+				description = "Gets whether the assigned device can deliver gamepad input (a gamepad, or 'Auto' with a companion gamepad).",
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
@@ -15042,8 +15307,8 @@ return {
 			getStringFromMappedKey =
 			{
 				type = "function",
-				description = "Gets the OIS key as string that is mapped as action.",
-				args = "(Action action)",
+				description = "Gets the given OIS key as string.",
+				args = "(KeyCode keyCode)",
 				returns = "(string)",
 				valuetype = "string"
 			},
@@ -15066,8 +15331,8 @@ return {
 			getStringFromMappedButton =
 			{
 				type = "function",
-				description = "Gets the OIS joystick button as string that is mapped as action.",
-				args = "(Action action)",
+				description = "Gets the given joystick button as string.",
+				args = "(JoyStickButton button)",
 				returns = "(string)",
 				valuetype = "string"
 			},
@@ -15082,7 +15347,7 @@ return {
 			hasActiveJoyStick =
 			{
 				type = "function",
-				description = "Gets whether a joystick is plugged in and active.",
+				description = "Gets whether this device can deliver gamepad input: A gamepad, or a keyboard with a companion gamepad ('Auto' device).",
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
@@ -15098,7 +15363,23 @@ return {
 			getLeftStickVerticalMovingStrength =
 			{
 				type = "function",
-				description = "Gets the strength of the left stick vertical moving. If 0 horizontal stick is not moved. When moved right values are in range (0, 1]. When moved left values are in range (0, -1].",
+				description = "Gets the strength of the left stick vertical moving. If 0 vertical stick is not moved. When moved up values are in range [-1, 0). When moved down values are in range (0, 1].",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getRightStickHorizontalMovingStrength =
+			{
+				type = "function",
+				description = "Gets the strength of the right stick horizontal moving. If 0 horizontal stick is not moved. When moved right values are in range (0, 1]. When moved left values are in range (0, -1].",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getRightStickVerticalMovingStrength =
+			{
+				type = "function",
+				description = "Gets the strength of the right stick vertical moving. If 0 vertical stick is not moved. When moved up values are in range [-1, 0). When moved down values are in range (0, 1].",
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
@@ -15135,10 +15416,10 @@ return {
 				returns = "(boolean)",
 				valuetype = "boolean"
 			},
-			isActionPressed =
+			isActionDownPressed =
 			{
 				type = "function",
-				description = "Gets whether a specifig mapped action is pressed.",
+				description = "Gets whether a specifig mapped action is pressed. Each action has its own timer.",
 				args = "(Action action, number dt, number durationBetweenTheAction)",
 				returns = "(boolean)",
 				valuetype = "boolean"
@@ -15159,7 +15440,7 @@ return {
 				returns = "(boolean)",
 				valuetype = "boolean"
 			},
-			areButtonsDown3 =
+			areButtonsDown4 =
 			{
 				type = "function",
 				description = "Gets whether four specific joystick buttons are down at the same time.",
@@ -15206,6 +15487,46 @@ return {
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
+			},
+			isOccupied =
+			{
+				type = "function",
+				description = "Gets whether this device is assigned to a game object.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			getOccupiedId =
+			{
+				type = "function",
+				description = "Gets the id of the game object this device is assigned to, or 0.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getCompanionModule =
+			{
+				type = "function",
+				description = "Gets the companion gamepad of a keyboard device ('Auto' device), or nil.",
+				args = "()",
+				returns = "(InputDeviceModule)",
+				valuetype = "InputDeviceModule"
+			},
+			isLastInputFromJoyStick =
+			{
+				type = "function",
+				description = "Gets whether the last input on this device (or its companion gamepad) came from a gamepad. Use it to show gamepad or keyboard button prompts.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			isJoinInputDown =
+			{
+				type = "function",
+				description = "Gets whether the mapped jump or start is pressed on this device itself (used for 'press a button to join').",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
 			}
 		}
 	},
@@ -15283,7 +15604,7 @@ return {
 			{
 				type = "value"
 			},
-			NOWA_A_MENU =
+			NOWA_A_START =
 			{
 				type = "value"
 			},
@@ -15332,6 +15653,10 @@ return {
 				type = "value"
 			},
 			NOWA_A_SELECT =
+			{
+				type = "value"
+			},
+			NOWA_A_GRID =
 			{
 				type = "value"
 			}
@@ -23555,7 +23880,7 @@ return {
 	MyGUIMiniMapComponent =
 	{
 		type = "class",
-		description = "Usage: A MyGUI UI minimap component. This component will search for all exit components in all scenes of the current project and build a minimap of all scenes with a target game object painted as dot.Note: The minimap component can use the 'mouseClickEventName' in order to specify a function name for being executed in lua script, if the corresponding minimap tile has been clicked.",
+		description = "Usage: A MyGUI UI minimap component. Starting at the current scene, it follows all exit components (doors) and builds a map of all connected scenes. Each scene is placed so that an exit and the location it leads to ('Target Location Name') meet; only the bounds of a scene count, not where it sits in world space. Scenes without a connection (menu, intro, ...) are left out. With 'Use Visitation' only scenes the player has entered (or which are revealed via 'Scene Visited') are shown. Trackable game objects are painted as images. Note: The minimap component can use the 'mouseClickEventName' in order to specify a function name for being executed in lua script, if the corresponding minimap tile has been clicked.",
 		inherits = "MyGUIWindowComponent",
 		childs = 
 		{
@@ -24246,6 +24571,11 @@ return {
 		type = "singleton",
 		description = "Mapped flash light action (does not matter if keyboard or joystick is used)."
 	},
+	NOWA_A_GRID =
+	{
+		type = "singleton",
+		description = "Mapped grid action (does not matter if keyboard or joystick is used)."
+	},
 	NOWA_A_INVENTORY =
 	{
 		type = "singleton",
@@ -24270,11 +24600,6 @@ return {
 	{
 		type = "singleton",
 		description = "Mapped map action (does not matter if keyboard or joystick is used)."
-	},
-	NOWA_A_MENU =
-	{
-		type = "singleton",
-		description = "Mapped menu action (does not matter if keyboard or joystick is used)."
 	},
 	NOWA_A_PAUSE =
 	{
@@ -24310,6 +24635,11 @@ return {
 	{
 		type = "singleton",
 		description = "Mapped sneak action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_START =
+	{
+		type = "singleton",
+		description = "Mapped start (menu) action (does not matter if keyboard or joystick is used)."
 	},
 	NOWA_A_UP =
 	{
@@ -30414,6 +30744,303 @@ return {
 				args = "()",
 				returns = "(string)",
 				valuetype = "string"
+			}
+		}
+	},
+	ProceduralFlowCurtainComponent =
+	{
+		type = "class",
+		description = "Usage: A flat, vertical curtain of falling material (water, lava, slime, ...) built as a Rows x Cols grid, with a downward/upward scrolling texture. No collision is ever created - the player is meant to be able to walk through/behind it.  SIZE: - 'Width' and 'Height' are the curtain's outer dimensions in meters, centred on X, based at y=0 (place the node where the curtain meets the ground). - 'Rows'/'Cols' subdivide the grid - higher values give 'Ripple Amount' more geometry to curve and improve normal-mapped lighting over a tall surface. - 'Ripple Amount' bends the grid with a fixed (non-animated) sine wave across the width, so the curtain is not a perfectly flat card. Set to 0 for a flat sheet.  ANIMATION: - 'Flow Speed'/'Foam Speed' are how fast each layer's texture scrolls, in meters per second. Negative reverses direction. - 'Flow V Tiling'/'Foam V Tiling' are how many times each layer's texture repeats per meter of height. 'Horizontal UV Tiling' does the same across the width, for both layers. - Unlike ProceduralConveyorLoopComponent, no integer repeat-count trick is needed here - this is an open surface, not a closed loop, so an ordinary tileable texture never pops.  LAYERS: - 'Flow Datablock' covers the main falling surface (always built while Activated). - 'Foam Enabled' + 'Foam Datablock' add a second, optional layer offset by 'Foam Z Offset' meters in front of the flow layer, for spray/foam detail. - Both datablocks' texture samplers must use WRAP addressing on V, or scrolling will smear instead of repeat. - 'Flow Colour Red/Green/Blue' + 'Flow Opacity' tint this ONE instance only (via a per-object cloned datablock) without touching the shared 'Flow Datablock' material or affecting any other curtain using the same one.  LUA API: - getProceduralFlowCurtainComponent() on a GameObject returns this component. - setWidth(w), setHeight(h), setRows(r), setCols(c), setRippleAmount(a) set the shape. - setFlowSpeed(s), setFoamSpeed(s) set scroll speed. - setFlowDatablock(name), setFoamDatablock(name) set the two materials. ",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setWidth =
+			{
+				type = "method",
+				description = "Sets the curtain's width in meters. Regenerates the mesh.",
+				args = "(number width)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWidth =
+			{
+				type = "function",
+				description = "Gets the curtain's width in meters.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setHeight =
+			{
+				type = "method",
+				description = "Sets the curtain's height in meters. Regenerates the mesh.",
+				args = "(number height)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getHeight =
+			{
+				type = "function",
+				description = "Gets the curtain's height in meters.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setRows =
+			{
+				type = "method",
+				description = "Sets the vertical grid subdivisions. Regenerates the mesh.",
+				args = "(number rows)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRows =
+			{
+				type = "function",
+				description = "Gets the vertical grid subdivisions.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setCols =
+			{
+				type = "method",
+				description = "Sets the horizontal grid subdivisions. Regenerates the mesh.",
+				args = "(number cols)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCols =
+			{
+				type = "function",
+				description = "Gets the horizontal grid subdivisions.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setRippleAmount =
+			{
+				type = "method",
+				description = "Sets the fixed sine bulge across the width, in meters. Regenerates the mesh.",
+				args = "(number amount)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getRippleAmount =
+			{
+				type = "function",
+				description = "Gets the ripple bulge amount.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setHorizontalUVTiling =
+			{
+				type = "method",
+				description = "Sets the texture tiling across the width, in repeats per meter. Regenerates the mesh.",
+				args = "(number tiling)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getHorizontalUVTiling =
+			{
+				type = "function",
+				description = "Gets the horizontal texture tiling.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setFlowDatablock =
+			{
+				type = "method",
+				description = "Sets the datablock covering the main falling surface.",
+				args = "(string datablock)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFlowDatablock =
+			{
+				type = "function",
+				description = "Gets the flow layer's datablock.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setFlowSpeed =
+			{
+				type = "method",
+				description = "Sets how fast the flow layer's texture scrolls, in meters per second. Negative reverses direction.",
+				args = "(number speed)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFlowSpeed =
+			{
+				type = "function",
+				description = "Gets the flow layer's scroll speed in meters per second.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setFlowVTiling =
+			{
+				type = "method",
+				description = "Sets the flow layer's texture tiling along the height, in repeats per meter. Regenerates the mesh.",
+				args = "(number tiling)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFlowVTiling =
+			{
+				type = "function",
+				description = "Gets the flow layer's vertical texture tiling.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setFoamEnabled =
+			{
+				type = "method",
+				description = "Enables/disables the optional foam layer. Regenerates the mesh.",
+				args = "(boolean enabled)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFoamEnabled =
+			{
+				type = "function",
+				description = "Gets whether the foam layer is enabled.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setFoamDatablock =
+			{
+				type = "method",
+				description = "Sets the datablock covering the optional foam layer.",
+				args = "(string datablock)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFoamDatablock =
+			{
+				type = "function",
+				description = "Gets the foam layer's datablock.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setFoamSpeed =
+			{
+				type = "method",
+				description = "Sets how fast the foam layer's texture scrolls, in meters per second. Negative reverses direction.",
+				args = "(number speed)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFoamSpeed =
+			{
+				type = "function",
+				description = "Gets the foam layer's scroll speed in meters per second.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setFoamVTiling =
+			{
+				type = "method",
+				description = "Sets the foam layer's texture tiling along the height, in repeats per meter. Regenerates the mesh.",
+				args = "(number tiling)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFoamVTiling =
+			{
+				type = "function",
+				description = "Gets the foam layer's vertical texture tiling.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setFoamZOffset =
+			{
+				type = "method",
+				description = "Sets how far in front of the flow layer the foam layer sits, in meters. Regenerates the mesh.",
+				args = "(number offset)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFoamZOffset =
+			{
+				type = "function",
+				description = "Gets the foam layer's Z offset in meters.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setFlowColourRed =
+			{
+				type = "method",
+				description = "Sets this instance's flow layer red tint (0-1), via a per-object cloned datablock.",
+				args = "(number red)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFlowColourRed =
+			{
+				type = "function",
+				description = "Gets this instance's flow layer red tint.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setFlowColourGreen =
+			{
+				type = "method",
+				description = "Sets this instance's flow layer green tint (0-1).",
+				args = "(number green)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFlowColourGreen =
+			{
+				type = "function",
+				description = "Gets this instance's flow layer green tint.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setFlowColourBlue =
+			{
+				type = "method",
+				description = "Sets this instance's flow layer blue tint (0-1).",
+				args = "(number blue)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFlowColourBlue =
+			{
+				type = "function",
+				description = "Gets this instance's flow layer blue tint.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setFlowOpacity =
+			{
+				type = "method",
+				description = "Sets this instance's flow layer opacity (0-1), multiplied with the texture's own alpha.",
+				args = "(number opacity)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFlowOpacity =
+			{
+				type = "function",
+				description = "Gets this instance's flow layer opacity.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
 			}
 		}
 	},

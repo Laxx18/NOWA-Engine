@@ -1080,7 +1080,10 @@ namespace NOWA
 
         this->setTimeoutDuration(std::chrono::milliseconds(10000));
 
-        const float fixedDt = 1.0f / float(NOWA::Core::getSingletonPtr()->getOptionDesiredSimulationUpdates());
+        // Same clamping as in AppStateManager::multiThreadedRendering, so that both threads use the identical fixed step
+        float simulationUpdates = static_cast<float>(NOWA::Core::getSingletonPtr()->getOptionDesiredSimulationUpdates());
+        simulationUpdates = Ogre::Math::Clamp(simulationUpdates, 30.0f, 240.0f);
+        const float fixedDt = 1.0f / simulationUpdates;
         this->setFrameTime(fixedDt);
 
         // Attention: The timeout must stay enabled in debug builds too. Disabling it turns every
@@ -1110,6 +1113,58 @@ namespace NOWA
 
         Ogre::Window* renderWindow = NOWA::Core::getSingletonPtr()->getOgreRenderWindow();
         const auto appStateManager = NOWA::AppStateManager::getSingletonPtr();
+
+        // -- FRAME PACING (frame rate limit) --------------------------------------------
+        // Previously nothing limited the render thread: With VSync off it rendered as fast as possible, and while the window was
+        // minimized/hidden it kept rendering at full speed too. On a Steam Deck CPU and GPU share one power budget, so every
+        // unnecessary frame costs clock speed, heat and battery.
+        // The limit is only active if Core::getOptionFrameRateLimitEnabled() ("LimitFrameRate" in the config), and then it is
+        // Core::getOptionDesiredFramesUpdates() (player setting, 0 = unlimited). With VSync on and a limit at the
+        // refresh rate, VSync paces alone, so the limiter never fights VSync (which would cause missed VSyncs = stutter).
+        // Attention: The wait is done with waitForCommandOrSignal, so render commands (enqueueAndWait from the logic thread)
+        // are serviced immediately while waiting - a round trip is even faster than during a VSync-blocked present.
+        const unsigned int displayRefreshRate = NOWA::Core::getSingletonPtr()->getScreenRefreshRate();
+        const double hiddenWindowFrameRate = 10.0;
+        auto nextFrameDeadline = std::chrono::steady_clock::now();
+        double pacingWaitSeconds = 0.0;
+
+        auto computeFrameRateLimit = [renderWindow, displayRefreshRate, hiddenWindowFrameRate]() -> double
+        {
+            // Minimized / hidden: keep the pipeline alive (commands, deferred destroys, closures), but only at a low rate
+            if (false == renderWindow->isVisible())
+            {
+                return hiddenWindowFrameRate;
+            }
+
+            // Switchable via "LimitFrameRate" in the config (default off on PC: open end frame rate, e.g. for profiling frame drops)
+            if (false == NOWA::Core::getSingletonPtr()->getOptionFrameRateLimitEnabled())
+            {
+                return 0.0;
+            }
+
+            const int desiredFrames = static_cast<int>(NOWA::Core::getSingletonPtr()->getOptionDesiredFramesUpdates());
+            if (desiredFrames <= 0)
+            {
+                return 0.0;
+            }
+
+            if (true == renderWindow->getVSync())
+            {
+                // VSync interval 2 at 60 Hz = 30 fps etc.
+                unsigned int vsyncInterval = renderWindow->getVSyncInterval();
+                if (0 == vsyncInterval)
+                {
+                    vsyncInterval = 1;
+                }
+                const int vsyncFrameRate = static_cast<int>(displayRefreshRate / vsyncInterval);
+                if (desiredFrames + 1 >= vsyncFrameRate)
+                {
+                    return 0.0;
+                }
+            }
+
+            return static_cast<double>(desiredFrames);
+        };
 
         while (true == this->bRunning)
         {
@@ -1182,10 +1237,35 @@ namespace NOWA
                 continue;
             }
 
+            // -- FRAME PACING --------------------------------------------------------
+            // Not yet time for the next frame: keep servicing commands, but do not render.
+            {
+                const auto pacingNow = std::chrono::steady_clock::now();
+                if (pacingNow < nextFrameDeadline)
+                {
+                    const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(nextFrameDeadline - pacingNow);
+                    if (remaining.count() >= 1)
+                    {
+                        // At most 2 ms per wait, so that a changed limit or a stall request is noticed quickly
+                        this->waitForCommandOrSignal((std::min)(remaining, std::chrono::milliseconds(2)));
+                    }
+                    else
+                    {
+                        std::this_thread::yield();
+                    }
+                    pacingWaitSeconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - pacingNow).count();
+                    continue;
+                }
+            }
+
             const auto currentTime = std::chrono::steady_clock::now();
             const Ogre::Real deltaTime = std::chrono::duration<Ogre::Real>(currentTime - lastFrameTime).count();
             lastFrameTime = currentTime;
             this->currentRenderDt = deltaTime;
+
+            // Consumed in this iteration (adaptive quality), then reset for the next frame
+            const double pacingWaitOfThisFrame = pacingWaitSeconds;
+            pacingWaitSeconds = 0.0;
 
 #ifdef CLOSURE_DEBUG
             g_renderDt = deltaTime;
@@ -1232,7 +1312,14 @@ namespace NOWA
                 auto* workspaceModule = AppStateManager::getSingletonPtr()->getWorkspaceModule();
                 if (nullptr != workspaceModule)
                 {
-                    workspaceModule->updateAdaptiveQuality(deltaTime);
+                    // Attention: The time spent waiting in the frame limiter is no GPU/CPU load. Without subtracting it, a limit of e.g. 30 fps
+                    // would look like a slow frame to the adaptive quality and it would reduce the quality for nothing.
+                    Ogre::Real workTime = deltaTime - static_cast<Ogre::Real>(pacingWaitOfThisFrame);
+                    if (workTime < 0.0f)
+                    {
+                        workTime = 0.0f;
+                    }
+                    workspaceModule->updateAdaptiveQuality(workTime);
                 }
 
                 NOWA::InputDeviceCore::getSingletonPtr()->capture(deltaTime);
@@ -1326,6 +1413,23 @@ namespace NOWA
 
             if (false == isStalled && false == this->isWorkspaceTransitioning() && false == isSceneLoading)
             {
+                // Schedule the next frame. Fixed cadence (deadline + period) for even frame times, but no burst to catch up after a slow frame.
+                const double frameRateLimit = computeFrameRateLimit();
+                if (frameRateLimit > 0.0)
+                {
+                    const auto framePeriod = std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(1.0 / frameRateLimit));
+                    const auto scheduleNow = std::chrono::steady_clock::now();
+                    nextFrameDeadline += framePeriod;
+                    if (nextFrameDeadline < scheduleNow)
+                    {
+                        nextFrameDeadline = scheduleNow + framePeriod;
+                    }
+                }
+                else
+                {
+                    nextFrameDeadline = std::chrono::steady_clock::now();
+                }
+
                 Ogre::Root::getSingletonPtr()->renderOneFrame();
 
 #ifdef CLOSURE_DEBUG
@@ -1351,6 +1455,11 @@ namespace NOWA
                         Ogre::LML_NORMAL);
                 }
 #endif
+            }
+            else if (false == isStalled && false == isSceneLoading)
+            {
+                // Workspace transition: nothing is rendered, so without a wait this loop would spin a full core
+                this->waitForCommandOrSignal(std::chrono::milliseconds(1));
             }
         }
 

@@ -1,0 +1,91 @@
+{
+    "samplers" :
+    {
+        "Flow_Sampler_Wrap" :
+        {
+            "min" : "linear",
+            "mag" : "linear",
+            "mip" : "linear",
+            "u" : "wrap",
+            "v" : "wrap",
+            "w" : "wrap",
+            "miplodbias" : 0,
+            "max_anisotropic" : 1,
+            "compare_function" : "disabled",
+            "border" : [1, 1, 1, 1],
+            "min_lod" : -3.40282e+38,
+            "max_lod" : 3.40282e+38
+        }
+    },
+
+    "macroblocks" :
+    {
+        "FlowMacroblock" :
+        {
+            "scissor_test" : false,
+            "depth_check" : true,
+            "depth_write" : false,
+            "depth_function" : "less_equal",
+            "depth_bias_constant" : 0,
+            "depth_bias_slope_scale" : 0,
+            "cull_mode" : "none",
+            "polygon_mode" : "solid"
+        }
+    },
+
+    "blendblocks" :
+    {
+        "FlowBlendblock" :
+        {
+            "alpha_to_coverage" : false,
+            "blendmask" : "rgba",
+            "separate_blend" : false,
+            "transparent" : true,
+            "src_blend_factor" : "src_alpha",
+            "dst_blend_factor" : "one_minus_src_alpha",
+            "blend_operation" : "add"
+        }
+    },
+
+    "unlit" :
+    {
+        "Flow/WaterA" :
+        {
+            "macroblock" : "FlowMacroblock",
+            "blendblock" : "FlowBlendblock",
+            "shadow_const_bias" : 0.01,
+            "diffuse" : [0.45, 0.75, 0.98, 1],
+            "diffuse_map0" :
+            {
+                "texture" : "p_flow_water.png",
+                "sampler" : "Flow_Sampler_Wrap"
+            }
+        },
+
+        "Flow/FoamA" :
+        {
+            "macroblock" : "FlowMacroblock",
+            "blendblock" : "FlowBlendblock",
+            "shadow_const_bias" : 0.01,
+            "diffuse" : [1.0, 1.0, 1.0, 1],
+            "diffuse_map0" :
+            {
+                "texture" : "p_flow_foam.png",
+                "sampler" : "Flow_Sampler_Wrap"
+            }
+        },
+
+        "Flow/LavaA" :
+        {
+            "macroblock" : "FlowMacroblock",
+            "blendblock" : "FlowBlendblock",
+            "shadow_const_bias" : 0.01,
+            "diffuse" : [1.0, 0.35, 0.05, 1],
+            "diffuse_map0" :
+            {
+                "texture" : "p_flow_water.png",
+                "sampler" : "Flow_Sampler_Wrap"
+            }
+        }
+    }
+}

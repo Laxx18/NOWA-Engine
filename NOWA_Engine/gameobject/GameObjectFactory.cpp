@@ -90,6 +90,7 @@
 #include "ValueBarComponent.h"
 #include "WindComponent.h"
 #include "WorkspaceComponents.h"
+#include "PlayerStartComponent.h"
 
 #include "main/AppStateManager.h"
 #include "main/Events.h"
@@ -294,6 +295,7 @@ namespace NOWA
         this->componentFactory.registerClass<MyGUIRepeatClickControllerComponent>(MyGUIRepeatClickControllerComponent::getStaticClassId(), MyGUIRepeatClickControllerComponent::getStaticClassName());
         this->componentFactory.registerClass<MyGUIMiniMapComponent>(MyGUIMiniMapComponent::getStaticClassId(), MyGUIMiniMapComponent::getStaticClassName());
         this->componentFactory.registerClass<GraphicsConfigurationComponent>(GraphicsConfigurationComponent::getStaticClassId(), GraphicsConfigurationComponent::getStaticClassName());
+        this->componentFactory.registerClass<PlayerStartComponent>(PlayerStartComponent::getStaticClassId(), PlayerStartComponent::getStaticClassName());
     }
 
     GameObjectFactory::~GameObjectFactory()

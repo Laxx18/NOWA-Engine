@@ -221,7 +221,7 @@ namespace NOWA
 
 	void JoystickConfigurationComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		InputDeviceModule::JoyStickButton button = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->getPressedButton();
+		// InputDeviceModule::JoyStickButton button = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->getPressedButton();
 	}
 
 	void JoystickConfigurationComponent::actualizeValue(Variant* attribute)

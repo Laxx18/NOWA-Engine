@@ -1212,7 +1212,29 @@ namespace NOWA
             }
         } while (nullptr != physicsCompPtr);
 
-        gameObjectPtr->setVisible(false);
+        // Attention: was gameObjectPtr->setVisible(false), which is a blocking round trip to the render thread: the logic thread waits until
+        // the running frame is finished, measured 3-4 ms per game object. Several coins picked up in the same frame stalled the logic thread
+        // for 10+ ms, the interpolation ran dry and the picture stuttered.
+        // Non blocking now. Safe, because commands run at the top of the render loop (processAllCommands), while destroy() below is deferred
+        // by several rendered frames (enqueueDestroy ring buffer) - the node still exists when this command runs.
+        // The query flags are cleared as well, so that scene queries (e.g. the AreaOfInterestComponent's sphere query, which runs on the render
+        // thread) no longer report the dying game object until it is destroyed.
+        Ogre::SceneNode* sceneNode = gameObjectPtr->getSceneNode();
+        if (nullptr != sceneNode)
+        {
+            NOWA::GraphicsModule::RenderCommand hideCommand = [sceneNode]()
+            {
+                for (size_t i = 0; i < sceneNode->numAttachedObjects(); i++)
+                {
+                    Ogre::MovableObject* movableObject = sceneNode->getAttachedObject(i);
+                    movableObject->setQueryFlags(0);
+                    movableObject->setVisible(false);
+                }
+                sceneNode->setVisible(false);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(hideCommand), "GameObjectController::deleteGameObjectImmediately hide");
+        }
+
         this->freeCategoryFromGameObject(gameObjectPtr->getCategory());
         this->freeRenderCategoryFromGameObject(gameObjectPtr->getRenderCategory());
         unsigned long id = gameObjectPtr->getId();

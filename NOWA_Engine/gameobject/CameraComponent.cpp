@@ -1,8 +1,8 @@
 #include "NOWAPrecompiled.h"
 #include "CameraComponent.h"
+#include "CompositorEffectComponents.h"
 #include "GameObjectController.h"
 #include "WorkspaceComponents.h"
-#include "CompositorEffectComponents.h"
 #include "camera/CameraManager.h"
 #include "main/AppStateManager.h"
 #include "main/Core.h"
@@ -72,22 +72,60 @@ namespace NOWA
         unsigned int index = std::get<1>(castEventData->getCameraGameObjectData());
         bool active = std::get<2>(castEventData->getCameraGameObjectData());
 
-        // if a camera has been set as active, go through all game objects and set all camera components as active false
-        if (true == active)
+        if (false == active)
         {
-            auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
-            for (auto it = gameObjects->begin(); it != gameObjects->end(); ++it)
+            return;
+        }
+
+        // Attention: this event is QUEUED and processed at the next event tick - possibly long after other cameras were
+        // activated. On a scene change during simulation, the new scene's MainCamera sends "activated" while it is parsed, and
+        // the Lua connect activates the GameCamera right afterwards, before the next tick. Processed in that order, the stale
+        // MainCamera event deactivated the GameCamera again, then the GameCamera event deactivated the MainCamera - and no camera
+        // was left at all (CameraManager::cameraDataMap empty, frozen picture).
+        //
+        // The actual switch now happens synchronously in setActivated(true) (see deactivateOtherCameras). This handler only
+        // repeats it, and only if the sending camera is STILL the active one - a stale event is ignored.
+        GameObjectPtr senderGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(id);
+        if (nullptr == senderGameObjectPtr)
+        {
+            // Sent from a scene that does not exist anymore.
+            return;
+        }
+
+        auto senderCameraCompPtr = NOWA::makeStrongPtr(senderGameObjectPtr->getComponent<CameraComponent>());
+        if (nullptr == senderCameraCompPtr || false == senderCameraCompPtr->isActivated())
+        {
+            return;
+        }
+
+        // Every camera component receives this event. Only the sender itself does the work, else each one would walk all game
+        // objects.
+        if (senderCameraCompPtr.get() != this)
+        {
+            return;
+        }
+
+        this->deactivateOtherCameras();
+    }
+
+    void CameraComponent::deactivateOtherCameras(void)
+    {
+        auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
+        for (auto it = gameObjects->begin(); it != gameObjects->end(); ++it)
+        {
+            GameObject* gameObject = it->second.get();
+            if (gameObject->getId() == this->gameObjectPtr->getId())
             {
-                GameObject* gameObject = it->second.get();
-                if (id != gameObject->getId())
-                {
-                    auto cameraComponent = NOWA::makeStrongPtr(gameObject->getComponent<CameraComponent>());
-                    if (nullptr != cameraComponent)
-                    {
-                        // Do not call: setActivated(false), because internally this event is sent, so a event flooding would occur!
-                        cameraComponent->setActivatedFlag(false);
-                    }
-                }
+                continue;
+            }
+
+            auto cameraComponent = NOWA::makeStrongPtr(gameObject->getComponent<CameraComponent>());
+            // Only the ones that are still active - setActivatedFlag(false) removes the workspace and the camera, which must not
+            // run again on an already inactive camera.
+            if (nullptr != cameraComponent && true == cameraComponent->isActivated())
+            {
+                // Do not call: setActivated(false), because internally the switch event is sent, so an event flooding would occur!
+                cameraComponent->setActivatedFlag(false);
             }
         }
     }
@@ -315,7 +353,7 @@ namespace NOWA
                 gameObjectCopy->getAttribute(GameObject::AttrScale())->setVisible(true);
 
                 // If it was an active one, send event
-                if (true == active && false == AppStateManager::getSingletonPtr()->bShutdown)
+                if (true == active && true == AppStateManager::getSingletonPtr()->isSafeToDispatchEvents())
                 {
                     boost::shared_ptr<EventDataRemoveCamera> eventDataRemoveCamera(new EventDataRemoveCamera(active, cameraCopy));
                     NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRemoveCamera);
@@ -855,6 +893,10 @@ namespace NOWA
                     // endWorkspaceTransition() wrapping (createWorkspace() right above isn't wrapped
                     // in one either at this call site, so this follows the same convention).
                     workspaceBaseCompPtr->enableEffect("", false);
+
+                    // Synchronous switch: the camera activated LAST wins, independent of when the queued switch events are
+                    // processed. See handleSwitchCamera.
+                    this->deactivateOtherCameras();
                 }
                 else
                 {
@@ -905,8 +947,11 @@ namespace NOWA
         {
             Ogre::String name = this->gameObjectPtr->getName();
             // Send out event, whether is camera has been activated or not, to camera manager and other camera components, to adapt their state
-            boost::shared_ptr<EventDataSwitchCamera> eventDataSwitchCamera(new EventDataSwitchCamera(this->gameObjectPtr->getId(), this->gameObjectPtr->getIndexFromComponent(this), activated));
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSwitchCamera);
+            if (true == AppStateManager::getSingletonPtr()->isSafeToDispatchEvents())
+            {
+                boost::shared_ptr<EventDataSwitchCamera> eventDataSwitchCamera(new EventDataSwitchCamera(this->gameObjectPtr->getId(), this->gameObjectPtr->getIndexFromComponent(this), activated));
+                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSwitchCamera);
+            }
         }
     }
 

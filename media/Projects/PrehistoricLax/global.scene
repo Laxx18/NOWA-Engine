@@ -1,8 +1,103 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <scene formatVersion="1.1.0" generator="NOWA-Engine">
 	<nodes>
+		<node name="WeaponStick" id="3232914531">
+			<position x="1.58775" y="1.75339" z="-6.36726"/>
+			<rotation qw="0.742635" qx="-0.490219" qy="0.314746" qz="-0.330322"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="WeaponStick" meshFile="monster_item_cudgel.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="items_mat.004"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1141940358"/>
+					<property type="7" name="Category" data="Weapon"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="true"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="items_mat.004"/>
+					<property type="7" name="ComponentPhysicsActiveKinematicComponent" data="PhysicsActiveKinematicComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0 0 0"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 0"/>
+					<property type="6" name="Mass" data="10"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0.1"/>
+					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
+					<property type="6" name="Density" data="1"/>
+					<property type="9" name="Gravity" data="0 0 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="5"/>
+					<property type="7" name="CollisionType" data="ConvexHull"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="OnKinematicContactFunctionName" data="onKinematicContact"/>
+					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="ScriptFile" data="WeaponStick.lua"/>
+					<property type="12" name="CloneScript" data="false"/>
+					<property type="12" name="HasCommonScript" data="false"/>
+					<property type="12" name="ScriptGlobal" data="true"/>
+					<property type="2" name="OrderIndex" data="3"/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data="Hit"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="SoundName" data="Hit2.wav"/>
+					<property type="6" name="Volume" data="100"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="12" name="Loop" data="false"/>
+					<property type="8" name="FadeInFadeOut" data="0 0"/>
+					<property type="12" name="Stream" data="false"/>
+					<property type="12" name="RelativeToListener" data="false"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
+					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
+					<property type="7" name="Name" data="HitParticle"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="TemplateName" data="HitImpact"/>
+					<property type="12" name="Repeat" data="false"/>
+					<property type="6" name="PlayTime" data="100"/>
+					<property type="6" name="PlaySpeed" data="1"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetOrientation" data="0 0 0"/>
+					<property type="8" name="Scale" data="1 1"/>
+					<property type="7" name="BlendingMethod" data="From Material"/>
+					<property type="12" name="FadeIn" data="true"/>
+					<property type="6" name="FadeInTime" data="20"/>
+					<property type="12" name="FadeOut" data="true"/>
+					<property type="6" name="FadeOutTime" data="20"/>
+				</userData>
+			</item>
+		</node>
 		<node name="PrehistoricLax" id="3286738008">
-			<position x="1.37091" y="1.00369" z="-7"/>
+			<position x="1.37091" y="0.982588" z="-7"/>
 			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="PrehistoricLax" meshFile="PrehistoricLaxBoy.mesh" castShadows="true" visible="true">
@@ -84,7 +179,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
+					<property type="12" name="Activated" data="false"/>
 					<property type="6" name="RotationSpeed" data="10"/>
 					<property type="6" name="GoalRadius" data="0.5"/>
 					<property type="6" name="AnimationSpeed" data="1"/>
@@ -308,22 +403,6 @@
 					<property type="12" name="HasCommonScript" data="false"/>
 					<property type="12" name="ScriptGlobal" data="true"/>
 					<property type="2" name="OrderIndex" data="1"/>
-					<property type="7" name="ComponentFadeComponent" data="FadeComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="7" name="FadeMode" data="FadeIn"/>
-					<property type="6" name="Duration" data="2"/>
-					<property type="7" name="EaseFunction" data="easeInSine"/>
-					<property type="7" name="ComponentFadeComponent" data="FadeComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="false"/>
-					<property type="7" name="FadeMode" data="FadeOut"/>
-					<property type="6" name="Duration" data="2"/>
-					<property type="7" name="EaseFunction" data="easeOutSine"/>
 					<property type="7" name="ComponentAttributesComponent" data="AttributesComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -448,6 +527,27 @@
 					<property type="7" name="ContactFunctionName" data=""/>
 					<property type="7" name="ContactOnceFunctionName" data=""/>
 					<property type="7" name="ContactScratchFunctionName" data=""/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="Category1" data="Enemy"/>
+					<property type="7" name="Category2" data="Enemy"/>
+					<property type="8" name="Friction" data="0.8 0.4"/>
+					<property type="6" name="Softness" data="0.01"/>
+					<property type="6" name="Elasticity" data="0.01"/>
+					<property type="6" name="SurfaceThickness" data="0.125"/>
+					<property type="12" name="Collideable" data="false"/>
+					<property type="7" name="ContactBehavior" data="None"/>
+					<property type="6" name="ContactSpeed" data="10"/>
+					<property type="9" name="ContactDirection" data="0 0 -1"/>
+					<property type="7" name="OneWayAxis" data="Y"/>
+					<property type="7" name="OneWayAllowedDirection" data="Positive"/>
+					<property type="6" name="WallSlideAngle" data="68"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data=""/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
 					<property type="7" name="ComponentMyGUIWindowComponent" data="MyGUIWindowComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -501,7 +601,7 @@
 					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
 					<property type="12" name="Enabled" data="true"/>
 					<property type="2" name="ParentId" data="2755466205"/>
-					<property type="7" name="Skin" data="ProgressValueBarTrail"/>
+					<property type="7" name="Skin" data="ProgressValueBar"/>
 					<property type="12" name="CommonWidget" data="false"/>
 					<property type="2" name="Value" data="100"/>
 					<property type="2" name="Range" data="100"/>
@@ -639,101 +739,27 @@
 					<property type="12" name="ReadOnly" data="true"/>
 					<property type="12" name="MultiLine" data="false"/>
 					<property type="12" name="WordWrap" data="false"/>
-				</userData>
-			</item>
-		</node>
-		<node name="WeaponStick" id="3232914531">
-			<position x="1.58775" y="1.77449" z="-6.36726"/>
-			<rotation qw="0.742635" qx="-0.490219" qy="0.314746" qz="-0.330322"/>
-			<scale x="1" y="1" z="1"/>
-			<item name="WeaponStick" meshFile="monster_item_cudgel.mesh" castShadows="true" visible="true">
-				<subitem index="0" datablockName="items_mat.004"/>
-				<userData>
-					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="1141940358"/>
-					<property type="7" name="Category" data="Weapon"/>
-					<property type="7" name="RenderCategory" data="All"/>
-					<property type="7" name="TagName" data=""/>
-					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
-					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
-					<property type="12" name="HideOnConnect" data="false"/>
-					<property type="9" name="DefaultDirection" data="0 0 1"/>
-					<property type="12" name="Global" data="true"/>
-					<property type="12" name="ClampY" data="false"/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="10"/>
-					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="100"/>
-					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					<property type="7" name="DataBlock0" data="items_mat.004"/>
-					<property type="7" name="ComponentPhysicsActiveKinematicComponent" data="PhysicsActiveKinematicComponent"/>
+					<property type="7" name="ComponentExplorationMapComponent" data="ExplorationMapComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
-					<property type="9" name="CollisionSize" data="0 0 0"/>
-					<property type="9" name="OffsetPosition" data="0 0 0"/>
-					<property type="9" name="OffsetDirection" data="0 0 0"/>
-					<property type="6" name="Mass" data="10"/>
-					<property type="9" name="MassOrigin" data="0 0 0"/>
-					<property type="6" name="LinearDamping" data="0.1"/>
-					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
-					<property type="6" name="Density" data="1"/>
-					<property type="9" name="Gravity" data="0 0 0"/>
-					<property type="7" name="GravitySourceCategory" data=""/>
-					<property type="9" name="ConstraintDirection" data="0 0 0"/>
-					<property type="6" name="Speed" data="1"/>
-					<property type="6" name="MinSpeed" data="1"/>
-					<property type="6" name="MaxSpeed" data="5"/>
-					<property type="7" name="CollisionType" data="ConvexHull"/>
-					<property type="9" name="ConstraintAxis" data="0 0 0"/>
-					<property type="12" name="EnableGyroscopicTorque" data="false"/>
-					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnKinematicContactFunctionName" data="onKinematicContact"/>
-					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="7" name="ScriptFile" data="WeaponStick.lua"/>
-					<property type="12" name="CloneScript" data="false"/>
-					<property type="12" name="HasCommonScript" data="false"/>
-					<property type="12" name="ScriptGlobal" data="true"/>
-					<property type="2" name="OrderIndex" data="3"/>
-					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
-					<property type="7" name="Name" data="Hit"/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="false"/>
-					<property type="7" name="SoundName" data="Hit2.wav"/>
-					<property type="6" name="Volume" data="100"/>
-					<property type="6" name="Speed" data="1"/>
-					<property type="12" name="Loop" data="false"/>
-					<property type="8" name="FadeInFadeOut" data="0 0"/>
-					<property type="12" name="Stream" data="false"/>
-					<property type="12" name="RelativeToListener" data="false"/>
-					<property type="12" name="PlayWhenInMotion" data="false"/>
-					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
-					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
-					<property type="7" name="Name" data="HitParticle"/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="7" name="TemplateName" data="HitImpact"/>
-					<property type="12" name="Repeat" data="false"/>
-					<property type="6" name="PlayTime" data="100"/>
-					<property type="6" name="PlaySpeed" data="1"/>
-					<property type="9" name="OffsetPosition" data="0 0 0"/>
-					<property type="9" name="OffsetOrientation" data="0 0 0"/>
-					<property type="8" name="Scale" data="1 1"/>
-					<property type="7" name="BlendingMethod" data="From Material"/>
-					<property type="12" name="FadeIn" data="true"/>
-					<property type="6" name="FadeInTime" data="20"/>
-					<property type="12" name="FadeOut" data="true"/>
-					<property type="6" name="FadeOutTime" data="20"/>
+					<property type="2" name="TargetId" data="3173747901"/>
+					<property type="6" name="CellSize" data="10"/>
+					<property type="7" name="Axis" data="X,Y"/>
+					<property type="8" name="MiniMapPosition" data="0.77 0.03"/>
+					<property type="8" name="MiniMapSize" data="0.2 0.24"/>
+					<property type="2" name="MiniMapCellPixels" data="14"/>
+					<property type="2" name="FullMapCellPixels" data="28"/>
+					<property type="12" name="ShowMiniMapOnStart" data="true"/>
+					<property type="7" name="Layer" data="Overlapped"/>
+					<property type="12" name="ShowSceneNames" data="true"/>
+					<property type="12" name="ShowUnexploredMarkers" data="false"/>
+					<property type="10" name="BackgroundColor" data="0.05 0.06 0.12 0.85"/>
+					<property type="9" name="FrameColor" data="0.85 0.9 1"/>
+					<property type="9" name="DoorColor" data="0.45 0.85 1"/>
+					<property type="7" name="CompletionLabel" data="Map"/>
+					<property type="2" name="MarkerCount" data="0"/>
 				</userData>
 			</item>
 		</node>

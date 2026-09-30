@@ -23,6 +23,11 @@ public:
 	virtual void start(const NOWA::SceneParameter& sceneParameter) override;
 
 	/**
+	 * @see AppState::beforeSceneLoaded()
+	 */
+	virtual void beforeSceneLoaded(void) override;
+
+	/**
 	 * @see AppState::exit()
 	 */
 	virtual void exit(void) override;

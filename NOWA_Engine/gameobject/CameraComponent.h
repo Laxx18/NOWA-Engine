@@ -178,6 +178,12 @@ namespace NOWA
 		void handleSwitchCamera(NOWA::EventDataPtr eventData);
 		void handleRemoveCamera(NOWA::EventDataPtr eventData);
 		void handleRemoveCameraBehavior(NOWA::EventDataPtr eventData);
+
+		/**
+         * @brief Deactivates every other camera component that is still active (without sending switch events).
+         *        Called synchronously when this camera becomes active, so the camera activated last always wins.
+         */
+        void deactivateOtherCameras(void);
 	private:
 		static bool justCreated;
 	private:

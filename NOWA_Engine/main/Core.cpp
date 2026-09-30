@@ -101,6 +101,27 @@ namespace
         ::SetCursor(::LoadCursor(nullptr, IDC_ARROW));
     }
 
+    // Set in Core::initialize to the user data folder. Kept as plain static, because it is used in the crash handler.
+    std::string crashLogFilePathName = "crash.log";
+
+    // Copies a file from its legacy location (next to the executable) into the user data folder, if it does not exist there yet.
+    // Returns a message for the log (the Ogre log does not exist yet, when this is called).
+    Ogre::String migrateLegacyFile(const Ogre::String& legacyFilePathName, const Ogre::String& newFilePathName)
+    {
+        std::error_code errorCode;
+        if (true == std::filesystem::exists(newFilePathName, errorCode) || false == std::filesystem::exists(legacyFilePathName, errorCode))
+        {
+            return Ogre::String();
+        }
+
+        std::filesystem::copy_file(legacyFilePathName, newFilePathName, errorCode);
+        if (errorCode)
+        {
+            return "[Core] Could not migrate legacy file: '" + legacyFilePathName + "' to: '" + newFilePathName + "': " + errorCode.message();
+        }
+        return "[Core] Migrated legacy file: '" + legacyFilePathName + "' to: '" + newFilePathName + "'. The legacy file is not used anymore and can be deleted.";
+    }
+
     Ogre::String fsPathToOgreString(const std::filesystem::path& p)
     {
 #if defined(__cpp_char8_t) && __cpp_char8_t >= 201811L
@@ -337,7 +358,20 @@ namespace NOWA
         useEntityType(false),
         baseListenerContainer(nullptr)
     {
+        // Player setting (frame rate limit), default: the refresh rate of the display (e.g. 60 on Steam Deck LCD, 90 on Steam Deck OLED)
         this->optionDesiredFramesUpdates = this->getScreenRefreshRate();
+
+        // Frame rate limit off by default (open end frame rate on PC, e.g. to find frame drops while profiling; with VSync on, VSync paces anyway).
+        // On a Steam Deck (Steam sets the environment variable "SteamDeck=1", also under Proton) the limit is on by default, to save power.
+        // The value from the config file ("LimitFrameRate") overrides this default.
+        this->optionFrameRateLimitEnabled = false;
+        const char* steamDeckEnvironment = std::getenv("SteamDeck");
+        if (nullptr != steamDeckEnvironment && Ogre::String("1") == steamDeckEnvironment)
+        {
+            this->optionFrameRateLimitEnabled = true;
+        }
+        // Engine/game constant, NOT a player setting: physics, gameplay and Lua timing depend on the fixed step. Rendering is decoupled
+        // via interpolation, so 60 steps are enough for all displays. Not read from/written to the config file anymore.
         this->optionDesiredSimulationUpdates = 60;
     }
 
@@ -571,7 +605,23 @@ namespace NOWA
         this->title = coreConfiguration.wndTitle;
         this->resourcesName = "../resources/" + coreConfiguration.resourcesName;
         this->isGame = coreConfiguration.isGame;
-        this->logName = "../resources/" + this->title + Ogre::String("_") + this->graphicsConfigName + Ogre::String(".log");
+        // Every file the engine writes goes into the user data folder (e.g. %APPDATA%/NOWA/<ExeName>/), because the folder of the executable
+        // may be read-only (Steam, Program Files) and is overwritten by updates. Read-only files like plugins.cfg stay next to the executable.
+        const Ogre::String userDataFolder = this->getUserDataFolder();
+        const Ogre::String graphicsConfigFileName = this->getFileNameFromPath(this->graphicsConfigName);
+        const Ogre::String graphicsConfigFilePathName = userDataFolder + graphicsConfigFileName;
+
+        this->logName = userDataFolder + this->title + Ogre::String("_") + graphicsConfigFileName + Ogre::String(".log");
+
+        // Shader/texture caches and profiler dumps (previously "../../cache/.")
+        NOWA::Platform::ensureDirExists(userDataFolder + "cache");
+        this->writeAccessFolder = userDataFolder + "cache/.";
+
+        crashLogFilePathName = userDataFolder + "crash.log";
+
+        // One-time migration of the graphics configuration, so that existing settings are kept and the config dialog is not shown again
+        const Ogre::String migrationMessage = migrateLegacyFile(this->graphicsConfigName, graphicsConfigFilePathName);
+
         this->resourceGroupNames.clear();
         this->useDefaultGraphicsOptions = coreConfiguration.useDefaultGraphicsOptions;
 
@@ -588,14 +638,19 @@ namespace NOWA
             this->sceneName = coreConfiguration.startProjectName.substr(found + 1, coreConfiguration.startProjectName.size() - 1);
         }
 
-        this->cleanPluginsCfg(true);
-        this->cleanPluginsCfg(false);
+        // Maintaining plugins.cfg is a development feature (NOWA-Design). A game must never write into its install folder,
+        // and a shipped game has no "../Debug/plugins" folder at all.
+        if (false == this->isGame)
+        {
+            this->cleanPluginsCfg(true);
+            this->cleanPluginsCfg(false);
+        }
 
         // Look if the application has been started with a custom .cfg file in the command line, if so, init root with that configfile
         try
         {
             const Ogre::AbiCookie abiCookie = Ogre::generateAbiCookie();
-            this->root = OGRE_NEW Ogre::Root(&abiCookie, "plugins.cfg", this->graphicsConfigName, logName);
+            this->root = OGRE_NEW Ogre::Root(&abiCookie, "plugins.cfg", graphicsConfigFilePathName, this->logName);
         }
         catch (Ogre::InternalErrorException& e)
         {
@@ -620,21 +675,17 @@ namespace NOWA
             rs->setConfigOption("sRGB Gamma Conversion", "Yes");
         }
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core]: Configuration filename: " + this->graphicsConfigName);
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core]: User data folder (config, log, cache): " + userDataFolder);
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core]: Configuration filename: " + graphicsConfigFilePathName);
+        if (false == migrationMessage.empty())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, migrationMessage);
+        }
 
         // Check whether the ogre configuration file does exist
         bool configFileExists = false;
         {
-            FILE* fp = nullptr;
-            if (this->graphicsConfigName.length() > 0)
-            {
-                fp = fopen(this->graphicsConfigName.c_str(), "r");
-            }
-            else
-            {
-                fp = fopen("ogre.cfg", "r");
-            }
-
+            FILE* fp = fopen(graphicsConfigFilePathName.c_str(), "r");
             if (nullptr != fp)
             {
                 configFileExists = true;
@@ -821,7 +872,8 @@ namespace NOWA
 
         // Register ALL HLMS types before any resource group initialisation.
         // Material scripts need HLMS types present when they are parsed.
-        this->setupHlms();;
+        this->setupHlms();
+        ;
 
         new InputDeviceCore();
 
@@ -1028,7 +1080,7 @@ namespace NOWA
         Ogre::Profiler::getSingleton().endProfile("");
 #endif
 #if OGRE_PROFILING == OGRE_PROFILING_INTERNAL_OFFLINE
-        Ogre::Profiler::getSingleton().getOfflineProfiler().setDumpPathsOnShutdown(this->writeAccessFolder + "ProfilePerFrame", this->writeAccessFolder + "ProfileAccum");
+        Ogre::Profiler::getSingleton().getOfflineProfiler().setDumpPathsOnShutdown(this->writeAccessFolder + "/ProfilePerFrame", this->writeAccessFolder + "/ProfileAccum");
 #endif
 #endif
 
@@ -1582,8 +1634,15 @@ namespace NOWA
         Ogre::String scanFolder = isDebug ? "../Debug/plugins" : "../Release/plugins";
         Ogre::String debugSuffix = isDebug ? "_d" : "";
 
+        // The folder may not exist (e.g. only a Release build is present). directory_iterator would throw then.
+        std::error_code errorCode;
+        if (false == std::filesystem::exists(scanFolder.c_str(), errorCode))
+        {
+            return;
+        }
+
         // Scan the appropriate folder for DLL files
-        for (const auto& entry : std::filesystem::directory_iterator(scanFolder.c_str()))
+        for (const auto& entry : std::filesystem::directory_iterator(scanFolder.c_str(), errorCode))
         {
             if (entry.path().extension() == ".dll")
             {
@@ -1769,7 +1828,6 @@ namespace NOWA
         MyGUI::ResourceManager::getInstancePtr()->load("WoodSliderSkin.xml");
         MyGUI::ResourceManager::getInstancePtr()->load("WoodButtonSkin.xml");
         MyGUI::ResourceManager::getInstancePtr()->load("ProgressValueBar.xml");
-        
     }
 
     void Core::setSceneManagerForMyGuiPlatform(Ogre::SceneManager* sceneManager)
@@ -2400,7 +2458,7 @@ namespace NOWA
         }
 
         this->root->saveConfig();
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Graphics configuration saved to: " + this->graphicsConfigName);
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Graphics configuration saved to: " + this->getUserConfigurationFilePathName(this->graphicsConfigName));
     }
 
     // =========================================================================
@@ -4270,19 +4328,80 @@ namespace NOWA
         }
     }
 
+    Ogre::String Core::getUserDataFolder(void)
+    {
+        // All files the engine WRITES live here, never next to the executable: A Steam install folder may be read-only, is overwritten by updates / "verify files",
+        // and cannot be synced by Steam Cloud. The user data directory works on Windows (%APPDATA%), native Linux (XDG) and under Proton/Wine
+        // (there %APPDATA% maps into the prefix: steamapps/compatdata/<AppId>/pfx/drive_c/users/steamuser/AppData/Roaming).
+        // Example: <UserData>/NOWA/PrehistoricLax/ (same folder as the save games of a project with the same name).
+        // Read-only files (plugins.cfg, resources cfg, media) stay next to the executable.
+        Ogre::String applicationName = this->getFileNameFromPath(this->getApplicationFilePathName());
+
+        size_t dotPos = applicationName.find_last_of(".");
+        if (Ogre::String::npos != dotPos)
+        {
+            applicationName = applicationName.substr(0, dotPos);
+        }
+        if (true == applicationName.empty())
+        {
+            applicationName = "NOWA";
+        }
+
+        std::string directory = NOWA::Platform::getUserDataDir() + "/NOWA/" + applicationName;
+        NOWA::Platform::ensureDirExists(directory);
+
+        std::replace(directory.begin(), directory.end(), '\\', '/');
+        return Ogre::String(directory) + "/";
+    }
+
+    Ogre::String Core::getUserConfigurationFilePathName(const Ogre::String& fileName)
+    {
+        return this->getUserDataFolder() + this->getFileNameFromPath(fileName);
+    }
+
     void Core::loadCustomConfiguration(const char* strFilename)
+    {
+        // Only ONE configuration file exists, in the user data directory. Missing values use the defaults of the Core constructor.
+        const Ogre::String userFilePathName = this->getUserConfigurationFilePathName(strFilename);
+
+        if (true == this->readCustomConfigurationFile(userFilePathName, false))
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Loaded config file: '" + userFilePathName + "'");
+        }
+        else
+        {
+            // One-time migration: An old config next to the executable (from earlier engine versions) is imported once, then the file there is not used anymore and can be deleted.
+            const Ogre::String legacyFilePathName = strFilename;
+            if (true == this->readCustomConfigurationFile(legacyFilePathName, true))
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Imported legacy config file: '" + legacyFilePathName + "' into: '" + userFilePathName + "'. The legacy file is not used anymore and can be deleted.");
+            }
+            else
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Config file: '" + userFilePathName + "' not found or corrupt, creating it with default values.");
+            }
+            this->saveCustomConfiguration();
+        }
+
+        // Distribute the loaded mappings to all devices: the main keyboard module holds the keyboard mapping and the gamepad profile
+        if (nullptr != InputDeviceCore::getSingletonPtr())
+        {
+            InputDeviceCore::getSingletonPtr()->applyKeyboardMappingToAllKeyboards();
+            InputDeviceCore::getSingletonPtr()->applyGamepadButtonProfile();
+        }
+    }
+
+    bool Core::readCustomConfigurationFile(const Ogre::String& filePathName, bool isLegacyFile)
     {
         rapidxml::xml_document<> XMLDoc;
         rapidxml::xml_node<>* XMLRoot;
         std::ifstream fp;
-        fp.open(strFilename, std::ios::in | std::ios::binary);
-        // if the config file does not exist, a new one will be created with default values
+        fp.open(filePathName.c_str(), std::ios::in | std::ios::binary);
         if (fp.fail())
         {
-            this->saveCustomConfiguration();
-            return;
+            return false;
         }
-        Ogre::DataStreamPtr stream(OGRE_NEW Ogre::FileStreamDataStream(strFilename, &fp, false));
+        Ogre::DataStreamPtr stream(OGRE_NEW Ogre::FileStreamDataStream(filePathName, &fp, false));
         char* customConfig = XMLDoc.allocate_string(stream->getAsString().data());
         // parse the document
         try
@@ -4291,19 +4410,20 @@ namespace NOWA
         }
         catch (rapidxml::parse_error& error)
         {
-            Ogre::String errorMessage = "[Core] Could not load config file: '" + Ogre::String(strFilename) + "' because of parse errors: " + Ogre::String(error.what()) + " location: " + Ogre::String(error.where<char>());
+            Ogre::String errorMessage = "[Core] Could not load config file: '" + filePathName + "' because of parse errors: " + Ogre::String(error.what()) + " location: " + Ogre::String(error.where<char>());
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, errorMessage);
-            throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, errorMessage + "\n", "NOWA");
+            fp.close();
+
+            // A corrupt file must not prevent the game from starting, it will be written new with default values
+            return false;
         }
         XMLRoot = XMLDoc.first_node("Main-Configuration");
         // config file corrupt?
         if (nullptr == XMLRoot)
         {
-            this->saveCustomConfiguration();
-            return;
+            fp.close();
+            return false;
         }
-
-        unsigned int displayRate = getScreenRefreshRate();
 
         // retrieve core configuration
         rapidxml::xml_node<>* pSubElement = XMLRoot->first_node("Core");
@@ -4325,6 +4445,15 @@ namespace NOWA
             {
                 this->requiredCPUSpeedMhz = Ogre::StringConverter::parseInt(pSubElement->first_attribute("CPUSpeed")->value());
             }
+            if (pSubElement->first_attribute("UserData"))
+            {
+                this->cryptKey = Ogre::StringConverter::parseInt(this->decode64(pSubElement->first_attribute("UserData")->value(), false));
+            }
+            if (pSubElement->first_attribute("UseEntityType"))
+            {
+                // BUGFIX: Previously the "UserData" attribute was parsed here
+                this->useEntityType = Ogre::StringConverter::parseBool(pSubElement->first_attribute("UseEntityType")->value());
+            }
             if (pSubElement->first_attribute("Language"))
             {
                 this->optionLanguage = Ogre::StringConverter::parseInt(pSubElement->first_attribute("Language")->value());
@@ -4336,14 +4465,6 @@ namespace NOWA
                 {
                     this->borderType = "none";
                 }
-            }
-            if (pSubElement->first_attribute("UserData"))
-            {
-                this->cryptKey = Ogre::StringConverter::parseInt(this->decode64(pSubElement->first_attribute("UserData")->value(), false));
-            }
-            if (pSubElement->first_attribute("UseEntityType"))
-            {
-                this->useEntityType = Ogre::StringConverter::parseBool(pSubElement->first_attribute("UserData")->value());
             }
         }
         // retrieve graphics configuration
@@ -4370,11 +4491,18 @@ namespace NOWA
             if (pSubElement->first_attribute("DesiredFramesUpdates"))
             {
                 this->optionDesiredFramesUpdates = Ogre::StringConverter::parseInt(pSubElement->first_attribute("DesiredFramesUpdates")->value());
+                // 0 or nonsense: use the refresh rate of the display
+                if (this->optionDesiredFramesUpdates < 30 || this->optionDesiredFramesUpdates > 1000)
+                {
+                    this->optionDesiredFramesUpdates = this->getScreenRefreshRate();
+                }
             }
-            if (pSubElement->first_attribute("DesiredSimulationUpdates"))
+            if (pSubElement->first_attribute("LimitFrameRate"))
             {
-                this->optionDesiredSimulationUpdates = Ogre::StringConverter::parseInt(pSubElement->first_attribute("DesiredSimulationUpdates")->value());
+                // true: the frame rate is limited to DesiredFramesUpdates. false: open end (VSync still paces, if on)
+                this->optionFrameRateLimitEnabled = Ogre::StringConverter::parseBool(pSubElement->first_attribute("LimitFrameRate")->value());
             }
+            // Note: "DesiredSimulationUpdates" is intentionally ignored (old files may still contain it), see Core constructor.
             if (pSubElement->first_attribute("RenderDistance"))
             {
                 this->globalRenderDistance = Ogre::StringConverter::parseInt(pSubElement->first_attribute("RenderDistance")->value());
@@ -4418,6 +4546,7 @@ namespace NOWA
             OgreALModule::getInstance()->setSoundVolume(this->optionSoundVolume);
             OgreALModule::getInstance()->setMusicVolume(this->optionMusicVolume);
         }
+
         // retrieve log configuration
         pSubElement = XMLRoot->first_node("Log");
         if (pSubElement)
@@ -4456,21 +4585,19 @@ namespace NOWA
 
         // retrieve client configuration
         pSubElement = XMLRoot->first_node("Client");
+        if (pSubElement)
         {
-            if (pSubElement)
+            if (pSubElement->first_attribute("PlayerColor"))
             {
-                if (pSubElement->first_attribute("PlayerColor"))
-                {
-                    this->optionPlayerColor = Ogre::StringConverter::parseInt(pSubElement->first_attribute("PlayerColor")->value());
-                }
-                if (pSubElement->first_attribute("InterpolationRate"))
-                {
-                    this->optionInterpolationRate = Ogre::StringConverter::parseInt(pSubElement->first_attribute("InterpolationRate")->value());
-                }
-                if (pSubElement->first_attribute("PacketsPerSecond"))
-                {
-                    this->optionPacketsPerSecond = Ogre::StringConverter::parseInt(pSubElement->first_attribute("PacketsPerSecond")->value());
-                }
+                this->optionPlayerColor = Ogre::StringConverter::parseInt(pSubElement->first_attribute("PlayerColor")->value());
+            }
+            if (pSubElement->first_attribute("InterpolationRate"))
+            {
+                this->optionInterpolationRate = Ogre::StringConverter::parseInt(pSubElement->first_attribute("InterpolationRate")->value());
+            }
+            if (pSubElement->first_attribute("PacketsPerSecond"))
+            {
+                this->optionPacketsPerSecond = Ogre::StringConverter::parseInt(pSubElement->first_attribute("PacketsPerSecond")->value());
             }
         }
         // retrieve lua script configuration
@@ -4495,21 +4622,45 @@ namespace NOWA
             }
         }
 
+        InputDeviceCore* inputDeviceCore = InputDeviceCore::getSingletonPtr();
+        InputDeviceModule* mainModule = nullptr;
+        if (nullptr != inputDeviceCore)
+        {
+            mainModule = inputDeviceCore->getMainKeyboardInputDeviceModule();
+        }
+
+        // Retrieve input configuration
+        pSubElement = XMLRoot->first_node("Input");
+        if (nullptr != pSubElement && nullptr != inputDeviceCore)
+        {
+            if (pSubElement->first_attribute("GamepadLayout"))
+            {
+                // "Auto" (detect per gamepad), "Generic", "XInput" or "LinuxEvdev"
+                inputDeviceCore->setJoyStickLayoutOverride(pSubElement->first_attribute("GamepadLayout")->value());
+            }
+        }
+
         // Retrieve key mapping configuration 0
         pSubElement = XMLRoot->first_node("KeyMapping0");
-        if (pSubElement)
+        if (nullptr != pSubElement && nullptr != mainModule)
         {
-            // rapidxml::xml_node<>* propertyElement = propertyElement->next_sibling("property");
             unsigned short i = 0;
             rapidxml::xml_node<>* propertyElement = pSubElement->first_node("Key");
             while (nullptr != propertyElement)
             {
-                if (propertyElement->first_attribute("value"))
+                // New format: <Key action="JUMP" value="57" />, robust against changes of the action enum. Old format: position = action index.
+                InputDeviceModule::Action action = static_cast<InputDeviceModule::Action>(i);
+                if (propertyElement->first_attribute("action"))
+                {
+                    action = InputDeviceModule::getActionFromName(propertyElement->first_attribute("action")->value());
+                }
+
+                if (propertyElement->first_attribute("value") && InputDeviceModule::NONE != action && static_cast<unsigned short>(action) < InputDeviceModule::ACTION_MAPPING_COUNT)
                 {
                     OIS::KeyCode keyCode = static_cast<OIS::KeyCode>(Ogre::StringConverter::parseInt(propertyElement->first_attribute("value")->value()));
                     if (OIS::KC_UNASSIGNED != keyCode)
                     {
-                        InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->remapKey(static_cast<InputDeviceModule::Action>(i), keyCode);
+                        mainModule->remapKey(action, keyCode);
                     }
                 }
                 i++;
@@ -4517,21 +4668,29 @@ namespace NOWA
             }
         }
 
-        // Retrieve button mapping configuration 0
+        // Retrieve button mapping configuration 0 (gamepad profile, applies to all gamepads)
         pSubElement = XMLRoot->first_node("ButtonMapping0");
-        if (pSubElement)
+        // Note: The button mapping of legacy files is stored by index with the OLD raw button numbering, which is wrong for XInput pads / the Steam Deck,
+        // so it is not imported. The new default gamepad mapping is used instead.
+        if (nullptr != pSubElement && nullptr != inputDeviceCore && false == isLegacyFile)
         {
-            // rapidxml::xml_node<>* propertyElement = propertyElement->next_sibling("property");
             unsigned short i = 0;
             rapidxml::xml_node<>* propertyElement = pSubElement->first_node("Button");
             while (nullptr != propertyElement)
             {
-                if (propertyElement->first_attribute("value"))
+                InputDeviceModule::Action action = static_cast<InputDeviceModule::Action>(i);
+                if (propertyElement->first_attribute("action"))
                 {
-                    InputDeviceModule::JoyStickButton button = static_cast<InputDeviceModule::JoyStickButton>(Ogre::StringConverter::parseInt(propertyElement->first_attribute("value")->value()));
-                    if (InputDeviceModule::JoyStickButton::BUTTON_NONE != button)
+                    action = InputDeviceModule::getActionFromName(propertyElement->first_attribute("action")->value());
+                }
+
+                if (propertyElement->first_attribute("value") && InputDeviceModule::NONE != action && static_cast<unsigned short>(action) < InputDeviceModule::ACTION_MAPPING_COUNT)
+                {
+                    const int button = Ogre::StringConverter::parseInt(propertyElement->first_attribute("value")->value());
+                    // Note: With the new format BUTTON_NONE is also applied, so that an action can be unbound on purpose
+                    if (InputDeviceModule::BUTTON_NONE != button || nullptr != propertyElement->first_attribute("action"))
                     {
-                        InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->remapButton(static_cast<InputDeviceModule::Action>(i), button);
+                        inputDeviceCore->remapGamepadButton(static_cast<unsigned short>(action), static_cast<unsigned short>(button));
                     }
                 }
                 i++;
@@ -4540,6 +4699,7 @@ namespace NOWA
         }
 
         fp.close();
+        return true;
     }
 
     void Core::saveCustomConfiguration(void)
@@ -4555,40 +4715,41 @@ namespace NOWA
             strXMLConfigName = this->customConfigName;
         }
 
-        rapidxml::xml_document<> XMLDoc;
+        // Always written to the user data directory, never next to the executable
+        this->writeCustomConfigurationFile(this->getUserConfigurationFilePathName(strXMLConfigName));
+    }
 
-        // XML Deklaration
-        rapidxml::xml_node<>* pDeclaration = XMLDoc.allocate_node(rapidxml::node_declaration);
-        pDeclaration->append_attribute(XMLDoc.allocate_attribute("version", "1.0"));
-        pDeclaration->append_attribute(XMLDoc.allocate_attribute("encoding", "utf-8"));
-        XMLDoc.append_node(pDeclaration);
+    void Core::writeCustomConfigurationFile(const Ogre::String& filePathName)
+    {
+        std::ofstream outfile(filePathName.c_str());
+        if (false == outfile.is_open())
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Could not write config file: '" + filePathName + "'");
+            return;
+        }
 
-        /*rapidxml::xml_node<> *pNodeRoot = XMLDoc.allocate_node(rapidxml::node_element, "CustomConfiguration");
-        pNodeRoot->append_attribute(XMLDoc.allocate_attribute("ViewRange", Ogre::StringConverter::toString(this->optionViewRange).c_str()));
-        XMLDoc.append_node(pNodeRoot);*/
-
-        std::ofstream outfile(strXMLConfigName.c_str());
         // Document-Object
         outfile << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
         // Main-Configuration
         outfile << "<Main-Configuration>\n";
         // Core-Configuration
-        outfile << "<Core RAM=\"" << Ogre::StringConverter::toString(this->requiredRAMPhysicalMB).c_str() << "\""
+        outfile << "<Core";
+        outfile << " RAM=\"" << Ogre::StringConverter::toString(this->requiredRAMPhysicalMB).c_str() << "\""
                 << " VRAM=\"" << Ogre::StringConverter::toString(this->requiredRAMVirtualMB).c_str() << "\""
                 << " DiscSpace=\"" << Ogre::StringConverter::toString(this->requiredDiscSpaceMB).c_str() << "\""
-                << " CPUSpeed=\"" << Ogre::StringConverter::toString(this->requiredCPUSpeedMhz).c_str() << "\""
-                << " Language=\"" << Ogre::StringConverter::toString(this->optionLanguage) << "\""
-                << " Border=\"" << this->borderType << "\""
-                << " UserData=\"" << this->encode64(Ogre::StringConverter::toString(this->cryptKey), false) << "\""
-                << " UseEntityType=\"" << Ogre::StringConverter::toString(this->useEntityType) << "\""
-                << "/>\n";
+                << " CPUSpeed=\"" << Ogre::StringConverter::toString(this->requiredCPUSpeedMhz).c_str() << "\"";
+        outfile << " Language=\"" << Ogre::StringConverter::toString(this->optionLanguage) << "\""
+                << " Border=\"" << this->borderType << "\"";
+        outfile << " UserData=\"" << this->encode64(Ogre::StringConverter::toString(this->cryptKey), false) << "\""
+                << " UseEntityType=\"" << Ogre::StringConverter::toString(this->useEntityType) << "\"";
+        outfile << "/>\n";
         // Graphics-Configuration
         outfile << "<Graphics QualityLevel=\"" << Ogre::StringConverter::toString(this->optionQualityLevel) << "\""
                 << " LODBias=\"" << Ogre::StringConverter::toString(this->optionLODBias).c_str() << "\""
                 << " TextureFiltering=\"" << Ogre::StringConverter::toString(this->optionTextureFiltering).c_str() << "\""
                 << " AnisotropyLevel=\"" << Ogre::StringConverter::toString(this->optionAnisotropyLevel).c_str() << "\""
                 << " DesiredFramesUpdates=\"" << Ogre::StringConverter::toString(this->optionDesiredFramesUpdates).c_str() << "\""
-                << " DesiredSimulationUpdates=\"" << Ogre::StringConverter::toString(this->optionDesiredSimulationUpdates).c_str() << "\""
+                << " LimitFrameRate=\"" << Ogre::StringConverter::toString(this->optionFrameRateLimitEnabled).c_str() << "\""
                 << " RenderDistance=\"" << Ogre::StringConverter::toString(this->globalRenderDistance).c_str() << "\""
                 << " ShadowQuality=\"" << Ogre::StringConverter::toString(static_cast<int>(this->optionShadowQuality)).c_str() << "\""
                 << " ShadowFarDistance=\"" << Ogre::StringConverter::toString(this->optionShadowFarDistance).c_str() << "\""
@@ -4597,6 +4758,7 @@ namespace NOWA
         outfile << "<Audio SoundVolume=\"" << Ogre::StringConverter::toString(this->optionSoundVolume).c_str() << "\""
                 << " MusicVolume=\"" << Ogre::StringConverter::toString(this->optionMusicVolume).c_str() << "\""
                 << "/>\n";
+
         // Log-Configuration
         outfile << "<Log Level=\"" << Ogre::StringConverter::toString(this->optionLogLevel).c_str() << "\""
                 << "/>\n";
@@ -4616,23 +4778,31 @@ namespace NOWA
                 << " GroupName=\"" << this->optionLuaGroupName.c_str() << "\""
                 << "/>\n";
 
+        InputDeviceCore* inputDeviceCore = InputDeviceCore::getSingletonPtr();
+        if (nullptr != inputDeviceCore && nullptr != inputDeviceCore->getMainKeyboardInputDeviceModule())
         {
-            // KeyMapping-Configuration 0
-            outfile << "<KeyMapping0>\n";
+            InputDeviceModule* mainModule = inputDeviceCore->getMainKeyboardInputDeviceModule();
 
-            for (unsigned short i = 0; i < InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getKeyMappingCount(); i++)
+            // Input-Configuration
+            outfile << "<Input GamepadLayout=\"" << inputDeviceCore->getJoyStickLayoutOverride() << "\""
+                    << "/>\n";
+
+            // KeyMapping-Configuration 0. All actions are written with their name, so the file stays valid if actions are added.
+            outfile << "<KeyMapping0>\n";
+            for (unsigned short i = 0; i < InputDeviceModule::ACTION_MAPPING_COUNT; i++)
             {
-                outfile << "<Key value=\"" << Ogre::StringConverter::toString(InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(static_cast<InputDeviceModule::Action>(i))) << "\" />\n";
+                const InputDeviceModule::Action action = static_cast<InputDeviceModule::Action>(i);
+                outfile << "<Key action=\"" << InputDeviceModule::getActionName(action) << "\" value=\"" << Ogre::StringConverter::toString(static_cast<int>(mainModule->getMappedKey(action))) << "\" />\n";
             }
             outfile << "</KeyMapping0>\n";
 
-            // ButtonMapping-Configuration 0
+            // ButtonMapping-Configuration 0 (gamepad profile). Note: Previously only the first "button mapping count" actions were written (by index),
+            // so e.g. START, PAUSE and FLASH_LIGHT were never saved.
             outfile << "<ButtonMapping0>\n";
-
-            for (unsigned short i = 0; i < InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getButtonMappingCount(); i++)
+            for (unsigned short i = 0; i < InputDeviceModule::ACTION_MAPPING_COUNT; i++)
             {
-                outfile << "<Button value=\"" << Ogre::StringConverter::toString(InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedButton(static_cast<InputDeviceModule::Action>(i))) << "\" />\n";
-                // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "--->button: " + NOWA::Core::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getStringFromMappedButtonAction(static_cast<InputDeviceModule::Action>(i)));
+                const InputDeviceModule::Action action = static_cast<InputDeviceModule::Action>(i);
+                outfile << "<Button action=\"" << InputDeviceModule::getActionName(action) << "\" value=\"" << Ogre::StringConverter::toString(static_cast<int>(mainModule->getMappedButton(action))) << "\" />\n";
             }
             outfile << "</ButtonMapping0>\n";
         }
@@ -4827,7 +4997,7 @@ namespace NOWA
         free(symbol);
         SymCleanup(process);
 
-        std::ofstream crashLog("crash.log", std::ios::app);
+        std::ofstream crashLog(crashLogFilePathName.c_str(), std::ios::app);
         crashLog << oss.str() << "\n";
         crashLog.close();
 
@@ -5298,17 +5468,35 @@ namespace NOWA
         return outText;
     }
 
+    void Core::setOptionFrameRateLimitEnabled(bool frameRateLimitEnabled)
+    {
+        this->optionFrameRateLimitEnabled = frameRateLimitEnabled;
+    }
+
+    bool Core::getOptionFrameRateLimitEnabled(void) const
+    {
+        return this->optionFrameRateLimitEnabled;
+    }
+
     unsigned int Core::getScreenRefreshRate(void)
     {
-        DEVMODE Screen;
-        Screen.dmSize = sizeof(DEVMODE);
+#if defined(_WIN32)
+        DEVMODE screen;
+        ZeroMemory(&screen, sizeof(DEVMODE));
+        screen.dmSize = sizeof(DEVMODE);
 
-        // TODO: Will just work for the main monitor
-        for (int i = 0; EnumDisplaySettings(NULL, i, &Screen); i++)
+        // BUGFIX: Previously EnumDisplaySettings(NULL, 0, ...) was used, which delivers the FIRST mode of the mode list (often 60 Hz or less),
+        // not the mode that is currently active. ENUM_CURRENT_SETTINGS delivers the current mode of the main monitor.
+        if (FALSE != EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &screen))
         {
-            return Screen.dmDisplayFrequency;
+            // 0 and 1 mean "hardware default" and are no real frequencies
+            if (screen.dmDisplayFrequency > 1)
+            {
+                return static_cast<unsigned int>(screen.dmDisplayFrequency);
+            }
         }
-        return 0;
+#endif
+        return 60;
     }
 
     template <typename T, size_t MaxNumTextures> void Core::unloadTexturesFromUnusedMaterials(Ogre::HlmsDatablock* datablock, std::set<Ogre::TextureGpu*>& usedTex, std::set<Ogre::TextureGpu*>& unusedTex)

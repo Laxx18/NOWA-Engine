@@ -15,6 +15,7 @@
 #include "gameobject/PhysicsActiveComponent.h"
 #include "gameobject/PhysicsComponent.h"
 #include "gameobject/PlanarReflectionComponent.h"
+#include "gameobject/PlayerStartComponent.h"
 #include "gameobject/TerraComponent.h"
 #include "main/AppStateManager.h"
 #include "main/Core.h"
@@ -584,6 +585,19 @@ namespace NOWA
                     clampGameObjects.emplace_back(gameObjectPtr.get());
                 }
             }
+
+            // If there is an player start component, at last call post init, so that that internally a global player uses the transform of the PlayerStartComponent
+            auto playerStartCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<PlayerStartComponent>());
+            if (nullptr != playerStartCompPtr)
+            {
+                playerStartCompPtr->postInit();
+            }
+
+            auto exitCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<ExitComponent>());
+            if (nullptr != exitCompPtr)
+            {
+                exitCompPtr->applyArrival();
+            }
         }
 
         for (const auto& clampGameObject : clampGameObjects)
@@ -958,24 +972,40 @@ namespace NOWA
     std::pair<bool, Ogre::Vector3> DotSceneImportModule::parseGameObjectPosition(unsigned long id)
     {
         Ogre::Vector3 gameObjectPosition = Ogre::Vector3::ZERO;
-
         bool success = false;
-        // Get the xml file from the resourcegroup
-        Ogre::DataStreamPtr stream = Ogre::ResourceGroupManager::getSingleton().openResource(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene", this->resourceGroupName);
 
-        char* scene = _strdup(stream->getAsString().c_str());
+        // Attention: read via readSceneFileContent (decodes encrypted scene files) instead of Ogre's resource stream. The former code also
+        // compared the property name via 'char* != "Id"' (a pointer comparison, never equal) and read the position from the Id property,
+        // so it never found anything.
+        std::string content;
+        if (false == this->readSceneFileContent(content))
+        {
+            return std::make_pair(success, gameObjectPosition);
+        }
 
         rapidxml::xml_document<> XMLDoc;
-        // Parse the xml document
-        XMLDoc.parse<0>(scene);
+        try
+        {
+            XMLDoc.parse<0>(&content[0]);
+        }
+        catch (rapidxml::parse_error& error)
+        {
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Could not parse scene: '" + this->scenePath + "' for a game object position. Error: " + Ogre::String(error.what()));
+            return std::make_pair(success, gameObjectPosition);
+        }
 
-        // Go to the node, at which the scene nodes occur
-        rapidxml::xml_node<>* XMLRoot = XMLDoc.first_node("scene");
-        rapidxml::xml_node<>* nodesElement = XMLRoot->first_node("nodes");
-        rapidxml::xml_node<>* nodeElement = nodesElement->first_node("node");
+        rapidxml::xml_node<>* xmlRoot = XMLDoc.first_node("scene");
+        if (nullptr == xmlRoot)
+        {
+            return std::make_pair(success, gameObjectPosition);
+        }
+        rapidxml::xml_node<>* nodesElement = xmlRoot->first_node("nodes");
+        if (nullptr == nodesElement)
+        {
+            return std::make_pair(success, gameObjectPosition);
+        }
 
-        // Go through all nodes
-        while (nodeElement && false == success)
+        for (rapidxml::xml_node<>* nodeElement = nodesElement->first_node("node"); nullptr != nodeElement && false == success; nodeElement = nodeElement->next_sibling("node"))
         {
             // Search for the entity or item
             rapidxml::xml_node<>* entityElement = nodeElement->first_node("entity");
@@ -983,42 +1013,198 @@ namespace NOWA
             {
                 entityElement = nodeElement->first_node("item");
             }
-            if (nullptr != entityElement)
+            if (nullptr == entityElement)
             {
-                rapidxml::xml_node<>* userDataElement = entityElement->first_node("userData");
-                if (userDataElement)
-                {
-                    rapidxml::xml_node<>* propertyElement = userDataElement->first_node("property");
+                continue;
+            }
 
-                    while (propertyElement)
+            rapidxml::xml_node<>* userDataElement = entityElement->first_node("userData");
+            if (nullptr == userDataElement)
+            {
+                continue;
+            }
+
+            for (rapidxml::xml_node<>* propertyElement = userDataElement->first_node("property"); nullptr != propertyElement; propertyElement = propertyElement->next_sibling("property"))
+            {
+                if ("Id" != XMLConverter::getAttrib(propertyElement, "name"))
+                {
+                    continue;
+                }
+
+                if (id == XMLConverter::getAttribUnsignedLong(propertyElement, "data"))
+                {
+                    rapidxml::xml_node<>* positionElement = nodeElement->first_node("position");
+                    if (nullptr != positionElement)
                     {
-                        if (propertyElement->first_attribute("name")->value() != "Id")
-                        {
-                            propertyElement = propertyElement->next_sibling("property");
-                        }
-                        else
-                        {
-                            unsigned long tempId = XMLConverter::getAttribUnsignedLong(propertyElement, "data");
-                            if (tempId == id)
-                            {
-                                rapidxml::xml_node<>* positionElement = nodeElement->first_node("position");
-                                if (positionElement)
-                                {
-                                    gameObjectPosition = XMLConverter::getAttribVector3(propertyElement, "data");
-                                    success = true;
-                                    break;
-                                }
-                            }
-                        }
+                        gameObjectPosition = XMLConverter::parseVector3(positionElement);
+                        success = true;
                     }
                 }
+                // The first Id property is the game object id - the following ones belong to components.
+                break;
             }
-            // Go to the next node
-            nodeElement = nodeElement->next_sibling("node");
         }
-        free(scene);
 
         return std::make_pair(success, gameObjectPosition);
+    }
+
+    bool DotSceneImportModule::readSceneFileContent(std::string& content) const
+    {
+        std::ifstream ifs(this->scenePath);
+        if (false == ifs.good())
+        {
+            return false;
+        }
+
+        content.assign((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+
+        // Same decoding as internalParseScene: a deployed game has encrypted scene files, which Ogre's resource stream returns undecoded.
+        DWORD dwFileAttributes = GetFileAttributes(this->scenePath.data());
+        if (dwFileAttributes & FileFlag)
+        {
+            content = Core::getSingletonPtr()->decode64(content, true);
+        }
+        content += '\0';
+        return true;
+    }
+
+    SceneMapInfo DotSceneImportModule::parseSceneMapInfo(void)
+    {
+        SceneMapInfo sceneMapInfo;
+        sceneMapInfo.sceneName = this->projectParameter.sceneName;
+
+        std::string content;
+        if (false == this->readSceneFileContent(content))
+        {
+            return sceneMapInfo;
+        }
+
+        rapidxml::xml_document<> XMLDoc;
+        try
+        {
+            XMLDoc.parse<0>(&content[0]);
+        }
+        catch (rapidxml::parse_error& error)
+        {
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Could not parse scene: '" + this->scenePath + "' for the mini map. Error: " + Ogre::String(error.what()));
+            return sceneMapInfo;
+        }
+
+        rapidxml::xml_node<>* xmlRoot = XMLDoc.first_node("scene");
+        if (nullptr == xmlRoot)
+        {
+            return sceneMapInfo;
+        }
+        sceneMapInfo.valid = true;
+
+        rapidxml::xml_node<>* environmentElement = xmlRoot->first_node("environment");
+        if (nullptr != environmentElement)
+        {
+            rapidxml::xml_node<>* boundsElement = environmentElement->first_node("bounds");
+            if (nullptr != boundsElement)
+            {
+                sceneMapInfo.mostLeftNearPosition = XMLConverter::getAttribVector3(boundsElement, "mostLeftNearPosition", Ogre::Vector3(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY));
+                sceneMapInfo.mostRightFarPosition = XMLConverter::getAttribVector3(boundsElement, "mostRightFarPosition", Ogre::Vector3(Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY));
+                sceneMapInfo.hasBounds = Ogre::Math::POS_INFINITY != sceneMapInfo.mostLeftNearPosition.x && Ogre::Math::NEG_INFINITY != sceneMapInfo.mostRightFarPosition.x;
+            }
+        }
+
+        rapidxml::xml_node<>* nodesElement = xmlRoot->first_node("nodes");
+        if (nullptr == nodesElement)
+        {
+            return sceneMapInfo;
+        }
+
+        // Component properties start with a marker property, e.g. name="ComponentExitComponent" data="ExitComponent".
+        const Ogre::String componentMarkerPrefix = "Component";
+        const Ogre::String exitComponentMarker = componentMarkerPrefix + ExitComponent::getStaticClassName();
+        const Ogre::String playerStartComponentMarker = componentMarkerPrefix + PlayerStartComponent::getStaticClassName();
+
+        for (rapidxml::xml_node<>* nodeElement = nodesElement->first_node("node"); nullptr != nodeElement; nodeElement = nodeElement->next_sibling("node"))
+        {
+            rapidxml::xml_node<>* entityElement = nodeElement->first_node("entity");
+            if (nullptr == entityElement)
+            {
+                entityElement = nodeElement->first_node("item");
+            }
+            if (nullptr == entityElement)
+            {
+                continue;
+            }
+
+            rapidxml::xml_node<>* userDataElement = entityElement->first_node("userData");
+            if (nullptr == userDataElement)
+            {
+                continue;
+            }
+
+            bool isExit = false;
+            bool isPlayerStart = false;
+            bool insideExitComponent = false;
+            SceneExitInfo exitInfo;
+
+            for (rapidxml::xml_node<>* propertyElement = userDataElement->first_node("property"); nullptr != propertyElement; propertyElement = propertyElement->next_sibling("property"))
+            {
+                const Ogre::String propertyName = XMLConverter::getAttrib(propertyElement, "name");
+
+                // A new component begins: only the properties up to the next marker belong to the ExitComponent.
+                if (0 == propertyName.compare(0, componentMarkerPrefix.size(), componentMarkerPrefix))
+                {
+                    insideExitComponent = exitComponentMarker == propertyName;
+                    if (true == insideExitComponent)
+                    {
+                        isExit = true;
+                    }
+                    else if (playerStartComponentMarker == propertyName)
+                    {
+                        isPlayerStart = true;
+                    }
+                    continue;
+                }
+
+                if (false == insideExitComponent)
+                {
+                    continue;
+                }
+
+                if ("TargetSceneName" == propertyName)
+                {
+                    exitInfo.targetSceneName = XMLConverter::getAttrib(propertyElement, "data");
+                }
+                else if ("TargetLocationName" == propertyName)
+                {
+                    exitInfo.targetLocationName = XMLConverter::getAttrib(propertyElement, "data");
+                }
+                else if ("ExitDirection" == propertyName)
+                {
+                    exitInfo.exitDirection = XMLConverter::getAttribVector2(propertyElement, "data");
+                }
+            }
+
+            if (false == isExit && false == isPlayerStart)
+            {
+                continue;
+            }
+
+            Ogre::Vector3 position = Ogre::Vector3::ZERO;
+            rapidxml::xml_node<>* positionElement = nodeElement->first_node("position");
+            if (nullptr != positionElement)
+            {
+                position = XMLConverter::parseVector3(positionElement);
+            }
+
+            const Ogre::String nodeName = XMLConverter::getAttrib(nodeElement, "name");
+            sceneMapInfo.locationPositions[nodeName] = position;
+
+            if (true == isExit)
+            {
+                exitInfo.name = nodeName;
+                exitInfo.position = position;
+                sceneMapInfo.exits.emplace_back(exitInfo);
+            }
+        }
+
+        return sceneMapInfo;
     }
 
     void DotSceneImportModule::processScene(rapidxml::xml_node<>* xmlRoot, bool justSetValues)

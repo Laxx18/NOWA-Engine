@@ -113,6 +113,16 @@ namespace NOWA
 
         Ogre::String getDeviceName(void) const;
 
+        /**
+         * @brief		Gets the device which is really assigned, e.g. "Keyboard" or "Gamepad 2" (useful after "Join" or "Auto"). Empty if no device is assigned yet.
+         */
+        Ogre::String getAssignedDeviceName(void) const;
+
+        /**
+         * @brief		Gets whether the last input of the assigned device came from a gamepad. Use it to show gamepad or keyboard button prompts.
+         */
+        bool isLastInputFromJoyStick(void) const;
+
         void setIsExcluse(bool isExclusive);
 
         bool getIsExclusive(void) const;
@@ -262,6 +272,7 @@ namespace NOWA
     private:
         void handleInputDeviceOccupied(NOWA::EventDataPtr eventData);
 
+        void handleDeviceLost(void);
     private:
         InputDeviceModule* inputDeviceModule;
         bool bValidDevice;

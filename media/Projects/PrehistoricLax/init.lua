@@ -3,15 +3,15 @@
 math.randomseed(tonumber(tostring(os.time()):reverse():sub(1,6)))
 
 function dump(o)
-	if type(o) == 'table' then
-		local s = '{ '		for k,v in pairs(o) do
-			if type(k) ~= 'number' then k = '"'..k..'"' end
-			s = s .. '['..k..'] = ' .. dump(v) .. ','
-		end
-		return s .. '} '
-	else
-		return tostring(o)
-	end
+    if type(o) == 'table' then
+        local s = '{ '        for k,v in pairs(o) do
+            if type(k) ~= 'number' then k = '"'..k..'"' end
+            s = s .. '['..k..'] = ' .. dump(v) .. ','
+        end
+        return s .. '} '
+    else
+        return tostring(o)
+    end
 end
 
 -- Register your events here:
@@ -138,22 +138,22 @@ end
 EnemyProfiles = {
     Rhino = {
         level = 1, energy = 10, strength = 20, experience = 10,
-        attackImpactDelay = 0.15, attackDuration = 0.9, attackCooldown = 1.0,
-        attackReach = 2.0, attackReachVertical = 1.5,
+        attackImpactDelay = 0.25, attackDuration = 0.9, attackCooldown = 1.0,
+        attackReach = 1.6, attackReachVertical = 1,
         playerKnockbackHorizontal = 6.0, playerKnockbackUp = 4.0, playerKnockbackTime = 0.3,
         deathKnockbackHorizontal = 40.0, deathKnockbackUp = 30.0, deathDeleteDelay = 2.0,
         locomotionAnimation = "ANIM_WALK_NORTH",
-        energyBarOffsetY = 1.0
+        energyBarOffsetY = 2.0
     },
 
     -- A bit stronger and faster than the rhino. Its attack is the rolling charge (Roll_InPlace, 1.33 s).
     Coyote = {
-        level = 3, energy = 200, strength = 25, experience = 40,
+        level = 3, energy = 50, strength = 25, experience = 20,
         attackImpactDelay = 0.35, attackDuration = 1.33, attackCooldown = 1.0,
-        attackReach = 1.6, attackReachVertical = 1.5,
+        attackReach = 1.6, attackReachVertical = 1,
         playerKnockbackHorizontal = 7.0, playerKnockbackUp = 4.5, playerKnockbackTime = 0.35,
         deathKnockbackHorizontal = 50.0, deathKnockbackUp = 35.0, deathDeleteDelay = 2.5,
         locomotionAnimation = "ANIM_RUN",
-        energyBarOffsetY = 0.8
+        energyBarOffsetY = 2
     }
 };

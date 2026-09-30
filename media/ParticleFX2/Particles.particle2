@@ -6896,3 +6896,435 @@ particle_system HitDamagePlayer
         rotation_speed_range_end     150
     }
 }
+
+// ============================================================================
+// Ambient water-splash ("plätschern") particle effects for the base of a
+// ProceduralFlowCurtainComponent waterfall - continuous, not a one-shot burst.
+//
+// WaterSplashDroplets -> small droplets constantly popping up out of the pool
+//                        surface and falling back down.
+// WaterSplashRings     -> soft rings expanding outward on the water surface,
+//                         like little ripples from the impact.
+// WaterSplashMist       -> faint rising mist right where the fall hits the
+//                         water - very subtle, sells "impact" without
+//                         looking like smoke.
+//
+// SCALE (v2): the v1 version used a 1.2x1.2m emitter footprint, which only
+// covers a small patch directly under the node - a full-width waterfall base
+// (the ProceduralFlowCurtainComponent default is 4m wide) needs the emitter
+// area and density scaled up to match, or the splash reads as a tiny local
+// fizz instead of "water hitting a pool". This version's emitter footprint
+// is 4m x 1.6m by default - matched to the curtain's default Width - and
+// emission_rate/quota were scaled up roughly proportionally to area (v1's
+// 1.44 sq.m -> v2's 6.4 sq.m, ~4.4x the area, ~3-4x the particle counts) so
+// coverage stays visually dense rather than just spreading the same particle
+// count thinner over a bigger box. If your curtain's Width differs from 4m,
+// scale the emitter 'width'/'depth' below to roughly match it (keep density
+// - i.e. emission_rate per square meter - about the same, not the raw rate).
+//
+// Usage: attach all three at the water surface, at the point where the
+// ProceduralFlowCurtainComponent's base (y=0) meets the pool. Unlike
+// DustLand/HitImpact, these are CONTINUOUS emitters (no 'duration') - leave
+// them running for as long as the waterfall itself is active, and stop/
+// destroy them together with it.
+//
+// All values tuned for scale 1 unit == 1 meter. Uses only materials already
+// defined in Particles.material - no new texture needed.
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// Small droplets, constantly popping up and falling back with gravity.
+// ----------------------------------------------------------------------------
+particle_system WaterSplashDroplets
+{
+    material                Particle/Droplet
+    particle_width           0.035
+    particle_height          0.05
+    cull_each                false
+    quota                    900
+    billboard_type            oriented_common
+    common_direction          0 1 0
+    sorted                    true
+
+    // Wide box across the pool's splash zone - matched to a ~4m-wide waterfall
+    // base by default. Scale 'width'/'depth' to your own curtain's Width if
+    // it differs; keep emission_rate roughly proportional to the new area.
+    emitter Box
+    {
+        position            0 0.02 0
+        angle               25
+        emission_rate       140
+        time_to_live_min    0.35
+        time_to_live_max    0.65
+        direction           0 1 0
+        velocity_min        0.60
+        velocity_max        1.30
+        colour_range_start  0.75 0.85 0.95 0.85
+        colour_range_end    0.90 0.95 1.00 0.85
+        width               4.00
+        height               0.02
+        depth               1.60
+    }
+
+    // Gravity pulls every droplet back down onto the water.
+    affector LinearForce
+    {
+        force_vector        0 -2.2 0
+        force_application   add
+    }
+
+    // Fade in fast, hold, fade out right before hitting the surface again.
+    affector ColourInterpolator
+    {
+        time0       0.0
+        colour0     1 1 1 0
+        time1       0.15
+        colour1     1 1 1 1
+        time2       0.75
+        colour2     1 1 1 0.8
+        time3       1.0
+        colour3     1 1 1 0
+    }
+
+    // Small random jitter so droplets don't all arc identically.
+    affector DirectionRandomiser
+    {
+        randomness      0.5
+        scope           0.5
+        keep_velocity   true
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Soft expanding ripple rings on the water surface.
+// ----------------------------------------------------------------------------
+particle_system WaterSplashRings
+{
+    material                Particle/Ring_02
+    particle_width           0.06
+    particle_height           0.06
+    cull_each                false
+    quota                    50
+    billboard_type            oriented_common
+    common_direction          0 1 0
+    common_up_vector          0 0 1
+    sorted                    true
+
+    emitter Box
+    {
+        position            0 0.015 0
+        angle               0
+        emission_rate       9
+        time_to_live_min    1.2
+        time_to_live_max    1.6
+        direction           0 1 0
+        velocity             0
+        colour              1 1 1 0.5
+        width               3.80
+        height               0.0
+        depth               1.40
+    }
+
+    // Rings grow slowly outward, then fade - reads as a ripple spreading and
+    // dissolving into the surface.
+    affector Scaler
+    {
+        rate 0.6
+    }
+
+    affector ColourInterpolator
+    {
+        time0       0.0
+        colour0     1 1 1 0
+        time1       0.2
+        colour1     1 1 1 0.5
+        time2       0.7
+        colour2     1 1 1 0.3
+        time3       1.0
+        colour3     1 1 1 0
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Faint rising mist right at the impact point - subtle, not smoke-thick.
+// ----------------------------------------------------------------------------
+particle_system WaterSplashMist
+{
+    material                Particle/SmokePBS
+    particle_width           0.14
+    particle_height           0.14
+    cull_each                true
+    quota                    220
+    billboard_type            point
+    sorted                    true
+
+    emitter Box
+    {
+        position            0 0.05 0
+        angle               25
+        emission_rate       22
+        time_to_live_min    1.0
+        time_to_live_max    1.6
+        direction           0 1 0
+        velocity_min        0.20
+        velocity_max        0.35
+        colour               0.9 0.95 1.0 0.15
+        width               3.60
+        height               0.05
+        depth               1.20
+    }
+
+    // Mist expands slowly while it drifts up and dissolves.
+    affector Scaler
+    {
+        rate 0.10
+    }
+
+    affector ColourInterpolator
+    {
+        time0       0.0
+        colour0     1 1 1 0
+        time1       0.25
+        colour1     1 1 1 0.6
+        time2       0.7
+        colour2     1 1 1 0.3
+        time3       1.0
+        colour3     1 1 1 0
+    }
+
+    // Gentle upward lift, dies out before rising too far.
+    affector LinearForce
+    {
+        force_vector        0 0.12 0
+        force_application   add
+    }
+}
+
+// ============================================================================
+// Anti-gravity upward beam - continuous particle effects for a "float zone"
+// trigger volume (player enters a flat area on the ground and gets lifted
+// upward). Not a one-shot burst - all three systems are meant to run for as
+// long as the player (or anything else) is standing inside the field.
+//
+// AntiGravityBeamStreaks -> the main visual: fast, elongated streaks racing
+//                           straight up through the whole field, like the
+//                           player is being pulled/accelerated upward.
+// AntiGravityBeamMotes    -> slower glowing motes drifting up with a gentle
+//                            sideways wobble - reads as "weightless", as
+//                            opposed to the streaks' "being yanked" feel.
+// AntiGravityBeamRingBase -> a pulsing ring on the ground marking the actual
+//                            footprint/boundary of the field, so the player
+//                            can see where the effect starts before they
+//                            step into it.
+//
+// All three use materials already defined in Particles.material - no new
+// texture needed:
+//   - Particle/Droplet   for the streaks (already an elongated/teardrop
+//     shape from its use in WaterSplashParticles.particle, stretched here
+//     along the upward velocity via billboard_type oriented_self instead
+//     of oriented_common)
+//   - Particle/BlurredBubble for the soft glowing motes
+//   - Particle/Ring_02   for the pulsing ground ring (same material
+//     WaterSplashRings uses, just retinted)
+//
+// USAGE: attach all three at y=0 at the base of the trigger volume, footprint
+// centred under the node. Scale each emitter's 'width'/'depth' to match your
+// actual trigger volume's footprint (defaults below assume a 3m x 3m field -
+// see WaterSplashParticles.particle's note on scaling for the same
+// reasoning). Start all three together when the player enters the field and
+// stop/destroy them together when they leave - none of them have a
+// 'duration', so they run indefinitely until removed.
+//
+// COLOUR: tinted cyan/violet by default (a common "magic anti-gravity" read)
+// via colour_range_start/end and vertex colour on the ring - retint all three
+// together if you want a different look (e.g. green for an alien tech field,
+// orange for a volcanic updraft).
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// Main visual: fast, elongated streaks racing upward through the field.
+// ----------------------------------------------------------------------------
+particle_system AntiGravityBeamStreaks
+{
+    material                Particle/Droplet
+    particle_width           0.05
+    particle_height          0.55
+    cull_each                true
+    quota                    260
+    // oriented_self stretches/orients the billboard along its OWN velocity
+    // direction (straight up, accelerating), unlike oriented_common's fixed
+    // world-space axis - this is what makes each particle read as a moving
+    // streak rather than a floating oval.
+    billboard_type            oriented_self
+    sorted                    true
+
+    emitter Box
+    {
+        position            0 0.05 0
+        angle               8
+        emission_rate       55
+        time_to_live_min    0.9
+        time_to_live_max    1.4
+        direction           0 1 0
+        velocity_min        2.20
+        velocity_max        3.60
+        colour_range_start  0.55 0.85 1.00 0.55
+        colour_range_end    0.75 0.55 1.00 0.75
+        width               3.00
+        height               0.02
+        depth               3.00
+    }
+
+    // Keeps accelerating upward for the streak's whole lifetime - sells the
+    // "being pulled up" feel instead of a constant, drifting rise.
+    affector LinearForce
+    {
+        force_vector        0 5.5 0
+        force_application   add
+    }
+
+    // Fade in fast at the base, hold bright through the middle, fade out
+    // near the top of its lifetime (before it visibly leaves the field).
+    affector ColourInterpolator
+    {
+        time0       0.0
+        colour0     0.6 0.85 1.0 0
+        time1       0.12
+        colour1     0.6 0.9 1.0 0.9
+        time2       0.75
+        colour2     0.75 0.6 1.0 0.7
+        time3       1.0
+        colour3     0.8 0.5 1.0 0
+    }
+
+    // Slight random jitter so the streaks don't all look like a perfectly
+    // uniform picket fence rising together.
+    affector DirectionRandomiser
+    {
+        randomness      0.25
+        scope           0.4
+        keep_velocity   true
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Slower glowing motes with a gentle sideways wobble - the "weightless" layer.
+// ----------------------------------------------------------------------------
+particle_system AntiGravityBeamMotes
+{
+    material                Particle/BlurredBubble
+    particle_width           0.10
+    particle_height           0.10
+    cull_each                true
+    quota                    180
+    billboard_type            point
+    sorted                    true
+
+    emitter Box
+    {
+        position            0 0.05 0
+        angle               20
+        emission_rate       28
+        time_to_live_min    1.6
+        time_to_live_max    2.4
+        direction           0 1 0
+        velocity_min        0.35
+        velocity_max        0.70
+        colour_range_start  0.65 0.80 1.00 0.35
+        colour_range_end    0.85 0.65 1.00 0.55
+        width               3.00
+        height               0.02
+        depth               3.00
+    }
+
+    // Gentle upward pull, much weaker than the streaks' - these are meant to
+    // look like they're softly floating, not being yanked.
+    affector LinearForce
+    {
+        force_vector        0 0.9 0
+        force_application   add
+    }
+
+    // Slow, wide sideways wobble as they rise - the actual "weightless" read.
+    // Rotator affects billboard spin, not position, so the wobble itself
+    // comes from a wide DirectionRandomiser scope re-applied continuously.
+    affector DirectionRandomiser
+    {
+        randomness      0.6
+        scope           1.0
+        keep_velocity   true
+    }
+
+    affector Rotator
+    {
+        rotation_speed_range_start  -20
+        rotation_speed_range_end    20
+        rotation_range_start        0
+        rotation_range_end          360
+    }
+
+    affector ColourInterpolator
+    {
+        time0       0.0
+        colour0     1 1 1 0
+        time1       0.2
+        colour1     1 1 1 0.6
+        time2       0.75
+        colour2     1 1 1 0.45
+        time3       1.0
+        colour3     1 1 1 0
+    }
+
+    // Motes shrink slightly as they dissolve near the top of their lifetime.
+    affector Scaler
+    {
+        rate -0.06
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Pulsing ring on the ground, marking the field's actual footprint/boundary.
+// ----------------------------------------------------------------------------
+particle_system AntiGravityBeamRingBase
+{
+    material                Particle/Ring_02
+    particle_width           2.40
+    particle_height           2.40
+    cull_each                false
+    quota                    6
+    billboard_type            oriented_common
+    common_direction          0 1 0
+    common_up_vector          0 0 1
+    sorted                    true
+
+    emitter Point
+    {
+        position            0 0.02 0
+        angle               0
+        emission_rate       0.7
+        time_to_live_min    1.3
+        time_to_live_max    1.3
+        direction           0 1 0
+        velocity             0
+        colour              0.65 0.80 1.00 0.55
+    }
+
+    // Ring expands slowly outward from the field's centre, then fades - a
+    // slow, steady pulse rather than the quick water-splash ripple.
+    affector Scaler
+    {
+        rate 0.35
+    }
+
+    affector ColourInterpolator
+    {
+        time0       0.0
+        colour0     0.65 0.80 1.00 0
+        time1       0.15
+        colour1     0.65 0.80 1.00 0.55
+        time2       0.7
+        colour2     0.80 0.60 1.00 0.35
+        time3       1.0
+        colour3     0.80 0.60 1.00 0
+    }
+}

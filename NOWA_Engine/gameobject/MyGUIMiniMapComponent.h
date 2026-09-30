@@ -1,279 +1,340 @@
 #ifndef MYGUI_MINI_MAP_COMPONENT_H
 #define MYGUI_MINI_MAP_COMPONENT_H
 
-#include "MyGUIComponents.h"
-#include "MyGUI_XmlDocument.h"
-#include "MyGUI_IResource.h"
-#include "MyGUI_ResourceManager.h"
 #include "BaseLayout/BaseLayout.h"
 #include "ItemBox/BaseCellView.h"
 #include "ItemBox/BaseItemBox.h"
+#include "MyGUIComponents.h"
+#include "MyGUI_IResource.h"
+#include "MyGUI_ResourceManager.h"
+#include "MyGUI_XmlDocument.h"
 
 #include "modules/MiniMapModule.h"
-	
+
 namespace NOWA
 {
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class MiniMapToolTip
-	{
-	public:
-		MiniMapToolTip();
+    class MiniMapToolTip
+    {
+    public:
+        MiniMapToolTip();
 
-		void show(const MyGUI::IntPoint& point, const Ogre::String& description);
-		void hide();
-		void move(const MyGUI::IntPoint& point);
-	private:
-		/** Move a widget to a point while making it stay in the viewport.
-			@param moving The widget that will be moving.
-			@param point The desired destination viewport coordinates
-						 (which may not be the final resting place of the widget).
-		 */
-		void boundedMove(MyGUI::Widget* moving, const MyGUI::IntPoint& point);
-	private:
-		MyGUI::Widget* toolTip;
-		MyGUI::EditBox* textDescription;
-		Ogre::String description;
-	};
+        void show(const MyGUI::IntPoint& point, const Ogre::String& description);
+        void hide();
+        void move(const MyGUI::IntPoint& point);
 
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	
-	class EXPORTED MyGUIMiniMapComponent : public MyGUIWindowComponent
-	{
-	public:
+    private:
+        /** Move a widget to a point while making it stay in the viewport.
+            @param moving The widget that will be moving.
+            @param point The desired destination viewport coordinates
+                         (which may not be the final resting place of the widget).
+         */
+        void boundedMove(MyGUI::Widget* moving, const MyGUI::IntPoint& point);
 
-		typedef boost::shared_ptr<MyGUIMiniMapComponent> MyGUIMinMapCompPtr;
-	public:
+    private:
+        MyGUI::Widget* toolTip;
+        MyGUI::EditBox* textDescription;
+        Ogre::String description;
+    };
 
-		MyGUIMiniMapComponent();
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-		virtual ~MyGUIMiniMapComponent();
+    class EXPORTED MyGUIMiniMapComponent : public MyGUIWindowComponent
+    {
+    public:
+        typedef boost::shared_ptr<MyGUIMiniMapComponent> MyGUIMinMapCompPtr;
 
-		/**
-		* @see		GameObjectComponent::init
-		*/
-		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
+    public:
+        MyGUIMiniMapComponent();
 
-		/**
-		* @see		GameObjectComponent::postInit
-		*/
-		virtual bool postInit(void) override;
+        virtual ~MyGUIMiniMapComponent();
 
-		/**
-		* @see		GameObjectComponent::clone
-		*/
-		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+        /**
+         * @see		GameObjectComponent::init
+         */
+        virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
-		/**
-		* @see		GameObjectComponent::connect
-		*/
-		virtual bool connect(void) override;
+        /**
+         * @see		GameObjectComponent::postInit
+         */
+        virtual bool postInit(void) override;
 
-		/**
-		* @see		GameObjectComponent::disconnect
-		*/
-		virtual bool disconnect(void) override;
+        /**
+         * @see		GameObjectComponent::clone
+         */
+        virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
 
-		/**
-		* @see		GameObjectComponent::getClassName
-		*/
-		virtual Ogre::String getClassName(void) const override;
+        /**
+         * @see		GameObjectComponent::connect
+         */
+        virtual bool connect(void) override;
 
-		/**
-		* @see		GameObjectComponent::getParentClassName
-		*/
-		virtual Ogre::String getParentClassName(void) const override;
+        /**
+         * @see		GameObjectComponent::disconnect
+         */
+        virtual bool disconnect(void) override;
 
-		static unsigned int getStaticClassId(void)
-		{
-			return NOWA::getIdFromName("MyGUIMiniMapComponent");
-		}
+        /**
+         * @see		GameObjectComponent::getClassName
+         */
+        virtual Ogre::String getClassName(void) const override;
 
-		static Ogre::String getStaticClassName(void)
-		{
-			return "MyGUIMiniMapComponent";
-		}
+        /**
+         * @see		GameObjectComponent::getParentClassName
+         */
+        virtual Ogre::String getParentClassName(void) const override;
 
-		/**
-		 * @see  GameObjectComponent::createStaticApiForLua
-		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass) { }
+        static unsigned int getStaticClassId(void)
+        {
+            return NOWA::getIdFromName("MyGUIMiniMapComponent");
+        }
 
-		/**
-		* @see	GameObjectComponent::getStaticInfoText
-		*/
-		static Ogre::String getStaticInfoText(void)
-		{
-			return "Usage: A MyGUI UI minimap component. This component will search for all exit components in all scenes of the current project and build a minimap of all scenes with a target game object painted as dot."
-				"Note: The minimap component can use the 'mouseClickEventName' in order to specify a function name for being executed in lua script, if the corresponding minimap tile has been clicked.";
-		}
+        static Ogre::String getStaticClassName(void)
+        {
+            return "MyGUIMiniMapComponent";
+        }
 
-		/**
-		* @see		GameObjectComponent::update
-		*/
-		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
+        /**
+         * @see  GameObjectComponent::createStaticApiForLua
+         */
+        static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass)
+        {
+        }
 
-		/**
-		* @see		GameObjectComponent::showDebugData
-		*/
-		virtual void showDebugData(void) override;
+        /**
+         * @see	GameObjectComponent::getStaticInfoText
+         */
+        static Ogre::String getStaticInfoText(void)
+        {
+            return "Usage: A MyGUI UI minimap component. Starting at the current scene, it follows all exit components (doors) and builds a map of all connected scenes. "
+                   "Each scene is placed so that an exit and the location it leads to ('Target Location Name') meet; only the bounds of a scene count, not where it sits in world space. "
+                   "Scenes without a connection (menu, intro, ...) are left out. With 'Use Visitation' only scenes the player has entered (or which are revealed via 'Scene Visited') are shown. "
+                   "Trackable game objects are painted as images. "
+                   "Note: The minimap component can use the 'mouseClickEventName' in order to specify a function name for being executed in lua script, if the corresponding minimap tile has been clicked.";
+        }
 
-		/**
-		* @see		GameObjectComponent::actualizeValue
-		*/
-		virtual void actualizeValue(Variant* attribute) override;
+        /**
+         * @see		GameObjectComponent::update
+         */
+        virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
-		/**
-		* @see		GameObjectComponent::writeXML
-		*/
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+        /**
+         * @see		GameObjectComponent::showDebugData
+         */
+        virtual void showDebugData(void) override;
 
-		void setStartPosition(const Ogre::Vector2& startPosition);
+        /**
+         * @see		GameObjectComponent::actualizeValue
+         */
+        virtual void actualizeValue(Variant* attribute) override;
 
-		Ogre::Vector2 getStartPosition(void) const;
+        /**
+         * @see		GameObjectComponent::writeXML
+         */
+        virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
-		void setScaleFactor(Ogre::Real scaleFactor);
+        void setStartPosition(const Ogre::Vector2& startPosition);
 
-		Ogre::Real getScaleFactor(void) const;
+        Ogre::Vector2 getStartPosition(void) const;
 
-		void setSkinName(unsigned int index, const Ogre::String& skinName);
+        void setScaleFactor(Ogre::Real scaleFactor);
 
-		Ogre::String getSkinName(unsigned int index) const;
-		
-		void setUseToolTip(bool useToolTip);
+        Ogre::Real getScaleFactor(void) const;
 
-		bool getUseToolTip(void) const;
+        void setSkinName(unsigned int index, const Ogre::String& skinName);
 
-		void setUseVisitation(bool useVisitation);
+        Ogre::String getSkinName(unsigned int index) const;
 
-		bool getUseVisitation(void) const;
+        void setUseToolTip(bool useToolTip);
 
-		void setAxis(const Ogre::String& axis);
-	
-		/**
-		 * @brief Gets the mini map tiles count
-		 * @return mapCount The mini map tiles count
-		 */
-		unsigned int getMiniMapTilesCount(void) const;
-		
-		void setMiniMapTileColor(unsigned int index, const Ogre::Vector3& color);
+        bool getUseToolTip(void) const;
 
-		Ogre::Vector3 getMiniMapTileColor(unsigned int index);
-		
-		void setToolTipDescription(unsigned int index, const Ogre::String& description);
+        void setUseVisitation(bool useVisitation);
 
-		Ogre::String getToolTipDescription(unsigned int index);
+        bool getUseVisitation(void) const;
 
-		void setMiniMapTileVisible(unsigned int index, bool miniMapTileVisible);
+        void setAxis(const Ogre::String& axis);
 
-		bool isMiniMapTileVisible(unsigned int index) const;
+        /**
+         * @brief Gets the mini map tiles count
+         * @return mapCount The mini map tiles count
+         */
+        unsigned int getMiniMapTilesCount(void) const;
 
-		/**
-		 * @brief Sets the trackable count.
-		 * @param[in] trackable The trackable count to set
-		 */
-		void setTrackableCount(unsigned int trackableCount);
+        void setMiniMapTileColor(unsigned int index, const Ogre::Vector3& color);
 
-		/**
-		 * @brief Gets the trackable count
-		 * @return trackableCount The trackable count
-		 */
-		unsigned int getTrackableCount(void) const;
+        Ogre::Vector3 getMiniMapTileColor(unsigned int index);
 
-		/**
-		 * @brief Sets the trackable id, that is shown on the mini map
-		 * @param[in] index The index to set the trackable id for
-		 * @param[in] id The id as string. Note: If the trackable id is in another scene, the scene name must be specified. For example 'scene3:2341435213'.
-		 *				Will search in scene3 for the game object with the id 2341435213 and in conjunction with the image attribute, the image will be placed correctly on the minimap.
-		 *				If the scene name is missing, its assumed, that the id is an global one (like the player which is available for each scene) and has the same id for each scene.
-		 */
-		void setTrackableId(unsigned int index, const Ogre::String& id);
+        void setToolTipDescription(unsigned int index, const Ogre::String& description);
 
-		Ogre::String getTrackableId(unsigned int index);
+        Ogre::String getToolTipDescription(unsigned int index);
 
-		void setTrackableImage(unsigned int index, const Ogre::String& imageName);
+        void setMiniMapTileVisible(unsigned int index, bool miniMapTileVisible);
 
-		Ogre::String getTrackableImage(unsigned int index);
+        bool isMiniMapTileVisible(unsigned int index) const;
 
-		void setTrackableImageTileSize(unsigned int index, const Ogre::Vector2& imageTileSize);
+        /**
+         * @brief Sets the trackable count.
+         * @param[in] trackable The trackable count to set
+         */
+        void setTrackableCount(unsigned int trackableCount);
 
-		Ogre::Vector2 getTrackableImageTileSize(unsigned int index);
+        /**
+         * @brief Gets the trackable count
+         * @return trackableCount The trackable count
+         */
+        unsigned int getTrackableCount(void) const;
 
-		void setTrackableImageAnimationSpeed(Ogre::Real speed);
+        /**
+         * @brief Sets the trackable id, that is shown on the mini map
+         * @param[in] index The index to set the trackable id for
+         * @param[in] id The id as string. Note: If the trackable id is in another scene, the scene name must be specified. For example 'scene3:2341435213'.
+         *				Will search in scene3 for the game object with the id 2341435213 and in conjunction with the image attribute, the image will be placed correctly on the minimap.
+         *				If the scene name is missing, its assumed, that the id is an global one (like the player which is available for each scene) and has the same id for each scene.
+         */
+        void setTrackableId(unsigned int index, const Ogre::String& id);
 
-		Ogre::Real getTrackableImageAnimationSpeed(void) const;
-		
-		void setShowNames(bool showNames);
+        Ogre::String getTrackableId(unsigned int index);
 
-		void showMiniMap(bool bShow);
+        void setTrackableImage(unsigned int index, const Ogre::String& imageName);
 
-		bool isMiniMapShown(void) const;
+        Ogre::String getTrackableImage(unsigned int index);
 
-		void generateMiniMap(void);
+        void setTrackableImageTileSize(unsigned int index, const Ogre::Vector2& imageTileSize);
 
-		void generateTrackables(void);
+        Ogre::Vector2 getTrackableImageTileSize(unsigned int index);
 
-		void setSceneVisited(unsigned int index, bool visited);
+        void setTrackableImageAnimationSpeed(Ogre::Real speed);
 
-		bool getIsSceneVisited(unsigned int index);
+        Ogre::Real getTrackableImageAnimationSpeed(void) const;
 
-		void setSceneVisited(const Ogre::String& sceneName, bool visited);
+        void setShowNames(bool showNames);
 
-		bool getIsSceneVisited(const Ogre::String& sceneName);
-	public:
-		static const Ogre::String AttrStartPosition(void) { return "Start Position"; }
-		static const Ogre::String AttrScaleFactor(void) { return "Scale Factor"; }
-		static const Ogre::String AttrUseToolTip(void) { return "Use ToolTip"; }
-		static const Ogre::String AttrUseVisitation(void) { return "Use Visitation"; }
-		static const Ogre::String AttrAxis(void) { return "Axis"; }
-		static const Ogre::String AttrShowNames(void) { return "Show Names"; }
-		static const Ogre::String AttrSkinName(void) { return "Skin Name "; }
-		static const Ogre::String AttrMiniMapTileColor(void) { return "Tile Color "; }
-		static const Ogre::String AttrToolTipDescription(void) { return "ToolTip Description "; }
-		static const Ogre::String AttrTrackableCount(void) { return "Trackable Count"; }
-		static const Ogre::String AttrTrackableId(void) { return "Trackable Id "; }
-		static const Ogre::String AttrTrackableImage(void) { return "Trackable Image "; }
-		static const Ogre::String AttrTrackableImageTileSize(void) { return "Trackable Image Tile Size "; }
-		static const Ogre::String AttrTrackableImageAnimationSpeed(void) { return "Trackable Image Anim. Speed "; }
-	protected:
-		virtual void mouseButtonClick(MyGUI::Widget* sender) override;
-		void notifyKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char ch);
-		void notifyWindowButtonPressed(MyGUI::Window* sender, const std::string& button);
-	private:
-		void notifyToolTip(MyGUI::Widget* sender, const MyGUI::ToolTipInfo& info);
-		void destroyMiniMap(void);
-		void destroyTrackables(void);
-	private:
-		MiniMapToolTip* toolTip;
-		std::vector<MiniMapModule::MiniMapData> miniMapDataList;
-		
-		unsigned int miniMapTilesCount;
-		std::vector<MyGUI::Widget*> windowMapTiles;
-		std::vector<MyGUI::TextBox*> textBoxMapTiles;
-		std::vector<MyGUI::ImageBox*> trackableImageBoxes;
+        void showMiniMap(bool bShow);
 
-		Variant* startPosition;
-		Variant* scaleFactor;
-		Variant* useToolTip;
-		Variant* useVisitation;
-		Variant* axis;
-		Variant* showNames;
-		Variant* trackableCount;
-		Variant* trackableImageAnimationSpeed;
+        bool isMiniMapShown(void) const;
 
-		std::vector<Variant*> skinNames;
-		std::vector<Variant*> miniMapTilesColors;
-		std::vector<Variant*> toolTipDescriptions;
-		std::vector<Variant*> trackableIds;
-		std::vector<Variant*> trackableImages;
-		std::vector<Variant*> trackableImageTileSizes;
-		std::vector<int> spriteAnimationIndices;
-		std::vector<Variant*> visitedList;
+        void generateMiniMap(void);
 
-		bool bShowMiniMap;
-		Ogre::Real timeSinceLastUpdate;
-	};
+        void generateTrackables(void);
 
-}; //namespace end
+        void setSceneVisited(unsigned int index, bool visited);
+
+        bool getIsSceneVisited(unsigned int index);
+
+        void setSceneVisited(const Ogre::String& sceneName, bool visited);
+
+        bool getIsSceneVisited(const Ogre::String& sceneName);
+
+    public:
+        static const Ogre::String AttrStartPosition(void)
+        {
+            return "Start Position";
+        }
+        static const Ogre::String AttrScaleFactor(void)
+        {
+            return "Scale Factor";
+        }
+        static const Ogre::String AttrUseToolTip(void)
+        {
+            return "Use ToolTip";
+        }
+        static const Ogre::String AttrUseVisitation(void)
+        {
+            return "Use Visitation";
+        }
+        static const Ogre::String AttrAxis(void)
+        {
+            return "Axis";
+        }
+        static const Ogre::String AttrShowNames(void)
+        {
+            return "Show Names";
+        }
+        static const Ogre::String AttrSkinName(void)
+        {
+            return "Skin Name ";
+        }
+        static const Ogre::String AttrMiniMapTileColor(void)
+        {
+            return "Tile Color ";
+        }
+        static const Ogre::String AttrToolTipDescription(void)
+        {
+            return "ToolTip Description ";
+        }
+        static const Ogre::String AttrTrackableCount(void)
+        {
+            return "Trackable Count";
+        }
+        static const Ogre::String AttrTrackableId(void)
+        {
+            return "Trackable Id ";
+        }
+        static const Ogre::String AttrTrackableImage(void)
+        {
+            return "Trackable Image ";
+        }
+        static const Ogre::String AttrTrackableImageTileSize(void)
+        {
+            return "Trackable Image Tile Size ";
+        }
+        static const Ogre::String AttrTrackableImageAnimationSpeed(void)
+        {
+            return "Trackable Image Anim. Speed ";
+        }
+
+    protected:
+        virtual void mouseButtonClick(MyGUI::Widget* sender) override;
+        void notifyKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char ch);
+        void notifyWindowButtonPressed(MyGUI::Window* sender, const std::string& button);
+
+    private:
+        void notifyToolTip(MyGUI::Widget* sender, const MyGUI::ToolTipInfo& info);
+        void destroyMiniMap(void);
+        void destroyTrackables(void);
+        /**
+         * @brief Whether a tile is shown with 'Use Visitation': the player has entered the scene (MiniMapModule, survives scene changes),
+         *		  or it is revealed via its 'Scene Visited' attribute.
+         */
+        bool isTileRevealed(size_t index) const;
+        /**
+         * @brief Brings the visibility of tiles, names and trackables in line with the current state. Must run on the render thread.
+         */
+        void applyVisibility(void);
+
+    private:
+        MiniMapToolTip* toolTip;
+        std::vector<MiniMapModule::MiniMapData> miniMapDataList;
+
+        unsigned int miniMapTilesCount;
+        std::vector<MyGUI::Widget*> windowMapTiles;
+        std::vector<MyGUI::TextBox*> textBoxMapTiles;
+        std::vector<MyGUI::ImageBox*> trackableImageBoxes;
+
+        Variant* startPosition;
+        Variant* scaleFactor;
+        Variant* useToolTip;
+        Variant* useVisitation;
+        Variant* axis;
+        Variant* showNames;
+        Variant* trackableCount;
+        Variant* trackableImageAnimationSpeed;
+
+        std::vector<Variant*> skinNames;
+        std::vector<Variant*> miniMapTilesColors;
+        std::vector<Variant*> toolTipDescriptions;
+        std::vector<Variant*> trackableIds;
+        std::vector<Variant*> trackableImages;
+        std::vector<Variant*> trackableImageTileSizes;
+        std::vector<int> spriteAnimationIndices;
+        std::vector<Variant*> visitedList;
+
+        bool bShowMiniMap;
+        Ogre::Real timeSinceLastUpdate;
+    };
+
+}; // namespace end
 
 #endif

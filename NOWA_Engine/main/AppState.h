@@ -87,6 +87,11 @@ namespace NOWA
         virtual void start(const NOWA::SceneParameter& sceneParameter) {};
 
         /**
+         * @brief	Can be used to react if a new scene is about to be loaded. E.g. for setting NOWA::FaderProcess::showBlackScreenImmediate();
+         */
+        virtual void beforeSceneLoaded(void) {};
+
+        /**
          * @brief		Can be used to update e.g. camera transform. Its called as often as graphics is rendered.
          * @param[in]	dt The delta time in seconds. For example if the game runs with 700 fps.
          */
