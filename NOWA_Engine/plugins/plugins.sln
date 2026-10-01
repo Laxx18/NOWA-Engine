@@ -169,6 +169,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralFlowCurtainCompon
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ExplorationMapComponent", "ExplorationMapComponent\ExplorationMapComponent.vcxproj", "{C6A2959A-6445-475D-8004-15318648F8AF}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WaterVolumeComponent", "WaterVolumeComponent\WaterVolumeComponent.vcxproj", "{6D311DA0-6EC9-402F-A1E7-42F2FBA15C07}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -467,6 +469,10 @@ Global
 		{C6A2959A-6445-475D-8004-15318648F8AF}.Debug|x64.Build.0 = Debug|x64
 		{C6A2959A-6445-475D-8004-15318648F8AF}.Release|x64.ActiveCfg = Release|x64
 		{C6A2959A-6445-475D-8004-15318648F8AF}.Release|x64.Build.0 = Release|x64
+		{6D311DA0-6EC9-402F-A1E7-42F2FBA15C07}.Debug|x64.ActiveCfg = Debug|x64
+		{6D311DA0-6EC9-402F-A1E7-42F2FBA15C07}.Debug|x64.Build.0 = Debug|x64
+		{6D311DA0-6EC9-402F-A1E7-42F2FBA15C07}.Release|x64.ActiveCfg = Release|x64
+		{6D311DA0-6EC9-402F-A1E7-42F2FBA15C07}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

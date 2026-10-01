@@ -11,7 +11,8 @@ namespace NOWA
         soundManager(nullptr), // at this time, only one sound manager instance is supported
         soundVolume(100),
         musicVolume(100),
-        sceneManager(nullptr)
+        sceneManager(nullptr),
+        bContinue(false) // Was not initialized before
     {
     }
 
@@ -64,19 +65,25 @@ namespace NOWA
             return;
         }
 
-        if (this->sceneManager != sceneManager)
-        {
-            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[OgreALModule] Error: Destroy sounds with a different unknown scene manager is not allowed! Maybe you forgot to call @setContinue(false).");
-            throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[OgreALModule] Error: Destroy sounds with a different unknown scene manager is not allowed! Maybe you forgot to call @setContinue(false).\n", "NOWA");
-        }
+        // Note: The sounds are stored per scene manager in the sound manager, so the sounds of any app state can be destroyed,
+        // not only the ones of the most recently initialized scene manager (e.g. the menu closes while the game state continues).
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OgreALModule] Destroying sounds of scene manager: " + sceneManager->getName());
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OgreALModule] OgreAL module destroyed");
+        this->soundManager->destroyAllSounds(sceneManager);
 
-        this->soundManager->destroyAllSounds(this->sceneManager);
+        std::lock_guard<std::mutex> lock(this->soundNamesMutex);
+        this->soundNames.erase(sceneManager);
+        this->pausedSoundNames.erase(sceneManager);
     }
 
     void OgreALModule::destroyContent(void)
     {
+        {
+            std::lock_guard<std::mutex> lock(this->soundNamesMutex);
+            this->soundNames.clear();
+            this->pausedSoundNames.clear();
+        }
+
         this->sceneManager = nullptr;
         if (this->soundManager)
         {
@@ -112,6 +119,15 @@ namespace NOWA
                 {
                     // Remove resource
                     DeployResourceModule::getInstance()->removeResource(sound->getName());
+
+                    {
+                        std::lock_guard<std::mutex> lock(this->soundNamesMutex);
+                        auto foundSceneManager = this->soundNames.find(sceneManager);
+                        if (this->soundNames.end() != foundSceneManager)
+                        {
+                            foundSceneManager->second.erase(sound->getName());
+                        }
+                    }
 
                     // Stop sound
                     sound->stop();
@@ -160,6 +176,12 @@ namespace NOWA
         {
             sound = this->soundManager->createSound(sceneManager, name, resourceName, loop, stream);
 
+            // Remembered for pauseSounds/resumeSounds
+            {
+                std::lock_guard<std::mutex> lock(this->soundNamesMutex);
+                this->soundNames[sceneManager].insert(name);
+            }
+
             // Set volume
             if (true == stream)
             {
@@ -169,10 +191,6 @@ namespace NOWA
             {
                 sound->setGain(Ogre::Real(this->soundVolume) / 100.0f);
             }
-
-            Ogre::String path;
-            // Tag resource for cleanup
-            DeployResourceModule::getInstance()->tagResource(sound->getFileName(), "Audio", path);
 
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OgreALModule] Sound: " + name + " created.");
         }
@@ -236,6 +254,77 @@ namespace NOWA
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreALModule] There is no such sound");
             return nullptr;
         }
+    }
+
+    void OgreALModule::pauseSounds(Ogre::SceneManager* sceneManager)
+    {
+        // Sounds that shall continue across app states (setContinue(true)) are not paused
+        if (nullptr == this->soundManager || nullptr == sceneManager || true == this->bContinue)
+        {
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(this->soundNamesMutex);
+
+        std::vector<Ogre::String>& pausedNames = this->pausedSoundNames[sceneManager];
+        pausedNames.clear();
+
+        auto foundSceneManager = this->soundNames.find(sceneManager);
+        if (this->soundNames.end() == foundSceneManager)
+        {
+            return;
+        }
+
+        for (const Ogre::String& soundName : foundSceneManager->second)
+        {
+            // The sound may have been destroyed without deleteSound (e.g. directly via the sound manager)
+            if (false == this->soundManager->hasSound(sceneManager, soundName))
+            {
+                continue;
+            }
+
+            OgreAL::Sound* sound = this->soundManager->getSound(sceneManager, soundName);
+            if (nullptr != sound && true == sound->isPlaying())
+            {
+                sound->pause();
+                pausedNames.emplace_back(soundName);
+            }
+        }
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OgreALModule] Paused " + Ogre::StringConverter::toString(pausedNames.size()) + " sounds.");
+    }
+
+    void OgreALModule::resumeSounds(Ogre::SceneManager* sceneManager)
+    {
+        if (nullptr == this->soundManager || nullptr == sceneManager)
+        {
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(this->soundNamesMutex);
+
+        auto foundPaused = this->pausedSoundNames.find(sceneManager);
+        if (this->pausedSoundNames.end() == foundPaused)
+        {
+            return;
+        }
+
+        // Only the sounds that were playing when the state has been paused, so that sounds stopped on purpose stay stopped
+        for (const Ogre::String& soundName : foundPaused->second)
+        {
+            if (false == this->soundManager->hasSound(sceneManager, soundName))
+            {
+                continue;
+            }
+
+            OgreAL::Sound* sound = this->soundManager->getSound(sceneManager, soundName);
+            if (nullptr != sound && true == sound->isPaused())
+            {
+                sound->play();
+            }
+        }
+
+        this->pausedSoundNames.erase(foundPaused);
     }
 
     int OgreALModule::getSoundVolume(void) const

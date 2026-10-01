@@ -11,6 +11,9 @@
 
 #include "RenderQueueEnums.h"
 
+#include <MyGUI.h>
+#include <unordered_set>
+
 namespace NOWA
 {
     AppState::AppState() :
@@ -105,6 +108,9 @@ namespace NOWA
 
         this->canUpdate = false;
         this->hasStarted = false;
+
+        // The widgets belong to the components, which are destroyed below. Only forget the pointers.
+        this->widgetsHiddenOnPause.clear();
 
         // Guard against the shutdown case: the EventManager may already have been
         // destroyed by the time AppState::exit() runs (bShutdown = true in AppStateManager).
@@ -302,6 +308,16 @@ namespace NOWA
             this->workspaceModule->setAllWorkspacesEnabled(false);
         }
 
+        // Generic pause of everything that would otherwise still be seen or heard while another state (e.g. the menu) is on top.
+        // No component needs to know about this:
+        // 1) All sounds of this state that are playing right now (music, ambience ...) are paused and resumed later at the same position.
+        OgreALModule::getInstance()->pauseSounds(this->sceneManager);
+
+        // 2) MyGUI is global, so the widgets of this state (HUD, exploration map, value bars ...) would still be visible in the menu.
+        //    All root widgets that are visible right now are hidden and remembered. The next state creates its widgets afterwards,
+        //    so they are not affected.
+        this->hideVisibleWidgets();
+
         this->canUpdate = false;
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppState] Pausing State...");
         return true;
@@ -318,6 +334,10 @@ namespace NOWA
         // renders while MyGUI still holds the scene manager of the state that just went away.
         Core::getSingletonPtr()->setSceneManagerForMyGuiPlatform(this->sceneManager);
         OgreALModule::getInstance()->init(this->sceneManager);
+
+        // Counterpart of the generic pause, see AppState::pause
+        OgreALModule::getInstance()->resumeSounds(this->sceneManager);
+        this->showHiddenWidgets();
 
         if (nullptr != this->workspaceModule)
         {
@@ -651,8 +671,11 @@ namespace NOWA
                 this->workspaceModule = nullptr;
             }
 
-            // If another states continues, do not destroy sounds
-            if (AppStateManager::getSingletonPtr()->getAppStatesCount() > 1 && true == OgreALModule::getInstance()->getIsContinued())
+            // Attention: If another state is still on the stack (e.g. the menu is closed and the paused game state continues), only the sounds
+            // of THIS state are destroyed. Previously the whole OgreAL sound manager was destroyed in this case (unless setContinue(true)),
+            // which also destroyed all sounds of the paused state below - its components then held dangling sound pointers.
+            // destroySounds() itself does nothing if setContinue(true) is set.
+            if (AppStateManager::getSingletonPtr()->getAppStatesCount() > 1)
             {
                 OgreALModule::getInstance()->destroySounds(this->sceneManager);
             }
@@ -683,6 +706,68 @@ namespace NOWA
                 this->ogreNewtModule = nullptr;
             }
         }
+    }
+
+    void AppState::hideVisibleWidgets(void)
+    {
+        this->widgetsHiddenOnPause.clear();
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
+            if (nullptr == gui)
+            {
+                return;
+            }
+
+            MyGUI::EnumeratorWidgetPtr enumerator = gui->getEnumerator();
+            while (true == enumerator.next())
+            {
+                MyGUI::Widget* widget = enumerator.current();
+                if (true == widget->getVisible())
+                {
+                    widget->setVisible(false);
+                    this->widgetsHiddenOnPause.push_back(widget);
+                }
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AppState::hideVisibleWidgets");
+    }
+
+    void AppState::showHiddenWidgets(void)
+    {
+        if (true == this->widgetsHiddenOnPause.empty())
+        {
+            return;
+        }
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
+            if (nullptr == gui)
+            {
+                this->widgetsHiddenOnPause.clear();
+                return;
+            }
+
+            // A widget may have been destroyed while this state was paused, so only widgets that still exist are shown again
+            std::unordered_set<MyGUI::Widget*> rootWidgets;
+            MyGUI::EnumeratorWidgetPtr enumerator = gui->getEnumerator();
+            while (true == enumerator.next())
+            {
+                rootWidgets.insert(enumerator.current());
+            }
+
+            for (MyGUI::Widget* widget : this->widgetsHiddenOnPause)
+            {
+                if (rootWidgets.end() != rootWidgets.find(widget))
+                {
+                    widget->setVisible(true);
+                }
+            }
+            this->widgetsHiddenOnPause.clear();
+        };
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "AppState::showHiddenWidgets");
     }
 
     bool AppState::getHasStarted(void) const

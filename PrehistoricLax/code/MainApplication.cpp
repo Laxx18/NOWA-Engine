@@ -55,11 +55,14 @@ void MainApplication::startSimulation(const Ogre::String& graphicsConfigName)
 		coreConfiguration.graphicsConfigName = graphicsConfigName;  // transmitted via args in main, since may variate when used network scenario
 	}
 	coreConfiguration.wndTitle = "PrehistoricLax";
-	// NOWADesign -> Edit -> Deploy, then use this line:
-	// coreConfiguration.resourcesName = "PrehistoricLaxDeployed.cfg";
+	// Note: The deploy (NOWA-Design -> Edit -> Deploy) writes the same cfg name into the deploy folder, so no switch is necessary anymore
 	coreConfiguration.resourcesName = "PrehistoricLax.cfg";
 	coreConfiguration.customConfigName = "PrehistoricLaxConfig.xml";
 	coreConfiguration.isGame = true;
+	// Never show Ogre's configuration dialog (a Win32 dialog is unusable on a Steam Deck and looks unprofessional on PC).
+	// If no graphics config exists yet, a default profile is used: desktop resolution, fullscreen, VSync on, MSAA if supported.
+	// The player changes the settings later in the Configuration menu.
+	coreConfiguration.useDefaultGraphicsOptions = true;
 	
 	bool isInitializedCorrectly = NOWA::Core::getSingletonPtr()->initialize(coreConfiguration);
 	if (false == isInitializedCorrectly)
@@ -87,4 +90,4 @@ void MainApplication::startSimulation(const Ogre::String& graphicsConfigName)
 
 	// Lets start with the Game
 	NOWA::AppStateManager::getSingletonPtr()->start("IntroState", false);
-}
+}

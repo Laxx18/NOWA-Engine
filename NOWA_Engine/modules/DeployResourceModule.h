@@ -6,78 +6,88 @@
 
 namespace NOWA
 {
-	class EXPORTED DeployResourceModule
-	{
-	public:
-		void tagResource(const Ogre::String& name, const Ogre::String& resourceGroupName, Ogre::String& path);
+    class EXPORTED DeployResourceModule
+    {
+    public:
+        void removeResource(const Ogre::String& name);
 
-		void removeResource(const Ogre::String& name);
+        std::pair<Ogre::String, Ogre::String> getPathAndResourceGroupFromDatablock(const Ogre::String& datablockName, Ogre::HlmsTypes type);
 
-		std::pair<Ogre::String, Ogre::String> getPathAndResourceGroupFromDatablock(const Ogre::String& datablockName, Ogre::HlmsTypes type);
+        Ogre::String getResourceGroupName(const Ogre::String& name) const;
 
-		Ogre::String getResourceGroupName(const Ogre::String& name) const;
+        Ogre::String getResourcePath(const Ogre::String& name) const;
 
-		Ogre::String getResourcePath(const Ogre::String& name) const;
+        /**
+         * @brief		Writes the default resources cfg template. Only used as fallback, if the game has no own resources cfg.
+         */
+        void createConfigFile(const Ogre::String& configurationFilePathName, const Ogre::String& applicationName);
 
-		void createConfigFile(const Ogre::String& configurationFilePathName, const Ogre::String& applicationName);
+        /**
+         * @brief		Deploys the game with only the resources it really uses into "<NOWA root>/deploy/<ProjectName>/" (bin/Release, bin/resources, media).
+         *				All scenes of the project are analyzed from their files, no scene needs to be loaded.
+         * @param[in]	projectName				The project name, which is also the name of the game executable.
+         * @param[in]	projectFilePathName		The folder of the project (e.g. "../../media/Projects/PrehistoricLax").
+         * @return		true, if the deploy finished. Warnings (missing files, missing Release build) are written to the log.
+         */
+        bool deployProject(const Ogre::String& projectName, const Ogre::String& projectFilePathName);
 
-		void deploy(const Ogre::String& applicationName, const Ogre::String& sceneName, const Ogre::String& projectFilePathName, bool isLastScene);
+        /**
+         * @brief		Compatibility wrapper for the former per scene deploy: only the call with isLastScene == true deploys (the whole project).
+         */
+        void deploy(const Ogre::String& applicationName, const Ogre::String& sceneName, const Ogre::String& projectFilePathName, bool isLastScene);
 
-		Ogre::String removeDuplicateMaterials(const Ogre::String& json);
+        bool createCPlusPlusProject(const Ogre::String& projectName, const Ogre::String& sceneName);
 
-		void processJsonFiles(const std::string& folderPath);
+        bool createCPlusPlusComponentPluginProject(const Ogre::String& componentName);
 
-		void appendToExistingJson(const Ogre::String& filename, const Ogre::String& tempFilename);
+        bool createSceneInOwnState(const Ogre::String& projectName, const Ogre::String& sceneName);
 
-		void saveTexturesCache(const Ogre::String& sceneFolderPathName);
+        void openProject(const Ogre::String& projectName);
 
-		void loadTexturesCache(const Ogre::String& sceneFolderPathName);
+        void openLog(void);
 
-		bool createCPlusPlusProject(const Ogre::String& projectName, const Ogre::String& sceneName);
+        bool startGame(const Ogre::String& projectName);
 
-		bool createCPlusPlusComponentPluginProject(const Ogre::String& componentName);
+        bool createAndStartExecutable(const Ogre::String& projectName, const Ogre::String& sceneName);
 
-		bool createSceneInOwnState(const Ogre::String& projectName, const Ogre::String& sceneName);
+        bool createLuaInitScript(const Ogre::String& projectName);
 
-		void openProject(const Ogre::String& projectName);
+        bool createProjectBackup(const Ogre::String& projectName, const Ogre::String& sceneName);
 
-		void openLog(void);
+        void destroyContent(void);
 
-		bool startGame(const Ogre::String& projectName);
+        Ogre::String getCurrentComponentPluginFolder(void) const;
 
-		bool createAndStartExecutable(const Ogre::String& projectName, const Ogre::String& sceneName);
+        bool checkIfInstanceRunning(void);
 
-		bool createLuaInitScript(const Ogre::String& projectName);
+        bool openNOWALuaScriptEditor(const Ogre::String& filePathName);
 
-		bool createProjectBackup(const Ogre::String& projectName, const Ogre::String& sceneName);
+        void monitorProcess(HANDLE processHandle);
 
-		void destroyContent(void);
+    public:
+        static DeployResourceModule* getInstance();
 
-		Ogre::String getCurrentComponentPluginFolder(void) const;
+    private:
+        DeployResourceModule();
+        ~DeployResourceModule();
 
-		bool checkIfInstanceRunning(void);
+    private:
+        // Function to send the file path to the running instance
+        bool sendFilePathToRunningInstance(const Ogre::String& filePathName);
 
-		bool openNOWALuaScriptEditor(const Ogre::String& filePathName);
+        void deleteLuaRuntimeErrorXmlFiles(const Ogre::String& directoryPath);
 
-		void monitorProcess(HANDLE processHandle);
-	public:
-		static DeployResourceModule* getInstance();
-	private:
-		DeployResourceModule();
-		~DeployResourceModule();
-	private:
-		// Function to send the file path to the running instance
-		bool sendFilePathToRunningInstance(const Ogre::String& filePathName);
+        bool writeDeployedResourcesConfig(const Ogre::String& projectName, const Ogre::String& deployRootPathName);
 
-		void deleteLuaRuntimeErrorXmlFiles(const Ogre::String& directoryPath);
-	private:
-		void handleLuaError(NOWA::EventDataPtr eventData);
-	private:
-		std::map<Ogre::String, std::pair<Ogre::String, Ogre::String>> taggedResourceMap;
-		Ogre::String currentComponentPluginFolder;
-		HWND hwndNOWALuaScript;
-	};
+    private:
+        void handleLuaError(NOWA::EventDataPtr eventData);
 
-}; //namespace end
+    private:
+        std::map<Ogre::String, std::pair<Ogre::String, Ogre::String>> taggedResourceMap;
+        Ogre::String currentComponentPluginFolder;
+        HWND hwndNOWALuaScript;
+    };
+
+}; // namespace end
 
 #endif

@@ -107,8 +107,6 @@ namespace NOWA
 
     bool ExitComponent::connect(void)
     {
-        this->gameObjectPtr->getSceneNode()->setVisible(false);
-
         // Attention: must be reset here. It was never reset, so after a simulation stop and restart in the editor (without
         // a scene change) the exit did not work anymore.
         this->processAlreadyAttached = false;
@@ -141,7 +139,6 @@ namespace NOWA
     {
         this->sourceGameObject = nullptr;
         this->processAlreadyAttached = false;
-        this->gameObjectPtr->getSceneNode()->setVisible(true);
         return true;
     }
 

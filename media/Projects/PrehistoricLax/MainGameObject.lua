@@ -22,7 +22,7 @@ MainGameObject["connect"] = function(gameObject)
 end
 
 MainGameObject["disconnect"] = function()
-
+    AppStateManager:getGameObjectController():undoAll();
 end
 
 MainGameObject["update"] = function(dt)
@@ -32,4 +32,25 @@ MainGameObject["update"] = function(dt)
         explorationMap:toggleFullMap();
         timeSinceLastToggle = 1;
     end
+end
+
+MainGameObject["onPlayerWaterContact"] = function(gameObject0, gameObject1)
+    local player = nil;
+    
+    gameObject0 = AppStateManager:getGameObjectController():castGameObject(gameObject0);
+    gameObject1 = AppStateManager:getGameObjectController():castGameObject(gameObject1);
+    
+    if (gameObject1:getCategory() == "Player") then
+        player = gameObject1;
+    else
+        player = gameObject0;
+    end
+    
+    local waterParticle = player:getParticleFxComponentFromName("WaterParticle");
+    waterParticle:setGlobalPosition(player:getPosition());
+    waterParticle:setActivated(true);
+end
+
+MainGameObject["onPlayerWaterContact"] = function(gameObject0, gameObject1, contact)
+
 end

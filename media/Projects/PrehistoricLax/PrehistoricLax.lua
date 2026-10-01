@@ -721,7 +721,8 @@ PrehistoricLax["disconnect"] = function()
 
     PointerManager:showMouse(true);
     cameraComponent:setActivated(false);
-    AppStateManager:getGameObjectController():undoAll();
+    prehistoricLax:getSimpleSoundComponentFromName("Money"):setActivated(false);
+    prehistoricLax:getSimpleSoundComponentFromName("Hurt"):setActivated(false);
 
     isAttacking = false;
 

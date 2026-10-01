@@ -1034,7 +1034,8 @@ namespace NOWA
 
     bool AtmosphereComponent::disconnect(void)
     {
-        logLightingState("disconnect() ENTER", this->gameObjectPtr->getName(), this->gameObjectPtr->getSceneManager(), (nullptr != this->lightDirectionalComponent) ? this->lightDirectionalComponent->getOgreLight() : nullptr, this->atmosphereNpr);
+        // Causes crash if exit is done
+        // logLightingState("disconnect() ENTER", this->gameObjectPtr->getName(), this->gameObjectPtr->getSceneManager(), (nullptr != this->lightDirectionalComponent) ? this->lightDirectionalComponent->getOgreLight() : nullptr, this->atmosphereNpr);
 
         this->setStartTime(this->startTime->getString());
 
@@ -1074,7 +1075,7 @@ namespace NOWA
         // the sky, leaving a black screen in the editor. resetAtmosphere() is only called
         // from onRemoveComponent() when the component is actually being destroyed.
 
-        logLightingState("disconnect() EXIT", this->gameObjectPtr->getName(), this->gameObjectPtr->getSceneManager(), (nullptr != this->lightDirectionalComponent) ? this->lightDirectionalComponent->getOgreLight() : nullptr, this->atmosphereNpr);
+        // logLightingState("disconnect() EXIT", this->gameObjectPtr->getName(), this->gameObjectPtr->getSceneManager(), (nullptr != this->lightDirectionalComponent) ? this->lightDirectionalComponent->getOgreLight() : nullptr, this->atmosphereNpr);
 
         return true;
     }

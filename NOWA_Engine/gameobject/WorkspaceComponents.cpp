@@ -143,6 +143,7 @@ namespace NOWA
         usePlanarReflection(new Variant(WorkspaceBaseComponent::AttrUsePlanarReflection(), false, this->attributes)),
         useSSAO(new Variant(WorkspaceBaseComponent::AttrUseSSAO(), false, this->attributes)),
         useDistortion(new Variant(WorkspaceBaseComponent::AttrUseDistortion(), false, this->attributes)),
+        useWaterVolume(new Variant(WorkspaceBaseComponent::AttrUseWaterVolume(), false, this->attributes)),
         useMSAA(new Variant(WorkspaceBaseComponent::AttrUseMSAA(), false, this->attributes)),
         usePCC(new Variant(WorkspaceBaseComponent::AttrUsePCC(), false, this->attributes)),
         shadowGlobalBias(new Variant(WorkspaceBaseComponent::AttrShadowGlobalBias(), Ogre::Real(2.0f), this->attributes)),
@@ -185,6 +186,9 @@ namespace NOWA
         this->usePlanarReflection->setDescription("Activates planar reflection, which is used for mirror planes in conjunction with a PlanarReflectionComponent.");
         this->useDistortion->setDescription("Activates distortion. Distortion setup can be used to create blastwave effects, mix with fire particle effects "
                                             "to get heat distortion etc. This component works in conjunction with a DistortionComponent.");
+        this->useWaterVolume->setDescription("Activates water volumes: regions (e.g. a scaled box) in which everything behind/inside is distorted, fogged and tinted like "
+                                             "being under water, with an animated waterline. Independent from the ocean underwater effect. "
+                                             "This component works in conjunction with a WaterVolumeComponent.");
         this->referenceId->setVisible(false);
         this->reflectionCameraGameObjectId->setVisible(false);
 
@@ -259,6 +263,12 @@ namespace NOWA
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseDistortion")
         {
             this->useDistortion->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        // Optional: older scene files do not contain this property, the next check then simply reads "UseMSAA".
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseWaterVolume")
+        {
+            this->useWaterVolume->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
         }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseMSAA")
@@ -463,6 +473,7 @@ namespace NOWA
         this->finalRenderingNodeName = "NOWAFinalCompositionNode" + workspacePostfix;
 
         this->underwaterNodeName = "NOWAUnderwaterNode" + workspacePostfix;
+        this->waterVolumeNodeName = "NOWAWaterVolumeNode" + workspacePostfix;
         if (true == this->usePlanarReflection->getBool())
         {
             this->planarReflectionReflectiveRenderingNode = "PlanarReflectionsReflectiveRenderingNode" + workspacePostfix;
@@ -886,6 +897,11 @@ namespace NOWA
                     this->compositorManager->removeNodeDefinition(this->underwaterNodeName);
                 }
 
+                if (true == this->compositorManager->hasNodeDefinition(this->waterVolumeNodeName))
+                {
+                    this->compositorManager->removeNodeDefinition(this->waterVolumeNodeName);
+                }
+
                 if (true == this->compositorManager->hasNodeDefinition(this->renderingNodeName))
                 {
                     this->compositorManager->removeNodeDefinition(this->renderingNodeName);
@@ -1071,6 +1087,10 @@ namespace NOWA
         {
             this->setUseDistortion(attribute->getBool());
         }
+        else if (WorkspaceBaseComponent::AttrUseWaterVolume() == attribute->getName())
+        {
+            this->setUseWaterVolume(attribute->getBool());
+        }
         else if (WorkspaceBaseComponent::AttrUseMSAA() == attribute->getName())
         {
             this->setUseMSAA(attribute->getBool());
@@ -1173,6 +1193,12 @@ namespace NOWA
 
         propertyXML = doc.allocate_node(node_element, "property");
         propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "UseWaterVolume"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useWaterVolume->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
         propertyXML->append_attribute(doc.allocate_attribute("name", "UseMSAA"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useMSAA->getBool())));
         propertiesXML->append_node(propertyXML);
@@ -1256,6 +1282,19 @@ namespace NOWA
                     this->hlmsWind->commitPendingToRender();
                 }
 
+                // Water volume depth reconstruction parameters (same formula as SSAO/underwater). Kept in sync every
+                // frame like the underwater ones, so a changed near/far clip distance is picked up immediately.
+                if (true == this->useWaterVolume->getBool() && false == this->waterVolumeMaterial.isNull())
+                {
+                    Ogre::Pass* waterVolumePass = this->waterVolumeMaterial->getTechnique(0)->getPass(0);
+                    Ogre::GpuProgramParametersSharedPtr waterVolumeParams = waterVolumePass->getFragmentProgramParameters();
+
+                    Ogre::Vector2 waterVolumeProjectionAB = this->cameraComponent->getCamera()->getProjectionParamsAB();
+                    waterVolumeProjectionAB.y /= this->cameraComponent->getFarClipDistance();
+
+                    waterVolumeParams->setNamedConstant("projectionParams", waterVolumeProjectionAB);
+                }
+
                 // Switch workspace graph when the camera crosses the water line.
                 // We only rebuild when the state toggles to avoid heavy work every frame.
                 const bool underwaterNow = this->canUseOcean && this->oceanComponent && this->oceanComponent->isCameraUnderwater();
@@ -1306,6 +1345,7 @@ namespace NOWA
 
             unsigned short channelOldLumRt = 0;
             unsigned short channelDistortion = 0;
+            unsigned short channelWaterVolume = 0;
             unsigned short channelGBufferNormals = 0;
             unsigned short channelDepthTexture = 0;
 
@@ -1321,6 +1361,12 @@ namespace NOWA
                 channelDistortion = channel++;
             }
 
+            // Must match the output channel order of the rendering node: ..., rt_distortion, rt_waterVolume, gBufferNormals, depthTexture
+            if (true == this->useWaterVolume->getBool())
+            {
+                channelWaterVolume = channel++;
+            }
+
             if (true == this->useSSAO->getBool())
             {
                 channelGBufferNormals = channel++;
@@ -1333,6 +1379,7 @@ namespace NOWA
             Ogre::IdString hdrPostProcessingNodeName;
             Ogre::IdString distortionNodeName = this->getDistortionNode();
             Ogre::IdString underwaterNodeName = this->underwaterNodeName;
+            Ogre::IdString waterVolumeNodeName = this->waterVolumeNodeName;
 
             if (true == this->useHdr->getBool())
             {
@@ -1352,12 +1399,13 @@ namespace NOWA
                 Ogre::CompositorNode* outNode = *it;
                 Ogre::IdString outNodeName = outNode->getName();
 
-                if (outNode->getEnabled() && outNodeName != finalRenderNodeName && outNodeName != hdrPostProcessingNodeName && outNodeName != msaaNodeName && outNodeName != distortionNodeName && outNodeName != underwaterNodeName)
+                if (outNode->getEnabled() && outNodeName != finalRenderNodeName && outNodeName != hdrPostProcessingNodeName && outNodeName != msaaNodeName && outNodeName != distortionNodeName && outNodeName != underwaterNodeName &&
+                    outNodeName != waterVolumeNodeName)
                 {
                     Ogre::CompositorNodeVec::const_iterator it2 = it + 1;
 
                     while (it2 != en && (false == (*it2)->getEnabled() || (*it2)->getName() == finalRenderNodeName || (*it2)->getName() == hdrPostProcessingNodeName || (*it2)->getName() == msaaNodeName || (*it2)->getName() == distortionNodeName ||
-                                            (*it2)->getName() == underwaterNodeName))
+                                            (*it2)->getName() == underwaterNodeName || (*it2)->getName() == waterVolumeNodeName))
                     {
                         it2++;
                         if (it2 == en)
@@ -1419,20 +1467,13 @@ namespace NOWA
             // =====================================================================
             // Main pipeline connections
             // =====================================================================
+            // The late chain (ocean underwater -> water volume -> final) is identical for all three variants below,
+            // only its source node differs - see connectPostSceneEffects().
             if (false == this->useHdr->getBool())
             {
                 const Ogre::IdString& sceneOutputNode = (true == this->useDistortion->getBool()) ? distortionNodeName : lastInNode;
 
-                if (true == oceanUnderwater)
-                {
-                    workspaceDef->connect(sceneOutputNode, 0, underwaterNodeName, 0);
-                    workspaceDef->connect(this->renderingNodeName, channelDepthTexture, underwaterNodeName, 1);
-                    workspaceDef->connect(underwaterNodeName, 0, finalRenderNodeName, 1);
-                }
-                else
-                {
-                    workspaceDef->connect(sceneOutputNode, 0, finalRenderNodeName, 1);
-                }
+                this->connectPostSceneEffects(workspaceDef, sceneOutputNode, channelDepthTexture, channelWaterVolume, oceanUnderwater);
             }
             else
             {
@@ -1451,16 +1492,7 @@ namespace NOWA
 
                     // workspaceDef->connect(this->renderingNodeName, channelRT1, hdrPostProcessingNodeName, 2);
 
-                    if (true == oceanUnderwater)
-                    {
-                        workspaceDef->connect(hdrPostProcessingNodeName, 0, underwaterNodeName, 0);
-                        workspaceDef->connect(this->renderingNodeName, channelDepthTexture, underwaterNodeName, 1);
-                        workspaceDef->connect(underwaterNodeName, 0, finalRenderNodeName, 1);
-                    }
-                    else
-                    {
-                        workspaceDef->connect(hdrPostProcessingNodeName, 0, finalRenderNodeName, 1);
-                    }
+                    this->connectPostSceneEffects(workspaceDef, hdrPostProcessingNodeName, channelDepthTexture, channelWaterVolume, oceanUnderwater);
                 }
                 else
                 {
@@ -1478,16 +1510,7 @@ namespace NOWA
                     workspaceDef->connect(this->renderingNodeName, channelOldLumRt, hdrPostProcessingNodeName, 1);
                     // workspaceDef->connect(this->renderingNodeName, channelRT1, hdrPostProcessingNodeName, 2);
 
-                    if (true == oceanUnderwater)
-                    {
-                        workspaceDef->connect(hdrPostProcessingNodeName, 0, underwaterNodeName, 0);
-                        workspaceDef->connect(this->renderingNodeName, channelDepthTexture, underwaterNodeName, 1);
-                        workspaceDef->connect(underwaterNodeName, 0, finalRenderNodeName, 1);
-                    }
-                    else
-                    {
-                        workspaceDef->connect(hdrPostProcessingNodeName, 0, finalRenderNodeName, 1);
-                    }
+                    this->connectPostSceneEffects(workspaceDef, hdrPostProcessingNodeName, channelDepthTexture, channelWaterVolume, oceanUnderwater);
                 }
             }
 
@@ -1571,6 +1594,10 @@ namespace NOWA
             this->createUnderwaterNode();
         }
 
+        // Independent from the ocean: exists whenever water volumes are used, no rebuild when the player enters or
+        // leaves a volume - the per-pixel mask in rt_waterVolume decides where the effect is visible.
+        this->createWaterVolumeNode();
+
         // Calculate output channel indices based on enabled features
         unsigned short channelRT0 = 0;
         unsigned short channelRT1 = 1;
@@ -1578,6 +1605,7 @@ namespace NOWA
 
         unsigned short channelOldLumRt = 0;
         unsigned short channelDistortion = 0;
+        unsigned short channelWaterVolume = 0;
         unsigned short channelGBufferNormals = 0;
         unsigned short channelDepthTexture = 0;
 
@@ -1589,6 +1617,12 @@ namespace NOWA
         if (true == this->useDistortion->getBool())
         {
             channelDistortion = channel++;
+        }
+
+        // Must match the output channel order of the rendering node: ..., rt_distortion, rt_waterVolume, gBufferNormals, depthTexture
+        if (true == this->useWaterVolume->getBool())
+        {
+            channelWaterVolume = channel++;
         }
 
         if (true == this->useSSAO->getBool())
@@ -1627,16 +1661,7 @@ namespace NOWA
         {
             const Ogre::String& sceneOutputNode = (true == this->useDistortion->getBool()) ? this->distortionNode : this->renderingNodeName;
 
-            if (true == oceanUnderwater)
-            {
-                workspaceDef->connect(sceneOutputNode, 0, this->underwaterNodeName, 0);
-                workspaceDef->connect(this->renderingNodeName, channelDepthTexture, this->underwaterNodeName, 1);
-                workspaceDef->connect(this->underwaterNodeName, 0, this->finalRenderingNodeName, 1);
-            }
-            else
-            {
-                workspaceDef->connect(sceneOutputNode, 0, this->finalRenderingNodeName, 1);
-            }
+            this->connectPostSceneEffects(workspaceDef, sceneOutputNode, channelDepthTexture, channelWaterVolume, oceanUnderwater);
 
             workspaceDef->connectExternal(0, this->finalRenderingNodeName, 0);
         }
@@ -1656,16 +1681,7 @@ namespace NOWA
                 workspaceDef->connect(this->renderingNodeName, channelOldLumRt, "NOWAHdrPostprocessingNode", 1);
                 // workspaceDef->connect(this->renderingNodeName, channelRT1, "NOWAHdrPostprocessingNode", 2);
 
-                if (true == oceanUnderwater)
-                {
-                    workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->underwaterNodeName, 0);
-                    workspaceDef->connect(this->renderingNodeName, channelDepthTexture, this->underwaterNodeName, 1);
-                    workspaceDef->connect(this->underwaterNodeName, 0, this->finalRenderingNodeName, 1);
-                }
-                else
-                {
-                    workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->finalRenderingNodeName, 1);
-                }
+                this->connectPostSceneEffects(workspaceDef, "NOWAHdrPostprocessingNode", channelDepthTexture, channelWaterVolume, oceanUnderwater);
 
                 workspaceDef->connectExternal(0, this->finalRenderingNodeName, 0);
             }
@@ -1685,16 +1701,7 @@ namespace NOWA
                 workspaceDef->connect(this->renderingNodeName, channelOldLumRt, "NOWAHdrPostprocessingNode", 1);
                 // workspaceDef->connect(this->renderingNodeName, channelRT1, "NOWAHdrPostprocessingNode", 2);
 
-                if (true == oceanUnderwater)
-                {
-                    workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->underwaterNodeName, 0);
-                    workspaceDef->connect(this->renderingNodeName, channelDepthTexture, this->underwaterNodeName, 1);
-                    workspaceDef->connect(this->underwaterNodeName, 0, this->finalRenderingNodeName, 1);
-                }
-                else
-                {
-                    workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->finalRenderingNodeName, 1);
-                }
+                this->connectPostSceneEffects(workspaceDef, "NOWAHdrPostprocessingNode", channelDepthTexture, channelWaterVolume, oceanUnderwater);
 
                 workspaceDef->connectExternal(0, this->finalRenderingNodeName, 0);
             }
@@ -2046,6 +2053,212 @@ namespace NOWA
 
             psParams->setNamedConstant("projectionParams", projectionAB);
         }
+    }
+
+    void WorkspaceBaseComponent::createWaterVolumeNode(void)
+    {
+        // RUNS ON RENDER THREAD (called from baseCreateWorkspace(), inside createWorkspace()'s render command).
+        if (false == this->useWaterVolume->getBool() || true == this->waterVolumeNodeName.empty())
+        {
+            return;
+        }
+
+        if (true == this->compositorManager->hasNodeDefinition(this->waterVolumeNodeName))
+        {
+            this->compositorManager->removeNodeDefinition(this->waterVolumeNodeName);
+        }
+
+        Ogre::CompositorNodeDef* compositorNodeDefinition = this->compositorManager->addNodeDefinition(this->waterVolumeNodeName);
+
+        // Inputs: 0 = scene colour (output of whatever precedes this node), 1 = rt_waterVolume, 2 = depthTexture
+        compositorNodeDefinition->addTextureSourceName("rt_scene", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+        compositorNodeDefinition->addTextureSourceName("rt_waterVolume", 1, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+        compositorNodeDefinition->addTextureSourceName("depthTexture", 2, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+
+        Ogre::TextureDefinitionBase::TextureDefinition* outTexDef = compositorNodeDefinition->addTextureDefinition("rt_output");
+        outTexDef->width = 0.0f;  // target_width
+        outTexDef->height = 0.0f; // target_height
+        outTexDef->format = Ogre::PFG_RGBA16_FLOAT;
+        outTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+
+        Ogre::RenderTargetViewDef* rtv = compositorNodeDefinition->addRenderTextureView("rt_output");
+        Ogre::RenderTargetViewEntry attachment;
+        attachment.textureName = "rt_output";
+        rtv->colourAttachments.push_back(attachment);
+        rtv->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH; // Fullscreen quad, no depth needed
+
+        compositorNodeDefinition->setNumTargetPass(1u);
+        Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt_output");
+
+        {
+            Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
+            passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+            passQuad->mMaterialName = "WaterVolume/Quad";
+
+            // Same slot order as the texture_units in WaterVolume.material
+            passQuad->addQuadTextureSource(0u, "rt_scene");
+            passQuad->addQuadTextureSource(1u, "rt_waterVolume");
+            passQuad->addQuadTextureSource(2u, "depthTexture");
+
+            passQuad->mProfilingId = "NOWA_Water_Volume_Pass_Quad";
+        }
+
+        compositorNodeDefinition->setNumOutputChannels(1u);
+        compositorNodeDefinition->mapOutputChannel(0u, "rt_output");
+
+        // Initial depth reconstruction params - kept up to date every frame in update(), same as the underwater ones.
+        this->waterVolumeMaterial = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().load("WaterVolume/Quad", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+
+        if (false == this->waterVolumeMaterial.isNull())
+        {
+            Ogre::Pass* pass = this->waterVolumeMaterial->getTechnique(0)->getPass(0);
+            Ogre::GpuProgramParametersSharedPtr psParams = pass->getFragmentProgramParameters();
+
+            Ogre::Vector2 projectionAB = this->cameraComponent->getCamera()->getProjectionParamsAB();
+            projectionAB.y /= this->cameraComponent->getFarClipDistance();
+
+            psParams->setNamedConstant("projectionParams", projectionAB);
+        }
+    }
+
+    void WorkspaceBaseComponent::setupEffectQueueRenderTarget(Ogre::CompositorNodeDef* compositorNodeDefinition, const Ogre::String& textureName)
+    {
+        Ogre::TextureDefinitionBase::TextureDefinition* texDef = compositorNodeDefinition->addTextureDefinition(textureName);
+        texDef->width = 0.0f;  // target_width
+        texDef->height = 0.0f; // target_height
+        // Must match depthTexture exactly, since depthTexture is attached as this target's depth buffer below.
+        // (The old rt_distortion ignored the super sampling factor - harmless only as long as it had its own depth pool.)
+        texDef->widthFactor = this->superSampling->getReal();
+        texDef->heightFactor = this->superSampling->getReal();
+        texDef->format = Ogre::PFG_RGBA16_FLOAT;
+        texDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+
+        if (this->msaaLevel > 1)
+        {
+            // Sample count must match depthTexture as well. No MsaaExplicitResolve flag on purpose: Ogre then resolves
+            // implicitly (StoreOrResolve in addEffectQueuePass()), so the later quad passes sample a regular texture.
+            texDef->fsaa = Ogre::StringConverter::toString(this->msaaLevel);
+        }
+
+        Ogre::RenderTargetViewDef* rtv = compositorNodeDefinition->addRenderTextureView(textureName);
+        Ogre::RenderTargetViewEntry attachment;
+        attachment.textureName = textureName;
+        rtv->colourAttachments.push_back(attachment);
+
+        // BUGFIX: previously rt_distortion used its own depth pool (depthBufferId = 2). In Ogre's Distortion sample
+        // script rt0 and rt_distortion both use depth_pool 2, i.e. they SHARE one depth buffer - but here rt0 attaches
+        // the explicit "depthTexture" instead, so pool 2 became a separate, empty depth buffer and effect objects were
+        // never occluded by geometry in front of them. Attaching the very same depthTexture restores the intended
+        // behaviour (effect datablocks use depth check on, depth write off).
+        rtv->depthAttachment.textureName = "depthTexture";
+    }
+
+    void WorkspaceBaseComponent::addEffectQueuePass(Ogre::CompositorNodeDef* compositorNodeDefinition, const Ogre::String& textureName, Ogre::uint8 renderQueue, const Ogre::ColourValue& clearColour, const Ogre::String& profilingId)
+    {
+        Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass(textureName);
+
+        Ogre::CompositorPassSceneDef* passScene = static_cast<Ogre::CompositorPassSceneDef*>(targetDef->addPass(Ogre::PASS_SCENE));
+
+        passScene->mProfilingId = profilingId;
+
+        // Clear colour only - the depth comes from the main scene passes and must be kept for occlusion.
+        passScene->setAllLoadActions(Ogre::LoadAction::Clear);
+        passScene->mLoadActionDepth = Ogre::LoadAction::Load;
+        passScene->mLoadActionStencil = Ogre::LoadAction::Load;
+        passScene->mClearColour[0] = clearColour;
+
+        passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
+        // depthTexture is sampled later (SSAO, underwater, water volume) - keep its contents.
+        passScene->mStoreActionDepth = Ogre::StoreAction::Store;
+        passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
+
+        passScene->mCameraName = this->cameraComponent->getCamera()->getName();
+        passScene->mUpdateLodLists = false;
+        passScene->mIncludeOverlays = false;
+
+        // mLastRQ is exclusive -> renders exactly this one render queue
+        passScene->mFirstRQ = renderQueue;
+        passScene->mLastRQ = static_cast<Ogre::uint8>(renderQueue + 1u);
+    }
+
+    void WorkspaceBaseComponent::splitScenePassAroundEffectQueues(Ogre::CompositorTargetDef* targetDef, Ogre::CompositorPassSceneDef* passScene)
+    {
+        // BUGFIX: the merged main scene pass covers the effect render queues as well, so DistortionComponent objects
+        // (and now WaterVolumeComponent objects) were ALSO drawn visibly into rt0, not only into their effect target.
+        // Ogre's own Distortion sample stops the main pass at rq_last 16 for exactly this reason.
+        // Only split when an effect is actually used, so the single merged pass (and its performance) stays otherwise.
+        if (false == this->useDistortion->getBool() && false == this->useWaterVolume->getBool())
+        {
+            return;
+        }
+
+        // mFirstRQ inclusive, mLastRQ exclusive
+        if (passScene->mFirstRQ > DISTORTION_RENDER_QUEUE || passScene->mLastRQ <= WATER_VOLUME_RENDER_QUEUE)
+        {
+            return;
+        }
+
+        const Ogre::uint8 originalLastRQ = passScene->mLastRQ;
+
+        // First part: everything before the effect queues
+        passScene->mLastRQ = DISTORTION_RENDER_QUEUE;
+
+        // Second part: everything after the effect queues, appended directly after the first part (callers invoke this
+        // right after configuring the main pass, before any further passes such as the PCC overlay pass are added).
+        Ogre::CompositorPassSceneDef* restPass = static_cast<Ogre::CompositorPassSceneDef*>(targetDef->addPass(Ogre::PASS_SCENE));
+
+        restPass->mExposedTextures = passScene->mExposedTextures;
+        restPass->mIncludeOverlays = passScene->mIncludeOverlays;
+        restPass->mShadowNode = passScene->mShadowNode;
+        // The first part already rendered/recalculated the shadow maps this frame
+        restPass->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
+        restPass->mCameraName = passScene->mCameraName;
+        restPass->mGenNormalsGBuf = passScene->mGenNormalsGBuf;
+        // LOD lists are updated per render queue range, so the second range needs its own update as well
+        restPass->mUpdateLodLists = passScene->mUpdateLodLists;
+        restPass->mIdentifier = passScene->mIdentifier;
+        restPass->mVisibilityMask = passScene->mVisibilityMask;
+
+        // Note: deliberately NOT mReuseCullData - culling is done per render queue range, so reusing the first part's
+        // cull data would leave every render queue after the effect queues empty.
+
+        restPass->setAllLoadActions(Ogre::LoadAction::Load);
+        for (size_t i = 0; i < OGRE_MAX_MULTIPLE_RENDER_TARGETS; ++i)
+        {
+            restPass->mStoreActionColour[i] = passScene->mStoreActionColour[i];
+        }
+        restPass->mStoreActionDepth = passScene->mStoreActionDepth;
+        restPass->mStoreActionStencil = passScene->mStoreActionStencil;
+
+        restPass->mProfilingId = passScene->mProfilingId + "_After_Effect_Queues";
+
+        restPass->mFirstRQ = static_cast<Ogre::uint8>(WATER_VOLUME_RENDER_QUEUE + 1u);
+        restPass->mLastRQ = originalLastRQ;
+    }
+
+    void WorkspaceBaseComponent::connectPostSceneEffects(Ogre::CompositorWorkspaceDef* workspaceDef, const Ogre::IdString& sourceNodeName, unsigned short channelDepthTexture, unsigned short channelWaterVolume, bool oceanUnderwater)
+    {
+        Ogre::IdString currentNodeName = sourceNodeName;
+
+        // Ocean underwater (3D, camera below the ocean surface) - unchanged behaviour
+        if (true == oceanUnderwater)
+        {
+            workspaceDef->connect(currentNodeName, 0, this->underwaterNodeName, 0);
+            workspaceDef->connect(this->renderingNodeName, channelDepthTexture, this->underwaterNodeName, 1);
+            currentNodeName = this->underwaterNodeName;
+        }
+
+        // Water volumes (regions, like distortion). Guarded by the node definition, because a WorkspaceCustomComponent
+        // never runs baseCreateWorkspace() and therefore never creates this node.
+        if (true == this->useWaterVolume->getBool() && true == this->compositorManager->hasNodeDefinition(this->waterVolumeNodeName))
+        {
+            workspaceDef->connect(currentNodeName, 0, this->waterVolumeNodeName, 0);
+            workspaceDef->connect(this->renderingNodeName, channelWaterVolume, this->waterVolumeNodeName, 1);
+            workspaceDef->connect(this->renderingNodeName, channelDepthTexture, this->waterVolumeNodeName, 2);
+            currentNodeName = this->waterVolumeNodeName;
+        }
+
+        workspaceDef->connect(currentNodeName, 0, this->finalRenderingNodeName, 1);
     }
 
     void WorkspaceBaseComponent::addWorkspace(Ogre::CompositorWorkspaceDef* workspaceDef)
@@ -2637,6 +2850,23 @@ namespace NOWA
     bool WorkspaceBaseComponent::getUseDistortion(void) const
     {
         return this->useDistortion->getBool();
+    }
+
+    void WorkspaceBaseComponent::setUseWaterVolume(bool useWaterVolume)
+    {
+        if (this->useWaterVolume->getBool() == useWaterVolume)
+        {
+            return;
+        }
+
+        this->useWaterVolume->setValue(useWaterVolume);
+
+        this->createWorkspace();
+    }
+
+    bool WorkspaceBaseComponent::getUseWaterVolume(void) const
+    {
+        return this->useWaterVolume->getBool();
     }
 
     void WorkspaceBaseComponent::setUseMSAA(bool useMSAA)
@@ -3322,6 +3552,11 @@ namespace NOWA
                 numTexturesDefinitions++;
             }
 
+            if (true == this->useWaterVolume->getBool())
+            {
+                numTexturesDefinitions++; // rt_waterVolume
+            }
+
             if (true == this->useSSAO->getBool())
             {
                 numTexturesDefinitions++; // gBufferNormals (only for SSAO)
@@ -3351,22 +3586,8 @@ namespace NOWA
                 texDef->fsaa = Ogre::StringConverter::toString(this->msaaLevel);
             }
 
-            if (true == this->useDistortion->getBool())
-            {
-                // texDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
-                // texDef->depthBufferId = 2;
-                // texDef->preferDepthTexture = true;
-
-                Ogre::TextureDefinitionBase::TextureDefinition* distortionTexDef = compositorNodeDefinition->addTextureDefinition("rt_distortion");
-                distortionTexDef->width = 0.0f;  // target_width
-                distortionTexDef->height = 0.0f; // target_height
-                distortionTexDef->format = Ogre::PFG_RGBA16_FLOAT;
-                distortionTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
-                distortionTexDef->preferDepthTexture = true;
-                // Attention depth_pool?
-                distortionTexDef->depthBufferId = 2;
-                distortionTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
-            }
+            // rt_distortion / rt_waterVolume texture definitions are created together with their render target views
+            // further below in setupEffectQueueRenderTarget().
 
             if (true == this->useSSAO->getBool())
             {
@@ -3455,13 +3676,16 @@ namespace NOWA
                 rtv->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
             }
 
+            // Effect queue render targets - texture definition AND render target view, both sharing depthTexture as
+            // depth attachment (bugfix, see setupEffectQueueRenderTarget()).
             if (true == this->useDistortion->getBool())
             {
-                rtv = compositorNodeDefinition->addRenderTextureView("rt_distortion");
-                Ogre::RenderTargetViewEntry attachment;
-                attachment.textureName = "rt_distortion";
-                rtv->colourAttachments.push_back(attachment);
-                rtv->depthBufferId = 2;
+                this->setupEffectQueueRenderTarget(compositorNodeDefinition, "rt_distortion");
+            }
+
+            if (true == this->useWaterVolume->getBool())
+            {
+                this->setupEffectQueueRenderTarget(compositorNodeDefinition, "rt_waterVolume");
             }
 
             unsigned short numTargetPass = 1;
@@ -3470,6 +3694,10 @@ namespace NOWA
                 numTargetPass++;
             }
             if (true == this->useDistortion->getBool())
+            {
+                numTargetPass++;
+            }
+            if (true == this->useWaterVolume->getBool())
             {
                 numTargetPass++;
             }
@@ -3591,6 +3819,9 @@ namespace NOWA
                         {
                             passScene->mIdentifier = 25001;
                         }
+
+                        // Keeps the effect render queues (distortion, water volume) out of rt0 - only splits when used
+                        this->splitScenePassAroundEffectQueues(targetDef, passScene);
                     }
 
                     // ===== ADD OVERLAY PASS FOR PCC ===== (unchanged, unrelated to this merge)
@@ -3641,28 +3872,16 @@ namespace NOWA
 
             if (true == this->useDistortion->getBool())
             {
-                Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt_distortion");
-
-                // Render Scene for distortion
-                {
-                    Ogre::CompositorPassSceneDef* passScene;
-                    auto pass = targetDef->addPass(Ogre::PASS_SCENE);
-                    passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
-
-                    passScene->mProfilingId = "NOWA_Pbs_Distortion_Pass_Scene";
-
-                    passScene->setAllLoadActions(Ogre::LoadAction::Clear);
-
-                    passScene->mClearColour[0] = Ogre::ColourValue(0.5f, 0.5f, 0.0f, 0.0f);
-
-                    passScene->mUpdateLodLists = false;
-
-                    passScene->mIncludeOverlays = false;
-                    passScene->mFirstRQ = 16;
-                    passScene->mLastRQ = 17;
-                }
+                // R,G = distortion vector (0.5 = none), A = strength
+                this->addEffectQueuePass(compositorNodeDefinition, "rt_distortion", DISTORTION_RENDER_QUEUE, Ogre::ColourValue(0.5f, 0.5f, 0.0f, 0.0f), "NOWA_Pbs_Distortion_Pass_Scene");
 
                 this->createDistortionNode();
+            }
+
+            if (true == this->useWaterVolume->getBool())
+            {
+                // R = mask, G/B = front/back depth (normalized), A = intensity - all 0 outside any water volume
+                this->addEffectQueuePass(compositorNodeDefinition, "rt_waterVolume", WATER_VOLUME_RENDER_QUEUE, Ogre::ColourValue(0.0f, 0.0f, 0.0f, 0.0f), "NOWA_Pbs_Water_Volume_Pass_Scene");
             }
 
             // ===== Output channels =====
@@ -3676,6 +3895,11 @@ namespace NOWA
             if (true == this->useDistortion->getBool())
             {
                 outputChannelCount++; // rt_distortion
+            }
+
+            if (true == this->useWaterVolume->getBool())
+            {
+                outputChannelCount++; // rt_waterVolume
             }
 
             if (true == this->useSSAO->getBool())
@@ -3699,6 +3923,10 @@ namespace NOWA
             if (true == this->useDistortion->getBool())
             {
                 compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt_distortion"); // 3
+            }
+            if (true == this->useWaterVolume->getBool())
+            {
+                compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt_waterVolume");
             }
 
             if (true == this->useSSAO->getBool())
@@ -3911,6 +4139,11 @@ namespace NOWA
                 numTexturesDefinitions++;
             }
 
+            if (true == this->useWaterVolume->getBool())
+            {
+                numTexturesDefinitions++; // rt_waterVolume
+            }
+
             if (true == this->useSSAO->getBool())
             {
                 numTexturesDefinitions++; // gBufferNormals (only for SSAO)
@@ -3940,17 +4173,8 @@ namespace NOWA
                 texDef->fsaa = Ogre::StringConverter::toString(this->msaaLevel);
             }
 
-            if (true == this->useDistortion->getBool())
-            {
-                Ogre::TextureDefinitionBase::TextureDefinition* distortionTexDef = compositorNodeDefinition->addTextureDefinition("rt_distortion");
-                distortionTexDef->width = 0.0f;
-                distortionTexDef->height = 0.0f;
-                distortionTexDef->format = Ogre::PFG_RGBA16_FLOAT;
-                distortionTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
-                distortionTexDef->preferDepthTexture = true;
-                distortionTexDef->depthBufferId = 2;
-                distortionTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
-            }
+            // rt_distortion / rt_waterVolume texture definitions are created together with their render target views
+            // further below in setupEffectQueueRenderTarget().
 
             if (true == this->useSSAO->getBool())
             {
@@ -4030,13 +4254,16 @@ namespace NOWA
                 rtv->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
             }
 
+            // Effect queue render targets - texture definition AND render target view, both sharing depthTexture as
+            // depth attachment (bugfix, see setupEffectQueueRenderTarget()).
             if (true == this->useDistortion->getBool())
             {
-                rtv = compositorNodeDefinition->addRenderTextureView("rt_distortion");
-                Ogre::RenderTargetViewEntry attachment;
-                attachment.textureName = "rt_distortion";
-                rtv->colourAttachments.push_back(attachment);
-                rtv->depthBufferId = 2;
+                this->setupEffectQueueRenderTarget(compositorNodeDefinition, "rt_distortion");
+            }
+
+            if (true == this->useWaterVolume->getBool())
+            {
+                this->setupEffectQueueRenderTarget(compositorNodeDefinition, "rt_waterVolume");
             }
 
             unsigned short numTargetPass = 1;
@@ -4045,6 +4272,10 @@ namespace NOWA
                 numTargetPass++;
             }
             if (true == this->useDistortion->getBool())
+            {
+                numTargetPass++;
+            }
+            if (true == this->useWaterVolume->getBool())
             {
                 numTargetPass++;
             }
@@ -4183,6 +4414,9 @@ namespace NOWA
                     {
                         passScene->mIdentifier = 25001;
                     }
+
+                    // Keeps the effect render queues (distortion, water volume) out of rt0 - only splits when used
+                    this->splitScenePassAroundEffectQueues(targetDef, passScene);
                 }
 
                 // ===== ADD OVERLAY PASS FOR PCC ===== (unchanged, unrelated to this merge)
@@ -4228,21 +4462,16 @@ namespace NOWA
 
             if (true == this->useDistortion->getBool())
             {
-                Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt_distortion");
-
-                Ogre::CompositorPassSceneDef* passScene;
-                auto pass = targetDef->addPass(Ogre::PASS_SCENE);
-                passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
-
-                passScene->mProfilingId = "NOWA_Sky_Distortion_Pass_Scene";
-                passScene->setAllLoadActions(Ogre::LoadAction::Clear);
-                passScene->mClearColour[0] = Ogre::ColourValue(0.5f, 0.5f, 0.0f, 0.0f);
-                passScene->mUpdateLodLists = false;
-                passScene->mIncludeOverlays = false;
-                passScene->mFirstRQ = 16;
-                passScene->mLastRQ = 17;
+                // R,G = distortion vector (0.5 = none), A = strength
+                this->addEffectQueuePass(compositorNodeDefinition, "rt_distortion", DISTORTION_RENDER_QUEUE, Ogre::ColourValue(0.5f, 0.5f, 0.0f, 0.0f), "NOWA_Sky_Distortion_Pass_Scene");
 
                 this->createDistortionNode();
+            }
+
+            if (true == this->useWaterVolume->getBool())
+            {
+                // R = mask, G/B = front/back depth (normalized), A = intensity - all 0 outside any water volume
+                this->addEffectQueuePass(compositorNodeDefinition, "rt_waterVolume", WATER_VOLUME_RENDER_QUEUE, Ogre::ColourValue(0.0f, 0.0f, 0.0f, 0.0f), "NOWA_Sky_Water_Volume_Pass_Scene");
             }
 
             // ===== Output channels =====
@@ -4255,7 +4484,12 @@ namespace NOWA
 
             if (true == this->useDistortion->getBool())
             {
-                outputChannelCount++;
+                outputChannelCount++; // rt_distortion
+            }
+
+            if (true == this->useWaterVolume->getBool())
+            {
+                outputChannelCount++; // rt_waterVolume
             }
 
             if (true == this->useSSAO->getBool())
@@ -4279,6 +4513,10 @@ namespace NOWA
             if (true == this->useDistortion->getBool())
             {
                 compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt_distortion");
+            }
+            if (true == this->useWaterVolume->getBool())
+            {
+                compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt_waterVolume");
             }
 
             if (true == this->useSSAO->getBool())
@@ -4452,10 +4690,7 @@ namespace NOWA
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    WorkspaceBackgroundComponent::WorkspaceBackgroundComponent()
-        : WorkspaceBaseComponent(),
-        hardwareGammaEnabled(new Variant(WorkspaceBackgroundComponent::AttrHardwareGammaEnabled(), true, this->attributes)),
-        activeLayerCount(0)
+    WorkspaceBackgroundComponent::WorkspaceBackgroundComponent() : WorkspaceBaseComponent(), hardwareGammaEnabled(new Variant(WorkspaceBackgroundComponent::AttrHardwareGammaEnabled(), true, this->attributes)), activeLayerCount(0)
     {
         for (size_t i = 0; i < 9; i++)
         {
@@ -4610,6 +4845,11 @@ namespace NOWA
                 numTexturesDefinitions++;
             }
 
+            if (true == this->useWaterVolume->getBool())
+            {
+                numTexturesDefinitions++; // rt_waterVolume
+            }
+
             if (true == this->useSSAO->getBool())
             {
                 numTexturesDefinitions++; // gBufferNormals (only for SSAO)
@@ -4638,17 +4878,8 @@ namespace NOWA
                 texDef->fsaa = Ogre::StringConverter::toString(this->msaaLevel);
             }
 
-            if (true == this->useDistortion->getBool())
-            {
-                Ogre::TextureDefinitionBase::TextureDefinition* distortionTexDef = compositorNodeDefinition->addTextureDefinition("rt_distortion");
-                distortionTexDef->width = 0.0f;
-                distortionTexDef->height = 0.0f;
-                distortionTexDef->format = Ogre::PFG_RGBA16_FLOAT;
-                distortionTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
-                distortionTexDef->preferDepthTexture = true;
-                distortionTexDef->depthBufferId = 2;
-                distortionTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
-            }
+            // rt_distortion / rt_waterVolume texture definitions are created together with their render target views
+            // further below in setupEffectQueueRenderTarget().
 
             if (true == this->useSSAO->getBool())
             {
@@ -4727,13 +4958,16 @@ namespace NOWA
                 rtv->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
             }
 
+            // Effect queue render targets - texture definition AND render target view, both sharing depthTexture as
+            // depth attachment (bugfix, see setupEffectQueueRenderTarget()).
             if (true == this->useDistortion->getBool())
             {
-                rtv = compositorNodeDefinition->addRenderTextureView("rt_distortion");
-                Ogre::RenderTargetViewEntry attachment;
-                attachment.textureName = "rt_distortion";
-                rtv->colourAttachments.push_back(attachment);
-                rtv->depthBufferId = 2;
+                this->setupEffectQueueRenderTarget(compositorNodeDefinition, "rt_distortion");
+            }
+
+            if (true == this->useWaterVolume->getBool())
+            {
+                this->setupEffectQueueRenderTarget(compositorNodeDefinition, "rt_waterVolume");
             }
 
             unsigned short numTargetPass = 1;
@@ -4742,6 +4976,10 @@ namespace NOWA
                 numTargetPass++;
             }
             if (true == this->useDistortion->getBool())
+            {
+                numTargetPass++;
+            }
+            if (true == this->useWaterVolume->getBool())
             {
                 numTargetPass++;
             }
@@ -4874,6 +5112,9 @@ namespace NOWA
                     {
                         passScene->mIdentifier = 25001;
                     }
+
+                    // Keeps the effect render queues (distortion, water volume) out of rt0 - only splits when used
+                    this->splitScenePassAroundEffectQueues(targetDef, passScene);
                 }
 
                 // ===== ADD OVERLAY PASS FOR PCC ===== (unchanged, unrelated to this merge)
@@ -4919,21 +5160,16 @@ namespace NOWA
 
             if (true == this->useDistortion->getBool())
             {
-                Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt_distortion");
-
-                Ogre::CompositorPassSceneDef* passScene;
-                auto pass = targetDef->addPass(Ogre::PASS_SCENE);
-                passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
-
-                passScene->mProfilingId = "NOWA_Background_Distortion_Pass_Scene";
-                passScene->setAllLoadActions(Ogre::LoadAction::Clear);
-                passScene->mClearColour[0] = Ogre::ColourValue(0.5f, 0.5f, 0.0f, 0.0f);
-                passScene->mUpdateLodLists = false;
-                passScene->mIncludeOverlays = false;
-                passScene->mFirstRQ = 16;
-                passScene->mLastRQ = 17;
+                // R,G = distortion vector (0.5 = none), A = strength
+                this->addEffectQueuePass(compositorNodeDefinition, "rt_distortion", DISTORTION_RENDER_QUEUE, Ogre::ColourValue(0.5f, 0.5f, 0.0f, 0.0f), "NOWA_Background_Distortion_Pass_Scene");
 
                 this->createDistortionNode();
+            }
+
+            if (true == this->useWaterVolume->getBool())
+            {
+                // R = mask, G/B = front/back depth (normalized), A = intensity - all 0 outside any water volume
+                this->addEffectQueuePass(compositorNodeDefinition, "rt_waterVolume", WATER_VOLUME_RENDER_QUEUE, Ogre::ColourValue(0.0f, 0.0f, 0.0f, 0.0f), "NOWA_Background_Water_Volume_Pass_Scene");
             }
 
             // ===== Output channels =====
@@ -4946,7 +5182,12 @@ namespace NOWA
 
             if (true == this->useDistortion->getBool())
             {
-                outputChannelCount++;
+                outputChannelCount++; // rt_distortion
+            }
+
+            if (true == this->useWaterVolume->getBool())
+            {
+                outputChannelCount++; // rt_waterVolume
             }
 
             if (true == this->useSSAO->getBool())
@@ -4970,6 +5211,10 @@ namespace NOWA
             if (true == this->useDistortion->getBool())
             {
                 compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt_distortion");
+            }
+            if (true == this->useWaterVolume->getBool())
+            {
+                compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt_waterVolume");
             }
 
             if (true == this->useSSAO->getBool())

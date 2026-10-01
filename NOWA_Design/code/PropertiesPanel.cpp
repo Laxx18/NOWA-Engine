@@ -3022,7 +3022,7 @@ void PropertiesPanelGameObject::notifyEditSelectAccept(MyGUI::EditBox* sender)
             auto physicsComponent = NOWA::makeStrongPtr(this->gameObject->getComponent<NOWA::PhysicsComponent>());
             if (nullptr != physicsComponent)
             {
-                physicsComponent->setPosition(variantCopy->getVector3());
+                physicsComponent->setKinematicPositionOrientation(variantCopy->getVector3(), physicsComponent->getOrientation());
             }
             else
             {
@@ -3082,7 +3082,7 @@ void PropertiesPanelGameObject::notifyEditSelectAccept(MyGUI::EditBox* sender)
             auto physicsComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::PhysicsComponent>());
             if (nullptr != physicsComponent)
             {
-                physicsComponent->setOrientation(NOWA::MathHelper::getInstance()->degreesToQuat(variantCopy->getVector3()));
+                physicsComponent->setKinematicPositionOrientation(physicsComponent->getPosition(), NOWA::MathHelper::getInstance()->degreesToQuat(variantCopy->getVector3()));
             }
             else
             {
@@ -3096,13 +3096,12 @@ void PropertiesPanelGameObject::notifyEditSelectAccept(MyGUI::EditBox* sender)
                 auto physicsComponent = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsComponent>());
                 if (nullptr != physicsComponent)
                 {
-                    physicsComponent->setOrientation(NOWA::MathHelper::getInstance()->degreesToQuat(variantCopy->getVector3()));
+                    physicsComponent->setKinematicPositionOrientation(physicsComponent->getPosition(), NOWA::MathHelper::getInstance()->degreesToQuat(variantCopy->getVector3()));
                 }
                 else
                 {
                     this->gameObjects[i]->actualizeValue(variantCopy);
                 }
-                // BUG FIX: removed duplicate actualizeValue(*attribute) that was here in original
             }
         }
     }

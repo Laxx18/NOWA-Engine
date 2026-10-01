@@ -36,6 +36,7 @@ namespace NOWA
 
     BaseCamera::~BaseCamera()
     {
+
     }
 
     void BaseCamera::onSetData(void)
@@ -182,22 +183,26 @@ namespace NOWA
 
         if (this->camera->getProjectionType() == Ogre::PT_ORTHOGRAPHIC)
         {
-            auto closureFunction = [this, moveValue](Ogre::Real renderDt)
+            // Capture only the raw Ogre camera and the plain value, never 'this'
+            Ogre::Camera* camera = this->camera;
+            const Ogre::Real zoomDelta = moveValue.z;
+
+            auto closureFunction = [camera, zoomDelta](Ogre::Real renderDt)
             {
-                Ogre::Real height = this->camera->getOrthoWindowHeight() + moveValue.z;
-                // min window size
-                // h = std::max(h, 0.0001f);
+                Ogre::Real height = camera->getOrthoWindowHeight() + zoomDelta;
                 if (height > 0.0001f)
                 {
-                    Ogre::Real width = height * this->camera->getAspectRatio();
-                    this->camera->setOrthoWindow(width, height);
+                    Ogre::Real width = height * camera->getAspectRatio();
+                    camera->setOrthoWindow(width, height);
                 }
-                if (this->camera->getOrthoWindowHeight() < 1.0f)
+                if (camera->getOrthoWindowHeight() < 1.0f)
                 {
-                    this->camera->setOrthoWindowHeight(1.0f);
+                    camera->setOrthoWindowHeight(1.0f);
                 }
             };
-            Ogre::String id = "BaseCamera::moveCamera";
+
+            // Unique id per camera, otherwise several BaseCamera instances overwrite each other's closure
+            Ogre::String id = "BaseCamera::moveCamera_" + Ogre::StringConverter::toString(reinterpret_cast<size_t>(camera));
             NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
         }
         if (true == this->firstTimeMoveValueSet)

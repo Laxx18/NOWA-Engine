@@ -2297,32 +2297,44 @@ namespace NOWA
 
     void GameObject::setVisible(bool visible)
     {
-        Ogre::String name = this->name->getString();
-
         this->visible->setValue(visible);
 
-        NOWA::GraphicsModule::RenderCommand cmd = [this, visible]()
-        {
-            if (nullptr != this->sceneNode)
-            {
-                this->sceneNode->setVisible(visible, false);
-            }
+        // Attention: Do not capture 'this' in the render command. The command runs later on the render thread, and the game object
+        // may already be destroyed by then (e.g. setVisible(false) directly before deleteGameObjectImmediately).
+        // The scene node and the movable object are destroyed via the render queue as well, which is processed in order (FIFO),
+        // so the raw pointers copied here are still valid when this command runs.
+        Ogre::SceneNode* sceneNode = this->sceneNode;
 
-            if (nullptr != this->movableObject && "DummyItem" == this->movableObject->getName())
+        // Everything that needs the game object or its components is evaluated here on the logic thread
+        Ogre::MovableObject* dummyItem = nullptr;
+        bool dummyItemVisible = visible;
+        if (nullptr != this->movableObject && "DummyItem" == this->movableObject->getName())
+        {
+            for (const auto& component : this->gameObjectComponents)
             {
-                for (const auto& component : this->gameObjectComponents)
+                auto compPtr = std::get<COMPONENT>(component);
+                if (true == compPtr->bConnected)
                 {
-                    auto compPtr = std::get<COMPONENT>(component);
                     auto* showDummyItemAttr = compPtr->getAttribute("Show Dummy Item");
-                    if (true == std::get<COMPONENT>(component)->bConnected)
+                    if (nullptr != showDummyItemAttr)
                     {
-                        auto* showDummyItemAttr = compPtr->getAttribute("Show Dummy Item");
-                        if (nullptr != showDummyItemAttr)
-                        {
-                            this->movableObject->setVisible(visible && showDummyItemAttr->getBool());
-                        }
+                        dummyItem = this->movableObject;
+                        dummyItemVisible = visible && showDummyItemAttr->getBool();
                     }
                 }
+            }
+        }
+
+        NOWA::GraphicsModule::RenderCommand cmd = [sceneNode, dummyItem, dummyItemVisible, visible]()
+        {
+            if (nullptr != sceneNode)
+            {
+                sceneNode->setVisible(visible, false);
+            }
+
+            if (nullptr != dummyItem)
+            {
+                dummyItem->setVisible(dummyItemVisible);
             }
         };
         NOWA::GraphicsModule::getInstance()->enqueue(std::move(cmd), "GameObject::setVisible");
@@ -3019,9 +3031,6 @@ namespace NOWA
 
         v1Mesh->unload();
         Ogre::v1::MeshManager::getSingletonPtr()->remove(v1Mesh);
-
-        Ogre::String path;
-        DeployResourceModule::getInstance()->tagResource(tempMeshFile, newV2Mesh->getGroup(), path);
 
         // Do NOT save to disk -- keep original v1 file intact for future LOD regeneration.
     }

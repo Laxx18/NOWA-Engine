@@ -2,8 +2,8 @@
 <scene formatVersion="1.1.0" generator="NOWA-Engine">
 	<nodes>
 		<node name="WeaponStick" id="3232914531">
-			<position x="1.58775" y="1.75339" z="-6.36726"/>
-			<rotation qw="0.742635" qx="-0.490219" qy="0.314746" qz="-0.330322"/>
+			<position x="0.72098" y="37.0987" z="-6.78316"/>
+			<rotation qw="0.747682" qx="-0.113064" qy="-0.302563" qz="-0.58021"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="WeaponStick" meshFile="monster_item_cudgel.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="items_mat.004"/>
@@ -61,7 +61,7 @@
 					<property type="12" name="CloneScript" data="false"/>
 					<property type="12" name="HasCommonScript" data="false"/>
 					<property type="12" name="ScriptGlobal" data="true"/>
-					<property type="2" name="OrderIndex" data="3"/>
+					<property type="2" name="OrderIndex" data="2"/>
 					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
 					<property type="7" name="Name" data="Hit"/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -97,8 +97,8 @@
 			</item>
 		</node>
 		<node name="PrehistoricLax" id="3286738008">
-			<position x="1.37091" y="0.982588" z="-7"/>
-			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
+			<position x="1.35372" y="36.3279" z="-7"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="PrehistoricLax" meshFile="PrehistoricLaxBoy.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="PrehistoricLaxBoy"/>
@@ -135,7 +135,7 @@
 					<property type="9" name="MassOrigin" data="0 0 0"/>
 					<property type="6" name="LinearDamping" data="0.1"/>
 					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
-					<property type="6" name="Density" data="1"/>
+					<property type="6" name="Density" data="2"/>
 					<property type="9" name="Gravity" data="0 -29.9 0"/>
 					<property type="7" name="GravitySourceCategory" data=""/>
 					<property type="9" name="ConstraintDirection" data="0 1 0"/>
@@ -163,7 +163,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
-					<property type="7" name="DeviceName" data="Win32InputManager"/>
+					<property type="7" name="DeviceName" data="Auto"/>
 					<property type="12" name="IsExclusive" data="false"/>
 					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -174,7 +174,7 @@
 					<property type="12" name="CloneScript" data="false"/>
 					<property type="12" name="HasCommonScript" data="false"/>
 					<property type="12" name="ScriptGlobal" data="true"/>
-					<property type="2" name="OrderIndex" data="2"/>
+					<property type="2" name="OrderIndex" data="1"/>
 					<property type="7" name="ComponentPlayerControllerJumpNRunComponent" data="PlayerControllerJumpNRunComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -234,8 +234,8 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="7" name="TagPointName" data="Boy 1 R Hand"/>
 					<property type="6" name="SourceId" data="1141940358"/>
-					<property type="9" name="OffsetPosition" data="0 0 0"/>
-					<property type="9" name="OffsetOrientation" data="0 0 0"/>
+					<property type="9" name="OffsetPosition" data="0.21661 0.15528 0.21608"/>
+					<property type="9" name="OffsetOrientation" data="-38.2873 14.0774 69.2765"/>
 					<property type="12" name="UseBakedOffset" data="true"/>
 					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -337,6 +337,23 @@
 					<property type="6" name="FadeInTime" data="20"/>
 					<property type="12" name="FadeOut" data="true"/>
 					<property type="6" name="FadeOutTime" data="20"/>
+					<property type="7" name="ComponentParticleFxComponent" data="ParticleFxComponent"/>
+					<property type="7" name="Name" data="WaterParticle"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="TemplateName" data="WaterSplashMist"/>
+					<property type="12" name="Repeat" data="false"/>
+					<property type="6" name="PlayTime" data="1000"/>
+					<property type="6" name="PlaySpeed" data="1"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetOrientation" data="0 0 0"/>
+					<property type="8" name="Scale" data="1 1"/>
+					<property type="7" name="BlendingMethod" data="From Material"/>
+					<property type="12" name="FadeIn" data="true"/>
+					<property type="6" name="FadeInTime" data="50"/>
+					<property type="12" name="FadeOut" data="true"/>
+					<property type="6" name="FadeOutTime" data="50"/>
 					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -546,6 +563,27 @@
 					<property type="6" name="WallSlideAngle" data="68"/>
 					<property type="7" name="OverlapFunctionName" data=""/>
 					<property type="7" name="ContactFunctionName" data=""/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="Category1" data="Player"/>
+					<property type="7" name="Category2" data="WaterSurface"/>
+					<property type="8" name="Friction" data="0.8 0.4"/>
+					<property type="6" name="Softness" data="0.01"/>
+					<property type="6" name="Elasticity" data="0"/>
+					<property type="6" name="SurfaceThickness" data="0.125"/>
+					<property type="12" name="Collideable" data="true"/>
+					<property type="7" name="ContactBehavior" data="None"/>
+					<property type="6" name="ContactSpeed" data="10"/>
+					<property type="9" name="ContactDirection" data="0 0 -1"/>
+					<property type="7" name="OneWayAxis" data="Y"/>
+					<property type="7" name="OneWayAllowedDirection" data="Positive"/>
+					<property type="6" name="WallSlideAngle" data="68"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data="onPlayerWaterContact"/>
 					<property type="7" name="ContactOnceFunctionName" data=""/>
 					<property type="7" name="ContactScratchFunctionName" data=""/>
 					<property type="7" name="ComponentMyGUIWindowComponent" data="MyGUIWindowComponent"/>

@@ -1,7 +1,7 @@
 ﻿#include "NOWAPrecompiled.h"
 #include "OgreNewtModule.h"
 #include "GraphicsModule.h"
-#include "main/AppStateManager.h"
+#include "main/Core.h"
 
 #include <thread>
 
@@ -66,7 +66,7 @@ namespace NOWA
     {
     }
 
-    OgreNewt::World* OgreNewtModule::createPhysics(const Ogre::String& name, int solverModel, int broadPhaseAlgorithm, int multithreadSolverOnSingleIsland, int threadCount, Ogre::Real updateRate, Ogre::Real defaultLinearDamping,
+    OgreNewt::World* OgreNewtModule::createPhysics(const Ogre::String& name, int solverModel, int broadPhaseAlgorithm, int multithreadSolverOnSingleIsland, int threadCount, Ogre::Real defaultLinearDamping,
         Ogre::Vector3 defaultAngularDamping)
     {
         if (nullptr != this->ogreNewt)
@@ -76,7 +76,7 @@ namespace NOWA
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreNewtModule] Initializing OgreNewt");
 
-        this->ogreNewt = new OgreNewt::World(updateRate, 2, name);
+        this->ogreNewt = new OgreNewt::World(Core::getSingletonPtr()->getOptionDesiredSimulationUpdates(), 2, name);
 
         // Attention: The Newton worker pool must be sized FIRST, on a completely empty world, and exactly once.
         // OgreNewt::World::setThreadCount() forwards to ndWorld::SetThreadCount() -> ndThreadPool::SetCount(),
@@ -88,7 +88,7 @@ namespace NOWA
         // Sizing the pool here, before any other world configuration, turns this into a pure allocation:
         // the constructor leaves the pool unsized on purpose, so this is the one and only SetCount() call.
         const int usedThreadCount = computePhysicsThreadCount(threadCount);
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreNewtModule] Using: " + Ogre::StringConverter::toString(usedThreadCount) + " cores for physics simulation and updaterate: " + Ogre::StringConverter::toString(updateRate));
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreNewtModule] Using: " + Ogre::StringConverter::toString(usedThreadCount) + " cores for physics simulation");
         this->ogreNewt->setThreadCount(usedThreadCount);
 
         this->ogreNewt->setSolverModel(solverModel);
@@ -99,7 +99,7 @@ namespace NOWA
         return this->ogreNewt;
     }
 
-    OgreNewt::World* OgreNewtModule::createPerformantPhysics(const Ogre::String& name, Ogre::Real updateRate)
+    OgreNewt::World* OgreNewtModule::createPerformantPhysics(const Ogre::String& name)
     {
         if (nullptr != this->ogreNewt)
         {
@@ -107,7 +107,7 @@ namespace NOWA
         }
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreNewtModule] Initializing OgreNewt (performant)");
-        this->ogreNewt = new OgreNewt::World(updateRate, 5, name);
+        this->ogreNewt = new OgreNewt::World(Core::getSingletonPtr()->getOptionDesiredSimulationUpdates(), 5, name);
 
         // Attention: Size the Newton worker pool first and only once. See createPhysics() for the full reason:
         // ndThreadPool::SetCount() rebuilds the whole worker array, and rebuilding it while freshly spawned
@@ -123,7 +123,7 @@ namespace NOWA
         return this->ogreNewt;
     }
 
-    OgreNewt::World* OgreNewtModule::createQualityPhysics(const Ogre::String& name, Ogre::Real updateRate)
+    OgreNewt::World* OgreNewtModule::createQualityPhysics(const Ogre::String& name)
     {
         if (nullptr != this->ogreNewt)
         {
@@ -132,7 +132,7 @@ namespace NOWA
 
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreNewtModule] Initializing OgreNewt (quality)");
 
-        this->ogreNewt = new OgreNewt::World(updateRate, 5, name);
+        this->ogreNewt = new OgreNewt::World(Core::getSingletonPtr()->getOptionDesiredSimulationUpdates(), 5, name);
 
         // Attention: Size the Newton worker pool first and only once. See createPhysics() for the full reason.
         // Quality physics runs deterministically on a single thread on purpose, so the requested count is 1.

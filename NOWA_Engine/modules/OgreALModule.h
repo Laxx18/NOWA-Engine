@@ -128,6 +128,20 @@ namespace NOWA
 		 * @return		bContinue	True if sound manager is continued, else false
 		 */
 		bool getIsContinued(void) const;
+
+		/**
+         * @brief Pauses all sounds of the given scene manager that are playing right now (e.g. when the menu is opened)
+         *        and remembers them. Does nothing if setContinue(true) is set.
+         * @note  Covers all sounds created via OgreALModule::createSound.
+         * @param[in] sceneManager The scene manager of the app state that is paused.
+         */
+        void pauseSounds(Ogre::SceneManager* sceneManager);
+
+        /**
+         * @brief Resumes the sounds paused by pauseSounds at the position where they have been paused.
+         * @param[in] sceneManager The scene manager of the app state that is resumed.
+         */
+        void resumeSounds(Ogre::SceneManager* sceneManager);
 	public:
 		/**
 		 * @brief		Gets the singleton instance of OgreALModule.
@@ -144,6 +158,12 @@ namespace NOWA
 		int soundVolume;
 		int musicVolume;
 		bool bContinue;
+
+		// Names of all sounds created via createSound, per scene manager (for pauseSounds/resumeSounds)
+        std::map<Ogre::SceneManager*, std::set<Ogre::String>> soundNames;
+        // Names of the sounds paused by pauseSounds, per scene manager
+        std::map<Ogre::SceneManager*, std::vector<Ogre::String>> pausedSoundNames;
+        std::mutex soundNamesMutex;
 	};
 
 }; //namespace end

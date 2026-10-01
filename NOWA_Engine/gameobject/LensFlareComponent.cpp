@@ -187,8 +187,6 @@ namespace NOWA
 
 			auto data = DeployResourceModule::getInstance()->getPathAndResourceGroupFromDatablock("lensflare/halo", Ogre::HlmsTypes::HLMS_UNLIT);
 
-			DeployResourceModule::getInstance()->tagResource("lensflare/halo", data.first, data.second);
-
 			this->gameObjectPtr->getSceneNode()->attachObject(this->haloSet);
 			
 			this->burstSet = this->gameObjectPtr->getSceneManager()->createBillboardSet();

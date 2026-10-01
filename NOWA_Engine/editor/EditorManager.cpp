@@ -2908,9 +2908,6 @@ namespace NOWA
             item->setQueryFlags(AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId("Default"));
             item->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
 
-            Ogre::String path;
-            DeployResourceModule::getInstance()->tagResource(name, importedV2Mesh->getGroup(), path);
-
             return item;
         };
 
@@ -2933,10 +2930,7 @@ namespace NOWA
                 this->tempPlaceMovableObject = this->sceneManager->createItem(v2Mesh);
                 this->tempPlaceMovableObject->setName("PlaceEntity");
                 this->tempPlaceMovableObject->setQueryFlags(AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId("Default"));
-                this->tempPlaceMovableObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-
-                Ogre::String path;
-                DeployResourceModule::getInstance()->tagResource(meshName, v2Mesh->getGroup(), path);
+                this->tempPlaceMovableObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);;
             }
             else
             {
@@ -3325,7 +3319,7 @@ namespace NOWA
             {
                 if (true == success)
                 {
-                    physicsComponent->getBody()->setKinematicPositionOrientation(Ogre::Vector3(selectedGameObject.second.gameObject->getPosition().x, height, selectedGameObject.second.gameObject->getPosition().z), physicsComponent->getBody()->getOrientation());
+                    physicsComponent->setKinematicPositionOrientation(Ogre::Vector3(selectedGameObject.second.gameObject->getPosition().x, height, selectedGameObject.second.gameObject->getPosition().z), physicsComponent->getBody()->getOrientation());
                 }
 
                 if (GetAsyncKeyState(VK_LMENU))
@@ -3351,7 +3345,7 @@ namespace NOWA
                 else
                 {
                     // physicsComponent->setPosition(selectedGameObject.second.gameObject->getPosition() + offset);
-                    physicsComponent->getBody()->setKinematicPositionOrientation(Ogre::Vector3(selectedGameObject.second.gameObject->getPosition() + offset), physicsComponent->getBody()->getOrientation());
+                    physicsComponent->setKinematicPositionOrientation(Ogre::Vector3(selectedGameObject.second.gameObject->getPosition() + offset), physicsComponent->getBody()->getOrientation());
                 }
                 if (Ogre::Vector3::ZERO != normal)
                 {

@@ -76,6 +76,14 @@ WeaponStick["onKinematicContact"] = function(otherGameObject)
     end
 
     otherGameObject = AppStateManager:getGameObjectController():castGameObject(otherGameObject);
+    if (otherGameObject:getCategory() == "HeavyBrick") then
+       --todo: Later another weapon is required to set then on the heavybrick the mass to 10 and destroy it
+       -- For now and testing, set it here to
+       otherGameObject:getPhysicsActiveComponent():setMass(10);
+       hitSound:setActivated(true);
+       do return end;
+    end
+    
     if (otherGameObject:getCategory() ~= "Enemy") then
         do return end;
     end

@@ -43,17 +43,11 @@
         <Widget type="Button" skin="CheckBox" position="280 180 175 20" name="createStateCheck">
 			<Property key="StateSelected" value="false"/>
 		</Widget>
-		
-		<Widget type="TextBox" skin="TextBox" position="10 212 260 20" name="keyText">
-            <Property key="Caption" value="#{Key}:"/>
-        </Widget>
-        <Widget type="EditBox" skin="EditBox" position="280 212 175 20" name="keyEdit">
-		</Widget>
-		
-		<Widget type="TextBox" skin="TextBox" position="10 244 260 20" name="ignoreGlobalSceneText">
+
+		<Widget type="TextBox" skin="TextBox" position="10 212 260 20" name="ignoreGlobalSceneText">
             <Property key="Caption" value="#{IgnoreGlobalScene}:"/>
         </Widget>
-        <Widget type="Button" skin="CheckBox" position="280 244 175 20" name="ignoreGlobalSceneCheck">
+        <Widget type="Button" skin="CheckBox" position="280 212 175 20" name="ignoreGlobalSceneCheck">
 			<Property key="StateSelected" value="false"/>
 		</Widget>
 		

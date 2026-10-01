@@ -12,7 +12,6 @@ namespace NOWA
 		createSceneInOwnState(false),
 		ignoreGlobalScene(false),
 		hasPhysics(true),
-		physicsUpdateRate(60.0f), // Note: ND4 we use Substeps(2) -> 2 * 60 -> 120
 		solverModel(4),
 		solverForSingleIsland(true),
 		broadPhaseAlgorithm(0),

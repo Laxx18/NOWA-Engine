@@ -5,6 +5,7 @@
 #include "main/Events.h"
 #include "main/AppStateManager.h"
 #include <stdlib.h>
+#include <sstream>
 
 namespace NOWA
 {
@@ -48,7 +49,7 @@ namespace NOWA
 		}
 
 		boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataResourceCreated);
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
 	}
 
 	bool LuaScript::getIsGlobal(void) const
@@ -231,16 +232,16 @@ namespace NOWA
 			// Check if the lua file has a module with the script path name defined, because its really necessary! In order to call a call back function for lua
 			// in its module context, so that a script will not override another one
 
-			// Search for the module declaration in the lua script file
+			// Search for the module declaration in the lua script file. The content is read decrypted, because a deployed game has encrypted scripts.
+			luaFile.close();
+			Ogre::String luaFileContent;
+			Core::getSingletonPtr()->readTextFileDecrypted(luaScriptFilePathName, luaFileContent);
+			std::istringstream luaContentStream(luaFileContent);
+
 			Ogre::String line;
 			bool foundModule = false;
-			for (unsigned int curLine = 0; std::getline(luaFile, line); curLine++)
-			{
-				if (GetFileAttributes(luaScriptFilePathName.data()) & FileFlag)
+			for (unsigned int curLine = 0; std::getline(luaContentStream, line); curLine++)
 				{
-					line = Core::getSingletonPtr()->decode64(line, true);
-				}
-
 				size_t commentPos = line.find("--");
 				size_t modulePos = line.find(targetModuleName);
 
@@ -258,7 +259,6 @@ namespace NOWA
 					+ "', because has no or not the correct module defined. Please define in the first line of your script the module: " + targetModuleName;
 				Ogre::LogManager::getSingletonPtr()->logMessage("[LuaScript]: " + error, Ogre::LML_CRITICAL);
 
-				luaFile.close();
 				boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->scriptPathName, this->scriptFilePathName, 1, error));
 				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
 				return false;
@@ -324,40 +324,8 @@ namespace NOWA
 	{
 		lua_State* lua = LuaScriptApi::getInstance()->getLua();
 
-		Ogre::String luaScriptFilePathName;
-		if (false == this->isGlobal)
-		{
-			luaScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + this->scriptPathName;
-		}
-		else
-		{
-			luaScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->scriptPathName;
-		}
+		// Note: Encrypted scripts (deployed game) are only decrypted in memory, so there is nothing to encrypt again here.
 
-		// If the script has the crypt file flags, encode again
-		if (GetFileAttributes(luaScriptFilePathName.data()) & FileFlag && false == this->scriptContent.empty())
-		{
-			// Remove the game object id from module to save the original file again
-			size_t modulePos = this->scriptContent.find("module(\"") + 8;
-
-			// Get the length of the modulename inside the file
-			size_t moduleEndPos = this->scriptContent.find("\"", modulePos);
-
-			// e.g. "barrel_0" = 8, but "barrel_10" = 9
-			size_t oldModuleLength = moduleEndPos - modulePos;
-
-			this->scriptContent.replace(modulePos, oldModuleLength, this->scriptName);
-
-			this->scriptContent = Core::getSingletonPtr()->encode64(this->scriptContent, true);
-
-			// Write the encoded version back
-			std::ofstream outFile(luaScriptFilePathName);
-			if (true == outFile.good())
-			{
-				outFile << this->scriptContent;
-				outFile.close();
-			}
-		}
 // Attention:
 		// lua_gc(lua, LUA_GCCOLLECT, 0); // Performance issues: https://github.com/urho3d/Urho3D/issues/2135
 		lua_gc(lua, LUA_GCSTEP, 0);

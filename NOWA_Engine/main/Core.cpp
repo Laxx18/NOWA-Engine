@@ -48,9 +48,13 @@
 #include <boost/archive/iterators/transform_width.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <filesystem>
+#include <fstream>
+#include <random>
 
 #ifdef WIN32
 #include <WindowsIncludes.h>
@@ -328,8 +332,8 @@ namespace NOWA
         optionQualityLevel(1),
         optionShadowQuality(-1),
         optionShadowFarDistance(0.0f),
-        optionSoundVolume(70),
-        optionMusicVolume(50),
+        optionSoundVolume(100),
+        optionMusicVolume(10),
         optionLogLevel(2),
         optionLuaGroupName("Lua"),
         bShutdown(false),
@@ -353,7 +357,6 @@ namespace NOWA
         mostLeftNearPosition(Ogre::Vector3::ZERO),
         mostRightFarPosition(Ogre::Vector3::ZERO),
         resourceLoadingListener(nullptr),
-        cryptKey(2),
         projectEncoded(false),
         useEntityType(false),
         baseListenerContainer(nullptr)
@@ -372,7 +375,8 @@ namespace NOWA
         }
         // Engine/game constant, NOT a player setting: physics, gameplay and Lua timing depend on the fixed step. Rendering is decoupled
         // via interpolation, so 60 steps are enough for all displays. Not read from/written to the config file anymore.
-        this->optionDesiredSimulationUpdates = 60;
+        // Note: 60 steps are not enough for OgreNewt and physics behaves in a strange manner, hence, set to 120.
+        this->optionDesiredSimulationUpdates = 120;
     }
 
     Core::~Core()
@@ -1967,8 +1971,16 @@ namespace NOWA
             renderSystem->setConfigOption("VSync", "Yes");
             renderSystem->setConfigOption("VSync Interval", "1");
 
+            // On a Steam Deck (Steam sets "SteamDeck=1", also under Proton) 4x MSAA costs too much GPU time for its small iGPU, so start with 2x
+            bool isSteamDeck = false;
+            const char* steamDeckEnvironment = std::getenv("SteamDeck");
+            if (nullptr != steamDeckEnvironment && Ogre::String("1") == steamDeckEnvironment)
+            {
+                isSteamDeck = true;
+            }
+
             // Prefer 4x MSAA, but only if the hardware reports it
-            if (true == this->isConfigOptionValueValid(configOptions, "FSAA", "4x MSAA"))
+            if (false == isSteamDeck && true == this->isConfigOptionValueValid(configOptions, "FSAA", "4x MSAA"))
             {
                 renderSystem->setConfigOption("FSAA", "4x MSAA");
             }
@@ -2660,7 +2672,6 @@ namespace NOWA
         if (nullptr != ogreNewt)
         {
             ogreNewt->setSolverModel(projectParameter.solverModel);
-            ogreNewt->setUpdateFPS(projectParameter.physicsUpdateRate, 2);
             ogreNewt->setThreadCount(projectParameter.physicsThreadCount);
             ogreNewt->setDefaultLinearDamping(projectParameter.linearDamping);
             ogreNewt->setDefaultAngularDamping(projectParameter.angularDamping);
@@ -4076,216 +4087,413 @@ namespace NOWA
 #endif
     }
 
+    namespace
+    {
+        // ---------------------------------------------------------------------------------------------------------------------
+        // Content encryption for deployed games (Lua scripts, scene files, save games).
+        // Format (pure ASCII, so it survives text mode streams and xml/lua readers):
+        //   "NOWAENC1" + base64( nonce[12] | ChaCha20( checksum[8] | plain content ) )
+        // The checksum is FNV-1a 64 of the plain content and detects a wrong key or a modified file.
+        // The key is built into the engine. This is not meant to stop a determined attacker (the key is inside the executable
+        // anyway), it just prevents that scripts and scenes can be read or modified with a text editor.
+        // ---------------------------------------------------------------------------------------------------------------------
+
+        const char* const encryptedContentMagic = "NOWAENC1";
+        const size_t encryptedContentMagicLength = 8;
+        const size_t encryptedNonceLength = 12;
+        const size_t encryptedChecksumLength = 8;
+
+        inline uint32_t rotateLeft32(uint32_t value, int count)
+        {
+            return (value << count) | (value >> (32 - count));
+        }
+
+        inline void chachaQuarterRound(uint32_t* state, int a, int b, int c, int d)
+        {
+            state[a] += state[b];
+            state[d] = rotateLeft32(state[d] ^ state[a], 16);
+            state[c] += state[d];
+            state[b] = rotateLeft32(state[b] ^ state[c], 12);
+            state[a] += state[b];
+            state[d] = rotateLeft32(state[d] ^ state[a], 8);
+            state[c] += state[d];
+            state[b] = rotateLeft32(state[b] ^ state[c], 7);
+        }
+
+        inline uint32_t readLittleEndian32(const unsigned char* data)
+        {
+            return static_cast<uint32_t>(data[0]) | (static_cast<uint32_t>(data[1]) << 8) | (static_cast<uint32_t>(data[2]) << 16) | (static_cast<uint32_t>(data[3]) << 24);
+        }
+
+        // RFC 7539 ChaCha20 block function
+        void chachaBlock(const unsigned char* key, uint32_t counter, const unsigned char* nonce, unsigned char* output)
+        {
+            uint32_t input[16];
+            input[0] = 0x61707865u;
+            input[1] = 0x3320646eu;
+            input[2] = 0x79622d32u;
+            input[3] = 0x6b206574u;
+            for (int i = 0; i < 8; i++)
+            {
+                input[4 + i] = readLittleEndian32(key + i * 4);
+            }
+            input[12] = counter;
+            input[13] = readLittleEndian32(nonce);
+            input[14] = readLittleEndian32(nonce + 4);
+            input[15] = readLittleEndian32(nonce + 8);
+
+            uint32_t working[16];
+            for (int i = 0; i < 16; i++)
+            {
+                working[i] = input[i];
+            }
+
+            for (int round = 0; round < 10; round++)
+            {
+                chachaQuarterRound(working, 0, 4, 8, 12);
+                chachaQuarterRound(working, 1, 5, 9, 13);
+                chachaQuarterRound(working, 2, 6, 10, 14);
+                chachaQuarterRound(working, 3, 7, 11, 15);
+                chachaQuarterRound(working, 0, 5, 10, 15);
+                chachaQuarterRound(working, 1, 6, 11, 12);
+                chachaQuarterRound(working, 2, 7, 8, 13);
+                chachaQuarterRound(working, 3, 4, 9, 14);
+            }
+
+            for (int i = 0; i < 16; i++)
+            {
+                const uint32_t value = working[i] + input[i];
+                output[i * 4 + 0] = static_cast<unsigned char>(value & 0xFFu);
+                output[i * 4 + 1] = static_cast<unsigned char>((value >> 8) & 0xFFu);
+                output[i * 4 + 2] = static_cast<unsigned char>((value >> 16) & 0xFFu);
+                output[i * 4 + 3] = static_cast<unsigned char>((value >> 24) & 0xFFu);
+            }
+        }
+
+        // Encrypts or decrypts (same operation) the data in place
+        void chachaXor(const unsigned char* key, const unsigned char* nonce, uint32_t initialCounter, unsigned char* data, size_t size)
+        {
+            unsigned char keyStream[64];
+            uint32_t counter = initialCounter;
+            size_t offset = 0;
+            while (offset < size)
+            {
+                chachaBlock(key, counter, nonce, keyStream);
+                counter++;
+                const size_t blockSize = (std::min)(static_cast<size_t>(64), size - offset);
+                for (size_t i = 0; i < blockSize; i++)
+                {
+                    data[offset + i] ^= keyStream[i];
+                }
+                offset += blockSize;
+            }
+        }
+
+        // The built-in engine key. It is derived at runtime, so that it does not appear as one readable block in the binary.
+        void buildEngineKey(unsigned char* key)
+        {
+            uint64_t state = 0x6A09E667F3BCC909ull ^ 0x2F1B5C7D9E3A4B61ull;
+            for (int i = 0; i < 4; i++)
+            {
+                // splitmix64
+                state += 0x9E3779B97F4A7C15ull;
+                uint64_t value = state;
+                value = (value ^ (value >> 30)) * 0xBF58476D1CE4E5B9ull;
+                value = (value ^ (value >> 27)) * 0x94D049BB133111EBull;
+                value = value ^ (value >> 31);
+                for (int b = 0; b < 8; b++)
+                {
+                    key[i * 8 + b] = static_cast<unsigned char>((value >> (b * 8)) & 0xFFu);
+                }
+            }
+        }
+
+        uint64_t fnv1a64(const unsigned char* data, size_t size)
+        {
+            uint64_t hash = 0xCBF29CE484222325ull;
+            for (size_t i = 0; i < size; i++)
+            {
+                hash ^= static_cast<uint64_t>(data[i]);
+                hash *= 0x100000001B3ull;
+            }
+            return hash;
+        }
+
+        void createNonce(unsigned char* nonce)
+        {
+            std::random_device randomDevice;
+            std::mt19937_64 generator((static_cast<uint64_t>(randomDevice()) << 32) ^ static_cast<uint64_t>(randomDevice()) ^ static_cast<uint64_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count()));
+            for (size_t i = 0; i < encryptedNonceLength; i++)
+            {
+                nonce[i] = static_cast<unsigned char>(generator() & 0xFFu);
+            }
+        }
+
+        const char* const base64Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+        std::string base64Encode(const unsigned char* data, size_t size)
+        {
+            std::string result;
+            result.reserve(((size + 2) / 3) * 4);
+            size_t i = 0;
+            while (i + 2 < size)
+            {
+                const uint32_t triple = (static_cast<uint32_t>(data[i]) << 16) | (static_cast<uint32_t>(data[i + 1]) << 8) | static_cast<uint32_t>(data[i + 2]);
+                result.push_back(base64Alphabet[(triple >> 18) & 0x3Fu]);
+                result.push_back(base64Alphabet[(triple >> 12) & 0x3Fu]);
+                result.push_back(base64Alphabet[(triple >> 6) & 0x3Fu]);
+                result.push_back(base64Alphabet[triple & 0x3Fu]);
+                i += 3;
+            }
+            const size_t rest = size - i;
+            if (1 == rest)
+            {
+                const uint32_t triple = static_cast<uint32_t>(data[i]) << 16;
+                result.push_back(base64Alphabet[(triple >> 18) & 0x3Fu]);
+                result.push_back(base64Alphabet[(triple >> 12) & 0x3Fu]);
+                result.append("==");
+            }
+            else if (2 == rest)
+            {
+                const uint32_t triple = (static_cast<uint32_t>(data[i]) << 16) | (static_cast<uint32_t>(data[i + 1]) << 8);
+                result.push_back(base64Alphabet[(triple >> 18) & 0x3Fu]);
+                result.push_back(base64Alphabet[(triple >> 12) & 0x3Fu]);
+                result.push_back(base64Alphabet[(triple >> 6) & 0x3Fu]);
+                result.push_back('=');
+            }
+            return result;
+        }
+
+        int base64Value(char c)
+        {
+            if (c >= 'A' && c <= 'Z')
+            {
+                return c - 'A';
+            }
+            if (c >= 'a' && c <= 'z')
+            {
+                return c - 'a' + 26;
+            }
+            if (c >= '0' && c <= '9')
+            {
+                return c - '0' + 52;
+            }
+            if ('+' == c)
+            {
+                return 62;
+            }
+            if ('/' == c)
+            {
+                return 63;
+            }
+            return -1;
+        }
+
+        // Whitespace is skipped (e.g. if a tool has wrapped the lines), decoding stops at the first '='
+        bool base64Decode(const std::string& text, size_t startPosition, std::vector<unsigned char>& output)
+        {
+            output.clear();
+            output.reserve(((text.size() - startPosition) / 4) * 3);
+            uint32_t buffer = 0;
+            int bits = 0;
+            for (size_t i = startPosition; i < text.size(); i++)
+            {
+                const char c = text[i];
+                if (' ' == c || '\t' == c || '\r' == c || '\n' == c)
+                {
+                    continue;
+                }
+                if ('=' == c)
+                {
+                    break;
+                }
+                const int value = base64Value(c);
+                if (value < 0)
+                {
+                    return false;
+                }
+                buffer = (buffer << 6) | static_cast<uint32_t>(value);
+                bits += 6;
+                if (bits >= 8)
+                {
+                    bits -= 8;
+                    output.push_back(static_cast<unsigned char>((buffer >> bits) & 0xFFu));
+                }
+            }
+            return true;
+        }
+
+        size_t findFirstNonWhitespace(const std::string& content)
+        {
+            size_t position = 0;
+            // Skip an UTF-8 BOM, if an editor has added one
+            if (content.size() >= 3 && static_cast<unsigned char>(content[0]) == 0xEF && static_cast<unsigned char>(content[1]) == 0xBB && static_cast<unsigned char>(content[2]) == 0xBF)
+            {
+                position = 3;
+            }
+            while (position < content.size() && (' ' == content[position] || '\t' == content[position] || '\r' == content[position] || '\n' == content[position]))
+            {
+                position++;
+            }
+            return position;
+        }
+    }
+
     Ogre::String Core::encode64(const Ogre::String& text, bool cipher)
     {
-        Ogre::String result;
+        // With cipher: the engine's encrypted format (see encryptContent). Without cipher: plain base64.
         if (true == cipher)
         {
-            result = this->encrypt(text, this->cryptKey);
-        }
-        else
-        {
-            result = text;
+            return this->encryptContent(text);
         }
 
         using namespace boost::archive::iterators;
         using It = base64_from_binary<transform_width<std::string::const_iterator, 6, 8>>;
-        auto tmp = std::string(It(std::begin(result)), It(std::end(result)));
-        return tmp.append((3 - result.size() % 3) % 3, '=');
+        auto tmp = std::string(It(std::begin(text)), It(std::end(text)));
+        return tmp.append((3 - text.size() % 3) % 3, '=');
     }
 
     Ogre::String Core::decode64(const Ogre::String& text, bool cipher)
     {
-        using namespace boost::archive::iterators;
-        using It = transform_width<binary_from_base64<std::string::const_iterator>, 8, 6>;
-        Ogre::String result;
-
+        // With cipher: decrypts the engine's encrypted format (plain text is returned unchanged)
         if (true == cipher)
         {
-            result = this->decrypt(boost::algorithm::trim_right_copy_if(std::string(It(std::begin(text)), It(std::end(text))),
-                                       [](char c)
-                                       {
-                                           return c == '\0';
-                                       }),
-                this->cryptKey);
-        }
-        else
-        {
-            result = boost::algorithm::trim_right_copy_if(std::string(It(std::begin(text)), It(std::end(text))),
-                [](char c)
-                {
-                    return c == '\0';
-                });
+            return this->decryptContent(text);
         }
 
+        using namespace boost::archive::iterators;
+        using It = transform_width<binary_from_base64<std::string::const_iterator>, 8, 6>;
+        return boost::algorithm::trim_right_copy_if(std::string(It(std::begin(text)), It(std::end(text))),
+            [](char c)
+            {
+                return c == '\0';
+            });
+    }
+
+    bool Core::isEncryptedContent(const Ogre::String& content) const
+    {
+        const size_t position = findFirstNonWhitespace(content);
+        if (content.size() < position + encryptedContentMagicLength)
+        {
+            return false;
+        }
+        return 0 == content.compare(position, encryptedContentMagicLength, encryptedContentMagic);
+    }
+
+    Ogre::String Core::encryptContent(const Ogre::String& plainContent) const
+    {
+        unsigned char key[32];
+        buildEngineKey(key);
+
+        unsigned char nonce[encryptedNonceLength];
+        createNonce(nonce);
+
+        // Payload: nonce (plain) | checksum + content (encrypted)
+        std::vector<unsigned char> payload(encryptedNonceLength + encryptedChecksumLength + plainContent.size());
+        for (size_t i = 0; i < encryptedNonceLength; i++)
+        {
+            payload[i] = nonce[i];
+        }
+
+        const uint64_t checksum = fnv1a64(reinterpret_cast<const unsigned char*>(plainContent.data()), plainContent.size());
+        for (size_t i = 0; i < encryptedChecksumLength; i++)
+        {
+            payload[encryptedNonceLength + i] = static_cast<unsigned char>((checksum >> (i * 8)) & 0xFFu);
+        }
+        if (false == plainContent.empty())
+        {
+            std::memcpy(&payload[encryptedNonceLength + encryptedChecksumLength], plainContent.data(), plainContent.size());
+        }
+
+        // Counter starts at 1 (RFC 7539 convention, block 0 is reserved for e.g. a MAC key)
+        chachaXor(key, nonce, 1u, &payload[encryptedNonceLength], payload.size() - encryptedNonceLength);
+
+        Ogre::String result = encryptedContentMagic;
+        result += base64Encode(payload.data(), payload.size());
         return result;
     }
 
-    Ogre::String Core::encrypt(const Ogre::String& text, int key)
+    Ogre::String Core::decryptContent(const Ogre::String& content) const
     {
-        char strKey = (char)key; // Any char will work
-        Ogre::String result = text;
-
-        for (int i = 0; i < text.size(); i++)
+        if (true == this->isEncryptedContent(content))
         {
-            result[i] = text[i] ^ strKey;
-        }
+            const size_t position = findFirstNonWhitespace(content) + encryptedContentMagicLength;
 
-        return result;
-    }
-
-    Ogre::String Core::decrypt(const Ogre::String& text, int key)
-    {
-        char strKey = (char)key; // Any char will work
-        Ogre::String result = text;
-
-        for (int i = 0; i < text.size(); i++)
-        {
-            result[i] = text[i] ^ strKey;
-        }
-
-        return result;
-    }
-
-    void Core::setCryptKey(int key)
-    {
-        this->cryptKey = key;
-    }
-
-    int Core::getCryptKey(void) const
-    {
-        return this->cryptKey;
-    }
-
-    void Core::encodeAllFiles(void)
-    {
-        std::vector<Ogre::String> fileNames = this->getFilePathNamesInProject(this->projectName, "*.*");
-        for (auto& filePathName : fileNames)
-        {
-            std::fstream inFile(filePathName);
-            Ogre::String luaInFileContent;
-            if (true == inFile.good())
+            std::vector<unsigned char> payload;
+            if (false == base64Decode(content, position, payload) || payload.size() < encryptedNonceLength + encryptedChecksumLength)
             {
-                DWORD dwFileAttributes = GetFileAttributes(filePathName.data());
-                if (0xFFFFFFFF != dwFileAttributes)
-                {
-                    if (dwFileAttributes & FileFlag)
-                    {
-                        inFile.close();
-                        continue;
-                    }
-                }
-
-                Ogre::String inFileContent = std::string{std::istreambuf_iterator<char>{inFile}, std::istreambuf_iterator<char>{}};
-                inFile.close();
-
-                Ogre::String encodedContent = this->encode64(inFileContent, true);
-
-                std::ofstream outFile(filePathName);
-                if (true == outFile.good())
-                {
-                    outFile << encodedContent;
-                    outFile.close();
-
-                    dwFileAttributes |= FileFlag;
-                    SetFileAttributes(filePathName.data(), dwFileAttributes);
-                }
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Error: Could not decrypt content, because the data is damaged.");
+                return Ogre::String();
             }
+
+            unsigned char key[32];
+            buildEngineKey(key);
+
+            chachaXor(key, &payload[0], 1u, &payload[encryptedNonceLength], payload.size() - encryptedNonceLength);
+
+            uint64_t storedChecksum = 0;
+            for (size_t i = 0; i < encryptedChecksumLength; i++)
+            {
+                storedChecksum |= static_cast<uint64_t>(payload[encryptedNonceLength + i]) << (i * 8);
+            }
+
+            const size_t contentOffset = encryptedNonceLength + encryptedChecksumLength;
+            Ogre::String plainContent;
+            if (payload.size() > contentOffset)
+            {
+                plainContent.assign(reinterpret_cast<const char*>(&payload[contentOffset]), payload.size() - contentOffset);
+            }
+
+            if (storedChecksum != fnv1a64(reinterpret_cast<const unsigned char*>(plainContent.data()), plainContent.size()))
+            {
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Error: Could not decrypt content, because the checksum does not match (file has been modified).");
+                return Ogre::String();
+            }
+            return plainContent;
         }
 
-        this->projectEncoded = true;
-
-        boost::shared_ptr<EventDataProjectEncoded> eventDataProjectEncoded(new EventDataProjectEncoded(this->projectEncoded));
-        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataProjectEncoded);
+        return content;
     }
 
-    bool Core::decodeAllFiles(int key)
+    bool Core::readTextFileDecrypted(const Ogre::String& filePathName, Ogre::String& content, bool* wasEncrypted) const
     {
-        std::vector<Ogre::String> fileNames = this->getFilePathNamesInProject(this->projectName, "*.*");
-
-        // Check on one scene file, if after decoding a xml tag can be found (with correct key decoded)
-        for (auto& filePathName : fileNames)
+        content.clear();
+        if (nullptr != wasEncrypted)
         {
-            // If its a scene and the decoded content has no xml tag, then a wrong key must have been used
-            size_t foundScene = filePathName.find(".scene");
-            if (foundScene != std::wstring::npos)
-            {
-                std::fstream inFile(filePathName);
-                Ogre::String inFileContent;
-                if (true == inFile.good())
-                {
-                    DWORD dwFileAttributes = GetFileAttributes(filePathName.data());
-                    if (0xFFFFFFFF != dwFileAttributes)
-                    {
-                        if (dwFileAttributes & FileFlag)
-                        {
-                            dwFileAttributes &= ~FileFlag;
-                            SetFileAttributes(filePathName.data(), dwFileAttributes);
-                        }
-                        else
-                        {
-                            inFile.close();
-                            continue;
-                        }
-                    }
-
-                    Ogre::String inFileContent = std::string{std::istreambuf_iterator<char>{inFile}, std::istreambuf_iterator<char>{}};
-                    inFile.close();
-
-                    Ogre::String decodedContent = this->decode64(inFileContent, true);
-
-                    size_t foundTag = decodedContent.find("<?xml");
-                    if (foundTag != std::wstring::npos)
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        return false;
-                    }
-                }
-            }
+            *wasEncrypted = false;
         }
 
-        for (auto& filePathName : fileNames)
+        std::ifstream inFile(filePathName, std::ios::in);
+        if (false == inFile.good())
         {
-            std::fstream inFile(filePathName);
-            Ogre::String inFileContent;
-            if (true == inFile.good())
-            {
-                DWORD dwFileAttributes = GetFileAttributes(filePathName.data());
-                if (0xFFFFFFFF != dwFileAttributes)
-                {
-                    if (dwFileAttributes & FileFlag)
-                    {
-                        dwFileAttributes &= ~FileFlag;
-                        SetFileAttributes(filePathName.data(), dwFileAttributes);
-                    }
-                    else
-                    {
-                        inFile.close();
-                        continue;
-                    }
-                }
-
-                Ogre::String inFileContent = std::string{std::istreambuf_iterator<char>{inFile}, std::istreambuf_iterator<char>{}};
-                inFile.close();
-
-                Ogre::String decodedContent = this->decode64(inFileContent, true);
-
-                std::ofstream outFile(filePathName);
-                if (true == outFile.good())
-                {
-                    outFile << decodedContent;
-                    outFile.close();
-                }
-            }
+            return false;
         }
 
-        this->projectEncoded = false;
-        boost::shared_ptr<EventDataProjectEncoded> eventDataProjectEncoded(new EventDataProjectEncoded(this->projectEncoded));
-        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataProjectEncoded);
+        Ogre::String rawContent = std::string{std::istreambuf_iterator<char>{inFile}, std::istreambuf_iterator<char>{}};
+        inFile.close();
+
+        if (nullptr != wasEncrypted)
+        {
+            *wasEncrypted = this->isEncryptedContent(rawContent);
+        }
+
+        content = this->decryptContent(rawContent);
         return true;
+    }
+
+    bool Core::isFileEncrypted(const Ogre::String& filePathName) const
+    {
+        std::ifstream inFile(filePathName, std::ios::in | std::ios::binary);
+        if (false == inFile.good())
+        {
+            return false;
+        }
+
+        // The magic header is at the beginning, a few bytes are enough (BOM and whitespace included)
+        char buffer[64];
+        inFile.read(buffer, sizeof(buffer));
+        const Ogre::String head(buffer, static_cast<size_t>(inFile.gcount()));
+        return this->isEncryptedContent(head);
     }
 
     void Core::createApplicationIcon(unsigned short iconResourceId)
@@ -4341,6 +4549,11 @@ namespace NOWA
         if (Ogre::String::npos != dotPos)
         {
             applicationName = applicationName.substr(0, dotPos);
+        }
+        // Debug and Release builds (PrehistoricLax_d.exe / PrehistoricLax.exe) share the same folder, so config, key mapping and graphics settings are the same
+        if (applicationName.size() > 2 && "_d" == applicationName.substr(applicationName.size() - 2))
+        {
+            applicationName = applicationName.substr(0, applicationName.size() - 2);
         }
         if (true == applicationName.empty())
         {
@@ -4444,10 +4657,6 @@ namespace NOWA
             if (pSubElement->first_attribute("CPUSpeed"))
             {
                 this->requiredCPUSpeedMhz = Ogre::StringConverter::parseInt(pSubElement->first_attribute("CPUSpeed")->value());
-            }
-            if (pSubElement->first_attribute("UserData"))
-            {
-                this->cryptKey = Ogre::StringConverter::parseInt(this->decode64(pSubElement->first_attribute("UserData")->value(), false));
             }
             if (pSubElement->first_attribute("UseEntityType"))
             {
@@ -4740,8 +4949,7 @@ namespace NOWA
                 << " CPUSpeed=\"" << Ogre::StringConverter::toString(this->requiredCPUSpeedMhz).c_str() << "\"";
         outfile << " Language=\"" << Ogre::StringConverter::toString(this->optionLanguage) << "\""
                 << " Border=\"" << this->borderType << "\"";
-        outfile << " UserData=\"" << this->encode64(Ogre::StringConverter::toString(this->cryptKey), false) << "\""
-                << " UseEntityType=\"" << Ogre::StringConverter::toString(this->useEntityType) << "\"";
+        outfile << " UseEntityType=\"" << Ogre::StringConverter::toString(this->useEntityType) << "\"";
         outfile << "/>\n";
         // Graphics-Configuration
         outfile << "<Graphics QualityLevel=\"" << Ogre::StringConverter::toString(this->optionQualityLevel) << "\""

@@ -180,17 +180,24 @@ namespace NOWA
 		}
 
 		rotationValue.x = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.x, this->lastValue.x, this->smoothValue);
-		rotationValue.y = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.y, this->lastValue.y, this->smoothValue);
-		// Silly shit, this node is as dynamic as can be, but still the assert will throw, so since this node is just for the camera, this expensive method may be called
+        rotationValue.y = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.y, this->lastValue.y, this->smoothValue);
 
-		auto closureFunction = [this, rotationValue](Ogre::Real renderDt)
-		{
-			this->cameraNode->_getFullTransformUpdated();
-			this->cameraNode->rotate(Ogre::Quaternion(Ogre::Degree(rotationValue.x), Ogre::Vector3::UNIT_Y), Ogre::Node::TS_WORLD);
-			this->cameraNode->rotate(Ogre::Quaternion(Ogre::Degree(rotationValue.y), Ogre::Vector3::UNIT_X), Ogre::Node::TS_LOCAL);
-		};
-		Ogre::String id = "BasePhysicsCamera::rotateCamera";
-		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
+        // Capture only the raw Ogre node and plain values, never 'this'
+        Ogre::SceneNode* cameraNode = this->cameraNode;
+        const Ogre::Real yawDegrees = rotationValue.x;
+        const Ogre::Real pitchDegrees = rotationValue.y;
+
+        auto closureFunction = [cameraNode, yawDegrees, pitchDegrees](Ogre::Real renderDt)
+        {
+            // The node is dynamic, but the transform assert would still fire, so force the full transform update
+            cameraNode->_getFullTransformUpdated();
+            cameraNode->rotate(Ogre::Quaternion(Ogre::Degree(yawDegrees), Ogre::Vector3::UNIT_Y), Ogre::Node::TS_WORLD);
+            cameraNode->rotate(Ogre::Quaternion(Ogre::Degree(pitchDegrees), Ogre::Vector3::UNIT_X), Ogre::Node::TS_LOCAL);
+        };
+
+        // Unique id per camera node, otherwise several instances overwrite each other's closure
+        Ogre::String id = "BasePhysicsCamera::rotateCamera_" + Ogre::StringConverter::toString(reinterpret_cast<size_t>(cameraNode));
+        NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 
 		this->lastValue = rotationValue;
 	}

@@ -937,68 +937,23 @@ void MainMenuBar::buttonHit(MyGUI::Widget* sender)
         {
             this->createComponentPluginWindow->setVisible(false);
         }
-        else if ("encryptButton" == sender->getName())
+        else if ("deployOkButton" == sender->getName())
         {
-            // Encode
-            NOWA::Core::getSingletonPtr()->encodeAllFiles();
-            boost::shared_ptr<NOWA::EventDataFeedback> eventDataFeedback(new NOWA::EventDataFeedback(false, "#{EncodedReadonly}"));
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataFeedback);
-        }
-        else if ("decryptButton" == sender->getName())
-        {
-            int tempKey = Ogre::StringConverter::parseReal(this->keyEdit->getOnlyText());
-            bool success = NOWA::Core::getSingletonPtr()->decodeAllFiles(tempKey);
+            // Lua scripts and scene files are encrypted in the deploy output automatically (built-in engine key), the project itself stays readable
+            Ogre::String projectFilePathName = NOWA::Core::getSingletonPtr()->getCurrentProjectPath();
+            bool success = NOWA::DeployResourceModule::getInstance()->deployProject(NOWA::Core::getSingletonPtr()->getProjectName(), projectFilePathName);
 
+            this->resultLabel->setVisible(true);
             if (true == success)
             {
-                this->resultLabel->setVisible(true);
                 this->resultLabel->setCaptionWithReplacing("#{Success}");
                 this->resultLabel->setTextColour(MyGUI::Colour::Green);
             }
             else
             {
-                this->resultLabel->setVisible(true);
-                this->resultLabel->setCaptionWithReplacing("#{WrongKey}");
+                this->resultLabel->setCaption("Deploy failed, see log.");
                 this->resultLabel->setTextColour(MyGUI::Colour::Red);
             }
-        }
-        else if ("deployOkButton" == sender->getName())
-        {
-            Ogre::String projectFilePathName = NOWA::Core::getSingletonPtr()->getCurrentProjectPath();
-            const auto sceneNames = NOWA::Core::getSingletonPtr()->getSceneFileNamesInProject(projectFilePathName);
-            if (sceneNames.empty())
-            {
-                return;
-            }
-
-            boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(false));
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
-
-            // First save resources for this scene
-            Ogre::String currentSceneName = NOWA::Core::getSingletonPtr()->getSceneName();
-
-            // After that for all other
-            for (const Ogre::String& sceneName : sceneNames)
-            {
-                Ogre::String tempSceneName;
-                size_t found = sceneName.find(".scene");
-                if (found != std::wstring::npos)
-                {
-                    tempSceneName = sceneName.substr(0, sceneName.size() - 6);
-                }
-                if (tempSceneName != NOWA::Core::getSingletonPtr()->getSceneName())
-                {
-                    this->projectManager->loadProject(projectFilePathName + "/" + tempSceneName + "/" + tempSceneName + ".scene");
-                    NOWA::DeployResourceModule::getInstance()->deploy(NOWA::Core::getSingletonPtr()->getProjectName(), tempSceneName, projectFilePathName, false);
-                }
-            }
-
-            // Loads back this scene
-            this->projectManager->loadProject(projectFilePathName + "/" + currentSceneName + "/" + currentSceneName + ".scene");
-            NOWA::DeployResourceModule::getInstance()->deploy(NOWA::Core::getSingletonPtr()->getProjectName(), currentSceneName, projectFilePathName, true);
-
-            boost::shared_ptr<EventDataSceneValid> eventDataSceneValid2(new EventDataSceneValid(true));
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid2);
         }
         else if (this->fileMenuItem == sender)
         {
@@ -1111,7 +1066,7 @@ void MainMenuBar::createOgreLogWindow(void)
             this->ogreLogEdit->eventNotifyInsideKeyButtonPressed += newDelegate(this, &MainMenuBar::notifyInsideKeyButtonPressed);
             this->ogreLogEdit->setCaption("No engine warnings.");
 
-            // Three-button row — all 100px wide, 10px gaps, centred.
+            // Three-button row - all 100px wide, 10px gaps, centred.
             // Clear: left
             MyGUI::Button* clearButton = this->ogreLogWindow->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(coord.width * 0.5f - 160.0f, coord.height - 50, 100, 40), MyGUI::Align::Default, "ogreLogClearButton");
             clearButton->setCaption("Clear");
@@ -1209,11 +1164,11 @@ void MainMenuBar::updateSimulationWindowCaption(void)
 
     if (hasLuaErrors)
     {
-        captionColour = MyGUI::Colour::Red; // Script errors — red
+        captionColour = MyGUI::Colour::Red; // Script errors - red
     }
     else if (hasOgreErrors)
     {
-        captionColour = MyGUI::Colour(1.0f, 0.6f, 0.0f, 1.0f); // Engine warnings only — orange
+        captionColour = MyGUI::Colour(1.0f, 0.6f, 0.0f, 1.0f); // Engine warnings only - orange
     }
 
     this->simulationWindow->getCaptionWidget()->setTextColour(captionColour);
@@ -1466,15 +1421,17 @@ void MainMenuBar::showDeployWindow(void)
 
             MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("deployCloseButton")->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
 
-            MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("encryptButton")->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
-            MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("decryptButton")->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+            // Encryption is part of the deploy now (built-in engine key), so the former encrypt/decrypt buttons and the key field are not used anymore
+            MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("encryptButton")->setVisible(false);
+            MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("decryptButton")->setVisible(false);
+            MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("keyEdit")->setVisible(false);
+
             MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("deployOkButton")->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
             MyGUI::Button* button = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("deployOkButton");
             button->setNeedToolTip(true);
-            button->setUserString("tooltip", "Deploys all meshes, skeleton files, textures and all materials in one json file at the given [Project] resource folder. "
-                                             "E.g. ../media/Projects/ApplicationName/media. "
-                                             " Creates in applicationName/bin/resources an applicationNameDeployed.cfg file. "
-                                             " Now if application is started, in Core preLoadTextures is called for [Project] resource folder, which pre loads all textures at application start.");
+            button->setUserString("tooltip", "Deploys the game into ../../deploy/ProjectName: bin/Release (exe, dlls, plugins.cfg), bin/resources (resources cfg without editor sections) "
+                                             "and media with only the resources used by all scenes, their Lua scripts and the game's C++ sources (plus DeployAdditional.txt in the project folder). "
+                                             "All Lua scripts and scene files of the deployed project are encrypted, the project itself stays readable.");
             button->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
         }
 

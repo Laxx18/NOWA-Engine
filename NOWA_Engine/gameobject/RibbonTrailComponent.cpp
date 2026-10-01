@@ -349,8 +349,6 @@ namespace NOWA
 
 				auto data = DeployResourceModule::getInstance()->getPathAndResourceGroupFromDatablock(this->datablockName->getListSelectedValue(), Ogre::HlmsTypes::HLMS_UNLIT);
 
-				DeployResourceModule::getInstance()->tagResource(this->datablockName->getListSelectedValue(), data.first, data.second);
-
 				this->ribbonTrail->setQueryFlags(0);
 				this->ribbonTrail->setDynamic(true);
 

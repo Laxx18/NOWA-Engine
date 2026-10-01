@@ -12119,6 +12119,22 @@ return {
 				returns = "(WaterFoamEffectComponent)",
 				valuetype = "WaterFoamEffectComponent"
 			},
+			getWaterVolumeComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(WaterVolumeComponent)",
+				valuetype = "WaterVolumeComponent"
+			},
+			getWaterVolumeComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(WaterVolumeComponent)",
+				valuetype = "WaterVolumeComponent"
+			},
 			getWindComponent2 =
 			{
 				type = "function",
@@ -14126,6 +14142,14 @@ return {
 				args = "(WaterFoamEffectComponent other)",
 				returns = "(WaterFoamEffectComponent)",
 				valuetype = "WaterFoamEffectComponent"
+			},
+			castWaterVolumeComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(WaterVolumeComponent other)",
+				returns = "(WaterVolumeComponent)",
+				valuetype = "WaterVolumeComponent"
 			},
 			castWindComponent =
 			{
@@ -37919,6 +37943,175 @@ return {
 				args = "()",
 				returns = "(GameObject)",
 				valuetype = "GameObject"
+			}
+		}
+	},
+	WaterVolumeComponent =
+	{
+		type = "class",
+		description = "Usage: Turns this game object's mesh (typically a scaled box) into a water region. Everything inside it or seen through it gets distorted, fogged, tinted and lit by caustics like being under water, with an animated waterline on top - e.g. a pool in a 2.5D Jump'n'Run the player can dive into. Works like the DistortionComponent: the mesh itself becomes invisible while active and only acts as the region. Only the main camera is supported. Note: Tints, fog, distortion, caustics and waterline are shared by ALL water volumes (one fullscreen pass) - the last changed or created volume wins. 'Intensity' is per volume. Requirements: The game object must be an item (mesh). The main camera's workspace gets 'Use Water Volume' activated automatically.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Sets whether the water volume is active. While active, the mesh itself is invisible and only acts as the water region.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Gets whether the water volume is active.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setIntensity =
+			{
+				type = "method",
+				description = "Per volume: sets the effect intensity (0 - 1) of this volume, e.g. to fade a draining pool out.",
+				args = "(number intensity)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getIntensity =
+			{
+				type = "function",
+				description = "Gets the effect intensity of this volume.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setWaterTint =
+			{
+				type = "method",
+				description = "Shared by all water volumes: sets the fog colour for thin water.",
+				args = "(Vector3 colour)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getWaterTint =
+			{
+				type = "function",
+				description = "Gets the fog colour for thin water.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setDeepWaterTint =
+			{
+				type = "method",
+				description = "Shared by all water volumes: sets the fog colour for deep water.",
+				args = "(Vector3 colour)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDeepWaterTint =
+			{
+				type = "function",
+				description = "Gets the fog colour for deep water.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setFogDensity =
+			{
+				type = "method",
+				description = "Shared by all water volumes: sets the fog per meter of water (0 - 5).",
+				args = "(number density)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFogDensity =
+			{
+				type = "function",
+				description = "Gets the fog per meter of water.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setDeepThickness =
+			{
+				type = "method",
+				description = "Shared by all water volumes: sets the water thickness at which the deep water tint is reached.",
+				args = "(number meters)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDeepThickness =
+			{
+				type = "function",
+				description = "Gets the water thickness at which the deep water tint is reached.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setAbsorption =
+			{
+				type = "method",
+				description = "Shared by all water volumes: sets the light absorption per meter (0 - 2).",
+				args = "(number absorption)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getAbsorption =
+			{
+				type = "function",
+				description = "Gets the light absorption per meter.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setDistortion =
+			{
+				type = "method",
+				description = "Shared by all water volumes: sets the wave distortion strength in screen UV units (0 - 0.05).",
+				args = "(number distortion)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDistortion =
+			{
+				type = "function",
+				description = "Gets the wave distortion strength.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setCausticStrength =
+			{
+				type = "method",
+				description = "Shared by all water volumes: sets the caustics brightness (0 - 2).",
+				args = "(number strength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCausticStrength =
+			{
+				type = "function",
+				description = "Gets the caustics brightness.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setSurfaceLineStrength =
+			{
+				type = "method",
+				description = "Shared by all water volumes: sets the waterline highlight brightness (0 - 2).",
+				args = "(number strength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSurfaceLineStrength =
+			{
+				type = "function",
+				description = "Gets the waterline highlight brightness.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
 			}
 		}
 	},

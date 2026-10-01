@@ -106,9 +106,9 @@ public:
 	virtual void initialise();
 	virtual void shutdown();
 
-	void setParameter(const Ogre::String& projectName, const Ogre::String& sceneName, bool createProject, bool openProject, bool createOwnState, int key, bool ignoreGlobalScene);
+	void setParameter(const Ogre::String& projectName, const Ogre::String& sceneName, bool createProject, bool openProject, bool createOwnState, bool ignoreGlobalScene);
 
-	std::tuple<Ogre::String, Ogre::String, bool, bool, bool, int, bool> getParameter(void) const;
+	std::tuple<Ogre::String, Ogre::String, bool, bool, bool, bool> getParameter(void) const;
 
 	void resetSettings(void);
 
@@ -129,7 +129,6 @@ protected:
 	MyGUI::Button* openProjectCheck;
 	MyGUI::Button* createStateCheck;
 	MyGUI::Button* ignoreGlobalSceneCheck;
-	MyGUI::EditBox* keyEdit;
 	MyGUI::VectorWidgetPtr itemsEdit;
 
 	NOWA::AutoCompleteSearch projectAutoCompleteSearch;
@@ -202,15 +201,14 @@ public:
 	virtual void initialise();
 	virtual void shutdown();
 
-	void setParameter(Ogre::Real updateRate, unsigned short solverModel, bool solverForSingleIsland, unsigned short broadPhaseAlgorithm, unsigned short threadCount, Ogre::Real linearDamping, 
+	void setParameter(unsigned short solverModel, bool solverForSingleIsland, unsigned short broadPhaseAlgorithm, unsigned short threadCount, Ogre::Real linearDamping, 
 		const Ogre::Vector3& angularDamping, const Ogre::Vector3& gravity);
 
-	std::tuple<Ogre::Real, unsigned short, bool, unsigned short, unsigned short, Ogre::Real, Ogre::Vector3, Ogre::Vector3> getParameter(void) const;
+	std::tuple<unsigned short, bool, unsigned short, unsigned short, Ogre::Real, Ogre::Vector3, Ogre::Vector3> getParameter(void) const;
 private:
 	void buttonHit(MyGUI::Widget* sender);
 	void onKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode code, MyGUI::Char c);
 protected:
-	MyGUI::EditBox* updateRateEdit;
 	MyGUI::ComboBox* solverModelCombo;
 	MyGUI::Button* solverForSingleIslandCheck;
 	MyGUI::ComboBox* broadPhaseAlgorithmCombo;

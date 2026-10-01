@@ -113,6 +113,98 @@ namespace
             return a->getName() < b->getName();
         }
     }
+
+    // Package loader for 'require', which is able to load encrypted scripts (deployed game). The default Lua file loader
+    // would read the encrypted text and fail with a syntax error. This loader is inserted before the default one (see LuaScriptApi::init),
+    // so each module found via package.path is read via Core::readTextFileDecrypted (plain files work as before).
+    int nowaPackageLoader(lua_State* lua)
+    {
+        bool loadError = false;
+        {
+            const Ogre::String moduleName = luaL_checkstring(lua, 1);
+
+            lua_getglobal(lua, "package");
+            lua_getfield(lua, -1, "path");
+            Ogre::String packagePath;
+            if (0 != lua_isstring(lua, -1))
+            {
+                packagePath = lua_tostring(lua, -1);
+            }
+            lua_pop(lua, 2);
+
+            // "folder.module" -> "folder/module"
+            Ogre::String moduleFileName = moduleName;
+            std::replace(moduleFileName.begin(), moduleFileName.end(), '.', '/');
+
+            Ogre::String notFoundMessage;
+            size_t templateStart = 0;
+            while (templateStart <= packagePath.size())
+            {
+                size_t templateEnd = packagePath.find(';', templateStart);
+                if (Ogre::String::npos == templateEnd)
+                {
+                    templateEnd = packagePath.size();
+                }
+                Ogre::String filePathName = packagePath.substr(templateStart, templateEnd - templateStart);
+                templateStart = templateEnd + 1;
+
+                // Entries without '?' (e.g. the plain project folder) cannot be a module file
+                size_t questionMarkPos = filePathName.find('?');
+                if (Ogre::String::npos == questionMarkPos)
+                {
+                    continue;
+                }
+                while (Ogre::String::npos != questionMarkPos)
+                {
+                    filePathName.replace(questionMarkPos, 1, moduleFileName);
+                    questionMarkPos = filePathName.find('?', questionMarkPos + moduleFileName.size());
+                }
+
+                Ogre::String content;
+                if (false == NOWA::Core::getSingletonPtr()->readTextFileDecrypted(filePathName, content))
+                {
+                    notFoundMessage += "\n\tno file '" + filePathName + "'";
+                    continue;
+                }
+
+                const Ogre::String chunkName = "@" + filePathName;
+                if (0 != luaL_loadbuffer(lua, content.data(), content.size(), chunkName.c_str()))
+                {
+                    lua_pushfstring(lua, "error loading module '%s' from file '%s':\n\t%s", moduleName.c_str(), filePathName.c_str(), lua_tostring(lua, -1));
+                    loadError = true;
+                    break;
+                }
+                // The loaded chunk is on the stack
+                return 1;
+            }
+
+            if (false == loadError)
+            {
+                lua_pushstring(lua, notFoundMessage.c_str());
+                return 1;
+            }
+        }
+        // Outside of the scope above, so that no C++ object is skipped by lua_error's long jump
+        return lua_error(lua);
+    }
+
+    void registerNowaPackageLoader(lua_State* lua)
+    {
+        // Lua 5.1: package.loaders = { preload loader, Lua file loader, C loader, all-in-one loader }
+        // The NOWA loader is inserted at position 2, i.e. before the default Lua file loader.
+        lua_getglobal(lua, "package");
+        lua_getfield(lua, -1, "loaders");
+        const int loaderCount = static_cast<int>(lua_objlen(lua, -1));
+        for (int i = loaderCount; i >= 2; i--)
+        {
+            lua_rawgeti(lua, -1, i);
+            lua_rawseti(lua, -2, i + 1);
+        }
+        lua_pushcfunction(lua, &nowaPackageLoader);
+        lua_rawseti(lua, -2, 2);
+        lua_pop(lua, 2);
+    }
+
 }
 
 namespace NOWA

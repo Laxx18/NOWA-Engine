@@ -263,11 +263,10 @@ namespace NOWA
             return false;
         }
         std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+        ifs.close();
 
-        if (GetFileAttributes(globalSceneFilePathName.data()) & FileFlag || crypted)
-        {
-            content = Core::getSingletonPtr()->decode64(content, true);
-        }
+        // Encrypted content (deployed game, crypted save game) is detected by the content itself
+        content = Core::getSingletonPtr()->decryptContent(content);
         content += '\0';
 
         boost::shared_ptr<EventDataProjectEncoded> eventDataProjectEncoded(new EventDataProjectEncoded(Core::getSingletonPtr()->projectEncoded));
@@ -388,16 +387,11 @@ namespace NOWA
         }
 
         std::string content((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-        DWORD dwFileAttributes = GetFileAttributes(filePathName.data());
-        if (dwFileAttributes & FileFlag || crypted)
-        {
-            content = Core::getSingletonPtr()->decode64(content, true);
-            Core::getSingletonPtr()->projectEncoded = true;
-        }
-        else
-        {
-            Core::getSingletonPtr()->projectEncoded = false;
-        }
+        ifs.close();
+
+        // Encrypted content (deployed game, crypted save game) is detected by the content itself
+        Core::getSingletonPtr()->projectEncoded = Core::getSingletonPtr()->isEncryptedContent(content);
+        content = Core::getSingletonPtr()->decryptContent(content);
         content += '\0';
 
         boost::shared_ptr<EventDataProjectEncoded> eventDataProjectEncoded(new EventDataProjectEncoded(Core::getSingletonPtr()->projectEncoded));
@@ -1050,19 +1044,10 @@ namespace NOWA
 
     bool DotSceneImportModule::readSceneFileContent(std::string& content) const
     {
-        std::ifstream ifs(this->scenePath);
-        if (false == ifs.good())
+        // Same decryption as internalParseScene: a deployed game has encrypted scene files.
+        if (false == Core::getSingletonPtr()->readTextFileDecrypted(this->scenePath, content))
         {
             return false;
-        }
-
-        content.assign((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-
-        // Same decoding as internalParseScene: a deployed game has encrypted scene files, which Ogre's resource stream returns undecoded.
-        DWORD dwFileAttributes = GetFileAttributes(this->scenePath.data());
-        if (dwFileAttributes & FileFlag)
-        {
-            content = Core::getSingletonPtr()->decode64(content, true);
         }
         content += '\0';
         return true;
@@ -1541,7 +1526,6 @@ namespace NOWA
         this->projectParameter.solverForSingleIsland = XMLConverter::getAttribInt(xmlNode, "multithreadSolverOnSingleIsland", 1);
         this->projectParameter.broadPhaseAlgorithm = XMLConverter::getAttribInt(xmlNode, "broadPhaseAlgorithm", 0);
         this->projectParameter.physicsThreadCount = XMLConverter::getAttribInt(xmlNode, "threadCount", 1);
-        this->projectParameter.physicsUpdateRate = XMLConverter::getAttribReal(xmlNode, "desiredFps", 60.0f);
         this->projectParameter.linearDamping = XMLConverter::getAttribReal(xmlNode, "defaultLinearDamping", 0.1f);
         this->projectParameter.gravity = Ogre::Vector3(0.0f, -19.8f, 0.0f);
         this->projectParameter.angularDamping = Ogre::Vector3(0.01f, 0.01f, 0.01f);
@@ -1560,7 +1544,7 @@ namespace NOWA
 
         AppStateManager::getSingletonPtr()->getOgreNewtModule()->setGlobalGravity(this->projectParameter.gravity);
         this->ogreNewt = AppStateManager::getSingletonPtr()->getOgreNewtModule()->createPhysics(AppStateManager::getSingletonPtr()->getCurrentAppStateName() + "_world", this->projectParameter.solverModel, this->projectParameter.broadPhaseAlgorithm,
-            this->projectParameter.solverForSingleIsland, this->projectParameter.physicsThreadCount, this->projectParameter.physicsUpdateRate, this->projectParameter.linearDamping, this->projectParameter.angularDamping);
+            this->projectParameter.solverForSingleIsland, this->projectParameter.physicsThreadCount, this->projectParameter.linearDamping, this->projectParameter.angularDamping);
     }
 
     void DotSceneImportModule::processOgreRecast(rapidxml::xml_node<>* xmlNode)
@@ -1905,9 +1889,6 @@ namespace NOWA
                         return;
                     }
 
-                    Ogre::String path;
-                    DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup(), path);
-
                     // Determine the static flag BEFORE the item exists, so that the item can be created
                     // directly in the correct memory manager. Attention: creating an item as
                     // SCENE_STATIC and then calling setStatic() migrates it between Ogre's object
@@ -2222,9 +2203,6 @@ namespace NOWA
 
                 planeMeshV1 = Ogre::v1::MeshManager::getSingletonPtr()->createPlane(name + "mesh", "General", plane, width, height, xSegments, ySegments, hasNormals, numTexCoordSets, uTile, vTile, up, Ogre::v1::HardwareBuffer::HBU_STATIC,
                     Ogre::v1::HardwareBuffer::HBU_STATIC);
-
-                Ogre::String path;
-                DeployResourceModule::getInstance()->tagResource(name + "mesh", planeMeshV1->getGroup(), path);
 
                 Ogre::MeshPtr v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, planeMeshV1.get(), true, true, true);
                 planeMeshV1->unload();
@@ -2581,11 +2559,10 @@ namespace NOWA
         }
 
         std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
-        DWORD dwFileAttributes = GetFileAttributes(filePathName.c_str());
-        if (dwFileAttributes & FileFlag && true == decrypt)
-        {
-            content = Core::getSingletonPtr()->decode64(content, true);
-        }
+        ifs.close();
+
+        // Encrypted content is detected by the content itself
+        content = Core::getSingletonPtr()->decryptContent(content);
         content += '\0';
 
         {

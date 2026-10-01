@@ -226,6 +226,16 @@ namespace NOWA
          */
         void destroyModules(void);
 
+        /**
+         * @brief Hides all MyGUI root widgets that are visible right now and remembers them (called in pause).
+         */
+        void hideVisibleWidgets(void);
+
+        /**
+         * @brief Shows the widgets hidden by hideVisibleWidgets again, if they still exist (called in resume).
+         */
+        void showHiddenWidgets(void);
+
     private:
         void handleSceneLoaded(NOWA::EventDataPtr eventData);
 
@@ -267,6 +277,9 @@ namespace NOWA
         // crashes in WorkspaceBaseComponent::createWorkspace on the way back out of a pause menu.
         // Store the owning game object's id instead and resolve the component again on resume.
         unsigned long workspaceGameObjectId;
+
+        // Root widgets of this state that have been hidden in pause(), shown again in resume(). Only accessed on the render thread.
+        std::vector<MyGUI::Widget*> widgetsHiddenOnPause;
     };
 
 }; // namespace end

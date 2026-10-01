@@ -66,26 +66,39 @@ namespace NOWA
             graphicsModule->clearSceneResources();
             graphicsModule->releaseStall();
 
-            this->state->beforeSceneLoaded();
+            if (nullptr != this->state)
+            {
+                this->state->beforeSceneLoaded();
+            }
 
             switch (this->stateOperation)
             {
             case eAppStateOperation::ChangeAppState:
-                AppStateManager::getSingletonPtr()->internalChangeAppState(this->state);
+                if (nullptr != this->state)
+                {
+                    AppStateManager::getSingletonPtr()->internalChangeAppState(this->state);
+                }
                 break;
             case eAppStateOperation::PushAppState:
-                AppStateManager::getSingletonPtr()->internalPushAppState(this->state);
+                if (nullptr != this->state)
+                {
+                    AppStateManager::getSingletonPtr()->internalPushAppState(this->state);
+                }
                 break;
             case eAppStateOperation::PopAppState:
                 AppStateManager::getSingletonPtr()->internalPopAppState();
                 break;
             case eAppStateOperation::PopAllAndPushAppState:
-                AppStateManager::getSingletonPtr()->internalPopAllAndPushAppState(this->state);
+                if (nullptr != this->state)
+                {
+                    AppStateManager::getSingletonPtr()->internalPopAllAndPushAppState(this->state);
+                }
                 break;
             case eAppStateOperation::ExitGame:
                 AppStateManager::getSingletonPtr()->internalExitGame();
                 break;
             }
+            
         }
 
         virtual void onUpdate(float dt) override

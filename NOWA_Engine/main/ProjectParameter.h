@@ -21,7 +21,6 @@ namespace NOWA
 		bool createSceneInOwnState;
 		bool ignoreGlobalScene;
 		bool hasPhysics;
-		Ogre::Real physicsUpdateRate;
 		unsigned short solverModel;
 		bool solverForSingleIsland;
 		unsigned short broadPhaseAlgorithm;

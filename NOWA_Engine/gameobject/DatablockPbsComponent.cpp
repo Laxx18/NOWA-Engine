@@ -2082,7 +2082,15 @@ namespace NOWA
         {
             if (false == newlyCreated || true == this->isCloned)
             {
-                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setWorkflow", _1(workflow), { this->datablock->setWorkflow(this->mapStringToWorkflow(workflow)); });
+                // Resolve the value on the calling thread and capture only the raw datablock, never 'this'
+                const Ogre::HlmsPbsDatablock::Workflows workflowValue = this->mapStringToWorkflow(workflow);
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, workflowValue]()
+                {
+                    datablock->setWorkflow(workflowValue);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setWorkflow");
             }
             else
             {
@@ -2105,7 +2113,14 @@ namespace NOWA
             {
                 if (Ogre::HlmsPbsDatablock::MetallicWorkflow == this->datablock->getWorkflow())
                 {
-                    ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setMetalness", _1(metalness), { this->datablock->setMetalness(metalness); });
+                    // Capture only the raw datablock and the plain value, never 'this'
+                    Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                    NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, metalness]()
+                    {
+                        datablock->setMetalness(metalness);
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setMetalness");
                 }
             }
             else
@@ -2132,7 +2147,14 @@ namespace NOWA
         {
             if (false == newlyCreated || true == this->isCloned)
             {
-                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setRoughness", _1(roughness), { this->datablock->setRoughness(roughness); });
+                // Capture only the raw datablock and the plain value, never 'this'
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, roughness]()
+                {
+                    datablock->setRoughness(roughness);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setRoughness");
             }
             else
             {
@@ -2155,7 +2177,14 @@ namespace NOWA
             {
                 if (Ogre::HlmsPbsDatablock::MetallicWorkflow != this->datablock->getWorkflow())
                 {
-                    ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setFresnel", _2(fresnel, separateFresnel), { this->datablock->setFresnel(Ogre::Vector3(fresnel.x, fresnel.y, fresnel.z), separateFresnel); });
+                    // Capture only the raw datablock and plain values, never 'this'
+                    Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                    NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, fresnel, separateFresnel]()
+                    {
+                        datablock->setFresnel(Ogre::Vector3(fresnel.x, fresnel.y, fresnel.z), separateFresnel);
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setFresnel");
                 }
             }
             // Do not read from datablock because it will look ugly, set default values
@@ -2180,8 +2209,14 @@ namespace NOWA
             {
                 if (Ogre::HlmsPbsDatablock::MetallicWorkflow != this->datablock->getWorkflow())
                 {
-                    ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setIndexOfRefraction", _2(refractionIdx, separateFresnel),
-                        { this->datablock->setIndexOfRefraction(Ogre::Vector3(refractionIdx.x, refractionIdx.y, refractionIdx.z), separateFresnel); });
+                    // Capture only the raw datablock and plain values, never 'this'
+                    Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                    NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, refractionIdx, separateFresnel]()
+                    {
+                        datablock->setIndexOfRefraction(Ogre::Vector3(refractionIdx.x, refractionIdx.y, refractionIdx.z), separateFresnel);
+                    };
+                    NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setIndexOfRefraction");
                 }
             }
         }
@@ -2199,7 +2234,14 @@ namespace NOWA
         {
             if (false == newlyCreated || true == this->isCloned)
             {
-                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setRefractionStrength", _1(refractionStrength), { this->datablock->setRefractionStrength(refractionStrength); });
+                // Capture only the raw datablock and the plain value, never 'this'
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, refractionStrength]()
+                {
+                    datablock->setRefractionStrength(refractionStrength);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setRefractionStrength");
             }
             else
             {
@@ -2226,7 +2268,14 @@ namespace NOWA
 
             if (false == newlyCreated || true == this->isCloned)
             {
-                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setBrdf", _1(brdfFlags), { this->datablock->setBrdf(brdfFlags); });
+                // Capture only the raw datablock and the resolved flags, never 'this'
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, brdfFlags]()
+                {
+                    datablock->setBrdf(brdfFlags);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setBrdf");
             }
             else
             {
@@ -2247,8 +2296,15 @@ namespace NOWA
         {
             if (false == newlyCreated || true == this->isCloned)
             {
-                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setTwoSidedLighting", _1(twoSided),
-                    { this->datablock->setTwoSidedLighting(twoSided, true, this->mapStringToCullingMode(this->oneSidedShadowCastCullingMode->getListSelectedValue())); });
+                // Resolve the culling mode on the calling thread and capture only the raw datablock, never 'this'
+                const Ogre::CullingMode cullingModeValue = this->mapStringToCullingMode(this->oneSidedShadowCastCullingMode->getListSelectedValue());
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, twoSided, cullingModeValue]()
+                {
+                    datablock->setTwoSidedLighting(twoSided, true, cullingModeValue);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setTwoSidedLighting");
             }
             else
             {
@@ -2269,9 +2325,17 @@ namespace NOWA
         {
             if (false == newlyCreated || true == this->isCloned)
             {
+                // Resolve the values on the calling thread and capture only the raw datablock, never 'this'
+                const bool twoSided = this->twoSidedLighting->getBool();
+                const Ogre::CullingMode cullingModeValue = this->mapStringToCullingMode(this->oneSidedShadowCastCullingMode->getListSelectedValue());
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
                 // true = default = change macro block
-                ENQUEUE_RENDER_COMMAND("DatablockPbsComponent::setOneSidedShadowCastCullingMode",
-                    { this->datablock->setTwoSidedLighting(this->twoSidedLighting->getBool(), true, this->mapStringToCullingMode(this->oneSidedShadowCastCullingMode->getListSelectedValue())); });
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, twoSided, cullingModeValue]()
+                {
+                    datablock->setTwoSidedLighting(twoSided, true, cullingModeValue);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setOneSidedShadowCastCullingMode");
             }
             else
             {
@@ -2292,7 +2356,15 @@ namespace NOWA
         {
             if (false == newlyCreated || true == this->isCloned)
             {
-                ENQUEUE_RENDER_COMMAND("DatablockPbsComponent::setAlphaTest", { this->datablock->setAlphaTest(this->mapStringToAlphaTest(this->alphaTest->getListSelectedValue())); });
+                // Resolve the value on the calling thread and capture only the raw datablock, never 'this'
+                const Ogre::CompareFunction alphaTestValue = this->mapStringToAlphaTest(this->alphaTest->getListSelectedValue());
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, alphaTestValue]()
+                {
+                    datablock->setAlphaTest(alphaTestValue);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setAlphaTest");
             }
             else
             {
@@ -2313,7 +2385,14 @@ namespace NOWA
         {
             if (false == newlyCreated || true == this->isCloned)
             {
-                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setAlphaTestThreshold", _1(threshold), { this->datablock->setAlphaTestThreshold(threshold); });
+                // Capture only the raw datablock and the plain value, never 'this'
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, threshold]()
+                {
+                    datablock->setAlphaTestThreshold(threshold);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setAlphaTestThreshold");
             }
             else
             {
@@ -2335,7 +2414,14 @@ namespace NOWA
         {
             if (false == newlyCreated || true == this->isCloned)
             {
-                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setReceiveShadows", _1(receiveShadows), { this->datablock->setReceiveShadows(receiveShadows); });
+                // Capture only the raw datablock and the plain value, never 'this'
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, receiveShadows]()
+                {
+                    datablock->setReceiveShadows(receiveShadows);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setReceiveShadows");
             }
             else
             {
@@ -2356,7 +2442,14 @@ namespace NOWA
         {
             if (false == newlyCreated || true == this->isCloned)
             {
-                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setDiffuseColor", _1(diffuseColor), { this->datablock->setDiffuse(diffuseColor); });
+                // Capture only the raw datablock and the plain value, never 'this'
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, diffuseColor]()
+                {
+                    datablock->setDiffuse(diffuseColor);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setDiffuseColor");
             }
             else
             {
@@ -2377,7 +2470,14 @@ namespace NOWA
         {
             if (false == newlyCreated || true == this->isCloned)
             {
-                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setBackgroundColor", _1(backgroundColor), { this->datablock->setBackgroundDiffuse(Ogre::ColourValue(backgroundColor.x, backgroundColor.y, backgroundColor.z, backgroundColor.w)); });
+                // Capture only the raw datablock and the plain value, never 'this'
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, backgroundColor]()
+                {
+                    datablock->setBackgroundDiffuse(Ogre::ColourValue(backgroundColor.x, backgroundColor.y, backgroundColor.z, backgroundColor.w));
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setBackgroundColor");
             }
             else
             {
@@ -2399,7 +2499,14 @@ namespace NOWA
         {
             if (false == newlyCreated || true == this->isCloned)
             {
-                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setSpecularColor", _1(specularColor), { this->datablock->setSpecular(specularColor); });
+                // Capture only the raw datablock and the plain value, never 'this'
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, specularColor]()
+                {
+                    datablock->setSpecular(specularColor);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setSpecularColor");
             }
             else
             {
@@ -2421,7 +2528,14 @@ namespace NOWA
         {
             if (false == newlyCreated || true == this->isCloned)
             {
-                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setEmissiveColor", _1(emissiveColor), { this->datablock->setEmissive(emissiveColor); });
+                // Capture only the raw datablock and the plain value, never 'this'
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, emissiveColor]()
+                {
+                    datablock->setEmissive(emissiveColor);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setEmissiveColor");
             }
             else
             {
@@ -2462,7 +2576,14 @@ namespace NOWA
         {
             if (false == newlyCreated || true == this->isCloned)
             {
-                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setNormalMapWeight", _1(normalMapWeight), { this->datablock->setNormalMapWeight(normalMapWeight); });
+                // Capture only the raw datablock and the plain value, never 'this'
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, normalMapWeight]()
+                {
+                    datablock->setNormalMapWeight(normalMapWeight);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setNormalMapWeight");
             }
             else
             {
@@ -2487,7 +2608,14 @@ namespace NOWA
         {
             if ((false == newlyCreated || true == this->isCloned) && (this->datablock->getBrdf() & Ogre::PbsBrdf::BRDF_MASK) == Ogre::PbsBrdf::Default)
             {
-                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setClearCoat", _1(clearCoat), { this->datablock->setClearCoat(clearCoat); });
+                // Capture only the raw datablock and the plain value, never 'this'
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, clearCoat]()
+                {
+                    datablock->setClearCoat(clearCoat);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setClearCoat");
             }
             else
             {
@@ -2512,11 +2640,18 @@ namespace NOWA
         {
             if (false == newlyCreated || true == this->isCloned)
             {
-                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setClearCoatRoughness", _1(clearCoatRoughness), { this->datablock->setClearCoatRoughness(clearCoatRoughness); });
+                // Capture only the raw datablock and the plain value, never 'this'
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, clearCoatRoughness]()
+                {
+                    datablock->setClearCoatRoughness(clearCoatRoughness);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setClearCoatRoughness");
             }
             else
             {
-                this->clearCoat->setValue(this->datablock->getClearCoatRoughness());
+                this->clearCoatRoughness->setValue(this->datablock->getClearCoatRoughness());
             }
         }
     }
@@ -2585,7 +2720,15 @@ namespace NOWA
         {
             if (false == newlyCreated || true == this->isCloned)
             {
-                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setBlendMode0", _1(blendMode0), { this->datablock->setDetailMapBlendMode(0, this->mapStringToBlendMode(blendMode0)); });
+                // Resolve the value on the calling thread and capture only the raw datablock, never 'this'
+                const Ogre::PbsBlendModes blendModeValue = this->mapStringToBlendMode(blendMode0);
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, blendModeValue]()
+                {
+                    datablock->setDetailMapBlendMode(0, blendModeValue);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setBlendMode0");
             }
             else
             {
@@ -2616,7 +2759,15 @@ namespace NOWA
         {
             if (false == newlyCreated || true == this->isCloned)
             {
-                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setBlendMode1", _1(blendMode1), { this->datablock->setDetailMapBlendMode(1, this->mapStringToBlendMode(blendMode1)); });
+                // Resolve the value on the calling thread and capture only the raw datablock, never 'this'
+                const Ogre::PbsBlendModes blendModeValue = this->mapStringToBlendMode(blendMode1);
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, blendModeValue]()
+                {
+                    datablock->setDetailMapBlendMode(1, blendModeValue);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setBlendMode1");
             }
             else
             {
@@ -2647,7 +2798,15 @@ namespace NOWA
         {
             if (false == newlyCreated || true == this->isCloned)
             {
-                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setBlendMode2", _1(blendMode2), { this->datablock->setDetailMapBlendMode(2, this->mapStringToBlendMode(blendMode2)); });
+                // Resolve the value on the calling thread and capture only the raw datablock, never 'this'
+                const Ogre::PbsBlendModes blendModeValue = this->mapStringToBlendMode(blendMode2);
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, blendModeValue]()
+                {
+                    datablock->setDetailMapBlendMode(2, blendModeValue);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setBlendMode2");
             }
             else
             {
@@ -2678,7 +2837,15 @@ namespace NOWA
         {
             if (false == newlyCreated || true == this->isCloned)
             {
-                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setBlendMode3", _1(blendMode3), { this->datablock->setDetailMapBlendMode(3, this->mapStringToBlendMode(blendMode3)); });
+                // Resolve the value on the calling thread and capture only the raw datablock, never 'this'
+                const Ogre::PbsBlendModes blendModeValue = this->mapStringToBlendMode(blendMode3);
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, blendModeValue]()
+                {
+                    datablock->setDetailMapBlendMode(3, blendModeValue);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setBlendMode3");
             }
             else
             {
@@ -2807,8 +2974,17 @@ namespace NOWA
         {
             if (false == newlyCreated || true == this->isCloned)
             {
-                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setTransparencyMode", _1(transparencyMode),
-                    { this->datablock->setTransparency(this->transparency->getReal(), this->mapStringToTransparencyMode(transparencyMode), this->useAlphaFromTextures->getBool()); });
+                // Resolve all values on the calling thread and capture only the raw datablock, never 'this'
+                const Ogre::Real transparencyValue = this->transparency->getReal();
+                const Ogre::HlmsPbsDatablock::TransparencyModes transparencyModeValue = this->mapStringToTransparencyMode(transparencyMode);
+                const bool useAlpha = this->useAlphaFromTextures->getBool();
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, transparencyValue, transparencyModeValue, useAlpha]()
+                {
+                    datablock->setTransparency(transparencyValue, transparencyModeValue, useAlpha);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setTransparencyMode");
             }
             else
             {
@@ -2829,17 +3005,25 @@ namespace NOWA
         {
             if (false == newlyCreated || true == this->isCloned)
             {
-                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setTransparency", _1(transparency),
-                    { this->datablock->setTransparency(transparency, this->mapStringToTransparencyMode(this->transparencyMode->getListSelectedValue()), this->useAlphaFromTextures->getBool()); });
+                // Resolve all values on the calling thread and capture only the raw datablock, never 'this'
+                const Ogre::HlmsPbsDatablock::TransparencyModes transparencyModeValue = this->mapStringToTransparencyMode(this->transparencyMode->getListSelectedValue());
+                const bool useAlpha = this->useAlphaFromTextures->getBool();
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, transparency, transparencyModeValue, useAlpha]()
+                {
+                    datablock->setTransparency(transparency, transparencyModeValue, useAlpha);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setTransparency");
                 //// Change render queue index, so that other game objects can be rendered correctly after this transparent game object
-                //if (this->transparency->getReal() < 1.0f)
+                // if (this->transparency->getReal() < 1.0f)
                 //{
-                //    this->gameObjectPtr->setRenderQueueIndex(NOWA::RENDER_QUEUE_V2_MESH);
-                //}
-                //else
+                //     this->gameObjectPtr->setRenderQueueIndex(NOWA::RENDER_QUEUE_V2_MESH);
+                // }
+                // else
                 //{
-                //    this->gameObjectPtr->setRenderQueueIndex(NOWA::RENDER_QUEUE_V2_TRANSPARENT);
-                //}
+                //     this->gameObjectPtr->setRenderQueueIndex(NOWA::RENDER_QUEUE_V2_TRANSPARENT);
+                // }
             }
             else
             {
@@ -2860,8 +3044,16 @@ namespace NOWA
         {
             if (false == newlyCreated || true == this->isCloned)
             {
-                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setUseAlphaFromTextures", _1(useAlphaFromTextures),
-                    { this->datablock->setTransparency(this->transparency->getReal(), this->mapStringToTransparencyMode(this->transparencyMode->getListSelectedValue()), useAlphaFromTextures); });
+                // Resolve all values on the calling thread and capture only the raw datablock, never 'this'
+                const Ogre::Real transparencyValue = this->transparency->getReal();
+                const Ogre::HlmsPbsDatablock::TransparencyModes transparencyModeValue = this->mapStringToTransparencyMode(this->transparencyMode->getListSelectedValue());
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, transparencyValue, transparencyModeValue, useAlphaFromTextures]()
+                {
+                    datablock->setTransparency(transparencyValue, transparencyModeValue, useAlphaFromTextures);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setUseAlphaFromTextures");
             }
             else
             {
@@ -2940,7 +3132,14 @@ namespace NOWA
         {
             if (false == newlyCreated || true == this->isCloned)
             {
-                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setShadowConstBias", _1(shadowConstBias), { this->datablock->mShadowConstantBias = shadowConstBias; });
+                // Capture only the raw datablock and the plain value, never 'this'
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, shadowConstBias]()
+                {
+                    datablock->mShadowConstantBias = shadowConstBias;
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setShadowConstBias");
             }
             else
             {
@@ -2958,22 +3157,41 @@ namespace NOWA
     {
         this->bringToFront->setValue(bringToFront);
 
+        // During init() there is no datablock yet, postReadDatablock() applies the stored value afterwards
+        if (nullptr == this->datablock)
+        {
+            return;
+        }
+
+        // Capture only the raw datablock, never 'this'
+        Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
         if (true == bringToFront)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setBringToFront1", _1(bringToFront), {
-                this->originalMacroblock = const_cast<Ogre::HlmsMacroblock*>(this->datablock->getMacroblock());
+            // Remember the original macroblock on the calling thread, so that no member is written from the render thread
+            this->originalMacroblock = const_cast<Ogre::HlmsMacroblock*>(datablock->getMacroblock());
+
+            NOWA::GraphicsModule::RenderCommand renderCommand = [datablock]()
+            {
                 Ogre::HlmsMacroblock macroblock;
                 macroblock.mDepthWrite = true;
                 macroblock.mDepthFunc = Ogre::CompareFunction::CMPF_ALWAYS_PASS;
                 macroblock.mScissorTestEnabled = true;
-                this->datablock->setMacroblock(macroblock);
-            });
+                datablock->setMacroblock(macroblock);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setBringToFront1");
         }
         else
         {
             if (nullptr != this->originalMacroblock)
             {
-                ENQUEUE_RENDER_COMMAND("DatablockPbsComponent::setBringToFront2", { this->datablock->setMacroblock(*this->originalMacroblock); });
+                Ogre::HlmsMacroblock* originalMacroblock = this->originalMacroblock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, originalMacroblock]()
+                {
+                    datablock->setMacroblock(*originalMacroblock);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setBringToFront2");
             }
         }
     }
@@ -2987,35 +3205,53 @@ namespace NOWA
     {
         this->cutOff->setValue(cutOff);
 
+        // During init() there is no datablock yet, postReadDatablock() applies the stored value afterwards
+        if (nullptr == this->datablock)
+        {
+            return;
+        }
+
+        // Capture only the raw datablock, never 'this'
+        Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
         if (true == cutOff)
         {
-            ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setCutOff1", _1(cutOff), {
-                this->originalMacroblock = const_cast<Ogre::HlmsMacroblock*>(this->datablock->getMacroblock());
-                this->originalBlendblock = const_cast<Ogre::HlmsBlendblock*>(this->datablock->getBlendblock());
+            // Remember the original blocks on the calling thread, so that no member is written from the render thread
+            this->originalMacroblock = const_cast<Ogre::HlmsMacroblock*>(datablock->getMacroblock());
+            this->originalBlendblock = const_cast<Ogre::HlmsBlendblock*>(datablock->getBlendblock());
+
+            NOWA::GraphicsModule::RenderCommand renderCommand = [datablock]()
+            {
                 Ogre::HlmsMacroblock macroblock;
                 macroblock.mDepthWrite = true;
                 macroblock.mDepthFunc = Ogre::CompareFunction::CMPF_ALWAYS_PASS;
                 // macroblock.mScissorTestEnabled = true;
-                this->datablock->setMacroblock(macroblock);
+                datablock->setMacroblock(macroblock);
 
                 Ogre::HlmsBlendblock blendblock;
                 blendblock.mBlendChannelMask = Ogre::HlmsBlendblock::BlendChannelForceDisabled;
 
-                this->datablock->setBlendblock(blendblock);
-            });
+                datablock->setBlendblock(blendblock);
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setCutOff1");
         }
         else
         {
-            ENQUEUE_RENDER_COMMAND("DatablockPbsComponent::setCutOff2", {
-                if (nullptr != this->originalMacroblock)
+            Ogre::HlmsMacroblock* originalMacroblock = this->originalMacroblock;
+            Ogre::HlmsBlendblock* originalBlendblock = this->originalBlendblock;
+
+            NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, originalMacroblock, originalBlendblock]()
+            {
+                if (nullptr != originalMacroblock)
                 {
-                    this->datablock->setMacroblock(*this->originalMacroblock);
+                    datablock->setMacroblock(*originalMacroblock);
                 }
-                if (nullptr != this->originalBlendblock)
+                if (nullptr != originalBlendblock)
                 {
-                    this->datablock->setBlendblock(*this->originalBlendblock);
+                    datablock->setBlendblock(*originalBlendblock);
                 }
-            });
+            };
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setCutOff2");
         }
     }
 
@@ -3031,7 +3267,14 @@ namespace NOWA
         {
             if (false == newlyCreated || true == this->isCloned)
             {
-                ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setUseEmissiveAsLightMap", _1(useEmissiveAsLightMap), { this->datablock->setUseEmissiveAsLightmap(useEmissiveAsLightMap); });
+                // Capture only the raw datablock and the plain value, never 'this'
+                Ogre::HlmsPbsDatablock* datablock = this->datablock;
+
+                NOWA::GraphicsModule::RenderCommand renderCommand = [datablock, useEmissiveAsLightMap]()
+                {
+                    datablock->setUseEmissiveAsLightmap(useEmissiveAsLightMap);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DatablockPbsComponent::setUseEmissiveAsLightMap");
             }
             else
             {

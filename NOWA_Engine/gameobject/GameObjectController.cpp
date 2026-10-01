@@ -1023,15 +1023,21 @@ namespace NOWA
 
             AppStateManager::getSingletonPtr()->getScriptEventManager()->destroyContent();
 
+            // Attention: First disconnect ALL game objects, then destroy them. Previously each game object was disconnected and destroyed
+            // in the same loop iteration. Components reference other game objects (e.g. CameraBehaviorComponent -> camera behavior owned by
+            // the CameraManager, which is deleted when the camera game object is destroyed), so a game object destroyed early left dangling
+            // pointers in game objects disconnected later.
+            if (true == this->isSimulating)
+            {
+            for (const auto& gameObjectPtr : this->gameObjectsList)
+            {
+                    gameObjectPtr->disconnect();
+                }
+            }
+
             // do not delete with iterator since the iterator changes then during the loop
             for (const auto& gameObjectPtr : this->gameObjectsList)
             {
-                // gameObjectPtr->setActivated(false);
-                if (true == this->isSimulating)
-                {
-                    gameObjectPtr->disconnect();
-                }
-
                 bool canDestroy = true;
                 // Do not destroy game object, that are excluded from destruction (which is seldom the case and optional)
                 for (auto it2 = excludeGameObjectNames.begin(); it2 != excludeGameObjectNames.end();)
@@ -1985,7 +1991,19 @@ namespace NOWA
             this->isSimulating = true;
         };
 
-        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+        // Attention: On the logic thread the command is executed directly instead of via enqueue(). enqueue() silently drops every command
+        // once bShutdown is set, and stop() is called exactly then when the application is closed (AppState::exit during the shutdown loop).
+        // The game objects were then never disconnected here, isSimulating stayed true, and destroyContent() disconnected and destroyed them
+        // one after another. A game object destroyed early (e.g. the game camera, whose CameraComponent removes the camera and thereby deletes
+        // all its camera behaviors in the CameraManager) then left dangling pointers in game objects disconnected later (CameraBehaviorComponent::baseCamera).
+        if (true == NOWA::AppStateManager::getSingletonPtr()->isLogicThread())
+        {
+            logicCommand();
+        }
+        else
+        {
+            NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+        }
     }
 
     void GameObjectController::stop(void)
@@ -2054,7 +2072,19 @@ namespace NOWA
             this->physicsCompoundConnectionComponentMap.clear();
         };
 
-        NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+        // Attention: On the logic thread the command is executed directly instead of via enqueue(). enqueue() silently drops every command
+        // once bShutdown is set, and stop() is called exactly then when the application is closed (AppState::exit during the shutdown loop).
+        // The game objects were then never disconnected here, isSimulating stayed true, and destroyContent() disconnected and destroyed them
+        // one after another. A game object destroyed early (e.g. the game camera, whose CameraComponent removes the camera and thereby deletes
+        // all its camera behaviors in the CameraManager) then left dangling pointers in game objects disconnected later (CameraBehaviorComponent::baseCamera).
+        if (true == NOWA::AppStateManager::getSingletonPtr()->isLogicThread())
+        {
+            logicCommand();
+        }
+        else
+        {
+            NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+        }
     }
 
     void GameObjectController::pause(void)

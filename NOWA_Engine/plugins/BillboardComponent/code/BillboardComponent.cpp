@@ -288,8 +288,6 @@ namespace NOWA
 
 				auto data = DeployResourceModule::getInstance()->getPathAndResourceGroupFromDatablock(this->datablockName->getListSelectedValue(), Ogre::HlmsTypes::HLMS_UNLIT);
 
-				DeployResourceModule::getInstance()->tagResource(this->datablockName->getString(), data.first, data.second);
-
 				this->billboardSet->setBillboardOrigin(this->mapStringToOrigin(this->origin->getListSelectedValue()));
 				this->billboardSet->setBillboardRotationType(this->mapStringToRotationType(this->rotationType->getListSelectedValue()));
 				this->billboardSet->setBillboardType(this->mapStringToType(this->type->getListSelectedValue()));

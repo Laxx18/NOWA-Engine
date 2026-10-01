@@ -50,17 +50,17 @@ namespace NOWA
 		*/
 		
 		OgreNewt::World* createPhysics(const Ogre::String& name, int solverModel = 1, int broadPhaseAlgorithm = 1, int multithreadSolverOnSingleIsland = 1,
-			int threadCount = 1, Ogre::Real updateRate = 120.0f, Ogre::Real defaultLinearDamping = 0.1f, Ogre::Vector3 defaultAngularDamping = Ogre::Vector3(0.1f, 0.1f, 0.1f));
+			int threadCount = 1, Ogre::Real defaultLinearDamping = 0.1f, Ogre::Vector3 defaultAngularDamping = Ogre::Vector3(0.1f, 0.1f, 0.1f));
 
 		/*initialise OgreNewt physics (performant, also using 2 threads for simulation) (Info: OgreNewt Objekt gets created on a heap)
 		Params: 
 		updateRate: how often update OgreNewt per second (60 times is the minimum)
 		*/
-		OgreNewt::World* createPerformantPhysics(const Ogre::String& name, Ogre::Real updateRate = 120.0f);
+		OgreNewt::World* createPerformantPhysics(const Ogre::String& name);
 
 		/*initialise OgreNewt physics (quality) (Info: OgreNewt Objekt gets created on a heap)
 		*/
-		OgreNewt::World* createQualityPhysics(const Ogre::String& name, Ogre::Real updateRate = 120.0f);
+		OgreNewt::World* createQualityPhysics(const Ogre::String& name);
 
 		/*
 		Initialize a OgreNewt debugger in order to show collision lines during the simulation

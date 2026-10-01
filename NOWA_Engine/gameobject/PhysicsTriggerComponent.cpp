@@ -447,8 +447,11 @@ namespace NOWA
         }
         else
         {
-            ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsTriggerComponent::createDynamicCollision", _4(&inertia, &collisionPtr, collisionOrientation, &calculatedMassOrigin),
-                { collisionPtr = this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(), collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId()); });
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this, &inertia, &collisionPtr, collisionOrientation, &calculatedMassOrigin]()
+            {
+                collisionPtr = this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(), collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId());
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsTriggerComponent::createDynamicCollision");
         }
 
         if (nullptr == this->physicsBody)

@@ -405,10 +405,15 @@ namespace OgreAL
 		if (mSource != AL_NONE)
 		{
 			alSourcePause(mSource);
-			CheckError(alGetError(), "Failed to pause sound");
+			ALenum error = alGetError();
+			CheckError(error, "Failed to pause sound");
+			if (AL_NO_ERROR == error)
+			{
+				mState = AL_PAUSED;
+			}
 		}
 
-		return false;
+		return true;
 	}
 
 	bool Sound::isPaused() const
@@ -418,7 +423,8 @@ namespace OgreAL
 			return false;
 		}
 
-		// Perform a cached state refresh. No refresh will be done if using cache.ddww
+		// Perform a cached state refresh. No refresh will be done if using cache.
+		updateStateCache();
 
 		return (mState == AL_PAUSED);
 	}

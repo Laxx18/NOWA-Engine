@@ -213,7 +213,7 @@ namespace NOWA
 
         this->rdState = PhysicsRagDollComponentV2::INACTIVE;
         boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
-        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
         this->activated->setValue(false);
     }
 
@@ -755,6 +755,29 @@ namespace NOWA
     {
         if (true == this->isSimulating)
         {
+            // Note: triggerevent must run on main thread, hence duplication of conditions, so that animation component gets immediately, if it can animate or not, this is important for ragdoll. Else bones will corrupt, if
+            // animation is still running for a part of time, and ragdoll physics is applied.
+            if (this->rdState == PhysicsRagDollComponentV2::RAGDOLLING)
+            {
+                boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), true));
+                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
+            }
+            else if (this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING)
+            {
+                boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
+                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
+            }
+            else if (this->rdState == PhysicsRagDollComponentV2::INACTIVE)
+            {
+                boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
+                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
+            }
+            else if (this->rdState == PhysicsRagDollComponentV2::ANIMATION)
+            {
+                boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
+                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
+            }
+
             NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
             {
                 // First deactivate debug data if set
@@ -762,9 +785,6 @@ namespace NOWA
 
                 if (this->rdState == PhysicsRagDollComponentV2::RAGDOLLING)
                 {
-                    boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), true));
-                    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
-
                     // if (this->rdOldState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING)
                     {
                         this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
@@ -781,9 +801,6 @@ namespace NOWA
                 }
                 else if (this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING)
                 {
-                    boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
-                    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
-
                     // See the Animation branch: only restore when a full ragdoll really ran, otherwise
                     // initialPosition may never have been filled by createRagDoll().
                     const bool ragdollWasActive = (this->rdOldState == PhysicsRagDollComponentV2::RAGDOLLING && false == this->ragDataList.empty());
@@ -815,9 +832,6 @@ namespace NOWA
                 }
                 else if (this->rdState == PhysicsRagDollComponentV2::ANIMATION)
                 {
-                    boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
-                    NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
-
                     // The node must only be restored if a full ragdoll REALLY ran and therefore really
                     // displaced the node. rdOldState alone is not sufficient: switching the state
                     // attribute in the editor while the simulation is stopped records
@@ -878,9 +892,6 @@ namespace NOWA
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsRagDollComponentV2][DIAG] createInactiveRagdoll for '" + this->gameObjectPtr->getName() +
                                                                                 "' rdState: " + Ogre::StringConverter::toString(static_cast<int>(this->rdState)) + " rdOldState: " + Ogre::StringConverter::toString(static_cast<int>(this->rdOldState)) +
                                                                                 " ragDataListSize: " + Ogre::StringConverter::toString(this->ragDataList.size()) + " animationEnabled: " + Ogre::StringConverter::toString(this->animationEnabled));
-
-        boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
-        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
 
         this->partialRagdollBoneName = "";
 
@@ -1136,27 +1147,6 @@ namespace NOWA
     // ============================================================================
     // setAnimationEnabled / isAnimationEnabled
     // ============================================================================
-
-    //void PhysicsRagDollComponentV2::setAnimationEnabled(bool animationEnabled)
-    //{
-    //    this->animationEnabled = animationEnabled;
-
-    //    size_t offset = 0;
-    //    if (this->rdState == PhysicsRagDollComponentV2::PARTIAL_RAGDOLLING)
-    //    {
-    //        offset = 1;
-    //    }
-
-    //    for (auto it = this->ragDataList.cbegin() + offset; it != this->ragDataList.cend(); ++it)
-    //    {
-    //        // V2: use setManualBone instead of setManuallyControlled
-    //        if (nullptr != this->skeletonInstance)
-    //        {
-    //            this->skeletonInstance->setManualBone(it->ragBone->getBone(), !animationEnabled);
-    //        }
-    //        it->ragBone->applyPose(Ogre::Vector3::ZERO);
-    //    }
-    //}
 
     void PhysicsRagDollComponentV2::setAnimationEnabled(bool animationEnabled)
     {
@@ -1928,7 +1918,7 @@ namespace NOWA
             if (this->rdOldState != PhysicsRagDollComponentV2::INACTIVE)
             {
                 boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
-                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
+                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
             }
         }
         else if (state == "Animation")
@@ -1943,7 +1933,7 @@ namespace NOWA
             if (this->rdOldState != PhysicsRagDollComponentV2::ANIMATION)
             {
                 boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
-                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
+                NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
             }
         }
         else if (state == "Ragdolling")
@@ -1962,7 +1952,7 @@ namespace NOWA
             this->rdState = PhysicsRagDollComponentV2::RAGDOLLING;
             this->setAnimationEnabled(false);
             boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), true));
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
         }
         else if (state == "PartialRagdolling")
         {
@@ -1978,7 +1968,7 @@ namespace NOWA
             this->setAnimationEnabled(false);
 
             boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
-            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
+            NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
         }
 
         if (true == this->isSimulating)

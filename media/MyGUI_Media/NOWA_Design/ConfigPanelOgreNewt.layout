@@ -2,17 +2,10 @@
 <MyGUI type="Layout" version="3.2.0">
     <Widget type="Widget" skin="PanelEmpty" position="450 145 490 380" align="HStretch Top" layer="Overlapped" name="_Main">
 	
-        <Widget type="TextBox" skin="TextBox" position="10 20 260 20" name="updateRateText">
-            <Property key="Caption" value="#{UpdateRate}:"/>
-        </Widget>
-        <Widget type="EditBox" skin="EditBox" position="280 20 175 20" name="updateRateEdit">
-			<Property key="Caption" value="120"/>
-		</Widget>
-		
-		<Widget type="TextBox" skin="TextBox" position="10 52 260 20" name="solverModelText">
+        <Widget type="TextBox" skin="TextBox" position="10 20 260 20" name="solverModelText">
             <Property key="Caption" value="#{SolverModel}:"/>
         </Widget>
-		<Widget type="ComboBox" skin="ComboBox" position="280 52 175 20" name="solverModelCombo">
+		<Widget type="ComboBox" skin="ComboBox" position="280 20 175 20" name="solverModelCombo">
 		    <Property key="Caption" value="SM_MEDIUM"/>
 			<Property key="ReadOnly" value="true"/>
             <Property key="AddItem" value="SM_FASTEST"/>
@@ -36,47 +29,53 @@
 			<Property key="AddItem" value="SM_BEST_14"/>
 			<Property key="AddItem" value="SM_BEST_15"/>
 		 </Widget>
-		 <Widget type="Button" skin="CheckBox" position="280 84 260 20" name="solverForSingleIslandCheck">
+
+		 <Widget type="Button" skin="CheckBox" position="280 52 260 20" name="solverForSingleIslandCheck">
 			<Property key="Caption" value="#{SolverForSingleIsland}:"/>
 			<Property key="StateSelected" value="false"/>
 		</Widget>
 		
-		<Widget type="TextBox" skin="TextBox" position="10 116 260 20" name="broadPhaseAlgorithmText">
+		<Widget type="TextBox" skin="TextBox" position="10 84 260 20" name="broadPhaseAlgorithmText">
             <Property key="Caption" value="#{BroadPhaseAlgorithm}:"/>
         </Widget>
-		<Widget type="ComboBox" skin="ComboBox" position="280 116 175 20" name="broadPhaseAlgorithmCombo">
+		<Widget type="ComboBox" skin="ComboBox" position="280 84 175 20" name="broadPhaseAlgorithmCombo">
 		    <Property key="Caption" value="Default"/>
 			<Property key="ReadOnly" value="true"/>
             <Property key="AddItem" value="DEFAULT"/>
             <Property key="AddItem" value="PERSISTENCE"/>
 		 </Widget>
-		<Widget type="TextBox" skin="TextBox" position="10 148 260 20" name="threadCountText">
+
+		<Widget type="TextBox" skin="TextBox" position="10 116 260 20" name="threadCountText">
             <Property key="Caption" value="#{ThreadCount}:"/>
         </Widget>
-		<Widget type="ComboBox" skin="ComboBox" position="280 148 175 20" name="threadCountCombo">
+		<Widget type="ComboBox" skin="ComboBox" position="280 116 175 20" name="threadCountCombo">
 		    <Property key="Caption" value="4"/>
 			<Property key="ReadOnly" value="true"/>
             <Property key="AddItem" value="1"/>
             <Property key="AddItem" value="2"/>
             <Property key="AddItem" value="4"/>
 		 </Widget>
-		 <Widget type="TextBox" skin="TextBox" position="10 180 260 20" name="linearDampingText">
+
+		 <Widget type="TextBox" skin="TextBox" position="10 148 260 20" name="linearDampingText">
             <Property key="Caption" value="#{LinearDamping}:"/>
          </Widget>
-		 <Widget type="EditBox" skin="EditBox" position="280 180 175 20" name="linearDampingEdit">
+		 <Widget type="EditBox" skin="EditBox" position="280 148 175 20" name="linearDampingEdit">
 			<Property key="Caption" value="0.1"/>
 		</Widget>
-		<Widget type="TextBox" skin="TextBox" position="10 212 260 20" name="angularDampingText">
+
+		<Widget type="TextBox" skin="TextBox" position="10 180 260 20" name="angularDampingText">
             <Property key="Caption" value="#{AngularDamping}:"/>
          </Widget>
-		 <Widget type="EditBox" skin="EditBox" position="280 212 175 20" name="angularDampingEdit">
+		 <Widget type="EditBox" skin="EditBox" position="280 180 175 20" name="angularDampingEdit">
 			<Property key="Caption" value="0.1 0.1 0.1"/>
 		</Widget>
-		<Widget type="TextBox" skin="TextBox" position="10 244 260 20" name="gravityText">
+
+		<Widget type="TextBox" skin="TextBox" position="10 212 260 20" name="gravityText">
             <Property key="Caption" value="#{Gravity}:"/>
          </Widget>
-		<Widget type="EditBox" skin="EditBox" position="280 244 175 20" name="gravityEdit">
+		<Widget type="EditBox" skin="EditBox" position="280 212 175 20" name="gravityEdit">
 			<Property key="Caption" value="0 -19.8 0"/>
 		</Widget>
+
     </Widget>
 </MyGUI>

@@ -283,6 +283,7 @@ namespace NOWA
     {
         ProceduralGeometryComponentPtr cloned(boost::make_shared<ProceduralGeometryComponent>());
 
+        cloned->setOwner(clonedGameObjectPtr);
         cloned->setActivated(activated->getBool());
         cloned->setShape(shape->getListSelectedValue());
         cloned->setSize(size->getVector3());
@@ -293,7 +294,6 @@ namespace NOWA
         cloned->setUVTiling(uvTiling->getVector2());
 
         clonedGameObjectPtr->addComponent(cloned);
-        cloned->setOwner(clonedGameObjectPtr);
 
         GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(cloned));
         return cloned;
