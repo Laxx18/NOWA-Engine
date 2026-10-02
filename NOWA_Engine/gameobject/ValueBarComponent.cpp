@@ -158,10 +158,11 @@ namespace NOWA
         clonedCompPtr->setCurrentValue(this->currentValue->getUInt());
         clonedCompPtr->setFaceCamera(this->faceCamera->getBool());
 
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
         clonedCompPtr->setActivated(this->activated->getBool());
 
         clonedGameObjectPtr->addComponent(clonedCompPtr);
-        clonedCompPtr->setOwner(clonedGameObjectPtr);
 
         GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
         return clonedCompPtr;
@@ -273,16 +274,22 @@ namespace NOWA
             Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
             NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
+            Ogre::SceneNode* lineNode = this->lineNode;
+            Ogre::ManualObject* manualObject = this->manualObject;
+            Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
+
             // TODO: Wait?
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            NOWA::GraphicsModule::RenderCommand renderCommand = [lineNode, manualObject, sceneManager]()
             {
-                this->lineNode->detachAllObjects();
-                this->gameObjectPtr->getSceneManager()->destroyManualObject(this->manualObject);
-                this->manualObject = nullptr;
-                this->lineNode->getParentSceneNode()->removeAndDestroyChild(this->lineNode);
-                this->lineNode = nullptr;
+                lineNode->detachAllObjects();
+                sceneManager->destroyManualObject(manualObject);
+                lineNode->getParentSceneNode()->removeAndDestroyChild(lineNode);
             };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ValueBarComponent::destroyValueBar");
+
+            NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ValueBarComponent::destroyValueBar");
+
+            this->manualObject = nullptr;
+            this->lineNode = nullptr;
         }
     }
 

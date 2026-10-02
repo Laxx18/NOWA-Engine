@@ -226,6 +226,7 @@ function addExperience(amount)
         strength:setValueNumber(strength:getValueNumber() + STRENGTH_PER_LEVEL);
         ascension:setValueNumber(getRequiredExperience(getLevel()));
         hasLevelUp = true;
+        prehistoricLax:getSimpleSoundComponentFromName("LevelUp"):setActivated(true);
     end
 
     experience:setValueNumber(value);
@@ -322,6 +323,28 @@ function hitPlayer(sourcePosition, profile)
     playerController:requestState("KnockbackState");
 end
 
+-- +1 = enemy looks to the right (+X), -1 = to the left, 0 = looks along the depth axis (no clear side).
+function getEnemyFacingSign(enemyGameObject)
+    local forward = enemyGameObject:getOrientation() * enemyGameObject:getDefaultDirection();
+    if (forward.x > 0.1) then
+        return 1;
+    elseif (forward.x < -0.1) then
+        return -1;
+    end
+    return 0;
+end
+
+-- An enemy only attacks what is in front of it. The player only moves along X/Y, so X is enough.
+function isEnemyFacingPlayer(enemyGameObject)
+    local facing = getEnemyFacingSign(enemyGameObject);
+    if (facing == 0) then
+        return true;
+    end
+
+    local towardsPlayerX = prehistoricLax:getPosition().x - enemyGameObject:getPosition().x;
+    return towardsPlayerX * facing >= 0;
+end
+
 function isPlayerInReach(enemyGameObject, profile)
     local delta = prehistoricLax:getPosition() - enemyGameObject:getPosition();
     return math.abs(delta.x) <= profile.attackReach and math.abs(delta.y) <= profile.attackReachVertical;
@@ -344,8 +367,8 @@ end
 
 -- The moment the enemy's attack hurts.
 function resolveEnemyImpact(enemyGameObject, profile)
-    if (false == isPlayerInReach(enemyGameObject, profile)) then
-        -- Dodged.
+    -- Turned away in the meantime: the blow misses.
+    if (false == isEnemyFacingPlayer(enemyGameObject)) then
         do return end;
     end
 
@@ -670,6 +693,8 @@ PrehistoricLax["connect"] = function(gameObject)
         if (jumpCount >= 2) then
             prehistoricLax:getParticleFxComponentFromIndex(0):setActivated(true);
         end
+        
+        prehistoricLax:getParticleFxComponentFromName("WaterParticle"):setActivated(false);
     end);
 
     playerController:reactOnLand(function(fallTime)
@@ -694,8 +719,9 @@ PrehistoricLax["connect"] = function(gameObject)
                 coins:setValueNumber(coins:getValueNumber() + 1);
                 moneySound:setActivated(true);
                 updateHud();
-            elseif (otherGameObject:getTagName() == "Energy") then
+            elseif (otherGameObject:getTagName() == "Meat") then
                 AppStateManager:getGameObjectController():deleteGameObject(otherGameObject:getId());
+                prehistoricLax:getSimpleSoundComponentFromName("Energy"):setActivated(true);
                 setEnergy(getEnergy() + ENERGY_PICKUP_AMOUNT);
             end
         end
@@ -775,6 +801,15 @@ end
 
 -- Starts the enemy's attack, if it may attack right now.
 function tryStartEnemyAttack(enemyGameObject)
+    if (enemyGameObject == nil) then
+        do return end;
+    end
+    
+    -- An enemy that looks away from the player does not attack.
+    if (false == isEnemyFacingPlayer(enemyGameObject)) then
+        do return end;
+    end
+    
     -- A killed enemy does not attack anymore.
     if (true == deadEnemies[enemyGameObject:getId()]) then
         do return end;

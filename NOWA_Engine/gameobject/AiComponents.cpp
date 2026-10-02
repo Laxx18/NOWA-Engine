@@ -886,6 +886,7 @@ namespace NOWA
 		if (this->movingBehaviorPtr != nullptr && nullptr != this->movingBehaviorPtr->getPath())
 		{
 			this->movingBehaviorPtr->getPath()->clear();
+            unsigned short waypointsAdded = 0;
 			for (size_t i = 0; i < this->waypoints.size(); i++)
 			{
 				GameObjectPtr waypointGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->waypoints[i]->getULong());
@@ -896,14 +897,22 @@ namespace NOWA
 					{
 						// Add the way points
 						this->movingBehaviorPtr->getPath()->addWayPoint(nodeCompPtr->getPosition());
+                        waypointsAdded++;
 					}
 				}
 			}
 
-			this->movingBehaviorPtr->getPath()->setRepeat(this->repeat->getBool());
-			this->movingBehaviorPtr->getPath()->setDirectionChange(this->directionChange->getBool());
-			this->movingBehaviorPtr->getPath()->setInvertDirection(this->invertDirection->getBool());
-			this->movingBehaviorPtr->setGoalRadius(this->goalRadius->getReal());
+			if (waypointsAdded > 0)
+            {
+                this->movingBehaviorPtr->getPath()->setRepeat(this->repeat->getBool());
+                this->movingBehaviorPtr->getPath()->setDirectionChange(this->directionChange->getBool());
+                this->movingBehaviorPtr->getPath()->setInvertDirection(this->invertDirection->getBool());
+                this->movingBehaviorPtr->setGoalRadius(this->goalRadius->getReal());
+            }
+			else
+			{
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AiPathFollowComponent] pathfollow will not work, because no waypoints have been added for game object: " + this->gameObjectPtr->getName());
+			}
 		}
 		
 		return success;

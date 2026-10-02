@@ -16,6 +16,109 @@
 #include "OgreSubMesh2.h"
 #include "Vao/OgreVertexArrayObject.h"
 
+namespace
+{
+    void removeDuplicateVertices(std::vector<Ogre::Vector3>& v)
+    {
+        const Ogre::Real q = 1.0e5f;
+        auto key = [q](const Ogre::Vector3& p)
+        {
+            return std::make_tuple(std::llround(p.x * q), std::llround(p.y * q), std::llround(p.z * q));
+        };
+        std::sort(v.begin(), v.end(),
+            [&key](const Ogre::Vector3& a, const Ogre::Vector3& b)
+            {
+                return key(a) < key(b);
+            });
+        v.erase(std::unique(v.begin(), v.end(),
+                    [&key](const Ogre::Vector3& a, const Ogre::Vector3& b)
+                    {
+                        return key(a) == key(b);
+                    }),
+            v.end());
+    }
+
+    // true, wenn die Punkte ein echtes 3D-Volumen aufspannen (Tetraeder-Test)
+    bool hasVolume(const std::vector<Ogre::Vector3>& v, Ogre::Real eps)
+    {
+        if (v.size() < 4)
+        {
+            return false;
+        }
+        const Ogre::Vector3& p0 = v[0];
+
+        size_t i1 = 0;
+        Ogre::Real best = 0.0f;
+        for (size_t i = 1; i < v.size(); ++i)
+        {
+            const Ogre::Real d = (v[i] - p0).squaredLength();
+            if (d > best)
+            {
+                best = d;
+                i1 = i;
+            }
+        }
+        if (best < eps * eps)
+        {
+            return false;
+        }
+        Ogre::Vector3 dir = v[i1] - p0;
+        dir.normalise();
+
+        size_t i2 = 0;
+        best = 0.0f;
+        for (size_t i = 1; i < v.size(); ++i)
+        {
+            const Ogre::Vector3 d = v[i] - p0;
+            const Ogre::Real l = (d - dir * d.dotProduct(dir)).squaredLength();
+            if (l > best)
+            {
+                best = l;
+                i2 = i;
+            }
+        }
+        if (best < eps * eps)
+        {
+            return false;
+        }
+        Ogre::Vector3 n = dir.crossProduct(v[i2] - p0);
+        n.normalise();
+
+        best = 0.0f;
+        for (size_t i = 1; i < v.size(); ++i)
+        {
+            best = std::max(best, Ogre::Math::Abs(n.dotProduct(v[i] - p0)));
+        }
+        return best >= eps;
+    }
+
+    // 8 Eckpunkte einer Box, die vom Bone-Ursprung in Richtung 'endPoint' zeigt
+    void buildBoneAxisHull(const Ogre::Vector3& endPoint, std::vector<Ogre::Vector3>& out)
+    {
+        Ogre::Real length = endPoint.length();
+        Ogre::Vector3 axis = Ogre::Vector3::UNIT_X;
+        if (length > 1.0e-4f)
+        {
+            axis = endPoint / length;
+        }
+        length = std::max(length, 0.05f);
+        const Ogre::Real radius = std::max(0.02f, length * 0.25f);
+        const Ogre::Quaternion rot = Ogre::Vector3::UNIT_X.getRotationTo(axis);
+
+        out.clear();
+        for (int x = 0; x < 2; ++x)
+        {
+            for (int y = 0; y < 2; ++y)
+            {
+                for (int z = 0; z < 2; ++z)
+                {
+                    out.push_back(rot * Ogre::Vector3(x ? length : 0.0f, y ? radius : -radius, z ? radius : -radius));
+                }
+            }
+        }
+    }
+}
+
 namespace NOWA
 {
     using namespace rapidxml;
@@ -514,14 +617,31 @@ namespace NOWA
 
         // okay, we have gathered all verts for this bone, make a convex hull!
         unsigned int numVerts = static_cast<unsigned int>(vertexVector.size());
-        if (0 == numVerts)
+
+        // Degeneriert = zu wenige Punkte oder (fast) flach/linienförmig -> Newton baut keinen gültigen Hull
+        bool degenerate = numVerts < 4;
+        if (false == degenerate)
         {
-            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsComponent] Can not generate convex hull from bone weight for bone: '" + bone->getName() + "' and game object: '" + this->gameObjectPtr->getName() +
-                                                                                "', because there are no bone assigned vertices, hence creating a box hull.");
-            OgreNewt::CollisionPrimitives::Box* tempCol = new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, Ogre::Vector3(0.1f, 0.1f, 0.1f) * bonescale, categoryId, boneOrientation, bonePosition);
+            Ogre::Vector3 minV = vertexVector[0];
+            Ogre::Vector3 maxV = vertexVector[0];
+            for (const Ogre::Vector3& v : vertexVector)
+            {
+                minV.makeFloor(v);
+                maxV.makeCeil(v);
+            }
+            const Ogre::Vector3 ext = maxV - minV;
+            const Ogre::Real eps = 1e-3f;
+            degenerate = (ext.x < eps || ext.y < eps || ext.z < eps);
+        }
+
+        if (true == degenerate)
+        {
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsComponent] Degenerate hull for bone: '" + boneName + "' (" + Ogre::StringConverter::toString(numVerts) + " verts, minWeight " +
+                                                                                Ogre::StringConverter::toString(minWeight) + "), game object: '" + this->gameObjectPtr->getName() + "', creating box hull.");
+
+            OgreNewt::CollisionPrimitives::Box* tempCol = new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, Ogre::Vector3(0.1f, 0.1f, 0.1f) * scale, categoryId, offsetOrientation, offsetPosition);
             tempCol->calculateInertialMatrix(inertia, massOrigin);
-            OgreNewt::CollisionPtr col = OgreNewt::CollisionPtr(tempCol);
-            return col;
+            return OgreNewt::CollisionPtr(tempCol);
         }
         Ogre::Vector3* verts = new Ogre::Vector3[numVerts];
         unsigned int j = 0;
@@ -790,6 +910,18 @@ namespace NOWA
         skelInstance->resetToPose();
         skelInstance->update();
 
+        std::vector<Ogre::Vector3> childBindPositions;
+        for (size_t idx = 0; idx < numBones; idx++)
+        {
+            Ogre::Bone* candidate = skelInstance->getBone(idx);
+            if (candidate->getParent() == bone)
+            {
+                Ogre::Matrix4 childMat;
+                candidate->_getLocalSpaceTransform().store(&childMat);
+                childBindPositions.push_back(childMat.getTrans());
+            }
+        }
+
         // Do NOT use _getFullTransform() here. In Ogre-Next that is the SKINNING matrix
         // (derived * inverseBindPose), which right after resetToPose() is the identity matrix by
         // definition - invMatrix would then not transform into bone space at all and the hull would
@@ -841,43 +973,70 @@ namespace NOWA
         invMatrix.makeInverseTransform(bonePosition, boneScale, boneOrientation);
 
         // Extract vertices
-        unsigned int numSubMeshes = mesh->getNumSubMeshes();
-        for (unsigned int subMeshIdx = 0; subMeshIdx < numSubMeshes; ++subMeshIdx)
+        // Gewichts-Stufen: erst der Wert aus der .rag, dann schrittweise weicher
+        std::vector<Ogre::Real> thresholds;
+        thresholds.push_back(minWeight);
+        const Ogre::Real steps[] = {0.35f, 0.2f, 0.1f, 0.02f};
+        for (Ogre::Real s : steps)
         {
-            const Ogre::SubMesh* subMesh = mesh->getSubMesh(subMeshIdx);
-            const Ogre::VertexArrayObjectArray& vaos = subMesh->mVao[Ogre::VpNormal];
-
-            for (const Ogre::VertexArrayObject* vao : vaos)
+            if (s < thresholds.back())
             {
-                this->extractVerticesFromVAO(vao, boneIndex, minWeight, invMatrix, vertexVector);
+                thresholds.push_back(s);
             }
         }
 
-        unsigned int numVerts = static_cast<unsigned int>(vertexVector.size());
-        if (0 == numVerts)
-        {
-            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL,
-                "[PhysicsComponent] Can not generate convex hull from bone weight for bone: '" + boneName + "' and game object: '" + this->gameObjectPtr->getName() + "', because there are no bone assigned vertices, hence creating a box hull.");
+        const unsigned int numSubMeshes = mesh->getNumSubMeshes();
+        bool valid = false;
+        Ogre::Real usedWeight = minWeight;
 
-            OgreNewt::CollisionPrimitives::Box* tempCol = new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, Ogre::Vector3(0.1f, 0.1f, 0.1f) * boneScale, categoryId, boneOrientation, bonePosition);
-            tempCol->calculateInertialMatrix(inertia, massOrigin);
-            return OgreNewt::CollisionPtr(tempCol);
+        for (Ogre::Real threshold : thresholds)
+        {
+            vertexVector.clear();
+            for (unsigned int subMeshIdx = 0; subMeshIdx < numSubMeshes; ++subMeshIdx)
+            {
+                const Ogre::SubMesh* subMesh = mesh->getSubMesh(subMeshIdx);
+                const Ogre::VertexArrayObjectArray& vaos = subMesh->mVao[Ogre::VpNormal];
+
+                for (const Ogre::VertexArrayObject* vao : vaos)
+                {
+                    this->extractVerticesFromVAO(vao, boneIndex, threshold, invMatrix, vertexVector);
+                }
+            }
+            removeDuplicateVertices(vertexVector);
+
+            if (true == hasVolume(vertexVector, 2.0e-3f))
+            {
+                valid = true;
+                usedWeight = threshold;
+                break;
+            }
         }
 
-        Ogre::Vector3* verts = new Ogre::Vector3[numVerts];
-        for (unsigned int i = 0; i < numVerts; ++i)
+        if (false == valid)
         {
-            verts[i] = vertexVector[i];
+            // Bone hat keine (brauchbaren) Vertices: Hull entlang der Bone-Achse zu den Kindern
+            Ogre::Vector3 endPoint = Ogre::Vector3::ZERO;
+            if (false == childBindPositions.empty())
+            {
+                for (const Ogre::Vector3& childPos : childBindPositions)
+                {
+                    endPoint += invMatrix * childPos;
+                }
+                endPoint /= static_cast<Ogre::Real>(childBindPositions.size());
+            }
+            buildBoneAxisHull(endPoint, vertexVector);
+
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsComponent] Bone '" + boneName + "' has no weighted volume, using synthetic axis hull. Game object: '" + this->gameObjectPtr->getName() + "'");
+        }
+        else
+        {
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_NORMAL,
+                "[PhysicsComponent] Bone '" + boneName + "': " + Ogre::StringConverter::toString(vertexVector.size()) + " unique verts at weight " + Ogre::StringConverter::toString(usedWeight));
         }
 
-        // Apply the offsets here, like v1 does
-        OgreNewt::CollisionPrimitives::ConvexHull* tempCol = new OgreNewt::CollisionPrimitives::ConvexHull(this->ogreNewt, verts, numVerts, categoryId, offsetOrientation, offsetPosition);
+        OgreNewt::CollisionPrimitives::ConvexHull* tempCol = new OgreNewt::CollisionPrimitives::ConvexHull(this->ogreNewt, vertexVector.data(), static_cast<unsigned int>(vertexVector.size()), categoryId, offsetOrientation, offsetPosition);
         tempCol->calculateInertialMatrix(inertia, massOrigin);
-        OgreNewt::CollisionPtr col = OgreNewt::CollisionPtr(tempCol);
-
-        delete[] verts;
-
-        return col;
+        return OgreNewt::CollisionPtr(tempCol);
     }
 
     OgreNewt::CollisionPtr PhysicsComponent::serializeTreeCollision(const Ogre::String& scenePath, unsigned int categoryId, bool overwrite)

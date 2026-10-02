@@ -16887,7 +16887,7 @@ return {
 			{
 				type = "method",
 				description = "Releases this joint, so that it is no more connected with its predecessors and the joint is deleted. Note: This function is dangerous and may cause a crash, because an inconsistent behavior may happen.",
-				args = "()",
+				args = "(boolean resetPredecessorAndTarget)",
 				returns = "(nil)",
 				valuetype = "nil"
 			}

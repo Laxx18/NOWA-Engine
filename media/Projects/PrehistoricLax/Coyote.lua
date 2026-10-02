@@ -101,6 +101,8 @@ Coyote["onEnemyDead"] = function(eventData)
     if (eventData["hitDirection"].x < 0) then
         directionX = -1;
     end
+	
+	coyote:getSimpleSoundComponentFromName("Death"):setActivated(true);
 
     local ragDollComponent = coyote:getPhysicsRagDollComponentV2();
     ragDollComponent:setState("Ragdolling");

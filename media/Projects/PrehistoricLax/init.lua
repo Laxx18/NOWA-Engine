@@ -145,6 +145,17 @@ EnemyProfiles = {
         locomotionAnimation = "ANIM_WALK_NORTH",
         energyBarOffsetY = 2.0
     },
+    
+    -- Same as rhino, but more energy.
+    Elephant = {
+        level = 1, energy = 30, strength = 10, experience = 15,
+        attackImpactDelay = 0.45, attackDuration = 0.9, attackCooldown = 0.8,
+        attackReach = 1.2, attackReachVertical = 1,
+        playerKnockbackHorizontal = 8.0, playerKnockbackUp = 6.0, playerKnockbackTime = 0.3,
+        deathKnockbackHorizontal = 50.0, deathKnockbackUp = 40.0, deathDeleteDelay = 2.0,
+        locomotionAnimation = "ANIM_RUN",
+        energyBarOffsetY = 2.0
+    },
 
     -- A bit stronger and faster than the rhino. Its attack is the rolling charge (Roll_InPlace, 1.33 s).
     Coyote = {

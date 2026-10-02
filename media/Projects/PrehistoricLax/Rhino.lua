@@ -92,6 +92,8 @@ Rhino["onEnemyDead"] = function(eventData)
     if (eventData["hitDirection"].x < 0) then
         directionX = -1;
     end
+	
+	rhino:getSimpleSoundComponentFromName("Death"):setActivated(true);
 
     local ragDollComponent = rhino:getPhysicsRagDollComponentV2();
     ragDollComponent:setState("Ragdolling");

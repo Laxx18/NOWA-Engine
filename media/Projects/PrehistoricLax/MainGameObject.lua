@@ -34,8 +34,8 @@ MainGameObject["update"] = function(dt)
     end
 end
 
-MainGameObject["onPlayerWaterContact"] = function(gameObject0, gameObject1)
-    local player = nil;
+MainGameObject["onPlayerWaterContact"] = function(gameObject0, gameObject1, contact)
+     local player = nil;
     
     gameObject0 = AppStateManager:getGameObjectController():castGameObject(gameObject0);
     gameObject1 = AppStateManager:getGameObjectController():castGameObject(gameObject1);
@@ -47,10 +47,11 @@ MainGameObject["onPlayerWaterContact"] = function(gameObject0, gameObject1)
     end
     
     local waterParticle = player:getParticleFxComponentFromName("WaterParticle");
-    waterParticle:setGlobalPosition(player:getPosition());
-    waterParticle:setActivated(true);
-end
-
-MainGameObject["onPlayerWaterContact"] = function(gameObject0, gameObject1, contact)
-
+    --waterParticle:setGlobalPosition(player:getPosition());
+    
+    if (player:getPhysicsActiveComponent():getForce().x > 0.1) then
+        --if (waterParticle:isPlaying() == false or waterParticle:isActivated() == false) then
+            waterParticle:setActivated(true);
+        --end
+    end
 end

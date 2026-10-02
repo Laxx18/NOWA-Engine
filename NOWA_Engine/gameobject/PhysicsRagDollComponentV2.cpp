@@ -147,11 +147,15 @@ namespace NOWA
         clonedCompPtr->setGravity(this->gravity->getVector3());
         clonedCompPtr->setGravitySourceCategory(this->gravitySourceCategory->getString());
         clonedCompPtr->setConstraintDirection(this->constraintDirection->getVector3());
+        clonedCompPtr->setDensity(this->density->getReal());
 
         clonedCompPtr->setSpeed(this->speed->getReal());
         clonedCompPtr->setMaxSpeed(this->maxSpeed->getReal());
         clonedCompPtr->setCollisionType(this->collisionType->getListSelectedValue());
+        clonedCompPtr->setCollisionSize(this->collisionSize->getVector3());
+        clonedCompPtr->setCollisionPosition(this->collisionPosition->getVector3());
         clonedCompPtr->setCollisionDirection(this->collisionDirection->getVector3());
+        clonedCompPtr->setGyroscopicTorqueEnabled(this->gyroscopicTorque->getBool());
 
         clonedCompPtr->setActivated(this->activated->getBool());
         clonedCompPtr->setBoneConfigFile(this->boneConfigFile->getString());
@@ -2855,12 +2859,8 @@ namespace NOWA
                 // getWeightedBoneConvexHullV2 reads vertex data from the mesh VAO via
                 // mapAsyncTickets -- must run on the render thread so all pending
                 // immutable buffer uploads are committed before createAsyncTicket fires.
-                NOWA::GraphicsModule::RenderCommand renderCommand = [this, item, size, &inertia, &massOrigin, &collisionPtr, collisionPosition, collisionOrientation]()
-                {
-                    collisionPtr = this->physicsRagDollComponentV2->getWeightedBoneConvexHullV2(this->bone, item, size.x, inertia, massOrigin, this->physicsRagDollComponentV2->gameObjectPtr->getCategoryId(), collisionPosition, collisionOrientation,
-                        this->physicsRagDollComponentV2->initialScale);
-                };
-                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsRagDollComponentV2::createConvexHull");
+                collisionPtr = this->physicsRagDollComponentV2->getWeightedBoneConvexHullV2(this->bone, item, size.x, inertia, massOrigin, this->physicsRagDollComponentV2->gameObjectPtr->getCategoryId(), collisionPosition, collisionOrientation,
+                    this->physicsRagDollComponentV2->initialScale);
             }
             else
             {

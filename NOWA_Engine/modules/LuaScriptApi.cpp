@@ -7248,7 +7248,7 @@ namespace NOWA
         AddClassToCollection("JointComponent", "Vector3 getUpdatedJointPosition()", "Gets the updated joint position, which also may take a custom joint offset into account and does change, as the physics body does change its position.");
         AddClassToCollection("JointComponent", "void setJointRecursiveCollisionEnabled(bool enabled)", "Sets whether this joint should collide with its predecessors or not.");
         AddClassToCollection("JointComponent", "bool getJointRecursiveCollisionEnabled()", "Gets whether this joint should collide with its predecessors or not.");
-        AddClassToCollection("JointComponent", "void releaseJoint()",
+        AddClassToCollection("JointComponent", "void releaseJoint(bool resetPredecessorAndTarget)",
             "Releases this joint, so that it is no more connected with its predecessors and the joint is deleted. "
             "Note: This function is dangerous and may cause a crash, because an inconsistent behavior may happen.");
 

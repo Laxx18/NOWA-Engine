@@ -74,14 +74,29 @@ WeaponStick["onKinematicContact"] = function(otherGameObject)
     if (false == isPlayerAttacking) then
         do return end;
     end
+    
+     hitParticle:setGlobalPosition(stick:getPosition());
+     if (hitParticle:isPlaying() == false or hitParticle:isActivated() == false) then
+        hitParticle:setActivated(true);
+        hitSound:setActivated(true);
+     end
 
     otherGameObject = AppStateManager:getGameObjectController():castGameObject(otherGameObject);
     if (otherGameObject:getCategory() == "HeavyBrick") then
-       --todo: Later another weapon is required to set then on the heavybrick the mass to 10 and destroy it
-       -- For now and testing, set it here to
-       otherGameObject:getPhysicsActiveComponent():setMass(10);
-       hitSound:setActivated(true);
-       do return end;
+        -- The kinematic contact fires every physics frame while the bodies overlap: once per swing is enough.
+        local brickId = otherGameObject:getId();
+        if (true == alreadyHitThisSwing[brickId]) then
+            do return end;
+        end
+        alreadyHitThisSwing[brickId] = true;
+
+        --todo: Later another weapon is required to set then on the heavybrick
+        otherGameObject:getJointHingeComponent():releaseJoint(true);
+
+        -- Direction of the blow (from the player's facing), NOT brick minus stick position.
+        otherGameObject:getPhysicsActiveComponent():applyRequiredForceForVelocity(Vector3(attackDirectionX * 10, otherGameObject:getPhysicsActiveComponent():getGravity().y, 0));
+        AppStateManager:getGameObjectController():deleteDelayedGameObject(otherGameObject:getId(), 1);
+        do return end;
     end
     
     if (otherGameObject:getCategory() ~= "Enemy") then
@@ -118,11 +133,7 @@ WeaponStick["onKinematicContact"] = function(otherGameObject)
 
     log("[PrehistoricLax Weapon] Hit " .. otherGameObject:getName() .. " for " .. toString(damage) .. " -> energy: " .. toString(enemyEnergy));
 
-    hitParticle:setGlobalPosition(stick:getPosition());
-    if (hitParticle:isPlaying() == false or hitParticle:isActivated() == false) then
-        hitParticle:setActivated(true);
-    end
-    hitSound:setActivated(true);
+
 
     local hitDirection = Vector3(attackDirectionX, 0, 0);
 

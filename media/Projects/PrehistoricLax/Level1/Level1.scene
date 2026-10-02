@@ -2585,6 +2585,20 @@
 					<property type="2" name="MaxValue" data="20"/>
 					<property type="2" name="CurrentValue" data="20"/>
 					<property type="12" name="FaceCamera" data="true"/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data="Death"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="SoundName" data="Death12.wav"/>
+					<property type="6" name="Volume" data="100"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="12" name="Loop" data="false"/>
+					<property type="8" name="FadeInFadeOut" data="2 2"/>
+					<property type="12" name="Stream" data="false"/>
+					<property type="12" name="RelativeToListener" data="true"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -3181,6 +3195,20 @@
 					<property type="2" name="MaxValue" data="20"/>
 					<property type="2" name="CurrentValue" data="20"/>
 					<property type="12" name="FaceCamera" data="true"/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data="Death"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="SoundName" data="Death13.wav"/>
+					<property type="6" name="Volume" data="100"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="12" name="Loop" data="false"/>
+					<property type="8" name="FadeInFadeOut" data="2 2"/>
+					<property type="12" name="Stream" data="false"/>
+					<property type="12" name="RelativeToListener" data="true"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -4298,6 +4326,20 @@
 					<property type="2" name="MaxValue" data="20"/>
 					<property type="2" name="CurrentValue" data="20"/>
 					<property type="12" name="FaceCamera" data="true"/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data="Death"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="SoundName" data="Death13.wav"/>
+					<property type="6" name="Volume" data="100"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="12" name="Loop" data="false"/>
+					<property type="8" name="FadeInFadeOut" data="2 2"/>
+					<property type="12" name="Stream" data="false"/>
+					<property type="12" name="RelativeToListener" data="true"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -4407,6 +4449,20 @@
 					<property type="2" name="MaxValue" data="20"/>
 					<property type="2" name="CurrentValue" data="20"/>
 					<property type="12" name="FaceCamera" data="true"/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data="Death"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="SoundName" data="Death13.wav"/>
+					<property type="6" name="Volume" data="100"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="12" name="Loop" data="false"/>
+					<property type="8" name="FadeInFadeOut" data="2 2"/>
+					<property type="12" name="Stream" data="false"/>
+					<property type="12" name="RelativeToListener" data="true"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
 				</userData>
 			</item>
 		</node>

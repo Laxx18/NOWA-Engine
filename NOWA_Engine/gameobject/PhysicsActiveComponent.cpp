@@ -1412,6 +1412,11 @@ namespace NOWA
             mass = 1.0f;
         }
         this->mass->setValue(mass);
+        if (nullptr != this->physicsBody)
+        {
+            this->physicsBody->setMassMatrix(mass, this->savedInertia);
+            this->physicsBody->getMassMatrix(this->savedMass, this->savedInertia);
+        }
     }
 
     Ogre::Real PhysicsActiveComponent::getMass(void) const
@@ -1422,6 +1427,10 @@ namespace NOWA
     void PhysicsActiveComponent::setMassOrigin(const Ogre::Vector3& massOrigin)
     {
         this->massOrigin->setValue(massOrigin);
+        if (nullptr != this->physicsBody)
+        {
+            this->physicsBody->setCenterOfMass(massOrigin);
+        }
     }
 
     const Ogre::Vector3 PhysicsActiveComponent::getMassOrigin(void) const
@@ -1473,76 +1482,6 @@ namespace NOWA
         return this->speed->getReal();
     }
 
-#if 0
-	void PhysicsActiveComponent::setConstraintDirection(const Ogre::Vector3& constraintDirection)
-	{
-		this->releaseConstraintDirection();
-
-		this->constraintDirection->setValue(constraintDirection);
-		// Only set pin, if there is no constraint axis, because constraint axis also uses pin
-		if (nullptr != this->physicsBody && Ogre::Vector3::ZERO != this->constraintDirection->getVector3() && Ogre::Vector3::ZERO == this->constraintAxis->getVector3())
-		{
-			this->upVector = new OgreNewt::UpVector(this->physicsBody, this->constraintDirection->getVector3());
-		}
-		else
-		{
-			this->releaseConstraintDirection();
-			if (nullptr != this->planeConstraint)
-				this->planeConstraint->setPin(constraintDirection);
-		}
-	}
-
-	const Ogre::Vector3 PhysicsActiveComponent::getConstraintDirection(void) const
-	{
-		return this->constraintDirection->getVector3();
-	}
-
-	void PhysicsActiveComponent::releaseConstraintDirection(void)
-	{
-		if (nullptr != this->upVector)
-		{
-			this->upVector->destroyJoint(this->ogreNewt);
-			delete this->upVector;
-			this->upVector = nullptr;
-		}
-	}
-
-	void PhysicsActiveComponent::setConstraintAxis(const Ogre::Vector3& constraintAxis)
-	{
-		this->releaseConstraintAxis();
-		
-		// Representantive axis
-		// E.g. 0 0 1, means motion is possible on x,y axis
-		this->constraintAxis->setValue(constraintAxis);
-
-		if (nullptr != this->physicsBody && Ogre::Vector3::ZERO != this->constraintAxis->getVector3())
-		{
-			// If constraint axis is set, release the constraint direction joint, because a special plane and up vector will be used, 
-			// so that game object will be moved on plane and can still be rotated around y-axis
-			this->releaseConstraintDirection();
-
-			this->planeConstraint = new OgreNewt::Plane2DUpVectorJoint(this->physicsBody, this->physicsBody->getPosition(), this->constraintAxis->getVector3(), this->constraintDirection->getVector3());
-		}
-		else
-		{
-			this->releaseConstraintAxis();
-		}
-	}
-
-	void PhysicsActiveComponent::releaseConstraintAxis(void)
-	{
-		if (nullptr != this->planeConstraint)
-		{
-			this->planeConstraint->destroyJoint(this->ogreNewt);
-			delete this->planeConstraint;
-			this->planeConstraint = nullptr;
-		}
-		// If plane has been release, it could be, that pinning should still be active, so set pin again, for just up vector
-		this->setConstraintDirection(this->constraintDirection->getVector3());
-	}
-#endif
-
-#if 1
     void PhysicsActiveComponent::setConstraintDirection(const Ogre::Vector3& constraintDirection)
     {
         if (true == constraintDirection.isZeroLength())
@@ -1603,7 +1542,6 @@ namespace NOWA
             this->planeConstraint = nullptr;
         }
     }
-#endif
 
     void PhysicsActiveComponent::releaseConstraintAxisPin(void)
     {
