@@ -35,14 +35,14 @@
 		<fog mode="none" start="0" end="0" density="0"/>
 		<bounds mostLeftNearPosition="0 -1 -16.5203" mostRightFarPosition="100 21.08 -5"/>
 	</environment>
-	<OgreNewt solverModel="4" threadCount="4" desiredFps="144" defaultLinearDamping="0.1">
+	<OgreNewt solverModel="4" threadCount="4" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
 		<globalGravity x="0" y="-19.8" z="0"/>
 	</OgreNewt>
 	<nodes>
 		<node name="MainCamera" id="4010617415">
-			<position x="7.70829" y="5.01783" z="0.700381"/>
-			<rotation qw="0.999867" qx="0.011532" qy="-0.0115319" qz="0.000133735"/>
+			<position x="6.27241" y="4.55782" z="-0.381073"/>
+			<rotation qw="0.995509" qx="-0.0325435" qy="0.0888509" qz="0.00289687"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -72,8 +72,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="7.70829 5.01783 0.700381"/>
-					<property type="9" name="CameraOrientation" data="1.32159 -1.32158 8.37355e-05"/>
+					<property type="9" name="CameraPosition" data="6.27241 4.55782 -0.381073"/>
+					<property type="9" name="CameraOrientation" data="-3.74462 10.2005 -0.000880065"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -94,6 +94,7 @@
 					<property type="12" name="UsePlanarReflection" data="false"/>
 					<property type="12" name="UseSSAO" data="false"/>
 					<property type="12" name="UseDistortion" data="false"/>
+					<property type="12" name="UseWaterVolume" data="false"/>
 					<property type="12" name="UseMSAA" data="false"/>
 					<property type="12" name="UsePCC" data="false"/>
 					<property type="12" name="UseTerra" data="false"/>
@@ -108,7 +109,7 @@
 			</item>
 		</node>
 		<node name="SunLight" id="1479238507">
-			<position x="100" y="21.08" z="-5"/>
+			<position x="100" y="37.7573" z="-5"/>
 			<rotation qw="0.880476" qx="-0.364705" qy="0.279848" qz="-0.115916"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
@@ -267,6 +268,7 @@
 					<property type="12" name="UsePlanarReflection" data="false"/>
 					<property type="12" name="UseSSAO" data="false"/>
 					<property type="12" name="UseDistortion" data="false"/>
+					<property type="12" name="UseWaterVolume" data="false"/>
 					<property type="12" name="UseMSAA" data="false"/>
 					<property type="12" name="UsePCC" data="false"/>
 					<property type="12" name="UseTerra" data="false"/>
@@ -4463,6 +4465,47 @@
 					<property type="12" name="RelativeToListener" data="true"/>
 					<property type="12" name="PlayWhenInMotion" data="false"/>
 					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
+				</userData>
+			</item>
+		</node>
+		<node name="PlayerStart" id="658613692">
+			<position x="2.33131" y="1.1615" z="-7"/>
+			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="PlayerStart" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2655496418"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Show" data="true"/>
+					<property type="7" name="ComponentPlayerStartComponent" data="PlayerStartComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="2" name="TargetId" data="3173747901"/>
 				</userData>
 			</item>
 		</node>

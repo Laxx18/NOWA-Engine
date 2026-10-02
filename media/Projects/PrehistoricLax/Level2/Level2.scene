@@ -3965,7 +3965,7 @@
 					<property type="7" name="Id" data="2107360216"/>
 					<property type="7" name="Category" data="Item"/>
 					<property type="7" name="RenderCategory" data="All"/>
-					<property type="7" name="TagName" data="Meat"/>
+					<property type="7" name="TagName" data="Energy"/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>

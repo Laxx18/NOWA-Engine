@@ -2,8 +2,8 @@
 <scene formatVersion="1.1.0" generator="NOWA-Engine">
 	<nodes>
 		<node name="PrehistoricLax" id="3286738008">
-			<position x="1.35372" y="36.3279" z="-7"/>
-			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
+			<position x="98.442" y="2.10338" z="-7"/>
+			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="PrehistoricLax" meshFile="PrehistoricLaxBoy.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="PrehistoricLaxBoy"/>
@@ -312,8 +312,8 @@
 			</item>
 		</node>
 		<node name="WeaponStick" id="3232914531">
-			<position x="1.57056" y="37.0987" z="-6.36726"/>
-			<rotation qw="0.742635" qx="-0.490219" qy="0.314747" qz="-0.330322"/>
+			<position x="98.2252" y="2.87418" z="-7.63274"/>
+			<rotation qw="0.314747" qx="0.330322" qy="-0.742635" qz="-0.490219"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="WeaponStick" meshFile="monster_item_cudgel.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="items_mat.004"/>

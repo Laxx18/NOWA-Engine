@@ -2859,19 +2859,18 @@ namespace NOWA
                 // getWeightedBoneConvexHullV2 reads vertex data from the mesh VAO via
                 // mapAsyncTickets -- must run on the render thread so all pending
                 // immutable buffer uploads are committed before createAsyncTicket fires.
-                collisionPtr = this->physicsRagDollComponentV2->getWeightedBoneConvexHullV2(this->bone, item, size.x, inertia, massOrigin, this->physicsRagDollComponentV2->gameObjectPtr->getCategoryId(), collisionPosition, collisionOrientation,
-                    this->physicsRagDollComponentV2->initialScale);
+                NOWA::GraphicsModule::RenderCommand renderCommand = [this, item, size, &inertia, &massOrigin, collisionPosition, collisionOrientation, &collisionPtr]()
+                {
+                    collisionPtr = this->physicsRagDollComponentV2->getWeightedBoneConvexHullV2(this->bone, item, size.x, inertia, massOrigin, this->physicsRagDollComponentV2->gameObjectPtr->getCategoryId(), collisionPosition, collisionOrientation,
+                        this->physicsRagDollComponentV2->initialScale);
+                };
+                NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsRagDollComponentV2::RagBone::BS_CONVEXHULL");
             }
             else
             {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsRagDollComponentV2] Error: Cannot create a convex hull for partial ragdoll "
-                                                                                    "with no bone for game object: " +
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsRagDollComponentV2] Error: Cannot create a convex hull for partial ragdoll with no bone for game object: " +
                                                                                         this->physicsRagDollComponentV2->getOwner()->getName());
-                throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE,
-                    "[PhysicsRagDollComponentV2] Error: Cannot create a convex hull for partial ragdoll "
-                    "with no bone for game object: " +
-                        this->physicsRagDollComponentV2->getOwner()->getName() + "\n",
-                    "NOWA");
+                throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[PhysicsRagDollComponentV2] Error: Cannot create a convex hull for partial ragdoll with no bone for game object: " + this->physicsRagDollComponentV2->getOwner()->getName() + "\n", "NOWA");
             }
             break;
         }

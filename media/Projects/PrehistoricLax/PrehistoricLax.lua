@@ -719,7 +719,7 @@ PrehistoricLax["connect"] = function(gameObject)
                 coins:setValueNumber(coins:getValueNumber() + 1);
                 moneySound:setActivated(true);
                 updateHud();
-            elseif (otherGameObject:getTagName() == "Meat") then
+            elseif (otherGameObject:getTagName() == "Energy") then
                 AppStateManager:getGameObjectController():deleteGameObject(otherGameObject:getId());
                 prehistoricLax:getSimpleSoundComponentFromName("Energy"):setActivated(true);
                 setEnergy(getEnergy() + ENERGY_PICKUP_AMOUNT);
