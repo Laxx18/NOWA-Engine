@@ -3825,6 +3825,142 @@ return {
 				args = "()",
 				returns = "(Vector3)",
 				valuetype = "Vector3"
+			},
+			setZoom =
+			{
+				type = "method",
+				description = "Sets the framing. 1.0 is the authored one, below 1 moves closer, above 1 pulls back. Implemented by scaling the distance to the play plane, not the field of view, so the perspective never breathes. blendTime in seconds, 0 snaps.",
+				args = "(number zoom, number blendTime)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getZoom =
+			{
+				type = "function",
+				description = "Gets the scripted zoom, without the camera zone and the punch folded in.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getAppliedZoom =
+			{
+				type = "function",
+				description = "Gets the zoom actually in effect this frame: scripted zoom times the zone the player stands in times the current punch.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			addCameraZone =
+			{
+				type = "method",
+				description = "Adds or retunes a rectangular zone in the play plane that imposes its own zoom while the player is inside it: narrow corridors below 1, halls above 1. The zone zoom multiplies the scripted zoom. Adding the same id again replaces that zone.",
+				args = "(string zoneId, number minimumX, number minimumY, number maximumX, number maximumY, number zoom)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			removeCameraZone =
+			{
+				type = "method",
+				description = "Removes one camera zone by id.",
+				args = "(string zoneId)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			clearCameraZones =
+			{
+				type = "method",
+				description = "Removes every camera zone, e.g. when unloading a room set.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			impact =
+			{
+				type = "method",
+				description = "One call for a hit, strength 0 to 1: scales shake, punch zoom and hitstop together off that single number. Prefer this over the three separate calls - tuning them per call site is how a light hit ends up shaking harder than a heavy one.",
+				args = "(number strength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			addShake =
+			{
+				type = "method",
+				description = "Adds shake trauma, which decays on its own. Accumulates and is applied squared, so several hits in a row build into a real jolt. 0.15 light, 0.35 solid, 0.7 explosion.",
+				args = "(number strength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getShakeTrauma =
+			{
+				type = "function",
+				description = "Current shake trauma, 0 to 1. Useful to avoid stacking a second effect on top of a shake that is already at full strength.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			punchZoom =
+			{
+				type = "method",
+				description = "A short self-decaying zoom kick. amount is relative: -0.08 snaps 8 percent closer, which is the usual direction for a hit. duration 0.12 to 0.2 reads as an impact, longer reads as a zoom.",
+				args = "(number amount, number duration)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			startHitstop =
+			{
+				type = "method",
+				description = "Freezes the camera follow for a moment while the shake and the punch keep running - the world stops, the lens does not. 0.05 to 0.12 seconds. This freezes the camera only; freezing the simulation is the game logic's job.",
+				args = "(number duration)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setLookaheadSmooth =
+			{
+				type = "method",
+				description = "Low pass factor for the lookahead, 0 to 1. Separate from the camera's own smooth value on purpose: a lead that snaps reads as a twitch on every direction tap.",
+				args = "(number smooth)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getLookaheadSmooth =
+			{
+				type = "function",
+				description = "Gets the lookahead low pass factor.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setEdgeOrthographic =
+			{
+				type = "method",
+				description = "Morphs towards an orthographic projection while the camera is clamped at a horizontal bound and the player walks further out, so a wall in front of the play plane cannot swallow him. Off by default: going orthographic collapses the parallax between depth layers, so background and foreground bands visibly slide during the blend.",
+				args = "(boolean enabled)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getEdgeOrthographic =
+			{
+				type = "function",
+				description = "Whether the orthographic edge morph is enabled.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setEdgeOrthoBlendTime =
+			{
+				type = "method",
+				description = "Seconds the orthographic morph takes each way. 0 restores the old hard switch, which is where the pop came from.",
+				args = "(number blendTime)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getEdgeOrthoBlendTime =
+			{
+				type = "function",
+				description = "Gets the orthographic morph blend time.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
 			}
 		}
 	},
@@ -11543,6 +11679,22 @@ return {
 				returns = "(ProceduralConveyorLoopComponent)",
 				valuetype = "ProceduralConveyorLoopComponent"
 			},
+			getProceduralDecorBandComponent =
+			{
+				type = "function",
+				description = "Gets the ProceduralDecorBandComponent from this GameObject.",
+				args = "()",
+				returns = "(ProceduralDecorBandComponent)",
+				valuetype = "ProceduralDecorBandComponent"
+			},
+			getProceduralDecorBandComponentFromName =
+			{
+				type = "function",
+				description = "Gets a named ProceduralDecorBandComponent from this GameObject.",
+				args = "(string name)",
+				returns = "(ProceduralDecorBandComponent)",
+				valuetype = "ProceduralDecorBandComponent"
+			},
 			getProceduralFlowCurtainComponent =
 			{
 				type = "function",
@@ -13926,6 +14078,14 @@ return {
 				args = "(ProceduralConveyorLoopComponent other)",
 				returns = "(ProceduralConveyorLoopComponent)",
 				valuetype = "ProceduralConveyorLoopComponent"
+			},
+			castProceduralDecorBandComponent =
+			{
+				type = "function",
+				description = "Casts for Lua auto-completion support.",
+				args = "(ProceduralDecorBandComponent other)",
+				returns = "(ProceduralDecorBandComponent)",
+				valuetype = "ProceduralDecorBandComponent"
 			},
 			castProceduralFlowCurtainComponent =
 			{
@@ -30768,6 +30928,111 @@ return {
 				args = "()",
 				returns = "(string)",
 				valuetype = "string"
+			}
+		}
+	},
+	ProceduralDecorBandComponent =
+	{
+		type = "class",
+		description = "Usage: Fills a rectangular band with procedurally generated rock silhouettes, for dressing 2.5D levels - foreground occluders between camera and player, and ridges behind him.  LAYOUT: - The band is a rectangle in this GameObject's own XY plane, centred on its node. Move,   rotate and scale the object to place it; there is nothing to click or draw. - 'Band Width' is its horizontal extent. 'Columns' is how many rock clusters fit across. - 'Grow Direction' picks the axis the rock height grows along: Up (+Y) for rocks standing   on a floor, Down (-Y) for stalactites on a ceiling, Towards Camera (-Z) or Away From   Camera (+Z) for mats growing out of the play plane. The band always runs along local X. - 'Rows' are DEPTH, not stacking. Row 0 sits on the object's own plane, every further row   is pushed along the remaining axis by 'Row Depth Spacing', scaled by 'Row Scale' and   shaded towards 'Back Brightness'. Overlapping rows at different brightness are what read   as a ridge; more rocks at one brightness only read as noise. - 'Row Depth Spacing' may be NEGATIVE. With Grow Direction Up, the camera looks along +Z,   so a negative value brings the rows TOWARDS the camera - which is what a foreground   occluder band in front of the player wants. Positive pushes them away, behind him.   Row 0 always stays on the object's own plane, so with a negative spacing row 0 is the   REARMOST row: swap Front and Back Brightness in that case.  SHAPE: - 'Rock Style': Jagged (broken cave rock), Rounded (weathered humps), Columnar (flat   topped basalt steps), Stalagmite (one narrow spike per cell). - 'Rock Height' is the height of a row 0 cluster, before variation. - 'Rock Depth' is how thick each cluster is. Keep it small for foreground bands:   they are silhouettes, nobody sees their sides. - 'Rock Width Scale' above 1 makes neighbouring clusters overlap, which is what removes   the regular gaps that give a grid away. 1.35 is a good starting point. A cluster is   never allowed to end up narrower than its cell plus the jitter, so this value cannot   open a gap however it is combined with Width Jitter. - 'Base Fill' is the fraction of Rock Height the outline never drops below. At 0 the   Rounded and Stalagmite outlines fall to zero at their edges, so two overlapping   clusters meet at zero height and a notch shows through anyway. 0.3-0.4 welds the band   into a continuous ridge; use 0 for free standing spikes with real sky between them. - 'Height Variation' and 'Width Jitter' break the grid up; without them a band reads as   wallpaper however good the individual rock is. - 'Density' below 1 drops random clusters, leaving gaps to see through. - 'Profile Points' is the outline resolution per cluster. 8-16 is plenty for a silhouette. - 'Row Scale' shrinks the back rows in HEIGHT and DEPTH only, never in width - scaling the   width without scaling the cell spacing would open a gap in every row behind the first.  SHADING: - 'Front Brightness' and 'Back Brightness' multiply the datablock's diffuse for the first   and last row, with the rows in between interpolated. This is the whole point of the   component: a foreground occluder wants roughly 0.1, a background ridge 0.3-0.5, while   the play plane stays at full brightness. Scene fog then does the rest. - The datablock is CLONED per row, so the original and everything else using it stay   untouched.  DETERMINISM: - 'Seed' picks the layout. The same seed always gives the same band, on every machine,   so nothing of the geometry is ever written to the scene file - only these attributes.  LUA API: - getProceduralDecorBandComponent() on a GameObject returns this component. - setSeed(s), setDensity(d), setRockHeight(h), setFrontBrightness(b), setBackBrightness(b). - setBrightness(front, back) changes only materials and needs no rebuild. - regenerate() rebuilds the band after changing several values at once. ",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Activates or deactivates the band. Deactivating destroys its geometry.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setSeed =
+			{
+				type = "method",
+				description = "Sets the layout seed and rebuilds. The same seed always gives the same band.",
+				args = "(number seed)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setDensity =
+			{
+				type = "method",
+				description = "Fraction of cells that get a rock cluster, 0 to 1. Rebuilds.",
+				args = "(number density)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setRockHeight =
+			{
+				type = "method",
+				description = "Height of a row 0 cluster in meters. Rebuilds.",
+				args = "(number height)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setRockStyle =
+			{
+				type = "method",
+				description = "Sets the cluster outline: 'Jagged', 'Rounded', 'Columnar' or 'Stalagmite'. Rebuilds.",
+				args = "(string style)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setGrowDirection =
+			{
+				type = "method",
+				description = "Axis the rock height grows along: 'Up (+Y)', 'Down (-Y)', 'Towards Camera (-Z)' or 'Away From Camera (+Z)'. The remaining axis carries the cluster thickness and the row offsets. Rebuilds.",
+				args = "(string direction)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setBaseFill =
+			{
+				type = "method",
+				description = "Fraction of Rock Height the outline never drops below, 0 to 1. Keeps overlapping clusters welded into one ridge instead of meeting at zero height. Rebuilds.",
+				args = "(number fill)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setRowDepthSpacing =
+			{
+				type = "method",
+				description = "Offset per depth row along the free axis. Negative brings the rows towards the camera, positive pushes them away. Rebuilds.",
+				args = "(number spacing)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setFrontBrightness =
+			{
+				type = "method",
+				description = "Diffuse multiplier for the first row. Material only, no rebuild - the datablock is cloned per row so the original stays untouched.",
+				args = "(number brightness)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setBackBrightness =
+			{
+				type = "method",
+				description = "Diffuse multiplier for the last row, rows between interpolated. Material only, no rebuild.",
+				args = "(number brightness)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setBrightness =
+			{
+				type = "method",
+				description = "Both brightness values in one call and one render command. Cheap enough to drive per frame, e.g. to fade a foreground band out while the player stands behind it.",
+				args = "(number front, number back)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			regenerate =
+			{
+				type = "method",
+				description = "Rebuilds the band. Only needed to collapse several changes into one rebuild.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
 			}
 		}
 	},

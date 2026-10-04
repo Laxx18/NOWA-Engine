@@ -363,7 +363,10 @@ namespace NOWA
 
 	void PhysicsTriggerComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		static_cast<OgreNewt::TriggerBody*>(this->physicsBody)->integrateVelocity(dt);
+        if (false == notSimulating)
+        {
+            static_cast<OgreNewt::TriggerBody*>(this->physicsBody)->integrateVelocity(dt);
+        }
 	}
 
 	void PhysicsTriggerComponent::actualizeValue(Variant* attribute)

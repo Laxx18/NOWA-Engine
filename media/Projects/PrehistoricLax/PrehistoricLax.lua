@@ -9,6 +9,7 @@ require("init");
 -- into ("variables created in connect are out of scope in WalkState execute").
 local prehistoricLax = nil;
 local cameraComponent = nil;
+local followCamera2DComponent = nil;
 local areaOfInterestComponent = nil;
 local attributesComponent = nil;
 local mainGameObject = nil;
@@ -109,8 +110,9 @@ local ATTACK_SPEED = 1.0;
 -- Fade in / out of the overlay. Short, but not zero - a hard cut makes the arm jump.
 local ATTACK_BLEND_IN = 0.08;
 
--- The part of the swing that actually hurts, as a fraction of the punch clip. Used for the trade
--- rule against enemy attacks.
+-- The part of the swing that actually hurts, as a fraction of the punch clip. This is the ONE
+-- damage window: the trade rule against enemy attacks AND the PlayerAttackEvent the cudgel script
+-- listens to both read it, so the two can never disagree about when the swing is dangerous.
 local ATTACK_HIT_START = 0.35;
 local ATTACK_HIT_END = 0.75;
 
@@ -119,6 +121,14 @@ local ATTACK_TIMEOUT = 2.0;
 
 local isAttacking = false;
 local attackTime = 0;
+
+-- True while the swing is inside its damage window. This used to be the whole lifetime of the
+-- overlay, which is where the long echo came from: the overlay stays active until the clip is
+-- finished AND faded out, so PlayerAttackEvent kept isActive true long after the weapon had
+-- visibly come to rest. The attackId only stops the SAME enemy from being hurt twice per swing,
+-- so a second enemy walking into that tail still got hit. The window below is what the cudgel
+-- sees now.
+local attackHitActive = false;
 
 ---------------------------------------------------------------------------------------------------
 -- Enemy combat
@@ -140,6 +150,11 @@ local attackTime = 0;
 local invulnerableTimer = 0;
 local blinkTimer = 0;
 local playerBlinkVisible = true;
+
+-- Throttle for the danger contact shake. onPlayerDangerContact fires every frame of contact, and
+-- a shake per frame is not a shake - the trauma never gets a chance to decay, so it pins at full
+-- strength and reads as a permanent rumble instead of as standing in something that hurts.
+local dangerShakeTimer = 0;
 
 -- Set by hitPlayer, used by the KnockbackState.
 local knockbackVelocityX = 0;
@@ -234,6 +249,10 @@ function addExperience(amount)
     if (true == hasLevelUp) then
         setEnergy(getMaxEnergy(getLevel()));
         log("[PrehistoricLax] Level up -> level: " .. getLevel() .. " strength: " .. strength:getValueNumber() .. " max energy: " .. getMaxEnergy(getLevel()));
+
+        -- A POSITIVE punch, so the camera breathes outwards and comes back. No shake: a level up
+        -- is good news, and shake always reads as damage no matter what triggered it.
+        followCamera2DComponent:punchZoom(CameraFx.levelUpPunch, CameraFx.levelUpPunchTime);
     end
 
     updateHud();
@@ -299,6 +318,12 @@ function hitPlayer(sourcePosition, profile)
     end
     hurtSound:setActivated(true);
 
+    -- Shake, punch zoom and hitstop in one call, scaled by how much of the energy bar the blow
+    -- just took. A fixed value per hit would make a coyote nip and a boss slam feel identical,
+    -- which is the one thing this effect exists to prevent.
+    local hitSeverity = profile.strength / getMaxEnergy(getLevel());
+    followCamera2DComponent:impact(CameraFx.playerHitBase + CameraFx.playerHitScale * hitSeverity);
+
     log("[PrehistoricLax] Player hit for " .. toString(profile.strength) .. " -> energy: " .. toString(getEnergy()));
 
     -- The last hit: applyDamage already requested the RagDollState, which takes over from here.
@@ -350,14 +375,11 @@ function isPlayerInReach(enemyGameObject, profile)
     return math.abs(delta.x) <= profile.attackReach and math.abs(delta.y) <= profile.attackReachVertical;
 end
 
--- Trade rule: the player's swing is in its active window and he faces the enemy.
+-- Trade rule: the player's swing is in its damage window and he faces the enemy. Reads the same
+-- attackHitActive flag the cudgel event is driven from, instead of testing the overlay progress a
+-- second time - two separate tests of the same thing is how they drift apart.
 function isPlayerSwingBeatingEnemy(enemyGameObject)
-    if (false == isAttacking) then
-        return false;
-    end
-
-    local progress = animationBlender:getOverlayProgress();
-    if (progress < ATTACK_HIT_START or progress > ATTACK_HIT_END) then
+    if (false == attackHitActive) then
         return false;
     end
 
@@ -480,15 +502,29 @@ function sendAttackEvent(isActive)
     AppStateManager:getScriptEventManager():queueEvent(EventType.PlayerAttackEvent, eventData);
 end
 
+-- Opens and closes the damage window. Separate from starting and stopping the swing, because the
+-- two have different lengths: the swing owns the whole clip plus its fade, the window owns the
+-- part of the clip where the weapon is actually travelling.
+function setAttackHitActive(active)
+    if (active == attackHitActive) then
+        do return end;
+    end
+
+    attackHitActive = active;
+    sendAttackEvent(active);
+end
+
 function startAttack()
     -- A new swing gets a new id, see attackId.
     attackId = attackId + 1;
     attackTime = 0;
+    attackHitActive = false;
 
     animationBlender:setOverlayAnimationForBoneChain1(AnimationBlender.ANIM_ATTACK_1, ATTACK_OVERLAY_BONE, ATTACK_BLEND_IN, false);
     isAttacking = true;
 
-    sendAttackEvent(true);
+    -- No PlayerAttackEvent here. The swing starts, the damage window does not - updateAttack
+    -- opens it once the clip reaches ATTACK_HIT_START.
 end
 
 function stopAttack()
@@ -499,13 +535,14 @@ function stopAttack()
     isAttacking = false;
     attackTime = 0;
 
+    -- Closes the window if it is still open, e.g. when the swing is cut short mid hit.
+    setAttackHitActive(false);
+
     -- A non looping overlay fades itself out when the clip is over, so this is only needed when
     -- the swing is cut short - by a hit, a ragdoll, a portal or the safety timeout.
     if (true == animationBlender:isOverlayAnimationActive()) then
         animationBlender:clearOverlayAnimation(ATTACK_BLEND_IN);
     end
-
-    sendAttackEvent(false);
 end
 
 -- The swing timing. The walking state stays untouched and keeps animating the player while he hits.
@@ -521,6 +558,12 @@ function updateAttack(dt)
     end
 
     attackTime = attackTime + dt;
+
+    -- The damage window, driven off the clip's own progress. Opening and closing it on the
+    -- FLANKS means the cudgel gets exactly two events per swing, and the one that closes it
+    -- arrives while the weapon is still visibly in motion - not after the overlay has faded.
+    local progress = animationBlender:getOverlayProgress();
+    setAttackHitActive(progress >= ATTACK_HIT_START and progress <= ATTACK_HIT_END);
 
     -- The swing is over only once the overlay is completely gone - clip finished AND faded out.
     -- Attention: isOverlayBlendingOut() must NOT be used here, it cuts off the fade back.
@@ -551,6 +594,14 @@ PrehistoricLax["connect"] = function(gameObject)
     cameraComponent = cameraGameObject:getCameraComponent();
     -- Important: Camera switch
     cameraComponent:setActivated(true);
+    
+    followCamera2DComponent = prehistoricLax:getCameraBehaviorFollow2DComponent();
+
+    -- Reset the camera's own runtime state. The zoom and the zones live on the behavior, not in
+    -- the scene file, so a reloaded level would otherwise start out with whatever zoom the last
+    -- run left behind and with the zones of a room that no longer exists.
+    followCamera2DComponent:setZoom(1.0, 0.0);
+    followCamera2DComponent:clearCameraZones();
 
     AppStateManager:getGameObjectController():activatePlayerController(true, prehistoricLax:getId(), true);
 
@@ -591,10 +642,12 @@ PrehistoricLax["connect"] = function(gameObject)
 
     isAttacking = false;
     attackTime = 0;
+    attackHitActive = false;
     isInvulnerable = false;
     invulnerableTimer = 0;
     blinkTimer = 0;
     playerBlinkVisible = true;
+    dangerShakeTimer = 0;
     enemyCombat = {};
     deadEnemies = {};
 
@@ -701,6 +754,12 @@ PrehistoricLax["connect"] = function(gameObject)
         -- Below half a second it is an ordinary hop.
         if (fallTime > 0.5) then
             prehistoricLax:getParticleFxComponentFromName("DustLand"):setActivated(true);
+
+            -- Scaled by the fall, with the same 0.5 second threshold the dust uses: a hop that
+            -- barely qualifies gets almost nothing, a drop of CameraFx.landFullFallTime or more
+            -- gets the full jolt. This one effect does more for weight than any animation tweak.
+            local landSeverity = math.min(1.0, (fallTime - 0.5) / CameraFx.landFullFallTime);
+            followCamera2DComponent:addShake(CameraFx.landShake * landSeverity);
         end
     end);
 
@@ -751,12 +810,18 @@ PrehistoricLax["disconnect"] = function()
     prehistoricLax:getSimpleSoundComponentFromName("Hurt"):setActivated(false);
 
     isAttacking = false;
+    attackHitActive = false;
 
     -- Make sure the player is not left invisible by the i-frame blink.
     invulnerableTimer = 0;
     setPlayerVisible(true);
     enemyCombat = {};
     deadEnemies = {};
+
+    -- Hand the camera back in a neutral state, so the next scene does not inherit a death zoom
+    -- or the zones of this level.
+    followCamera2DComponent:setZoom(1.0, 0.0);
+    followCamera2DComponent:clearCameraZones();
 
     playerController = nil;
     animationBlender = nil;
@@ -770,6 +835,10 @@ PrehistoricLax["update"] = function(dt)
     updateHitReaction(dt);
     updateEnemyCombat(dt);
     updateAttack(dt);
+
+    if (dangerShakeTimer > 0) then
+        dangerShakeTimer = dangerShakeTimer - dt;
+    end
 end
 
 PrehistoricLax["onPlayerDead"] = function(eventData)
@@ -781,6 +850,11 @@ PrehistoricLax["onEnemyDead"] = function(eventData)
     enemyCombat[eventData["enemyId"]] = nil;
 
     killedEnemies:setValueNumber(killedEnemies:getValueNumber() + 1);
+
+    -- The kill, before the experience: addExperience may trigger a level up, and that one wants
+    -- its own punch zoom to land on top of this one rather than be swallowed by it.
+    followCamera2DComponent:impact(CameraFx.enemyKillImpact);
+
     addExperience(getExperienceForKill(EnemyProfiles[eventData["enemyTagName"]], getLevel()));
 end
 
@@ -792,6 +866,13 @@ PrehistoricLax["onPlayerDangerContact"] = function(gameObject0, gameObject1, con
     end
 
     applyDamage(0.2);
+
+    -- Throttled, see dangerShakeTimer: this handler runs on every frame of contact, and feeding
+    -- the shake every frame pins the trauma at full strength instead of letting it decay.
+    if (dangerShakeTimer <= 0) then
+        dangerShakeTimer = CameraFx.dangerShakeInterval;
+        followCamera2DComponent:addShake(CameraFx.dangerShake);
+    end
 
     if (animationBlender:isAnimationActive(AnimationBlender.ANIM_TAKE_DAMAGE) == false) then
         animationBlender:blend5(AnimationBlender.ANIM_TAKE_DAMAGE, AnimationBlender.BLEND_WHILE_ANIMATING, 0.1, false);
@@ -878,6 +959,12 @@ RagDollState["enter"] = function(gameObject)
     -- none arrives. The former per frame push of (4, 0, 0) was therefore held forever, with a vertical
     -- velocity of 0 on top: the dead player floated and slid out of the level, spinning.
     playerController:getPhysicsComponent():applyRequiredForceForJumpVelocity(Vector3(-getFacingSign() * PLAYER_DEATH_KNOCKBACK_HORIZONTAL, PLAYER_DEATH_KNOCKBACK_UP, 0));
+
+    -- Death gets the hardest jolt in the game plus a slow push in, which is what separates it
+    -- from an ordinary hit: the hit is a jolt and over, the death keeps closing in on the body.
+    followCamera2DComponent:addShake(CameraFx.deathShake);
+    followCamera2DComponent:startHitstop(CameraFx.deathHitstop);
+    followCamera2DComponent:setZoom(CameraFx.deathZoom, CameraFx.deathZoomTime);
 end
 
 RagDollState["execute"] = function(gameObject, dt)
@@ -897,6 +984,9 @@ RagDollState["exit"] = function(gameObject)
 
     playerController:lockMovement("ragdoll", false);
     isInvulnerable = false;
+
+    -- Back to the authored framing. Without this the respawned player would keep the death zoom.
+    followCamera2DComponent:setZoom(1.0, CameraFx.deathZoomTime);
 end
 
 ---------------------------------------------------------------------------------------------------
@@ -940,6 +1030,11 @@ PortalState["enter"] = function(gameObject)
 
     playerController:lockMovement("portal", true);
 
+    -- Pull back while the portal path plays. The player has no control here, so a wider framing
+    -- costs him nothing and shows where he is being taken - the cheapest way to make a scripted
+    -- transition read as deliberate rather than as a loss of control.
+    followCamera2DComponent:setZoom(CameraFx.portalZoom, CameraFx.portalZoomTime);
+
     local portal = playerController:getInteractionGameObject();
     local pathFollow = portal:getAiPathFollowComponent();
 
@@ -967,4 +1062,6 @@ end
 PortalState["exit"] = function(gameObject)
     playerController:lockMovement("portal", false);
     playerController:setInteractionGameObject(nil);
+
+    followCamera2DComponent:setZoom(1.0, CameraFx.portalZoomTime);
 end

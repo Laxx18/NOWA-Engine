@@ -63,9 +63,7 @@ namespace NOWA
 
     ValueBarComponent::~ValueBarComponent()
     {
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ValueBarComponent] Destructor value bar component for game object: " + this->gameObjectPtr->getName());
 
-        this->destroyValueBar();
     }
 
     bool ValueBarComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -191,6 +189,14 @@ namespace NOWA
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ValueBarComponent] Init value bar component for game object: " + this->gameObjectPtr->getName());
 
         return true;
+    }
+
+    void ValueBarComponent::onRemoveComponent(void)
+    {
+        GameObjectComponent::onRemoveComponent();
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ValueBarComponent] Destructor value bar component for game object: " + this->gameObjectPtr->getName());
+
+        this->destroyValueBar();
     }
 
     bool ValueBarComponent::connect(void)
@@ -349,10 +355,17 @@ namespace NOWA
 
             auto closureFunction = [this](Ogre::Real renderDt)
             {
+                // Defensive: the component may have been destroyed (and destroyValueBar() may
+                // already have nulled this out) between this closure being queued and actually
+                // running - removeTrackedClosure() there stops FUTURE frames, but an
+                // already-dequeued invocation for the CURRENT frame can still race past it.
+                if (nullptr == this->manualObject)
+                {
+                    return;
+                }
+
                 this->indices = 0;
 
-                // Five layers, mirrored on the back when two sided and not a billboard. Same condition
-                // as in drawValueBar(): an orientation target takes precedence over 'Face Camera'.
                 const bool isBillboard = (nullptr == this->orientationTargetGameObject && true == this->faceCamera->getBool());
                 unsigned int quadCount = 5;
                 if (true == this->twoSided->getBool() && false == isBillboard)
@@ -360,9 +373,6 @@ namespace NOWA
                     quadCount = 10;
                 }
 
-                // Attention: beginUpdate() re-uses the existing buffers, so it is only valid while the
-                // amount of geometry stays the same. After toggling 'Two Sided' or 'Face Camera' the
-                // object is rebuilt from scratch.
                 if (this->manualObject->getNumSections() > 0 && quadCount == this->lastQuadCount)
                 {
                     this->manualObject->beginUpdate(0);
@@ -377,7 +387,6 @@ namespace NOWA
 
                 if (true == this->couldDraw)
                 {
-                    // Realllllllyyyyy important! Else the rectangle is a whole mess!
                     this->manualObject->index(0);
                     this->manualObject->end();
                     this->lastQuadCount = quadCount;

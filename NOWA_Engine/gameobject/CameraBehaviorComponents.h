@@ -8,6 +8,7 @@
 namespace NOWA
 {
 	class PhysicsActiveComponent;
+    class FollowCamera2D;
 
 	class EXPORTED CameraBehaviorComponent : public GameObjectComponent
 	{
@@ -837,14 +838,191 @@ namespace NOWA
 		void setBorderOffset(const Ogre::Vector3& borderOffset);
 
 		Ogre::Vector3 getBorderOffset(void) const;
+
+		/**
+         * @brief Seconds of the player's current velocity the camera leads by, per axis. 0.3 to
+         *        0.4 on x reads as anticipation; y is normally 0, because leading a jump upwards
+         *        makes the whole screen pump.
+         */
+        void setLookaheadFactor(const Ogre::Vector2& factor);
+
+        Ogre::Vector2 getLookaheadFactor(void) const;
+
+        /**
+         * @brief Hard cap on the lead distance in meters, per axis. Without it the lead grows
+         *        with the velocity and has no upper bound, so a dash throws the camera off the
+         *        player entirely.
+         */
+        void setLookaheadMax(const Ogre::Vector2& maximum);
+
+        Ogre::Vector2 getLookaheadMax(void) const;
+
+        void setLookaheadSmooth(Ogre::Real smooth);
+
+        Ogre::Real getLookaheadSmooth(void) const;
+
+        // ── Zoom configuration ───────────────────────────────────────────────────────
+
+        void setZoomBlendTime(Ogre::Real blendTime);
+
+        Ogre::Real getZoomBlendTime(void) const;
+
+        // ── Shake configuration ──────────────────────────────────────────────────────
+
+        void setShakeMaxOffset(const Ogre::Vector2& maxOffset);
+
+        Ogre::Vector2 getShakeMaxOffset(void) const;
+
+        void setShakeFrequency(Ogre::Real frequency);
+
+        Ogre::Real getShakeFrequency(void) const;
+
+        void setShakeDecay(Ogre::Real decay);
+
+        Ogre::Real getShakeDecay(void) const;
+
+        // ── Edge orthographic configuration ──────────────────────────────────────────
+
+        /**
+         * @brief Morphs towards an orthographic projection while the camera is clamped against a
+         *        horizontal bound and the player walks further out to the side, so a tall wall in
+         *        front of the play plane can no longer swallow him.
+         *
+         *        OFF by default on purpose. The morph is continuous - no projection switch pops
+         *        any more - but going orthographic collapses the parallax between depth layers,
+         *        so every decor band in front of and behind the play plane visibly slides for the
+         *        duration of the blend. Fading the occluder out instead costs nothing visually.
+         */
+        void setEdgeOrthographic(bool enabled);
+
+        bool getEdgeOrthographic(void) const;
+
+        void setEdgeOrthoBlendTime(Ogre::Real blendTime);
+
+        Ogre::Real getEdgeOrthoBlendTime(void) const;
+
+        // ── Runtime actions, driven from Lua by game mechanics ───────────────────────
+
+        /**
+         * @brief Framing. 1.0 is the authored one, below 1 moves closer, above 1 pulls back.
+         *        Scales the DISTANCE to the play plane rather than the field of view, so the
+         *        perspective never breathes and only the framing changes.
+         */
+        void setZoom(Ogre::Real zoom, Ogre::Real blendTime);
+
+        Ogre::Real getZoom(void) const;
+
+        /**
+         * @brief The zoom actually in effect this frame: scripted zoom times the zone the player
+         *        stands in times the current punch.
+         */
+        Ogre::Real getAppliedZoom(void) const;
+
+        /**
+         * @brief ONE call for a hit, strength 0 to 1. Scales shake, punch zoom and hitstop
+         *        together off that single number. Prefer this over the three separate calls:
+         *        tuning them per call site is how a light hit ends up shaking harder than a
+         *        heavy one.
+         */
+        void impact(Ogre::Real strength);
+
+        void punchZoom(Ogre::Real amount, Ogre::Real duration);
+
+        void addShake(Ogre::Real strength);
+
+        Ogre::Real getShakeTrauma(void) const;
+
+        void startHitstop(Ogre::Real duration);
+
+        /**
+         * @brief Adds or retunes a rectangular zone in the play plane that imposes its own zoom
+         *        while the player is inside it: narrow corridors below 1, halls above 1. Takes
+         *        plain scalars rather than a Vector2 pair so the call works from Lua regardless
+         *        of which Ogre math types a given build registers.
+         */
+        void addCameraZone(const Ogre::String& zoneId, Ogre::Real minimumX, Ogre::Real minimumY, Ogre::Real maximumX, Ogre::Real maximumY, Ogre::Real zoom);
+
+        void removeCameraZone(const Ogre::String& zoneId);
+
+        void clearCameraZones(void);
 	public:
-		static const Ogre::String AttrSmoothValue(void) { return "Smooth Value"; }
-		static const Ogre::String AttrOffsetPosition(void) { return "Offset Position"; }
-		static const Ogre::String AttrBorderOffset(void) { return "Border Offset"; }
+        static const Ogre::String AttrSmoothValue(void)
+        {
+            return "Smooth Value";
+        }
+        static const Ogre::String AttrOffsetPosition(void)
+        {
+            return "Offset Position";
+        }
+        static const Ogre::String AttrBorderOffset(void)
+        {
+            return "Border Offset";
+        }
+        static Ogre::String AttrLookaheadFactor(void)
+        {
+            return "Lookahead Factor";
+        }
+        static Ogre::String AttrLookaheadMax(void)
+        {
+            return "Lookahead Max";
+        }
+        static Ogre::String AttrLookaheadSmooth(void)
+        {
+            return "Lookahead Smooth";
+        }
+        static Ogre::String AttrZoomBlendTime(void)
+        {
+            return "Zoom Blend Time";
+        }
+        static Ogre::String AttrShakeMaxOffset(void)
+        {
+            return "Shake Max Offset";
+        }
+        static Ogre::String AttrShakeFrequency(void)
+        {
+            return "Shake Frequency";
+        }
+        static Ogre::String AttrShakeDecay(void)
+        {
+            return "Shake Decay";
+        }
+        static Ogre::String AttrEdgeOrthographic(void)
+        {
+            return "Edge Orthographic";
+        }
+        static Ogre::String AttrEdgeOrthoBlendTime(void)
+        {
+            return "Edge Ortho Blend Time";
+        }
+
+    private:
+        /**
+         * @brief The behavior is created lazily in setActivated, so this returns nullptr until
+         *        the component has been activated once. Everything reaching through to the camera
+         *        has to cope with that - the editor calls the setters while the scene is still
+         *        being built.
+         */
+        FollowCamera2D* getFollowCamera2D(void) const;
+
+        /**
+         * @brief Pushes every editor side tuning value into the behavior. Called from
+         *        setActivated as well as from the setters, so a scene loaded before the camera
+         *        existed still ends up in the same state as one tuned live in the editor.
+         */
+        void applyTuning(void);
 	private:
 		Variant* smoothValue;
 		Variant* offsetPosition;
 		Variant* borderOffset;
+        Variant* lookaheadFactor;
+        Variant* lookaheadMax;
+        Variant* lookaheadSmooth;
+        Variant* zoomBlendTime;
+        Variant* shakeMaxOffset;
+        Variant* shakeFrequency;
+        Variant* shakeDecay;
+        Variant* edgeOrthographic;
+        Variant* edgeOrthoBlendTime;
 	};
 	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////

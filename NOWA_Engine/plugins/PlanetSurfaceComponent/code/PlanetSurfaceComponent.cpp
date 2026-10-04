@@ -161,7 +161,7 @@ namespace NOWA
     std::optional<NOWA::GameObjectTypeDescriptor> PlanetSurfaceComponent::getStaticTypeDescriptor()
     {
         NOWA::GameObjectTypeDescriptor desc;
-        desc.type = eType::CUSTOM;
+        desc.type = eType::ITEM;
         desc.displayName = "PlanetSurface";
         desc.meshToDisplay = "Node.mesh";
         desc.needsMeshItem = false;

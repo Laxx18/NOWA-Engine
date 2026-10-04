@@ -24,6 +24,58 @@ AppStateManager:getScriptEventManager():registerEvent("EnemyHitEvent");
 -- Sent by an enemy's script every frame while the player is within its attack reach (enemyId).
 AppStateManager:getScriptEventManager():registerEvent("EnemyNearPlayerEvent");
 
+
+CameraFx =
+{
+    -- ── Player hit ───────────────────────────────────────────────────────────────────
+    -- impact(strength) scales shake, punch zoom and hitstop off one 0..1 number. The base is what
+    -- even the lightest nip is worth, the scale is what the share of the energy bar adds on top.
+    -- Base plus scale stays below 1 on purpose: a single ordinary hit should not spend the whole
+    -- range, otherwise there is nothing left for a boss to feel stronger with.
+    playerHitBase = 0.18,
+    playerHitScale = 0.5,
+ 
+    -- ── Landing ──────────────────────────────────────────────────────────────────────
+    -- Shake at a full strength landing. The script scales this with the fall time, counted from
+    -- the same 0.5 second threshold the dust particle uses.
+    landShake = 0.3,
+    -- Fall time ABOVE the 0.5 second threshold at which the landing shake reaches full strength.
+    landFullFallTime = 1.0,
+ 
+    -- ── Enemy kill ───────────────────────────────────────────────────────────────────
+    -- Deliberately below a player hit. A kill is the player's own doing, so it wants confirmation,
+    -- not punishment - shake that reads as damage on a win teaches the wrong thing.
+    enemyKillImpact = 0.3,
+ 
+    -- ── Level up ─────────────────────────────────────────────────────────────────────
+    -- POSITIVE punch, so the camera breathes outwards and comes back. Slower than a hit punch,
+    -- because this one is meant to be noticed rather than felt.
+    levelUpPunch = 0.12,
+    levelUpPunchTime = 0.45,
+ 
+    -- ── Danger contact, spikes and lava ──────────────────────────────────────────────
+    -- Small, and only every dangerShakeInterval seconds. The contact handler runs every frame, and
+    -- shaking every frame pins the trauma at full strength: the decay never gets a turn and the
+    -- result is a flat rumble that carries no information at all.
+    dangerShake = 0.12,
+    dangerShakeInterval = 0.35,
+ 
+    -- ── Death ────────────────────────────────────────────────────────────────────────
+    -- The hardest jolt in the game, plus a slow push in on the body. The zoom is what separates a
+    -- death from an ordinary hit: the hit is a jolt and over, the death keeps closing in.
+    deathShake = 0.8,
+    deathHitstop = 0.14,
+    deathZoom = 0.75,
+    deathZoomTime = 1.2,
+ 
+    -- ── Portal ───────────────────────────────────────────────────────────────────────
+    -- Pulls back while the portal path plays. The player has no control during it, so a wider
+    -- framing costs him nothing and shows where he is being taken.
+    portalZoom = 1.25,
+    portalZoomTime = 0.5
+};
+
+
 ---------------------------------------------------------------------------------------------------
 -- Global game balancing. Everything static and global lives here, so it is encrypted together with
 -- this file and can not be tampered with.
@@ -135,8 +187,10 @@ end
 --   deathDeleteDelay           seconds until the corpse is deleted
 --   locomotionAnimation        AnimationBlender constant the enemy goes back to after an attack
 --   energyBarOffsetY           height of the energy bar above the enemy's origin
-EnemyProfiles = {
-    Rhino = {
+EnemyProfiles = 
+{
+    Rhino = 
+	{
         level = 1, energy = 10, strength = 20, experience = 10,
         attackImpactDelay = 0.25, attackDuration = 0.9, attackCooldown = 1.0,
         attackReach = 1.6, attackReachVertical = 1,
@@ -147,7 +201,8 @@ EnemyProfiles = {
     },
     
     -- Same as rhino, but more energy.
-    Elephant = {
+    Elephant = 
+	{
         level = 1, energy = 30, strength = 10, experience = 15,
         attackImpactDelay = 0.45, attackDuration = 0.9, attackCooldown = 0.8,
         attackReach = 1.2, attackReachVertical = 1,
@@ -158,13 +213,25 @@ EnemyProfiles = {
     },
 
     -- A bit stronger and faster than the rhino. Its attack is the rolling charge (Roll_InPlace, 1.33 s).
-    Coyote = {
+    Coyote = 
+	{
         level = 3, energy = 50, strength = 25, experience = 20,
         attackImpactDelay = 0.35, attackDuration = 1.33, attackCooldown = 1.0,
         attackReach = 1.6, attackReachVertical = 1,
         playerKnockbackHorizontal = 7.0, playerKnockbackUp = 4.5, playerKnockbackTime = 0.35,
         deathKnockbackHorizontal = 50.0, deathKnockbackUp = 35.0, deathDeleteDelay = 2.5,
         locomotionAnimation = "ANIM_RUN",
+        energyBarOffsetY = 2
+    },
+	-- Slow but totally strong and much energy
+    Beaver = 
+	{
+        level = 3, energy = 200, strength = 80, experience = 40,
+        attackImpactDelay = 0.35, attackDuration = 1.33, attackCooldown = 1.0,
+        attackReach = 1, attackReachVertical = 1,
+        playerKnockbackHorizontal = 7.0, playerKnockbackUp = 4.5, playerKnockbackTime = 0.35,
+        deathKnockbackHorizontal = 50.0, deathKnockbackUp = 35.0, deathDeleteDelay = 2.5,
+        locomotionAnimation = "ANIM_WALK",
         energyBarOffsetY = 2
     }
 };

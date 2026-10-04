@@ -13,9 +13,9 @@ GPL v3
 #include "main/Core.h"
 #include "modules/GraphicsModule.h"
 #include "modules/LuaScriptApi.h"
-#include "utilities/XMLConverter.h"
 #include "utilities/Helper.h"
 #include "utilities/MathHelper.h"
+#include "utilities/XMLConverter.h"
 
 #include "RenderQueueEnums.h"
 
@@ -208,6 +208,51 @@ namespace NOWA
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralBlockComponent] Init block component for game object: " + this->gameObjectPtr->getName());
 
         this->blockMeshName = "ProceduralBlockMesh_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+
+        assert(GraphicsModule::getInstance()->isRenderThread() && "postInit() must be called from the main/logic thread! Use queueEvent() from other threads.");
+
+        // A cloned GameObject can still carry the source block Item on its scene node.
+        // The cloned component does not own that stale pointer, so destroyBlockMesh()
+        // cannot remove it. Clear every inherited Item before rebuilding; otherwise
+        // the old and resized blocks remain renderable and selectable together.
+#if 1
+        std::vector<Ogre::Item*> itemsToDestroy;
+
+        Ogre::SceneNode* sceneNode = this->gameObjectPtr->getSceneNode();
+        if (nullptr != sceneNode)
+        {
+            Ogre::SceneNode::ObjectIterator objectIterator = sceneNode->getAttachedObjectIterator();
+
+            while (objectIterator.hasMoreElements())
+            {
+                Ogre::MovableObject* movableObject = objectIterator.getNext();
+
+                Ogre::Item* item = dynamic_cast<Ogre::Item*>(movableObject);
+                if (nullptr != item)
+                {
+                    itemsToDestroy.push_back(item);
+                }
+            }
+
+            for (Ogre::Item* item : itemsToDestroy)
+            {
+                sceneNode->detachObject(item);
+                this->gameObjectPtr->getSceneManager()->destroyItem(item);
+            }
+        }
+        this->gameObjectPtr->nullMovableObject();
+#else
+        // Attention: for group loading necessary
+        this->blockItem = nullptr;
+        if (nullptr != this->blockItem)
+        {
+            this->gameObjectPtr->getSceneNode()->detachObject(this->blockItem);
+            this->gameObjectPtr->getSceneManager()->destroyItem(this->blockItem);
+            this->blockItem = nullptr;
+        }
+        this->blockItem = nullptr;
+        this->gameObjectPtr->nullMovableObject();
+#endif
 
         if (true == this->activated->getBool())
         {
@@ -498,8 +543,7 @@ namespace NOWA
         // same six-point profile ProceduralPlatformComponent's own "Grass" style chamfer already
         // uses (there varying per path point; here a single constant cross-section extruded
         // through Depth, since a block does not sweep along a path).
-        const Ogre::Vector2 hexPoints[6] = {Ogre::Vector2(0.0f, 0.0f), Ogre::Vector2(length, 0.0f), Ogre::Vector2(length, height - bevel), Ogre::Vector2(length - bevel, height), Ogre::Vector2(bevel, height),
-            Ogre::Vector2(0.0f, height - bevel)};
+        const Ogre::Vector2 hexPoints[6] = {Ogre::Vector2(0.0f, 0.0f), Ogre::Vector2(length, 0.0f), Ogre::Vector2(length, height - bevel), Ogre::Vector2(length - bevel, height), Ogre::Vector2(bevel, height), Ogre::Vector2(0.0f, height - bevel)};
 
         // For a CCW-wound convex polygon, rotating an edge's own direction (dx, dy) to (dy, -dx)
         // gives that edge's OUTWARD normal - verified by hand against four of these six edges
@@ -567,13 +611,13 @@ namespace NOWA
 
         // Bottom (flat on the ground, full footprint) - normal straight down, same convention
         // as the plain box's own bottom face.
-        this->addBlockQuad(Ogre::Vector3(0.0f, 0.0f, -halfDepth), Ogre::Vector3(length, 0.0f, -halfDepth), Ogre::Vector3(length, 0.0f, halfDepth), Ogre::Vector3(0.0f, 0.0f, halfDepth), Ogre::Vector3(0.0f, -1.0f, 0.0f), 0.0f,
-            length * tiling.x, 0.0f, depthSpan * tiling.y);
+        this->addBlockQuad(Ogre::Vector3(0.0f, 0.0f, -halfDepth), Ogre::Vector3(length, 0.0f, -halfDepth), Ogre::Vector3(length, 0.0f, halfDepth), Ogre::Vector3(0.0f, 0.0f, halfDepth), Ogre::Vector3(0.0f, -1.0f, 0.0f), 0.0f, length * tiling.x, 0.0f,
+            depthSpan * tiling.y);
 
         // Back wall (vertical, at x = length) - normal +X, same convention as the plain box's
         // own back face.
-        this->addBlockQuad(Ogre::Vector3(length, 0.0f, -halfDepth), Ogre::Vector3(length, 0.0f, halfDepth), Ogre::Vector3(length, height, halfDepth), Ogre::Vector3(length, height, -halfDepth), Ogre::Vector3(1.0f, 0.0f, 0.0f),
-            0.0f, depthSpan * tiling.x, 0.0f, height * tiling.y);
+        this->addBlockQuad(Ogre::Vector3(length, 0.0f, -halfDepth), Ogre::Vector3(length, 0.0f, halfDepth), Ogre::Vector3(length, height, halfDepth), Ogre::Vector3(length, height, -halfDepth), Ogre::Vector3(1.0f, 0.0f, 0.0f), 0.0f,
+            depthSpan * tiling.x, 0.0f, height * tiling.y);
 
         // Slope (the walkable ramp surface, from (0,0) up to (length,height)). addBlockQuad's
         // own self-correcting winding means the CORNER ORDER passed in here doesn't need to be
@@ -585,16 +629,16 @@ namespace NOWA
         // hexagon's.
         Ogre::Vector3 slopeNormal(-height, length, 0.0f);
         slopeNormal.normalise();
-        this->addBlockQuad(Ogre::Vector3(0.0f, 0.0f, -halfDepth), Ogre::Vector3(length, height, -halfDepth), Ogre::Vector3(length, height, halfDepth), Ogre::Vector3(0.0f, 0.0f, halfDepth), slopeNormal, 0.0f,
-            slopeLength * tiling.x, 0.0f, depthSpan * tiling.y);
+        this->addBlockQuad(Ogre::Vector3(0.0f, 0.0f, -halfDepth), Ogre::Vector3(length, height, -halfDepth), Ogre::Vector3(length, height, halfDepth), Ogre::Vector3(0.0f, 0.0f, halfDepth), slopeNormal, 0.0f, slopeLength * tiling.x, 0.0f,
+            depthSpan * tiling.y);
 
         // Two triangular side caps, closing the wedge's depth ends - same outward-along-Z
         // convention as every other component's end caps in this project.
         this->addBlockTriangle(Ogre::Vector3(0.0f, 0.0f, -halfDepth), Ogre::Vector3(length, 0.0f, -halfDepth), Ogre::Vector3(length, height, -halfDepth), Ogre::Vector3(0.0f, 0.0f, -1.0f), Ogre::Vector2(0.0f, 0.0f),
             Ogre::Vector2(length * tiling.x, 0.0f), Ogre::Vector2(length * tiling.x, height * tiling.y));
 
-        this->addBlockTriangle(Ogre::Vector3(length, 0.0f, halfDepth), Ogre::Vector3(0.0f, 0.0f, halfDepth), Ogre::Vector3(length, height, halfDepth), Ogre::Vector3(0.0f, 0.0f, 1.0f), Ogre::Vector2(length * tiling.x, 0.0f),
-            Ogre::Vector2(0.0f, 0.0f), Ogre::Vector2(length * tiling.x, height * tiling.y));
+        this->addBlockTriangle(Ogre::Vector3(length, 0.0f, halfDepth), Ogre::Vector3(0.0f, 0.0f, halfDepth), Ogre::Vector3(length, height, halfDepth), Ogre::Vector3(0.0f, 0.0f, 1.0f), Ogre::Vector2(length * tiling.x, 0.0f), Ogre::Vector2(0.0f, 0.0f),
+            Ogre::Vector2(length * tiling.x, height * tiling.y));
     }
 
     void ProceduralBlockComponent::rebuildMesh(void)
@@ -633,7 +677,7 @@ namespace NOWA
         }
         else
         {
-        this->addBlockBox(Ogre::Vector3(0.0f, 0.0f, -halfDepth), Ogre::Vector3(length, height, halfDepth));
+            this->addBlockBox(Ogre::Vector3(0.0f, 0.0f, -halfDepth), Ogre::Vector3(length, height, halfDepth));
         }
 
         this->createBlockMesh();
@@ -977,13 +1021,13 @@ namespace NOWA
                 .def("getLength", &ProceduralBlockComponent::getLength)
                 .def("getHeight", &ProceduralBlockComponent::getHeight)
                 .def("setDatablock", &ProceduralBlockComponent::setDatablock)
-                        .def("getDatablock", &ProceduralBlockComponent::getDatablock)
-                        .def("setUseGradient", &ProceduralBlockComponent::setUseGradient)
-                        .def("getUseGradient", &ProceduralBlockComponent::getUseGradient)
-                        .def("setUseBevel", &ProceduralBlockComponent::setUseBevel)
-                        .def("getUseBevel", &ProceduralBlockComponent::getUseBevel)
-                        .def("setBevelSize", &ProceduralBlockComponent::setBevelSize)
-                        .def("getBevelSize", &ProceduralBlockComponent::getBevelSize)];
+                .def("getDatablock", &ProceduralBlockComponent::getDatablock)
+                .def("setUseGradient", &ProceduralBlockComponent::setUseGradient)
+                .def("getUseGradient", &ProceduralBlockComponent::getUseGradient)
+                .def("setUseBevel", &ProceduralBlockComponent::setUseBevel)
+                .def("getUseBevel", &ProceduralBlockComponent::getUseBevel)
+                .def("setBevelSize", &ProceduralBlockComponent::setBevelSize)
+                .def("getBevelSize", &ProceduralBlockComponent::getBevelSize)];
 
         LuaScriptApi::getInstance()->addClassToCollection("ProceduralBlockComponent", "class inherits GameObjectComponent", ProceduralBlockComponent::getStaticInfoText());
 

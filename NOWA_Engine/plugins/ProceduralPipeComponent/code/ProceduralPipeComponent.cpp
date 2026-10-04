@@ -491,6 +491,50 @@ namespace NOWA
 
         this->gameObjectPtr->changeCategory("Pipe");
 
+        // A cloned GameObject can still carry the source pipe Item on its scene node.
+        // The component pointer is not copied, so destroyPipeMesh() cannot see that
+        // stale Item. Remove every attached Item before the first clone rebuild;
+        // otherwise both the old and the resized pipe remain renderable/selectable.
+#if 1
+        std::vector<Ogre::Item*> itemsToDestroy;
+
+        Ogre::SceneNode* sceneNode = this->gameObjectPtr->getSceneNode();
+        if (nullptr != sceneNode)
+        {
+            Ogre::SceneNode::ObjectIterator objectIterator = sceneNode->getAttachedObjectIterator();
+
+            while (objectIterator.hasMoreElements())
+            {
+                Ogre::MovableObject* movableObject = objectIterator.getNext();
+
+                Ogre::Item* item = dynamic_cast<Ogre::Item*>(movableObject);
+                if (nullptr != item)
+                {
+                    itemsToDestroy.push_back(item);
+                }
+            }
+
+            for (Ogre::Item* item : itemsToDestroy)
+            {
+                sceneNode->detachObject(item);
+                this->gameObjectPtr->getSceneManager()->destroyItem(item);
+            }
+        }
+        this->pipeItem = nullptr;
+        this->gameObjectPtr->nullMovableObject();
+#else
+        this->gameObjectPtr->nullMovableObject();
+        // Attention: for group loading necessary
+        this->pipeItem = nullptr;
+        if (nullptr != this->pipeItem)
+        {
+            this->gameObjectPtr->getSceneNode()->detachObject(this->pipeItem);
+            this->gameObjectPtr->getSceneManager()->destroyItem(this->pipeItem);
+            this->pipeItem = nullptr;
+        }
+        this->gameObjectPtr->nullMovableObject();
+#endif
+
         // The fixed depth plane comes from the GameObject's OWN transform: "fixed -Z axis"
         // means the depth layer was already decided by wherever the (empty) GameObject was
         // placed before this component was added. Works the same for a fresh object and for
@@ -513,9 +557,11 @@ namespace NOWA
 
         this->snapRadius = std::max(1.0f, this->pipeRadius->getReal());
 
+        assert(GraphicsModule::getInstance()->isRenderThread() && "postInit() must be called from the main/logic thread! Use queueEvent() from other threads.");
+
         // A clone has neither an init() nor a scene-parsed event to hang its first build on -
         // it is created while the scene is already running. Everything it needs exists here.
-        if (true == this->pipeClonedNeedsRebuild)
+        // if (true == this->pipeClonedNeedsRebuild)
         {
             this->pipeClonedNeedsRebuild = false;
 
@@ -3012,6 +3058,20 @@ namespace NOWA
 
         const Ogre::String meshName = this->gameObjectPtr->getName() + "_Pipe_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
         const Ogre::String groupName = Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME;
+
+        // Rebuilds replace the mesh and create a new Item. The previous Item must be
+        // detached and destroyed first; otherwise clone/property changes leave the old
+        // geometry attached and both bounding boxes remain selectable/renderable.
+        if (nullptr != this->pipeItem)
+        {
+            if (this->pipeItem->getParentSceneNode())
+            {
+                this->pipeItem->getParentSceneNode()->detachObject(this->pipeItem);
+            }
+            this->gameObjectPtr->getSceneManager()->destroyItem(this->pipeItem);
+            this->pipeItem = nullptr;
+            this->gameObjectPtr->nullMovableObject();
+        }
 
         {
             Ogre::MeshManager& meshMgr = Ogre::MeshManager::getSingleton();

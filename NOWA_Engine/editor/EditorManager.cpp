@@ -3144,7 +3144,17 @@ namespace NOWA
                 std::get<0>(this->groupGameObjectIds[i]) = gameObjectIds[i];
 
                 GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(std::get<0>(this->groupGameObjectIds[i]));
+                const auto gameObjectComponents = gameObjectPtr->getComponents();
 
+                // If its a gameobject with procedural component, then its mesh must be constructed first and then the movable object can be used.
+                for (size_t i = 0; i < gameObjectComponents->size(); i++)
+                {
+                    auto component = std::get<COMPONENT>(gameObjectComponents->at(i)).get();
+                    if (true == component->isProcedural())
+                    {
+                        component->postInit();
+                    }
+                }
                 Ogre::Vector3 position = gameObjectPtr->getPosition();
 
                 if (position.y < lowestObjectY)

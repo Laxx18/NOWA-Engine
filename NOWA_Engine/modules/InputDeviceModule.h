@@ -3,6 +3,7 @@
 
 #include "defines.h"
 #include "main/InputDeviceCore.h"
+#include <atomic>
 #include <map>
 #include <set>
 
@@ -109,6 +110,9 @@ namespace NOWA
         static const unsigned short ACTION_SLOT_COUNT = static_cast<unsigned short>(NONE) + 1;
         // Max supported raw joystick buttons for the layout translation table
         static const unsigned short MAX_RAW_BUTTONS = 32;
+
+        /// Number of bits of the pressed button mask (see pressedButtonMask). Must be at least as big as the highest real button enum value (BUTTON_DPAD_RIGHT).
+        static const unsigned int MAX_BUTTON_MASK_BITS = 32u;
 
     public:
         const Ogre::String& getDeviceName(void) const;
@@ -319,9 +323,16 @@ namespace NOWA
         Ogre::Vector2 rightStickMovement;
         Ogre::Vector2 leftStickMovement;
         Ogre::Vector2 povMovement;
-        JoyStickButton pressedButton;
+        // Attention: The joystick state below is written by InputDeviceCore::capture on the RENDER thread, while the game logic reads it on the
+        // LOGIC thread. Therefore the pressed buttons are NOT stored in a std::vector anymore: reading the vector while it was cleared and
+        // refilled crashed with "vector subscript out of range". Instead a bit mask is used, which is published in ONE atomic store per frame,
+        // so a reader always sees a complete button state. Bit n belongs to the button with the enum value n (BUTTON_X = bit 0 ...).
+        std::atomic<JoyStickButton> pressedButton;
         Action pressedPov[4]; // [0] = up/down, [1] = left/right of the D-pad, both can be pressed simultanously
-        std::vector<JoyStickButton> pressedButtons;
+        std::atomic<unsigned int> pressedButtonMask;
+        // Only used by the capturing thread while update runs, published to pressedButtonMask at the end of update
+        unsigned int capturedButtonMask;
+        JoyStickButton lastCapturedButton;
         Ogre::Real analogActionThreshold;
 
         Ogre::Real timeSinceLastActionDown[ACTION_SLOT_COUNT];
@@ -338,71 +349,71 @@ namespace NOWA
         bool lastInputFromJoyStick;
     };
 
-    // Shortcuts for currently mapped keys
-    #define NOWA_K_JUMP NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::JUMP)
-    #define NOWA_K_RUN NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::RUN)
-    #define NOWA_K_COWER NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::COWER)
-    #define NOWA_K_DUCK NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::DUCK)
-    #define NOWA_K_SNEAK NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::SNEAK)
-    #define NOWA_K_ATTACK_1 NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::ATTACK_1)
-    #define NOWA_K_ATTACK_2 NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::ATTACK_2)
-    #define NOWA_K_ACTION NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::ACTION)
-    #define NOWA_K_RELOAD NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::RELOAD)
-    #define NOWA_K_INVENTORY NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::INVENTORY)
-    #define NOWA_K_MAP NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::MAP)
-    #define NOWA_K_SELECT NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::SELECT)
-    #define NOWA_K_START NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::START)
-    #define NOWA_K_SAVE NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::SAVE)
-    #define NOWA_K_LOAD NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::LOAD)
-    #define NOWA_K_CAMERA_FORWARD NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::CAMERA_FORWARD)
-    #define NOWA_K_CAMERA_BACKWARD NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::CAMERA_BACKWARD)
-    #define NOWA_K_CAMERA_LEFT NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::CAMERA_LEFT)
-    #define NOWA_K_CAMERA_RIGHT NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::CAMERA_RIGHT)
-    #define NOWA_K_CAMERA_UP NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::CAMERA_UP)
-    #define NOWA_K_CAMERA_DOWN NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::CAMERA_DOWN)
-    #define NOWA_K_CONSOLE NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::CONSOLE)
-    #define NOWA_K_WEAPON_CHANGE_FORWARD NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::WEAPON_CHANGE_FORWARD)
-    #define NOWA_K_WEAPON_CHANGE_BACKWARD NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::WEAPON_CHANGE_BACKWARD)
-    #define NOWA_K_FLASH_LIGHT NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::FLASH_LIGHT)
-    #define NOWA_K_PAUSE NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::PAUSE)
-    #define NOWA_K_GRID NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::GRID)
-    #define NOWA_K_UP NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::UP)
-    #define NOWA_K_DOWN NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::DOWN)
-    #define NOWA_K_LEFT NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::LEFT)
-    #define NOWA_K_RIGHT NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::RIGHT)
+// Shortcuts for currently mapped keys
+#define NOWA_K_JUMP NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::JUMP)
+#define NOWA_K_RUN NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::RUN)
+#define NOWA_K_COWER NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::COWER)
+#define NOWA_K_DUCK NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::DUCK)
+#define NOWA_K_SNEAK NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::SNEAK)
+#define NOWA_K_ATTACK_1 NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::ATTACK_1)
+#define NOWA_K_ATTACK_2 NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::ATTACK_2)
+#define NOWA_K_ACTION NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::ACTION)
+#define NOWA_K_RELOAD NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::RELOAD)
+#define NOWA_K_INVENTORY NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::INVENTORY)
+#define NOWA_K_MAP NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::MAP)
+#define NOWA_K_SELECT NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::SELECT)
+#define NOWA_K_START NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::START)
+#define NOWA_K_SAVE NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::SAVE)
+#define NOWA_K_LOAD NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::LOAD)
+#define NOWA_K_CAMERA_FORWARD NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::CAMERA_FORWARD)
+#define NOWA_K_CAMERA_BACKWARD NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::CAMERA_BACKWARD)
+#define NOWA_K_CAMERA_LEFT NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::CAMERA_LEFT)
+#define NOWA_K_CAMERA_RIGHT NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::CAMERA_RIGHT)
+#define NOWA_K_CAMERA_UP NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::CAMERA_UP)
+#define NOWA_K_CAMERA_DOWN NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::CAMERA_DOWN)
+#define NOWA_K_CONSOLE NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::CONSOLE)
+#define NOWA_K_WEAPON_CHANGE_FORWARD NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::WEAPON_CHANGE_FORWARD)
+#define NOWA_K_WEAPON_CHANGE_BACKWARD NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::WEAPON_CHANGE_BACKWARD)
+#define NOWA_K_FLASH_LIGHT NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::FLASH_LIGHT)
+#define NOWA_K_PAUSE NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::PAUSE)
+#define NOWA_K_GRID NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::GRID)
+#define NOWA_K_UP NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::UP)
+#define NOWA_K_DOWN NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::DOWN)
+#define NOWA_K_LEFT NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::LEFT)
+#define NOWA_K_RIGHT NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(NOWA::InputDeviceModule::RIGHT)
 
-    // For both
-    #define NOWA_A_JUMP NOWA::InputDeviceModule::JUMP
-    #define NOWA_A_RUN NOWA::InputDeviceModule::RUN
-    #define NOWA_A_COWER NOWA::InputDeviceModule::COWER
-    #define NOWA_A_DUCK NOWA::InputDeviceModule::DUCK
-    #define NOWA_A_SNEAK NOWA::InputDeviceModule::SNEAK
-    #define NOWA_A_ATTACK_1 NOWA::InputDeviceModule::ATTACK_1
-    #define NOWA_A_ATTACK_2 NOWA::InputDeviceModule::ATTACK_2
-    #define NOWA_A_ACTION NOWA::InputDeviceModule::ACTION
-    #define NOWA_A_RELOAD NOWA::InputDeviceModule::RELOAD
-    #define NOWA_A_INVENTORY NOWA::InputDeviceModule::INVENTORY
-    #define NOWA_A_MAP NOWA::InputDeviceModule::MAP
-    #define NOWA_A_SELECT NOWA::InputDeviceModule::SELECT
-    #define NOWA_A_START NOWA::InputDeviceModule::START
-    #define NOWA_A_SAVE NOWA::InputDeviceModule::SAVE
-    #define NOWA_A_LOAD NOWA::InputDeviceModule::LOAD
-    #define NOWA_A_CAMERA_FORWARD NOWA::InputDeviceModule::CAMERA_FORWARD
-    #define NOWA_A_CAMERA_BACKWARD NOWA::InputDeviceModule::CAMERA_BACKWARD
-    #define NOWA_A_CAMERA_LEFT NOWA::InputDeviceModule::CAMERA_LEFT
-    #define NOWA_A_CAMERA_RIGHT NOWA::InputDeviceModule::CAMERA_RIGHT
-    #define NOWA_A_CAMERA_UP NOWA::InputDeviceModule::CAMERA_UP
-    #define NOWA_A_CAMERA_DOWN NOWA::InputDeviceModule::CAMERA_DOWN
-    #define NOWA_A_CONSOLE NOWA::InputDeviceModule::CONSOLE
-    #define NOWA_A_WEAPON_CHANGE_FORWARD NOWA::InputDeviceModule::WEAPON_CHANGE_FORWARD
-    #define NOWA_A_WEAPON_CHANGE_BACKWARD NOWA::InputDeviceModule::WEAPON_CHANGE_BACKWARD
-    #define NOWA_A_FLASH_LIGHT NOWA::InputDeviceModule::FLASH_LIGHT
-    #define NOWA_A_PAUSE NOWA::InputDeviceModule::PAUSE
-    #define NOWA_A_GRID NOWA::InputDeviceModule::GRID
-    #define NOWA_A_UP NOWA::InputDeviceModule::UP
-    #define NOWA_A_DOWN NOWA::InputDeviceModule::DOWN
-    #define NOWA_A_LEFT NOWA::InputDeviceModule::LEFT
-    #define NOWA_A_RIGHT NOWA::InputDeviceModule::RIGHT
+// For both
+#define NOWA_A_JUMP NOWA::InputDeviceModule::JUMP
+#define NOWA_A_RUN NOWA::InputDeviceModule::RUN
+#define NOWA_A_COWER NOWA::InputDeviceModule::COWER
+#define NOWA_A_DUCK NOWA::InputDeviceModule::DUCK
+#define NOWA_A_SNEAK NOWA::InputDeviceModule::SNEAK
+#define NOWA_A_ATTACK_1 NOWA::InputDeviceModule::ATTACK_1
+#define NOWA_A_ATTACK_2 NOWA::InputDeviceModule::ATTACK_2
+#define NOWA_A_ACTION NOWA::InputDeviceModule::ACTION
+#define NOWA_A_RELOAD NOWA::InputDeviceModule::RELOAD
+#define NOWA_A_INVENTORY NOWA::InputDeviceModule::INVENTORY
+#define NOWA_A_MAP NOWA::InputDeviceModule::MAP
+#define NOWA_A_SELECT NOWA::InputDeviceModule::SELECT
+#define NOWA_A_START NOWA::InputDeviceModule::START
+#define NOWA_A_SAVE NOWA::InputDeviceModule::SAVE
+#define NOWA_A_LOAD NOWA::InputDeviceModule::LOAD
+#define NOWA_A_CAMERA_FORWARD NOWA::InputDeviceModule::CAMERA_FORWARD
+#define NOWA_A_CAMERA_BACKWARD NOWA::InputDeviceModule::CAMERA_BACKWARD
+#define NOWA_A_CAMERA_LEFT NOWA::InputDeviceModule::CAMERA_LEFT
+#define NOWA_A_CAMERA_RIGHT NOWA::InputDeviceModule::CAMERA_RIGHT
+#define NOWA_A_CAMERA_UP NOWA::InputDeviceModule::CAMERA_UP
+#define NOWA_A_CAMERA_DOWN NOWA::InputDeviceModule::CAMERA_DOWN
+#define NOWA_A_CONSOLE NOWA::InputDeviceModule::CONSOLE
+#define NOWA_A_WEAPON_CHANGE_FORWARD NOWA::InputDeviceModule::WEAPON_CHANGE_FORWARD
+#define NOWA_A_WEAPON_CHANGE_BACKWARD NOWA::InputDeviceModule::WEAPON_CHANGE_BACKWARD
+#define NOWA_A_FLASH_LIGHT NOWA::InputDeviceModule::FLASH_LIGHT
+#define NOWA_A_PAUSE NOWA::InputDeviceModule::PAUSE
+#define NOWA_A_GRID NOWA::InputDeviceModule::GRID
+#define NOWA_A_UP NOWA::InputDeviceModule::UP
+#define NOWA_A_DOWN NOWA::InputDeviceModule::DOWN
+#define NOWA_A_LEFT NOWA::InputDeviceModule::LEFT
+#define NOWA_A_RIGHT NOWA::InputDeviceModule::RIGHT
 
 }; // namespace end
 

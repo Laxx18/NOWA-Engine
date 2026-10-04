@@ -275,6 +275,46 @@ namespace NOWA
         this->wallFrame = this->gameObjectPtr->getSceneNode()->_getDerivedOrientationUpdated();
         this->wallFrameSet = true;
 
+#if 1
+        std::vector<Ogre::Item*> itemsToDestroy;
+
+        Ogre::SceneNode* sceneNode = this->gameObjectPtr->getSceneNode();
+        if (nullptr != sceneNode)
+        {
+            Ogre::SceneNode::ObjectIterator objectIterator = sceneNode->getAttachedObjectIterator();
+
+            while (objectIterator.hasMoreElements())
+            {
+                Ogre::MovableObject* movableObject = objectIterator.getNext();
+
+                Ogre::Item* item = dynamic_cast<Ogre::Item*>(movableObject);
+                if (nullptr != item)
+                {
+                    itemsToDestroy.push_back(item);
+                }
+            }
+
+            for (Ogre::Item* item : itemsToDestroy)
+            {
+                sceneNode->detachObject(item);
+                this->gameObjectPtr->getSceneManager()->destroyItem(item);
+            }
+        }
+        this->wallItem = nullptr;
+        this->gameObjectPtr->nullMovableObject();
+#else
+        this->gameObjectPtr->nullMovableObject();
+        // Attention: for group loading necessary
+        this->wallItem = nullptr;
+        if (nullptr != this->wallItem)
+        {
+            this->gameObjectPtr->getSceneNode()->detachObject(this->wallItem);
+            this->gameObjectPtr->getSceneManager()->destroyItem(this->wallItem);
+            this->wallItem = nullptr;
+        }
+        this->gameObjectPtr->nullMovableObject();
+#endif
+
         // Load wall data from file
         if (true == this->loadWallDataFromFile())
         {

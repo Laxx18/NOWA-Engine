@@ -335,7 +335,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
 					<property type="6" name="TargetId" data="1085244942"/>
-					<property type="6" name="MoveSpeedX" data="0.1"/>
+					<property type="6" name="MoveSpeedX" data="0.01"/>
 					<property type="6" name="MoveSpeedY" data="0"/>
 					<property type="12" name="FollowGameObjectX" data="true"/>
 					<property type="12" name="FollowGameObjectY" data="false"/>
@@ -347,7 +347,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
 					<property type="6" name="TargetId" data="1085244942"/>
-					<property type="6" name="MoveSpeedX" data="0.2"/>
+					<property type="6" name="MoveSpeedX" data="0.02"/>
 					<property type="6" name="MoveSpeedY" data="0"/>
 					<property type="12" name="FollowGameObjectX" data="true"/>
 					<property type="12" name="FollowGameObjectY" data="false"/>

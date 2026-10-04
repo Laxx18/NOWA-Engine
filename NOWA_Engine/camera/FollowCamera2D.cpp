@@ -29,21 +29,70 @@ namespace NOWA
         minimumBounds(Ogre::Vector3::ZERO),
         maximumBounds(Ogre::Vector3::ZERO),
         trackedCameraPosition(Ogre::Vector3::ZERO),
-        pDebugLine(nullptr)
+        pDebugLine(nullptr),
+        edgeOrthographicClosureRegistered(false),
+        edgeOrthographicActive(false),
+        edgePlayerPosition(Ogre::Vector3::ZERO),
+        edgeCameraPosition(Ogre::Vector3::ZERO),
+        edgeOrthoWindow(Ogre::Vector2::ZERO),
+        edgeCameraClampedX(false),
+        edgeCameraClampedY(false),
+        // Lookahead OFF by default. With it on, this camera has to behave exactly as it did
+        // before the feature existed - a default that changes the feel of every existing level is
+        // not a default, it is a regression with a nice name.
+        lookaheadFactor(Ogre::Vector2::ZERO),
+        lookaheadMaximum(Ogre::Vector2(2.0f, 1.0f)),
+        lookaheadSmooth(0.6f),
+        currentLookahead(Ogre::Vector2::ZERO),
+        lastPlayerPosition(Ogre::Vector3::ZERO),
+        firstTimeLookaheadSet(true),
+        requestedZoom(1.0f),
+        currentZoom(1.0f),
+        appliedZoom(1.0f),
+        zoomBlendTime(0.5f),
+        punchAmount(0.0f),
+        punchDuration(0.0f),
+        punchRemaining(0.0f),
+        punchCurrent(0.0f),
+        playPlaneZ(0.0f),
+        playPlaneZSet(false),
+        baseHalfHeight(0.0f),
+        baseAspectRatio(0.0f),
+        shakeTrauma(0.0f),
+        shakeDecay(1.6f),
+        shakeFrequency(22.0f),
+        shakeMaximumOffset(Ogre::Vector2(0.6f, 0.45f)),
+        shakeTime(0.0f),
+        shakeOffset(Ogre::Vector2::ZERO),
+        hitstopRemaining(0.0f),
+        edgeOrthographicEnabled(false),
+        edgeOrthoBlendTime(0.35f),
+        edgeOrthoMorph(0.0f),
+        lastLoggedOrthographicState(false)
     {
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &FollowCamera2D::handleUpdateBounds), EventDataBoundsUpdated::getStaticEventType());
     }
 
     FollowCamera2D::~FollowCamera2D()
     {
+        if (true == this->edgeOrthographicClosureRegistered)
+        {
+            NOWA::GraphicsModule::getInstance()->removeTrackedClosure("FollowCamera2D::edgeOrthographic");
+
+            this->edgeOrthographicClosureRegistered = false;
+        }
+
         NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &FollowCamera2D::handleUpdateBounds), EventDataBoundsUpdated::getStaticEventType());
+
         this->sceneNode = nullptr;
+
         if (this->raySceneQuery)
         {
             NOWA::GraphicsModule::RenderCommand oceanRdCmd = [this]
             {
                 this->sceneManager->destroyQuery(this->raySceneQuery);
             };
+
             NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(oceanRdCmd), "FollowCamera2D::~FollowCamera2D");
         }
     }
@@ -52,6 +101,7 @@ namespace NOWA
     {
         BaseCamera::onSetData();
         this->firstTimeMoveValueSet = true;
+        this->firstTimeLookaheadSet = true;
     }
 
     void FollowCamera2D::onClearData(void)
@@ -63,12 +113,13 @@ namespace NOWA
     {
         this->offset = offset;
         this->firstTimeMoveValueSet = true;
+        this->playPlaneZSet = false;
     }
 
     void FollowCamera2D::handleUpdateBounds(NOWA::EventDataPtr eventData)
     {
-        // When a new game object has been added to the scene, update the bounds for follow camera 2D
         boost::shared_ptr<NOWA::EventDataBoundsUpdated> castEventData = boost::static_pointer_cast<EventDataBoundsUpdated>(eventData);
+
         this->setBounds(castEventData->getCalculatedBounds().first, castEventData->getCalculatedBounds().second);
     }
 
@@ -80,56 +131,73 @@ namespace NOWA
 
     void FollowCamera2D::setBounds(const Ogre::Vector3& minimumBounds, const Ogre::Vector3& maximumBounds)
     {
-        this->minimumBounds = minimumBounds /* + this->borderOffset*/;
-        this->maximumBounds = maximumBounds /* - this->borderOffset*/;
+        this->minimumBounds = minimumBounds;
+        this->maximumBounds = maximumBounds;
 
-        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_NORMAL, "[FollowCamera2D] minimum bounds: " + Ogre::StringConverter::toString(this->minimumBounds) + "maximum bounds: " + Ogre::StringConverter::toString(this->maximumBounds));
+        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_NORMAL, "[FollowCamera2D] minimum bounds: " + Ogre::StringConverter::toString(this->minimumBounds) + " maximum bounds: " + Ogre::StringConverter::toString(this->maximumBounds));
 
         if (nullptr == this->camera)
         {
             Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[FollowCamera2D] Error: Cannot set bounds because the camera does not exist yet. Please call first CameraManager->addCameraBehavior(...)!");
+
             throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[FollowCamera2D] Error: Cannot set bounds because the camera does not exist yet. Please call first CameraManager->addCameraBehavior(...)!\n", "NOWA");
         }
-        // BUGFIX: this used to be (viewMatrix * corners[4] / 2.5f) / aspectRatio - corners[4] is
-        // the FAR clip plane (Ogre fills getWorldSpaceCorners() with the near plane's four corners
-        // at indices 0-3, then the far plane's four at 4-7), so this value scaled directly with
-        // FarClipDistance (500 in this scene). FarClipDistance is a rendering/culling setting; it
-        // has nothing to do with how wide the camera's view actually is at the 2D PLAY PLANE, which
-        // is the only distance this "half extent" is meant to describe. The "2.5 is exactly the
-        // value" comment was an empirically-found constant that happened to cancel out the far-clip
-        // scaling for whatever FOV/far-clip combination it was tuned against - it does not hold in
-        // general, and did not hold here: back-computing from the logged positions gave
-        // mostRightUp.x =~ 148, LARGER than this level's entire ~111-unit width. That crosses the
-        // two clamp targets in moveCamera() (minimumBounds.x + mostRightUp.x ends up bigger than
-        // maximumBounds.x - mostRightUp.x), and the position then ping-pongs between those two
-        // impossible values depending on which clamp branch fires - exactly the two-value flicker
-        // seen in testing, and fully explained without needing to involve the render thread at all.
-        //
-        // Replaced with the direct, analytic formula for what is actually wanted: half the visible
-        // height at a given distance is distance * tan(fovy / 2); half the visible width is that
-        // times the aspect ratio. The distance that matters is how far the camera actually sits from
-        // the 2D play plane the followed scene node lives on - which is exactly |offset.z|, since
-        // offset is expressed along the camera's own view axis. This depends on nothing but FOVy,
-        // aspect ratio and the offset the designer already set, so it stays correct however FOVy,
-        // aspect ratio or FarClipDistance are configured, with no empirical constant involved.
-        const Ogre::Real distanceToPlayPlane = Ogre::Math::Abs(this->offset.z);
+
+        // ── The view geometry, captured ONCE ─────────────────────────────────────────
+        // Reading the aspect ratio back from the camera every frame is a trap, and it is the one
+        // that sent the camera out of the world: Frustum::setOrthoWindow() OVERWRITES the aspect
+        // ratio with the ortho window's width/height, and that window is derived from mostRightUp,
+        // which was derived from the aspect ratio. Closing that loop made the extents diverge
+        // within a handful of frames, the bounds clamp followed them out of the level, and nothing
+        // healed it afterwards because nothing ever put the aspect ratio back - which is why it
+        // survived switching the morph off and restarting. Captured here, used forever after.
         const Ogre::Radian halfFovY = this->camera->getFOVy() * 0.5f;
-        const Ogre::Real halfHeight = distanceToPlayPlane * Ogre::Math::Tan(halfFovY);
-        const Ogre::Real halfWidth = halfHeight * this->camera->getAspectRatio();
+
+        this->baseHalfHeight = Ogre::Math::Abs(this->offset.z) * Ogre::Math::Tan(halfFovY);
+
+        this->baseAspectRatio = this->camera->getAspectRatio();
+
+        // A camera whose aspect ratio was already corrupted by an earlier run would otherwise
+        // bake that corruption in right here.
+        if (this->baseAspectRatio <= 0.0f || this->baseAspectRatio > 10.0f)
+        {
+            Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[FollowCamera2D] Implausible camera aspect ratio " + Ogre::StringConverter::toString(this->baseAspectRatio) + ", falling back to 16:9.");
+
+            this->baseAspectRatio = 16.0f / 9.0f;
+        }
+
+        this->recomputeViewExtents();
+
+        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_NORMAL, "[FollowCamera2D] mostRightUp: " + Ogre::StringConverter::toString(this->mostRightUp) + " baseHalfHeight: " + Ogre::StringConverter::toString(this->baseHalfHeight) +
+                                                                          " baseAspectRatio: " + Ogre::StringConverter::toString(this->baseAspectRatio));
+
+        this->firstTimeValueSet = true;
+        this->firstTimeMoveValueSet = true;
+    }
+
+    void FollowCamera2D::recomputeViewExtents(void)
+    {
+        // Not set up yet: setBounds has not run, so there is nothing to derive from.
+        if (this->baseHalfHeight <= 0.0f)
+        {
+            return;
+        }
+
+        // The zoom scales the DISTANCE to the play plane, so the half extents scale with it
+        // linearly. Everything downstream - the follow preconditions, the bounds clamp, the
+        // orthographic window - reads mostRightUp, which is why this is the single place the
+        // extents are derived and why it runs before the clamping each frame.
+        //
+        // Both inputs come from the cached values, NEVER from the live camera. At zoom 1 this
+        // produces bit for bit what setBounds used to compute once, so a scene with no zoom in
+        // play is framed and clamped exactly as before.
+        const Ogre::Real halfHeight = this->baseHalfHeight * this->appliedZoom;
+
+        const Ogre::Real halfWidth = halfHeight * this->baseAspectRatio;
 
         this->mostRightUp = Ogre::Vector3(halfWidth, halfHeight, 0.0f);
 
-        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_NORMAL,
-            "[FollowCamera2D] mostRightUp (half-extent at play plane, distance=" + Ogre::StringConverter::toString(distanceToPlayPlane) + "): " + Ogre::StringConverter::toString(this->mostRightUp));
-
-        // BUGFIX: this subtracted borderOffset.z from BOTH mostRightUp.x and mostRightUp.y,
-        // ignoring borderOffset.x and borderOffset.y entirely. Invisible with the constructor's
-        // default borderOffset (50, 0, 0) - .z is 0, so the line was a no-op - but set any nonzero
-        // borderOffset.x/.y via setBorderOffset() and it had no effect at all, while a nonzero .z
-        // would shrink both axes together instead of the one it presumably names.
         this->mostRightUp -= Ogre::Vector3(this->borderOffset.x, this->borderOffset.y, 0.0f);
-        this->firstTimeValueSet = true;
-        this->firstTimeMoveValueSet = true;
     }
 
     void FollowCamera2D::alwaysShowGameObject(bool show, const Ogre::String& category, Ogre::SceneManager* sceneManager)
@@ -139,21 +207,22 @@ namespace NOWA
             this->showGameObject = show;
             this->category = category;
             this->sceneManager = sceneManager;
+
             if (!this->showGameObject)
             {
                 if (this->raySceneQuery)
                 {
                     this->sceneManager->destroyQuery(this->raySceneQuery);
+
+                    this->raySceneQuery = nullptr;
                 }
             }
             else
             {
-                // Check if the game object should be always shown,
-                // if this is the case create ray scene query to throw a ray and check if the player will always be hit
-                // hide all game objects that are in front of the player
                 this->raySceneQuery = this->sceneManager->createRayQuery(Ogre::Ray());
             }
         };
+
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(oceanRdCmd), "FollowCamera2D::alwaysShowGameObject");
     }
 
@@ -161,6 +230,464 @@ namespace NOWA
     {
         this->sceneNode = sceneNode;
     }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // Lookahead
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    void FollowCamera2D::setLookahead(const Ogre::Vector2& factor, const Ogre::Vector2& maximum, Ogre::Real smooth)
+    {
+        this->lookaheadFactor = factor;
+        this->lookaheadMaximum = Ogre::Vector2(Ogre::Math::Abs(maximum.x), Ogre::Math::Abs(maximum.y));
+
+        // Seconds, not a per-frame weight. Lower bound of one frame at 60 fps, so 0 means "as
+        // fast as possible" instead of a division by zero.
+        this->lookaheadSmooth = Ogre::Math::Clamp(smooth, 0.0f, 3.0f);
+    }
+
+    Ogre::Vector2 FollowCamera2D::getLookahead(void) const
+    {
+        return this->currentLookahead;
+    }
+
+    void FollowCamera2D::updateLookahead(Ogre::Real dt, const Ogre::Vector3& playerPosition)
+    {
+        // Velocity from the position delta rather than from the physics body. The delta is
+        // exactly what the camera has to keep up with, it needs no assumption about which
+        // physics API is attached, and it stays correct for a player moved by a path follower
+        // or by a script - neither of which shows up in a rigid body's velocity.
+        Ogre::Vector3 playerVelocity = Ogre::Vector3::ZERO;
+
+        if (false == this->firstTimeLookaheadSet && dt > 0.0f)
+        {
+            playerVelocity = (playerPosition - this->lastPlayerPosition) / dt;
+        }
+
+        this->lastPlayerPosition = playerPosition;
+        this->firstTimeLookaheadSet = false;
+
+        // Nothing to do when the lead is switched off, which is the default. Leaving the filter
+        // running on a zero target would still spend a few frames easing an old lead away after
+        // the feature was turned off mid session.
+        if (0.0f == this->lookaheadFactor.x && 0.0f == this->lookaheadFactor.y)
+        {
+            this->currentLookahead = Ogre::Vector2::ZERO;
+            return;
+        }
+
+        Ogre::Vector2 rawLookahead(playerVelocity.x * this->lookaheadFactor.x, playerVelocity.y * this->lookaheadFactor.y);
+
+        // The cap is what keeps a dash or a long fall from throwing the camera off the player
+        // entirely - without it the lead grows with the velocity and has no upper bound at all.
+        rawLookahead.x = Ogre::Math::Clamp(rawLookahead.x, -this->lookaheadMaximum.x, this->lookaheadMaximum.x);
+        rawLookahead.y = Ogre::Math::Clamp(rawLookahead.y, -this->lookaheadMaximum.y, this->lookaheadMaximum.y);
+
+        // Its own filter, slower than the position follow, and frame rate independent. A fixed
+        // per-frame weight settles three times faster at 180 fps than at 60, and at ANY frame
+        // rate it still arrives within about a quarter of a second - which for a lead of a metre
+        // or more is a visible lurch when the player starts walking and a second one when he
+        // stops. An exponential over a time constant in seconds turns the same lead into a drift.
+        const Ogre::Real lookaheadAlpha = (this->lookaheadSmooth > 0.0f) ? (1.0f - std::exp(-dt / this->lookaheadSmooth)) : 1.0f;
+
+        this->currentLookahead.x += (rawLookahead.x - this->currentLookahead.x) * lookaheadAlpha;
+        this->currentLookahead.y += (rawLookahead.y - this->currentLookahead.y) * lookaheadAlpha;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // Zoom, camera zones, punch zoom
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    void FollowCamera2D::setZoom(Ogre::Real zoom, Ogre::Real blendTime)
+    {
+        this->requestedZoom = Ogre::Math::Clamp(zoom, 0.1f, 10.0f);
+        this->zoomBlendTime = std::max(0.0f, blendTime);
+    }
+
+    Ogre::Real FollowCamera2D::getZoom(void) const
+    {
+        return this->requestedZoom;
+    }
+
+    Ogre::Real FollowCamera2D::getAppliedZoom(void) const
+    {
+        return this->appliedZoom;
+    }
+
+    void FollowCamera2D::setZoomBlendTime(Ogre::Real blendTime)
+    {
+        this->zoomBlendTime = std::max(0.0f, blendTime);
+    }
+
+    void FollowCamera2D::punchZoom(Ogre::Real amount, Ogre::Real duration)
+    {
+        this->punchAmount = Ogre::Math::Clamp(amount, -0.9f, 0.9f);
+        this->punchDuration = std::max(0.001f, duration);
+        this->punchRemaining = this->punchDuration;
+    }
+
+    void FollowCamera2D::addCameraZone(const Ogre::String& zoneId, const Ogre::Vector2& minimum, const Ogre::Vector2& maximum, Ogre::Real zoom)
+    {
+        CameraZone zone;
+        zone.zoneId = zoneId;
+        zone.minimum = Ogre::Vector2(std::min(minimum.x, maximum.x), std::min(minimum.y, maximum.y));
+        zone.maximum = Ogre::Vector2(std::max(minimum.x, maximum.x), std::max(minimum.y, maximum.y));
+        zone.zoom = Ogre::Math::Clamp(zoom, 0.1f, 10.0f);
+
+        // Replace by id rather than append, so calling this again for the same room retunes it
+        // instead of silently stacking a second zone that the first one then shadows forever.
+        for (size_t i = 0; i < this->cameraZones.size(); ++i)
+        {
+            if (this->cameraZones[i].zoneId == zoneId)
+            {
+                this->cameraZones[i] = zone;
+                return;
+            }
+        }
+
+        this->cameraZones.push_back(zone);
+    }
+
+    void FollowCamera2D::removeCameraZone(const Ogre::String& zoneId)
+    {
+        for (size_t i = 0; i < this->cameraZones.size(); ++i)
+        {
+            if (this->cameraZones[i].zoneId == zoneId)
+            {
+                this->cameraZones.erase(this->cameraZones.begin() + i);
+                return;
+            }
+        }
+    }
+
+    void FollowCamera2D::clearCameraZones(void)
+    {
+        this->cameraZones.clear();
+    }
+
+    void FollowCamera2D::updateZoom(Ogre::Real dt, const Ogre::Vector3& playerPosition)
+    {
+        // Zones are tested against the PLAYER, never against the camera. Testing the camera
+        // would make the zoom depend on the camera's own smoothed position, which the zoom then
+        // moves in turn - a feedback loop that oscillates on every zone border.
+        Ogre::Real zoneZoom = 1.0f;
+
+        for (size_t i = 0; i < this->cameraZones.size(); ++i)
+        {
+            const CameraZone& zone = this->cameraZones[i];
+
+            if (playerPosition.x >= zone.minimum.x && playerPosition.x <= zone.maximum.x && playerPosition.y >= zone.minimum.y && playerPosition.y <= zone.maximum.y)
+            {
+                // First match wins, so overlapping zones resolve by insertion order instead of
+                // by whatever the container happens to hold last.
+                zoneZoom = zone.zoom;
+                break;
+            }
+        }
+
+        const Ogre::Real targetZoom = this->requestedZoom * zoneZoom;
+
+        // Exponential approach, so the blend takes the same wall clock time at any frame rate.
+        // A plain per-frame lerp factor would blend roughly three times faster at 180 fps than
+        // at 60, which is the classic reason a camera feels different on another machine.
+        const Ogre::Real zoomAlpha = (this->zoomBlendTime > 0.0f) ? (1.0f - std::exp(-dt / (this->zoomBlendTime * 0.33f))) : 1.0f;
+
+        this->currentZoom += (targetZoom - this->currentZoom) * zoomAlpha;
+
+        if (this->punchRemaining > 0.0f)
+        {
+            this->punchRemaining -= dt;
+
+            // Squared ease out: the full amount lands on the first frame and tapers away. The
+            // snap in and the smooth out are what make it read as an impact; easing BOTH ends
+            // turns the same numbers into an ordinary zoom nobody notices.
+            const Ogre::Real k = std::max(0.0f, this->punchRemaining / this->punchDuration);
+
+            this->punchCurrent = this->punchAmount * k * k;
+        }
+        else
+        {
+            this->punchRemaining = 0.0f;
+            this->punchCurrent = 0.0f;
+        }
+
+        this->appliedZoom = std::max(0.05f, this->currentZoom * (1.0f + this->punchCurrent));
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // Screen shake
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    void FollowCamera2D::addShake(Ogre::Real strength)
+    {
+        this->shakeTrauma = Ogre::Math::Clamp(this->shakeTrauma + strength, 0.0f, 1.0f);
+    }
+
+    void FollowCamera2D::setShakeParameters(const Ogre::Vector2& maxOffset, Ogre::Real frequency, Ogre::Real decay)
+    {
+        this->shakeMaximumOffset = Ogre::Vector2(Ogre::Math::Abs(maxOffset.x), Ogre::Math::Abs(maxOffset.y));
+        this->shakeFrequency = std::max(0.1f, frequency);
+        this->shakeDecay = std::max(0.01f, decay);
+    }
+
+    Ogre::Real FollowCamera2D::getShakeTrauma(void) const
+    {
+        return this->shakeTrauma;
+    }
+
+    void FollowCamera2D::updateShake(Ogre::Real dt)
+    {
+        if (this->shakeTrauma <= 0.0f)
+        {
+            this->shakeTrauma = 0.0f;
+            this->shakeOffset = Ogre::Vector2::ZERO;
+            return;
+        }
+
+        this->shakeTrauma = std::max(0.0f, this->shakeTrauma - this->shakeDecay * dt);
+        this->shakeTime += dt;
+
+        // Trauma SQUARED. A linear falloff spends most of its life in the middle of the range
+        // and reads as a long rumble; squared, a light hit stays nearly invisible and a heavy
+        // one hits hard, which is what lets one accumulating value carry impact strength.
+        const Ogre::Real amount = this->shakeTrauma * this->shakeTrauma;
+
+        const Ogre::Real t = this->shakeTime * this->shakeFrequency;
+
+        // Two incommensurable frequencies per axis, offset in phase. One sine per axis settles
+        // into a visible wobble within a few frames; a random walk drifts off the real camera
+        // position. This stays centred and never repeats on a noticeable period.
+        this->shakeOffset.x = amount * this->shakeMaximumOffset.x * (std::sin(t) * 0.6f + std::sin(t * 2.17f + 1.3f) * 0.4f);
+        this->shakeOffset.y = amount * this->shakeMaximumOffset.y * (std::sin(t * 1.43f + 0.7f) * 0.6f + std::sin(t * 2.91f + 2.1f) * 0.4f);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // Hitstop
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    void FollowCamera2D::startHitstop(Ogre::Real duration)
+    {
+        this->hitstopRemaining = std::max(this->hitstopRemaining, std::max(0.0f, duration));
+    }
+
+    bool FollowCamera2D::isHitstopActive(void) const
+    {
+        return this->hitstopRemaining > 0.0f;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // Edge orthographic morph
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    void FollowCamera2D::setEdgeOrthographicEnabled(bool enabled, Ogre::Real blendTime)
+    {
+        this->edgeOrthographicEnabled = enabled;
+        this->edgeOrthoBlendTime = std::max(0.0f, blendTime);
+
+        if (false == enabled)
+        {
+            this->edgeOrthographicActive = false;
+        }
+    }
+
+    bool FollowCamera2D::isEdgeOrthographicEnabled(void) const
+    {
+        return this->edgeOrthographicEnabled;
+    }
+
+    Ogre::Real FollowCamera2D::getEdgeOrthographicMorph(void) const
+    {
+        return this->edgeOrthoMorph;
+    }
+
+    void FollowCamera2D::updateEdgeOrthographic(const Ogre::Vector3& playerPosition, const Ogre::Vector3& cameraPosition, bool cameraClampedX, bool cameraClampedY)
+    {
+        this->edgePlayerPosition = playerPosition;
+        this->edgeCameraPosition = cameraPosition;
+        this->edgeCameraClampedX = cameraClampedX;
+        this->edgeCameraClampedY = cameraClampedY;
+
+        const Ogre::Real cameraMinX = this->minimumBounds.x + this->mostRightUp.x;
+
+        const Ogre::Real cameraMaxX = this->maximumBounds.x - this->mostRightUp.x;
+
+        // The camera is smoothed, therefore it does not necessarily land
+        // exactly on the mathematical clamp position.
+        const Ogre::Real edgeTolerance = 1.0f;
+
+        const bool cameraAtLeft = cameraPosition.x <= cameraMinX + edgeTolerance;
+
+        const bool cameraAtRight = cameraPosition.x >= cameraMaxX - edgeTolerance;
+
+        const bool playerBeyondLeft = cameraAtLeft && playerPosition.x < cameraPosition.x;
+
+        const bool playerBeyondRight = cameraAtRight && playerPosition.x > cameraPosition.x;
+
+        const bool shouldEnterOrtho = playerBeyondLeft || playerBeyondRight;
+
+        // Keep the mode active for a small distance when the player
+        // crosses back over the camera center. This prevents rapid
+        // perspective/orthographic flickering.
+        const Ogre::Real releaseDistance = 0.5f;
+
+        bool shouldStayOrtho = false;
+
+        if (true == this->edgeOrthographicActive)
+        {
+            if (cameraAtLeft)
+            {
+                shouldStayOrtho = playerPosition.x < cameraPosition.x + releaseDistance;
+            }
+            else if (cameraAtRight)
+            {
+                shouldStayOrtho = playerPosition.x > cameraPosition.x - releaseDistance;
+            }
+        }
+
+        this->edgeOrthographicActive = this->edgeOrthographicEnabled && (shouldEnterOrtho || shouldStayOrtho);
+
+        // Keep the horizontal orthographic size identical to the
+        // perspective view, but add a small vertical safety margin.
+        //
+        // Without this margin the orthographic bottom edge can land
+        // exactly on minimumBounds.y. A one-unit-high platform below
+        // the player can then disappear when the player falls back
+        // down from a higher platform.
+        const Ogre::Real orthographicVerticalMargin = 1.0f;
+
+        this->edgeOrthoWindow = Ogre::Vector2(this->mostRightUp.x * 2.0f, this->mostRightUp.y * 2.0f + orthographicVerticalMargin);
+
+        if (false == this->edgeOrthographicClosureRegistered)
+        {
+            this->edgeOrthographicClosureRegistered = true;
+
+            auto closureFunction = [this](Ogre::Real renderDt)
+            {
+                if (nullptr == this->camera)
+                {
+                    return;
+                }
+
+                // ── State change logging, throttled to transitions only ───────────────
+                if (this->edgeOrthographicActive != this->lastLoggedOrthographicState)
+                {
+                    if (true == this->edgeOrthographicActive)
+                    {
+                        Ogre::String side = "UNKNOWN";
+
+                        const Ogre::Real logCameraMinX = this->minimumBounds.x + this->mostRightUp.x;
+
+                        const Ogre::Real logCameraMaxX = this->maximumBounds.x - this->mostRightUp.x;
+
+                        if (this->edgeCameraPosition.x >= logCameraMaxX - 1.0f)
+                        {
+                            side = "RIGHT";
+                        }
+                        else if (this->edgeCameraPosition.x <= logCameraMinX + 1.0f)
+                        {
+                            side = "LEFT";
+                        }
+
+                        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_NORMAL, "[FollowCamera2D][Ortho] START " + side + " player=" + Ogre::StringConverter::toString(this->edgePlayerPosition) +
+                                                                                          " camera=" + Ogre::StringConverter::toString(this->edgeCameraPosition) + " clampedX=" + Ogre::StringConverter::toString(this->edgeCameraClampedX) +
+                                                                                          " window=" + Ogre::StringConverter::toString(this->edgeOrthoWindow));
+                    }
+                    else
+                    {
+                        Ogre::LogManager::getSingleton().logMessage(Ogre::LML_NORMAL,
+                            "[FollowCamera2D][Ortho] END player=" + Ogre::StringConverter::toString(this->edgePlayerPosition) + " camera=" + Ogre::StringConverter::toString(this->edgeCameraPosition));
+                    }
+
+                    this->lastLoggedOrthographicState = this->edgeOrthographicActive;
+                }
+
+                // ── The morph itself ─────────────────────────────────────────────────
+                // Driven on the RENDER thread off the render dt, not on the logic thread.
+                // The projection matrix is written here, so blending it here is what keeps
+                // every intermediate frame consistent instead of stepping once per logic tick.
+                const Ogre::Real morphTarget = (true == this->edgeOrthographicActive) ? 1.0f : 0.0f;
+
+                const Ogre::Real morphAlpha = (this->edgeOrthoBlendTime > 0.0f) ? (1.0f - std::exp(-renderDt / (this->edgeOrthoBlendTime * 0.33f))) : 1.0f;
+
+                this->edgeOrthoMorph += (morphTarget - this->edgeOrthoMorph) * morphAlpha;
+
+                // Snap the tails. An exponential approach never actually arrives, and leaving a
+                // custom projection matrix installed at a morph of 0.0004 keeps the camera off
+                // its normal code path forever for no visible benefit.
+                if (this->edgeOrthoMorph < 0.002f)
+                {
+                    this->edgeOrthoMorph = 0.0f;
+                }
+                else if (this->edgeOrthoMorph > 0.998f)
+                {
+                    this->edgeOrthoMorph = 1.0f;
+                }
+
+                if (0.0f == this->edgeOrthoMorph)
+                {
+                    // Fully perspective: hand the camera back to its own projection path so
+                    // nothing downstream has to deal with a custom matrix in the common case.
+                    this->camera->setCustomProjectionMatrix(false);
+                    this->camera->setProjectionType(Ogre::PT_PERSPECTIVE);
+                    return;
+                }
+
+                // Both matrices are READ BACK from the camera rather than built by hand, so the
+                // near and far plane, the aspect ratio and the render system's depth convention
+                // all come from exactly the same source the normal path uses. Getting any one of
+                // those three wrong by hand produces a picture that looks almost right and clips
+                // wrongly. Toggling the projection type only dirties a flag; the cost is two 4x4
+                // recomputations per frame.
+                const Ogre::Real savedAspectRatio = this->camera->getAspectRatio();
+
+                this->camera->setCustomProjectionMatrix(false);
+
+                this->camera->setProjectionType(Ogre::PT_PERSPECTIVE);
+                const Ogre::Matrix4 perspectiveMatrix = this->camera->getProjectionMatrix();
+
+                this->camera->setProjectionType(Ogre::PT_ORTHOGRAPHIC);
+
+                // setOrthoWindowHeight, NOT setOrthoWindow. The two argument version OVERWRITES
+                // the camera's aspect ratio with the window's width/height and nothing ever puts
+                // it back, which silently corrupted the camera for the rest of the session. The
+                // height alone, with the camera's own aspect ratio supplying the width, describes
+                // the very same window - the window was built from that aspect ratio to begin with.
+                this->camera->setOrthoWindowHeight(this->edgeOrthoWindow.y);
+
+                const Ogre::Matrix4 orthographicMatrix = this->camera->getProjectionMatrix();
+
+                // Back to perspective BEFORE installing the custom matrix. The type is what the
+                // rest of the engine queries when it wants to know what kind of camera this is;
+                // leaving it on orthographic while the matrix is a blend would have culling and
+                // shadow code reason about a camera that does not exist.
+                this->camera->setProjectionType(Ogre::PT_PERSPECTIVE);
+
+                // Belt and braces: if any of the calls above still moves the aspect ratio in some
+                // Ogre version, it is put back here rather than left for the next frame to inherit.
+                this->camera->setAspectRatio(savedAspectRatio);
+
+                Ogre::Matrix4 morphedMatrix;
+
+                for (size_t row = 0; row < 4; ++row)
+                {
+                    for (size_t column = 0; column < 4; ++column)
+                    {
+                        morphedMatrix[row][column] = perspectiveMatrix[row][column] * (1.0f - this->edgeOrthoMorph) + orthographicMatrix[row][column] * this->edgeOrthoMorph;
+                    }
+                }
+
+                // An element wise blend of two projection matrices is not a projectively
+                // "correct" interpolation - there is no such thing between these two - but it is
+                // continuous, monotonic and hits both ends exactly, which is all the eye needs.
+                this->camera->setCustomProjectionMatrix(true, morphedMatrix);
+            };
+
+            NOWA::GraphicsModule::getInstance()->updateTrackedClosure("FollowCamera2D::edgeOrthographic", closureFunction, false);
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // Main update
+    ///////////////////////////////////////////////////////////////////////////////////////////////
 
     void FollowCamera2D::moveCamera(Ogre::Real dt)
     {
@@ -174,10 +701,6 @@ namespace NOWA
             return;
         }
 
-        // Attention: the camera can be gone while this behavior object is still alive.
-        // CameraComponent::setActivatedFlag(false) calls CameraManager::removeCamera(), and
-        // WorkspaceBaseComponent::removeWorkspace() runs in the same render command. Writing
-        // through a dead camera below would be a use-after-free.
         if (nullptr == this->camera)
         {
             return;
@@ -187,27 +710,32 @@ namespace NOWA
         {
             this->lastMoveValue = Ogre::Vector3::ZERO;
 
-            // Single write, position only, current orientation preserved - see the header comment
-            // on trackedCameraPosition, and the class-wide BUGFIX note below, for why this used to
-            // be two conflicting writes and why orientation must never come from the scene node.
             Ogre::Vector3 targetNodePosition = this->sceneNode->_getDerivedPositionUpdated();
+
+            // Captured once. The camera's z is from here on always playPlaneZ + offset.z * zoom,
+            // so a zoom moves it along its own view axis and a player who moves in z does not
+            // drag it along - which matches what this camera did before the zoom existed.
+            if (false == this->playPlaneZSet)
+            {
+                this->playPlaneZ = targetNodePosition.z;
+                this->playPlaneZSet = true;
+            }
+
             const Ogre::Vector3 initialPosition = targetNodePosition + this->offset;
+
             GraphicsModule::getInstance()->setCameraTransform(this->camera, initialPosition, this->camera->getOrientation());
 
-            // BUGFIX: this class used to have no memory of where it had last told the camera to be,
-            // and read this->camera->getPosition() back instead whenever it needed that value. That
-            // read is answered by the RENDER thread's copy of the camera, which lags the LOGIC
-            // thread - where moveCamera() runs - by however many frames the render queue is behind.
-            // trackedCameraPosition is this class's own, immediately-consistent record instead; see
-            // its full explanation further down where it is actually used for the first time.
             this->trackedCameraPosition = initialPosition;
+
+            this->lastPlayerPosition = targetNodePosition;
+            this->firstTimeLookaheadSet = true;
+            this->currentLookahead = Ogre::Vector2::ZERO;
 
             this->firstTimeMoveValueSet = false;
         }
 
-        // Read directly from the physics body — NOT from the SceneNode.
-        // SceneNode is updated by the render thread one frame later.
         Ogre::Vector3 playerPosition;
+
         if (nullptr != this->physicsBody)
         {
             playerPosition = this->physicsBody->getPosition();
@@ -217,21 +745,50 @@ namespace NOWA
             playerPosition = this->sceneNode->getPosition();
         }
 
-        // Attention: a persistent closure keeps running on the render thread until it is
-        // explicitly removed. The camera may be destroyed in between - re-check on every
-        // execution, not just when the closure is registered.
-        if (nullptr == this->camera)
+        // ── Zoom first ───────────────────────────────────────────────────────────────
+        // It changes mostRightUp, and mostRightUp is what the follow preconditions and the
+        // bounds clamp below are measured against. Updating it afterwards would clamp this
+        // frame's position against last frame's framing and show the void outside the level
+        // for exactly one frame per zoom step - which is all it takes to be visible.
+        this->updateZoom(dt, playerPosition);
+        this->recomputeViewExtents();
+
+        // ── Hitstop ──────────────────────────────────────────────────────────────────
+        // The follow is frozen, the shake and the punch zoom are not. That is the whole trick:
+        // the world stops dead while the lens keeps moving, and the hit lands. Freezing all
+        // three gives a dropped frame instead of an impact.
+        if (this->hitstopRemaining > 0.0f)
         {
+            this->hitstopRemaining = std::max(0.0f, this->hitstopRemaining - dt);
+
+            this->updateShake(dt);
+
+            Ogre::Vector3 frozenPosition = this->trackedCameraPosition;
+            frozenPosition.x += this->shakeOffset.x;
+            frozenPosition.y += this->shakeOffset.y;
+            frozenPosition.z = this->playPlaneZ + this->offset.z * this->appliedZoom;
+
+            GraphicsModule::getInstance()->updateCameraPosition(this->camera, frozenPosition);
+
             return;
         }
 
+        this->updateLookahead(dt, playerPosition);
+
         const Ogre::Vector3 cameraPosition = this->trackedCameraPosition;
+
+        // The point the camera wants to sit on: the player, plus the authored offset, plus the
+        // lead. Folding the lead in here rather than adding it to the final position is what
+        // makes it share the follow's smoothing and the bounds clamp - a lead added afterwards
+        // would happily push the camera past the edge of the level.
+        const Ogre::Real targetX = playerPosition.x + this->offset.x + this->currentLookahead.x;
+        const Ogre::Real targetY = playerPosition.y + this->offset.y + this->currentLookahead.y;
 
         Ogre::Vector3 velocity = Ogre::Vector3::ZERO;
 
-        if (playerPosition.x + this->offset.x - this->mostRightUp.x > this->minimumBounds.x && playerPosition.x + this->offset.x + this->mostRightUp.x < this->maximumBounds.x)
+        if (targetX - this->mostRightUp.x > this->minimumBounds.x && targetX + this->mostRightUp.x < this->maximumBounds.x)
         {
-            velocity.x = playerPosition.x - cameraPosition.x + this->offset.x;
+            velocity.x = targetX - cameraPosition.x;
 
             if (Ogre::Math::RealEqual(velocity.x, 0.0f))
             {
@@ -239,9 +796,10 @@ namespace NOWA
             }
         }
 
-        if (playerPosition.y + this->offset.y - this->mostRightUp.y > this->minimumBounds.y && playerPosition.y + this->offset.y + this->mostRightUp.y < this->maximumBounds.y)
+        if (targetY - this->mostRightUp.y > this->minimumBounds.y && targetY + this->mostRightUp.y < this->maximumBounds.y)
         {
-            velocity.y = playerPosition.y - cameraPosition.y + this->offset.y;
+            velocity.y = targetY - cameraPosition.y;
+
             if (Ogre::Math::RealEqual(velocity.y, 0.0f))
             {
                 velocity.y = 0.0f;
@@ -249,50 +807,70 @@ namespace NOWA
         }
 
         velocity.x = NOWA::MathHelper::getInstance()->lowPassFilter(velocity.x, this->lastMoveValue.x, this->smoothValue);
+
         velocity.y = NOWA::MathHelper::getInstance()->lowPassFilter(velocity.y, this->lastMoveValue.y, this->smoothValue);
 
         this->lastMoveValue = velocity;
 
-        // BUGFIX: bounds clamping used to be up to FOUR separate updateCameraPosition() calls in
-        // this one function - the main movement write, then an X clamp, then a Y clamp, each of
-        // them queued independently and each computed from a DIFFERENT position snapshot:
-        //   - The main write used `cameraPosition` (this frame's starting point) plus `velocity`.
-        //   - The X clamp reused the SAME `cameraPosition` for the axes it was not correcting -
-        //     meaning if it fired, it reset Y and Z back to where they were BEFORE this frame's
-        //     movement, silently discarding whatever Y motion the main write had just computed.
-        //   - The Y clamp did the same to X, and read this->camera->getPosition().y freshly rather
-        //     than using `cameraPosition.y` at all - a THIRD independent, and possibly differently
-        //     stale, read of the camera's position within the same function call.
-        //   - All four were queued render commands; whichever one the render thread happened to
-        //     apply LAST for a given frame silently won, with no ordering guarantee visible from
-        //     this thread.
-        //
-        // Folded into one vector, adjusted in place, with exactly ONE write issued at the end - a
-        // clamp on one axis can no longer step on a movement just computed for another, and there
-        // is only ever one answer to "where does the camera end up this frame".
         Ogre::Vector3 finalPosition = cameraPosition + (velocity * this->moveCameraWeight);
+
+        bool cameraClampedX = false;
+        bool cameraClampedY = false;
 
         if (finalPosition.x + this->mostRightUp.x > this->maximumBounds.x)
         {
             finalPosition.x = this->maximumBounds.x - this->mostRightUp.x;
+
+            cameraClampedX = true;
         }
         else if (finalPosition.x - this->mostRightUp.x < this->minimumBounds.x)
         {
             finalPosition.x = this->minimumBounds.x + this->mostRightUp.x;
+
+            cameraClampedX = true;
         }
 
         if (finalPosition.y + this->mostRightUp.y > this->maximumBounds.y)
         {
             finalPosition.y = this->maximumBounds.y - this->mostRightUp.y;
+
+            cameraClampedY = true;
         }
         else if (finalPosition.y - this->mostRightUp.y < this->minimumBounds.y)
         {
             finalPosition.y = this->minimumBounds.y + this->mostRightUp.y;
+
+            cameraClampedY = true;
         }
 
-        // Even closure is used and we are already on render thread, never the less this interpolation method still must be used to prevent graphical object jitter!
-        GraphicsModule::getInstance()->updateCameraPosition(this->camera, finalPosition);
+        const Ogre::Real cameraMinX = this->minimumBounds.x + this->mostRightUp.x;
+
+        const Ogre::Real cameraMaxX = this->maximumBounds.x - this->mostRightUp.x;
+
+        const Ogre::Real cameraEdgeTolerance = 1.0f;
+
+        if (Ogre::Math::Abs(finalPosition.x - cameraMinX) <= cameraEdgeTolerance || Ogre::Math::Abs(finalPosition.x - cameraMaxX) <= cameraEdgeTolerance)
+        {
+            cameraClampedX = true;
+        }
+
+        // The zoom drives the camera along its own view axis.
+        finalPosition.z = this->playPlaneZ + this->offset.z * this->appliedZoom;
+
+        // Tracked FIRST, and shake free. The tracked position is the reference the next
+        // correction is computed against, so feeding the shake into it would make the follow
+        // chase its own jitter and the shake would never settle.
         this->trackedCameraPosition = finalPosition;
+
+        this->updateShake(dt);
+
+        Ogre::Vector3 renderPosition = finalPosition;
+        renderPosition.x += this->shakeOffset.x;
+        renderPosition.y += this->shakeOffset.y;
+
+        GraphicsModule::getInstance()->updateCameraPosition(this->camera, renderPosition);
+
+        this->updateEdgeOrthographic(playerPosition, finalPosition, cameraClampedX, cameraClampedY);
     }
 
     void FollowCamera2D::rotateCamera(Ogre::Real dt, bool forJoyStick)
@@ -308,28 +886,5 @@ namespace NOWA
     {
         return this->camera->getOrientation();
     }
-
-    // void FollowCamera2D::followGameObject(const Ogre::Vector3& position, const Ogre::Vector3& offset, const Ogre::Vector3& direction, Ogre::Real dt)
-    //{
-    //	Ogre::Vector3 cameraPosition = position;
-
-    //	if (this->firstTimeMoveValueSet)
-    //	{
-    //		this->lastMoveValue = position;
-    //		this->camera->moveRelative(offset);
-    //		this->firstTimeMoveValueSet = false;
-    //	}
-
-    //	cameraPosition.x = NOWA::MathHelper::getInstance()->lowPassFilter(cameraPosition.x, this->lastMoveValue.x, this->smoothValue);
-    //	cameraPosition.y = NOWA::MathHelper::getInstance()->lowPassFilter(cameraPosition.y, this->lastMoveValue.y, this->smoothValue);
-    //	cameraPosition.z = NOWA::MathHelper::getInstance()->lowPassFilter(cameraPosition.z, this->lastMoveValue.z, this->smoothValue);
-
-    //	Ogre::Vector3 velocity = position - this->lastMoveValue;
-
-    //	this->camera->moveRelative(velocity);
-    //	// this->camera->setDirection(direction);
-
-    //	this->lastMoveValue = position;
-    //}
 
 }; // namespace end

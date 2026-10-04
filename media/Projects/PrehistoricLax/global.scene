@@ -60,9 +60,18 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="false"/>
 					<property type="6" name="CameraGameObjectId" data="1255209972"/>
-					<property type="6" name="SmoothValue" data="0.9"/>
-					<property type="9" name="OffsetPosition" data="0 3 10"/>
-					<property type="9" name="BorderOffset" data="0 0 0"/>
+					<property type="6" name="SmoothValue" data="0.6"/>
+					<property type="9" name="OffsetPosition" data="0 1 10"/>
+					<property type="9" name="BorderOffset" data="0 1 0"/>
+					<property type="8" name="LookaheadFactor" data="0.35 0.2"/>
+					<property type="8" name="LookaheadMax" data="2 1"/>
+					<property type="6" name="LookaheadSmooth" data="0.6"/>
+					<property type="6" name="ZoomBlendTime" data="0.5"/>
+					<property type="8" name="ShakeMaxOffset" data="0.6 0.45"/>
+					<property type="6" name="ShakeFrequency" data="22"/>
+					<property type="6" name="ShakeDecay" data="1.6"/>
+					<property type="12" name="EdgeOrthographic" data="true"/>
+					<property type="6" name="EdgeOrthoBlendTime" data="0.8"/>
 					<property type="7" name="ComponentInputDeviceComponent" data="InputDeviceComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>

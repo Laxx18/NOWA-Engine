@@ -651,6 +651,14 @@ namespace NOWA
         {
             clonedMovableObject = sceneManager->createItem(static_cast<Ogre::Item*>(originalMovableObject)->getMesh(), originalSceneNode->isStatic() ? Ogre::SCENE_STATIC : Ogre::SCENE_DYNAMIC);
         }
+
+        // CUSTOM type is not cloneable, like universumcomponent etc.
+        if (nullptr == clonedMovableObject)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController]: Cloning game object name " + validatedName + " from the original name : " + originalGameObjectPtr->getName() + " for a CUSTOM type is not possible!");
+            return nullptr;
+        }
+
         clonedMovableObject->setName(validatedName);
         clonedSceneNode->attachObject(clonedMovableObject);
         if (nullptr != clonedMovableObject)

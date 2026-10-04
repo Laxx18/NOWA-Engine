@@ -522,6 +522,54 @@ namespace NOWA
         this->platformFrame = this->gameObjectPtr->getSceneNode()->_getDerivedOrientationUpdated();
         this->platformPlaneAnchor = this->gameObjectPtr->getSceneNode()->_getDerivedPositionUpdated();
 
+        assert(GraphicsModule::getInstance()->isRenderThread() && "postInit() must be called from the main/logic thread! Use queueEvent() from other threads.");
+
+        // A cloned GameObject can still carry the source platform's generated Items on
+        // its scene node. The cloned component does not own those pointers yet, so its
+        // normal destroy path cannot remove them. Clear every inherited Item before the
+        // first clone rebuild; otherwise the old platform (including grass/trees) remains
+        // renderable and selectable beside the resized clone.
+#if 1
+        std::vector<Ogre::Item*> itemsToDestroy;
+
+        Ogre::SceneNode* sceneNode = this->gameObjectPtr->getSceneNode();
+        if (nullptr != sceneNode)
+        {
+            Ogre::SceneNode::ObjectIterator objectIterator = sceneNode->getAttachedObjectIterator();
+
+            while (objectIterator.hasMoreElements())
+            {
+                Ogre::MovableObject* movableObject = objectIterator.getNext();
+
+                Ogre::Item* item = dynamic_cast<Ogre::Item*>(movableObject);
+                if (nullptr != item)
+                {
+                    itemsToDestroy.push_back(item);
+                }
+            }
+
+            for (Ogre::Item* item : itemsToDestroy)
+            {
+                sceneNode->detachObject(item);
+                this->gameObjectPtr->getSceneManager()->destroyItem(item);
+            }
+        }
+
+        this->platformItem = nullptr;
+        this->gameObjectPtr->nullMovableObject();
+#else
+        this->gameObjectPtr->nullMovableObject();
+        // Attention: for group loading necessary
+        this->platformItem = nullptr;
+        if (nullptr != this->platformItem)
+        {
+            this->gameObjectPtr->getSceneNode()->detachObject(this->platformItem);
+            this->gameObjectPtr->getSceneManager()->destroyItem(this->platformItem);
+            this->platformItem = nullptr;
+        }
+        this->gameObjectPtr->nullMovableObject();
+#endif
+
         // Create preview scene node
         this->previewNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
 

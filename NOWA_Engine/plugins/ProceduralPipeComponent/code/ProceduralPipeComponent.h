@@ -342,7 +342,7 @@ namespace NOWA
         static std::optional<NOWA::GameObjectTypeDescriptor> getStaticTypeDescriptor()
         {
             NOWA::GameObjectTypeDescriptor desc;
-            desc.type = eType::CUSTOM;
+            desc.type = eType::ITEM;
             desc.displayName = "Pipe";
             desc.meshToDisplay = "Node.mesh";
             desc.needsMeshItem = false;

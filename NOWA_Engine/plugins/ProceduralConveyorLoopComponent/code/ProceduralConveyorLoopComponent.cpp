@@ -241,6 +241,52 @@ namespace NOWA
 
         this->conveyorMeshName = "ProceduralConveyorLoopMesh_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
 
+        assert(GraphicsModule::getInstance()->isRenderThread() && "postInit() must be called from the main/logic thread! Use queueEvent() from other threads.");
+
+        // A cloned GameObject can still carry the source conveyor Item on its scene node.
+        // The component pointer is not copied, so destroyConveyorMesh() cannot see that
+        // stale Item. Remove every attached Item before the first clone rebuild; otherwise
+        // both the old and the resized conveyor remain renderable and selectable.
+#if 1
+        std::vector<Ogre::Item*> itemsToDestroy;
+
+        Ogre::SceneNode* sceneNode = this->gameObjectPtr->getSceneNode();
+        if (nullptr != sceneNode)
+        {
+            Ogre::SceneNode::ObjectIterator objectIterator = sceneNode->getAttachedObjectIterator();
+
+            while (objectIterator.hasMoreElements())
+            {
+                Ogre::MovableObject* movableObject = objectIterator.getNext();
+
+                Ogre::Item* item = dynamic_cast<Ogre::Item*>(movableObject);
+                if (nullptr != item)
+                {
+                    itemsToDestroy.push_back(item);
+                }
+            }
+
+            for (Ogre::Item* item : itemsToDestroy)
+            {
+                sceneNode->detachObject(item);
+                this->gameObjectPtr->getSceneManager()->destroyItem(item);
+            }
+        }
+        this->conveyorItem = nullptr;
+        this->gameObjectPtr->nullMovableObject();
+#else
+        this->gameObjectPtr->nullMovableObject();
+        // Attention: for group loading necessary
+        this->conveyorItem = nullptr;
+        if (nullptr != this->conveyorItem)
+        {
+            this->gameObjectPtr->getSceneNode()->detachObject(this->conveyorItem);
+            this->gameObjectPtr->getSceneManager()->destroyItem(this->conveyorItem);
+            this->conveyorItem = nullptr;
+        }
+        this->gameObjectPtr->nullMovableObject();
+#endif
+
         if (true == this->activated->getBool())
         {
             this->rebuildMesh();
@@ -390,8 +436,7 @@ namespace NOWA
     // Mesh generation
     // =========================================================================================
 
-    void ProceduralConveyorLoopComponent::addEndCapTriangle(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& normal, const Ogre::Vector2& uv0, const Ogre::Vector2& uv1,
-        const Ogre::Vector2& uv2)
+    void ProceduralConveyorLoopComponent::addEndCapTriangle(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& normal, const Ogre::Vector2& uv0, const Ogre::Vector2& uv1, const Ogre::Vector2& uv2)
     {
         // Same self-correcting winding as addBeltQuad below - computed from the actual triangle
         // geometry and the desired outward normal, never picked by hand.
@@ -441,8 +486,8 @@ namespace NOWA
         this->currentEndCapVertexIndex += 3;
     }
 
-    void ProceduralConveyorLoopComponent::addBeltQuad(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, const Ogre::Vector3& normal, Ogre::Real arcLength0, Ogre::Real arcLength1,
-        Ogre::Real v0Coord, Ogre::Real v1Coord)
+    void ProceduralConveyorLoopComponent::addBeltQuad(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, const Ogre::Vector3& normal, Ogre::Real arcLength0, Ogre::Real arcLength1, Ogre::Real v0Coord,
+        Ogre::Real v1Coord)
     {
         // Winding derived from the normal rather than worked out by hand per face - same
         // self-correcting approach as ProceduralBlockComponent::addBlockQuad, deliberately
@@ -678,7 +723,9 @@ namespace NOWA
         const size_t numEndCapVertices = this->currentEndCapVertexIndex;
 
         GraphicsModule::RenderCommand renderCommand = [this, beltVerticesCopy, beltIndicesCopy, numBeltVertices, endCapVerticesCopy, endCapIndicesCopy, numEndCapVertices]()
-        { this->createConveyorMeshInternal(beltVerticesCopy, beltIndicesCopy, numBeltVertices, endCapVerticesCopy, endCapIndicesCopy, numEndCapVertices); };
+        {
+            this->createConveyorMeshInternal(beltVerticesCopy, beltIndicesCopy, numBeltVertices, endCapVerticesCopy, endCapIndicesCopy, numEndCapVertices);
+        };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralConveyorLoopComponent::createConveyorMesh");
 
         this->updatePhysicsCollision();
@@ -733,11 +780,11 @@ namespace NOWA
             memcpy(indexData, beltInds.data(), beltInds.size() * sizeof(Ogre::uint32));
 
             for (size_t vi = 0u; vi < numBeltVerts; ++vi)
-        {
+            {
                 const Ogre::Vector3 position(beltVerts[vi * floatsPerVertex + 0], beltVerts[vi * floatsPerVertex + 1], beltVerts[vi * floatsPerVertex + 2]);
-            aabbMin.makeFloor(position);
-            aabbMax.makeCeil(position);
-        }
+                aabbMin.makeFloor(position);
+                aabbMax.makeCeil(position);
+            }
 
             Ogre::VertexBufferPacked* vertexBuffer = nullptr;
             Ogre::IndexBufferPacked* indexBuffer = nullptr;
@@ -754,7 +801,7 @@ namespace NOWA
                 indexBuffer = vaoManager->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, beltInds.size(), Ogre::BT_IMMUTABLE, indexData, true);
             }
             catch (const Ogre::Exception& e)
-        {
+            {
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralConveyorLoopComponent] Failed to create belt buffers: " + e.getDescription());
                 return;
             }
@@ -789,23 +836,23 @@ namespace NOWA
                 aabbMax.makeCeil(position);
             }
 
-        Ogre::VertexBufferPacked* vertexBuffer = nullptr;
-        Ogre::IndexBufferPacked* indexBuffer = nullptr;
+            Ogre::VertexBufferPacked* vertexBuffer = nullptr;
+            Ogre::IndexBufferPacked* indexBuffer = nullptr;
 
-        try
-        {
+            try
+            {
                 vertexBuffer = vaoManager->createVertexBuffer(elements, numEndCapVerts, Ogre::BT_IMMUTABLE, vertexData, true);
                 indexBuffer = vaoManager->createIndexBuffer(Ogre::IndexBufferPacked::IT_32BIT, endCapInds.size(), Ogre::BT_IMMUTABLE, indexData, true);
-        }
-        catch (const Ogre::Exception& e)
-        {
+            }
+            catch (const Ogre::Exception& e)
+            {
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProceduralConveyorLoopComponent] Failed to create end cap buffers: " + e.getDescription());
-            return;
-        }
+                return;
+            }
 
-        Ogre::VertexBufferPackedVec vertexBuffers;
-        vertexBuffers.push_back(vertexBuffer);
-        Ogre::VertexArrayObject* vao = vaoManager->createVertexArrayObject(vertexBuffers, indexBuffer, Ogre::OT_TRIANGLE_LIST);
+            Ogre::VertexBufferPackedVec vertexBuffers;
+            vertexBuffers.push_back(vertexBuffer);
+            Ogre::VertexArrayObject* vao = vaoManager->createVertexArrayObject(vertexBuffers, indexBuffer, Ogre::OT_TRIANGLE_LIST);
 
             Ogre::SubMesh* endCapSubMesh = mesh->createSubMesh();
             endCapSubMesh->mVao[Ogre::VpNormal].push_back(vao);
@@ -831,7 +878,7 @@ namespace NOWA
         this->conveyorItem->setName("ProceduralConveyorLoopItem_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
         this->conveyorItem->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
         this->conveyorItem->setQueryFlags(this->gameObjectPtr->getCategoryId());
-        this->conveyorItem->setCastShadows(true);
+        this->conveyorItem->setCastShadows(this->gameObjectPtr->getCastShadows());
 
         // Submesh 0 = belt (scrolling), submesh 1 = end caps (static) - matching the exact order
         // createSubMesh() was called above.
@@ -839,13 +886,13 @@ namespace NOWA
         {
             const Ogre::String beltDbName = this->beltDatablock->getString();
             if (false == beltDbName.empty())
-        {
-                Ogre::HlmsDatablock* db = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(beltDbName);
-            if (nullptr != db)
             {
-                this->conveyorItem->getSubItem(0u)->setDatablock(db);
+                Ogre::HlmsDatablock* db = Ogre::Root::getSingleton().getHlmsManager()->getDatablockNoDefault(beltDbName);
+                if (nullptr != db)
+                {
+                    this->conveyorItem->getSubItem(0u)->setDatablock(db);
+                }
             }
-        }
         }
         if (this->conveyorItem->getNumSubItems() > 1u)
         {
@@ -873,9 +920,8 @@ namespace NOWA
             sceneManager->notifyStaticAabbDirty(this->conveyorItem);
         }
 
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,
-            "[ProceduralConveyorLoopComponent] Conveyor loop mesh created: " + Ogre::StringConverter::toString(static_cast<unsigned int>(numBeltVerts)) + " belt vertices, " +
-                Ogre::StringConverter::toString(static_cast<unsigned int>(numEndCapVerts)) + " end cap vertices.");
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralConveyorLoopComponent] Conveyor loop mesh created: " + Ogre::StringConverter::toString(static_cast<unsigned int>(numBeltVerts)) + " belt vertices, " +
+                                                                               Ogre::StringConverter::toString(static_cast<unsigned int>(numEndCapVerts)) + " end cap vertices.");
     }
 
     void ProceduralConveyorLoopComponent::destroyConveyorMesh(void)
@@ -923,7 +969,7 @@ namespace NOWA
         // left completely untouched. The end cap submesh's buffer is never touched here at all -
         // it has its own, separate, immutable buffer that was only ever written once.
         for (size_t i = 0; i < this->beltVertexArcLength.size(); ++i)
-            {
+        {
             const float arcLen = this->beltVertexArcLength[i];
             this->beltVertices[i * floatsPerVertex + uOffsetWithinVertex] = static_cast<float>((arcLen + this->scrollOffset) * uScale);
         }
@@ -1105,14 +1151,14 @@ namespace NOWA
                 .def("getDepth", &ProceduralConveyorLoopComponent::getDepth)
                 .def("setBeltSpeed", &ProceduralConveyorLoopComponent::setBeltSpeed)
                 .def("getBeltSpeed", &ProceduralConveyorLoopComponent::getBeltSpeed)
-                        .def("setBeltRepeatCount", &ProceduralConveyorLoopComponent::setBeltRepeatCount)
-                        .def("getBeltRepeatCount", &ProceduralConveyorLoopComponent::getBeltRepeatCount)
-                        .def("setDepthUVTiling", &ProceduralConveyorLoopComponent::setDepthUVTiling)
-                        .def("getDepthUVTiling", &ProceduralConveyorLoopComponent::getDepthUVTiling)
-                        .def("setBeltDatablock", &ProceduralConveyorLoopComponent::setBeltDatablock)
-                        .def("getBeltDatablock", &ProceduralConveyorLoopComponent::getBeltDatablock)
-                        .def("setEndCapDatablock", &ProceduralConveyorLoopComponent::setEndCapDatablock)
-                        .def("getEndCapDatablock", &ProceduralConveyorLoopComponent::getEndCapDatablock)];
+                .def("setBeltRepeatCount", &ProceduralConveyorLoopComponent::setBeltRepeatCount)
+                .def("getBeltRepeatCount", &ProceduralConveyorLoopComponent::getBeltRepeatCount)
+                .def("setDepthUVTiling", &ProceduralConveyorLoopComponent::setDepthUVTiling)
+                .def("getDepthUVTiling", &ProceduralConveyorLoopComponent::getDepthUVTiling)
+                .def("setBeltDatablock", &ProceduralConveyorLoopComponent::setBeltDatablock)
+                .def("getBeltDatablock", &ProceduralConveyorLoopComponent::getBeltDatablock)
+                .def("setEndCapDatablock", &ProceduralConveyorLoopComponent::setEndCapDatablock)
+                .def("getEndCapDatablock", &ProceduralConveyorLoopComponent::getEndCapDatablock)];
 
         LuaScriptApi::getInstance()->addClassToCollection("ProceduralConveyorLoopComponent", "class inherits GameObjectComponent", ProceduralConveyorLoopComponent::getStaticInfoText());
 
@@ -1144,7 +1190,8 @@ namespace NOWA
         LuaScriptApi::getInstance()->addClassToCollection("GameObject", "ProceduralConveyorLoopComponent getProceduralConveyorLoopComponentFromName(String name)", "Gets the component by its custom name.");
 
         gameObjectControllerClass.def("castProceduralConveyorLoopComponent", &GameObjectController::cast<ProceduralConveyorLoopComponent>);
-        LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "ProceduralConveyorLoopComponent castProceduralConveyorLoopComponent(ProceduralConveyorLoopComponent other)", "Casts an incoming type from function for lua auto completion.");
+        LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "ProceduralConveyorLoopComponent castProceduralConveyorLoopComponent(ProceduralConveyorLoopComponent other)",
+            "Casts an incoming type from function for lua auto completion.");
     }
 
 }; // namespace end

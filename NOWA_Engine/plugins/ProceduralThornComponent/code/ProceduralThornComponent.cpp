@@ -197,6 +197,50 @@ namespace NOWA
 
         this->thornMeshName = "ProceduralThornMesh_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
 
+        // A cloned GameObject can still carry the old procedural Item on its scene node.
+        // Names are not unique here: internalClone gives both Items the GameObject name.
+        // Keep the Item tracked by the GameObject and remove every other Item before
+        // rebuilding, otherwise stale geometry remains visible and selectable.
+#if 1
+        std::vector<Ogre::Item*> itemsToDestroy;
+
+        Ogre::SceneNode* sceneNode = this->gameObjectPtr->getSceneNode();
+        if (nullptr != sceneNode)
+        {
+            Ogre::SceneNode::ObjectIterator objectIterator = sceneNode->getAttachedObjectIterator();
+
+            while (objectIterator.hasMoreElements())
+            {
+                Ogre::MovableObject* movableObject = objectIterator.getNext();
+
+                Ogre::Item* item = dynamic_cast<Ogre::Item*>(movableObject);
+                if (nullptr != item)
+                {
+                    itemsToDestroy.push_back(item);
+                }
+            }
+
+            for (Ogre::Item* item : itemsToDestroy)
+            {
+                sceneNode->detachObject(item);
+                this->gameObjectPtr->getSceneManager()->destroyItem(item);
+            }
+        }
+        this->thornItem = nullptr;
+        this->gameObjectPtr->nullMovableObject();
+#else
+        this->gameObjectPtr->nullMovableObject();
+        // Attention: for group loading necessary
+        this->thornItem = nullptr;
+        if (nullptr != this->thornItem)
+        {
+            this->gameObjectPtr->getSceneNode()->detachObject(this->thornItem);
+            this->gameObjectPtr->getSceneManager()->destroyItem(this->thornItem);
+            this->thornItem = nullptr;
+        }
+        this->gameObjectPtr->nullMovableObject();
+#endif
+
         if (true == this->activated->getBool())
         {
             this->rebuildMesh();
@@ -314,8 +358,8 @@ namespace NOWA
     // Mesh generation
     // =========================================================================================
 
-    void ProceduralThornComponent::addThornTriangle(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& normal0, const Ogre::Vector3& normal1, const Ogre::Vector3& normal2,
-        const Ogre::Vector3& tangent, const Ogre::Vector2& uv0, const Ogre::Vector2& uv1, const Ogre::Vector2& uv2)
+    void ProceduralThornComponent::addThornTriangle(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& normal0, const Ogre::Vector3& normal1, const Ogre::Vector3& normal2, const Ogre::Vector3& tangent,
+        const Ogre::Vector2& uv0, const Ogre::Vector2& uv1, const Ogre::Vector2& uv2)
     {
         // BUGFIX (design correction): this used to take ONE shared normal for the whole triangle,
         // fine for the old flat-shaded roof panels but wrong for a cone, whose lateral surface is
@@ -349,8 +393,7 @@ namespace NOWA
         this->currentVertexIndex += 3;
     }
 
-    void ProceduralThornComponent::addThornQuad(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, const Ogre::Vector3& normal, Ogre::Real u0, Ogre::Real u1, Ogre::Real v0Coord,
-        Ogre::Real v1Coord)
+    void ProceduralThornComponent::addThornQuad(const Ogre::Vector3& v0, const Ogre::Vector3& v1, const Ogre::Vector3& v2, const Ogre::Vector3& v3, const Ogre::Vector3& normal, Ogre::Real u0, Ogre::Real u1, Ogre::Real v0Coord, Ogre::Real v1Coord)
     {
         // Winding derived from the normal rather than worked out by hand per face - same
         // self-correcting approach as ProceduralBlockComponent::addBlockQuad, used here
@@ -541,7 +584,10 @@ namespace NOWA
         std::vector<Ogre::uint32> indicesCopy = this->indices;
         const size_t numVertices = this->currentVertexIndex;
 
-        GraphicsModule::RenderCommand renderCommand = [this, verticesCopy, indicesCopy, numVertices]() { this->createThornMeshInternal(verticesCopy, indicesCopy, numVertices); };
+        GraphicsModule::RenderCommand renderCommand = [this, verticesCopy, indicesCopy, numVertices]()
+        {
+            this->createThornMeshInternal(verticesCopy, indicesCopy, numVertices);
+        };
         NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ProceduralThornComponent::createThornMesh");
 
         this->updatePhysicsCollision();
@@ -829,8 +875,8 @@ namespace NOWA
                 .def("getThornWidth", &ProceduralThornComponent::getThornWidth)
                 .def("setThornHeight", &ProceduralThornComponent::setThornHeight)
                 .def("getThornHeight", &ProceduralThornComponent::getThornHeight)
-                        .def("setThornBaseSize", &ProceduralThornComponent::setThornBaseSize)
-                        .def("getThornBaseSize", &ProceduralThornComponent::getThornBaseSize)
+                .def("setThornBaseSize", &ProceduralThornComponent::setThornBaseSize)
+                .def("getThornBaseSize", &ProceduralThornComponent::getThornBaseSize)
                 .def("setDatablock", &ProceduralThornComponent::setDatablock)
                 .def("getDatablock", &ProceduralThornComponent::getDatablock)];
 

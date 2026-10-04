@@ -373,7 +373,7 @@ namespace NOWA
     std::optional<NOWA::GameObjectTypeDescriptor> PlanetSunComponent::getStaticTypeDescriptor()
     {
         NOWA::GameObjectTypeDescriptor desc;
-        desc.type = eType::CUSTOM;
+        desc.type = eType::ITEM;
         desc.displayName = "Planet Sun";
         desc.meshToDisplay = "Node.mesh";
         desc.needsMeshItem = false;

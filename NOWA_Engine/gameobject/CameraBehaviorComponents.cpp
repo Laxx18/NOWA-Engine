@@ -1810,8 +1810,57 @@ namespace NOWA
         CameraBehaviorComponent(),
         smoothValue(new Variant(CameraBehaviorFollow2DComponent::AttrSmoothValue(), 0.6f, this->attributes)),
         offsetPosition(new Variant(CameraBehaviorFollow2DComponent::AttrOffsetPosition(), Ogre::Vector3(0.0f, 1.0f, 5.0f), this->attributes)),
-        borderOffset(new Variant(CameraBehaviorFollow2DComponent::AttrBorderOffset(), Ogre::Vector3(0.0f, 0.0f, 0.0f), this->attributes))
+        borderOffset(new Variant(CameraBehaviorFollow2DComponent::AttrBorderOffset(), Ogre::Vector3(0.0f, 0.0f, 0.0f), this->attributes)),
+        lookaheadFactor(new Variant(CameraBehaviorFollow2DComponent::AttrLookaheadFactor(), Ogre::Vector2::ZERO, this->attributes)),
+        lookaheadMax(new Variant(CameraBehaviorFollow2DComponent::AttrLookaheadMax(), Ogre::Vector2(2.0f, 1.0f), this->attributes)),
+        lookaheadSmooth(new Variant(CameraBehaviorFollow2DComponent::AttrLookaheadSmooth(), 0.6f, this->attributes)),
+        zoomBlendTime(new Variant(CameraBehaviorFollow2DComponent::AttrZoomBlendTime(), 0.5f, this->attributes)),
+        shakeMaxOffset(new Variant(CameraBehaviorFollow2DComponent::AttrShakeMaxOffset(), Ogre::Vector2(0.6f, 0.45f), this->attributes)),
+        shakeFrequency(new Variant(CameraBehaviorFollow2DComponent::AttrShakeFrequency(), 22.0f, this->attributes)),
+        shakeDecay(new Variant(CameraBehaviorFollow2DComponent::AttrShakeDecay(), 1.6f, this->attributes)),
+        edgeOrthographic(new Variant(CameraBehaviorFollow2DComponent::AttrEdgeOrthographic(), false, this->attributes)),
+        edgeOrthoBlendTime(new Variant(CameraBehaviorFollow2DComponent::AttrEdgeOrthoBlendTime(), 0.35f, this->attributes))
     {
+        this->lookaheadFactor->setDescription("Seconds of the player's current velocity the camera leads by: x across, y vertically. ZERO BY DEFAULT - at 0 "
+                                              "this camera behaves exactly as it did before the lookahead existed.\n"
+                                              "Judge the value against the VIEW WIDTH, not in meters: at an offset of 5 along z and 65 degrees field of view "
+                                              "the half width is under 6 meters, so a lead of 2 meters is already a third of the screen and reads as a lurch "
+                                              "on every start and stop. Start at 0.1 on x and work up. Keep y at 0 unless you want the screen to pump on "
+                                              "every jump - vertical lead is what makes a platformer camera feel seasick.");
+
+        this->lookaheadMax->setDescription("Hard cap on the lead distance in meters, per axis. Without it the lead grows with the velocity and has no "
+                                           "upper bound at all, so a dash throws the camera off the player entirely.");
+
+        this->lookaheadSmooth->setDescription("Settle time of the lead in SECONDS - not a per-frame weight. Deliberately separate from Smooth Value: a lead "
+                                              "that arrives as fast as the camera moves reads as a twitch on every direction tap. 0.5 to 0.8 turns the lead "
+                                              "into a drift. Frame rate independent, so it feels the same at 60 and at 180 fps.");
+        this->lookaheadSmooth->setConstraints(0.0f, 3.0f);
+
+        this->zoomBlendTime->setDescription("Seconds a zoom change takes to settle, used by setZoom and by the camera zones. 0 snaps. The blend is frame "
+                                            "rate independent, so it takes the same wall clock time at 60 and at 180 fps.");
+        this->zoomBlendTime->setConstraints(0.0f, 10.0f);
+
+        this->shakeMaxOffset->setDescription("Maximum shake displacement in meters at full trauma, x across and y vertically. Slightly less on y than on "
+                                             "x keeps a hit from reading as a jump.");
+
+        this->shakeFrequency->setDescription("Shake oscillation rate. Around 20 to 25 reads as an impact; below 10 it reads as an earthquake and above 40 "
+                                             "it disappears into the pixel grid.");
+        this->shakeFrequency->setConstraints(0.1f, 200.0f);
+
+        this->shakeDecay->setDescription("Trauma lost per second. 1.6 means a full strength shake is gone in roughly 0.6 seconds. Trauma ACCUMULATES per "
+                                         "hit and is applied squared, which is what lets a single addShake call carry impact strength.");
+        this->shakeDecay->setConstraints(0.01f, 20.0f);
+
+        this->edgeOrthographic->setDescription("Morphs towards an orthographic projection while the camera is clamped against a horizontal bound and the "
+                                               "player walks further out to the side, so a tall wall in front of the play plane can no longer swallow him.\n"
+                                               "OFF by default on purpose. The morph itself is continuous - nothing pops any more - but going orthographic "
+                                               "collapses the parallax between depth layers, so decor bands in front of and behind the play plane visibly "
+                                               "slide for the duration of the blend. Fading the occluder out instead (alwaysShowGameObject) costs nothing "
+                                               "visually; this is the fallback for when that is not an option.");
+
+        this->edgeOrthoBlendTime->setDescription("Seconds the orthographic morph takes each way. 0 restores the old hard switch, which is what the pop came "
+                                                 "from. 0.3 to 0.5 hides the transition; longer makes the parallax slide easier to notice, not harder.");
+        this->edgeOrthoBlendTime->setConstraints(0.0f, 5.0f);
     }
 
     CameraBehaviorFollow2DComponent::~CameraBehaviorFollow2DComponent()
@@ -1838,6 +1887,51 @@ namespace NOWA
             this->borderOffset->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
         }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "LookaheadFactor")
+        {
+            this->lookaheadFactor->setValue(XMLConverter::getAttribVector2(propertyElement, "data", Ogre::Vector2::ZERO));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "LookaheadMax")
+        {
+            this->lookaheadMax->setValue(XMLConverter::getAttribVector2(propertyElement, "data", Ogre::Vector2(2.0f, 1.0f)));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "LookaheadSmooth")
+        {
+            this->lookaheadSmooth->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.6f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ZoomBlendTime")
+        {
+            this->zoomBlendTime->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.5f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ShakeMaxOffset")
+        {
+            this->shakeMaxOffset->setValue(XMLConverter::getAttribVector2(propertyElement, "data", Ogre::Vector2(0.6f, 0.45f)));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ShakeFrequency")
+        {
+            this->shakeFrequency->setValue(XMLConverter::getAttribReal(propertyElement, "data", 22.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ShakeDecay")
+        {
+            this->shakeDecay->setValue(XMLConverter::getAttribReal(propertyElement, "data", 1.6f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "EdgeOrthographic")
+        {
+            this->edgeOrthographic->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "EdgeOrthoBlendTime")
+        {
+            this->edgeOrthoBlendTime->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.35f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
 
         return success;
     }
@@ -1852,6 +1946,16 @@ namespace NOWA
         clonedCompPtr->setSmoothValue(this->smoothValue->getReal());
         clonedCompPtr->setOffsetPosition(this->offsetPosition->getVector3());
         clonedCompPtr->setBorderOffset(this->borderOffset->getVector3());
+
+        clonedCompPtr->setLookaheadFactor(this->lookaheadFactor->getVector2());
+        clonedCompPtr->setLookaheadMax(this->lookaheadMax->getVector2());
+        clonedCompPtr->setLookaheadSmooth(this->lookaheadSmooth->getReal());
+        clonedCompPtr->setZoomBlendTime(this->zoomBlendTime->getReal());
+        clonedCompPtr->setShakeMaxOffset(this->shakeMaxOffset->getVector2());
+        clonedCompPtr->setShakeFrequency(this->shakeFrequency->getReal());
+        clonedCompPtr->setShakeDecay(this->shakeDecay->getReal());
+        clonedCompPtr->setEdgeOrthographic(this->edgeOrthographic->getBool());
+        clonedCompPtr->setEdgeOrthoBlendTime(this->edgeOrthoBlendTime->getReal());
 
         clonedGameObjectPtr->addComponent(clonedCompPtr);
         clonedCompPtr->setOwner(clonedGameObjectPtr);
@@ -1906,6 +2010,42 @@ namespace NOWA
         {
             this->setBorderOffset(attribute->getVector3());
         }
+        else if (CameraBehaviorFollow2DComponent::AttrLookaheadFactor() == attribute->getName())
+        {
+            this->setLookaheadFactor(attribute->getVector2());
+        }
+        else if (CameraBehaviorFollow2DComponent::AttrLookaheadMax() == attribute->getName())
+        {
+            this->setLookaheadMax(attribute->getVector2());
+        }
+        else if (CameraBehaviorFollow2DComponent::AttrLookaheadSmooth() == attribute->getName())
+        {
+            this->setLookaheadSmooth(attribute->getReal());
+        }
+        else if (CameraBehaviorFollow2DComponent::AttrZoomBlendTime() == attribute->getName())
+        {
+            this->setZoomBlendTime(attribute->getReal());
+        }
+        else if (CameraBehaviorFollow2DComponent::AttrShakeMaxOffset() == attribute->getName())
+        {
+            this->setShakeMaxOffset(attribute->getVector2());
+        }
+        else if (CameraBehaviorFollow2DComponent::AttrShakeFrequency() == attribute->getName())
+        {
+            this->setShakeFrequency(attribute->getReal());
+        }
+        else if (CameraBehaviorFollow2DComponent::AttrShakeDecay() == attribute->getName())
+        {
+            this->setShakeDecay(attribute->getReal());
+        }
+        else if (CameraBehaviorFollow2DComponent::AttrEdgeOrthographic() == attribute->getName())
+        {
+            this->setEdgeOrthographic(attribute->getBool());
+        }
+        else if (CameraBehaviorFollow2DComponent::AttrEdgeOrthoBlendTime() == attribute->getName())
+        {
+            this->setEdgeOrthoBlendTime(attribute->getReal());
+        }
     }
 
     void CameraBehaviorFollow2DComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
@@ -1929,6 +2069,60 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("name", "BorderOffset"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->borderOffset->getVector3())));
         propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "LookaheadFactor"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->lookaheadFactor->getVector2())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "LookaheadMax"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->lookaheadMax->getVector2())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "LookaheadSmooth"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->lookaheadSmooth->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "ZoomBlendTime"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->zoomBlendTime->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "ShakeMaxOffset"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->shakeMaxOffset->getVector2())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "ShakeFrequency"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->shakeFrequency->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "ShakeDecay"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->shakeDecay->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "EdgeOrthographic"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->edgeOrthographic->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "EdgeOrthoBlendTime"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->edgeOrthoBlendTime->getReal())));
+        propertiesXML->append_node(propertyXML);
     }
 
     void CameraBehaviorFollow2DComponent::setActivated(bool activated)
@@ -1946,6 +2140,12 @@ namespace NOWA
         {
             static_cast<FollowCamera2D*>(this->baseCamera)->setBorderOffset(this->borderOffset->getVector3());
             static_cast<FollowCamera2D*>(this->baseCamera)->setBounds(Core::getSingletonPtr()->getCurrentSceneBoundLeftNear(), Core::getSingletonPtr()->getCurrentSceneBoundRightFar());
+
+            // After setBounds, because setBounds is what first computes the view extents - and
+            // the tuning values below are what the extents are computed FROM once a zoom is in
+            // play. Pushed here rather than in the setters alone, so a scene that was loaded
+            // before the camera existed still arrives at the same state.
+            this->applyTuning();
         }
 
         if (true == activated)
@@ -1972,6 +2172,29 @@ namespace NOWA
     Ogre::String CameraBehaviorFollow2DComponent::getParentClassName(void) const
     {
         return "CameraBehaviorComponent";
+    }
+
+    FollowCamera2D* CameraBehaviorFollow2DComponent::getFollowCamera2D(void) const
+    {
+        // The behavior is created lazily in setActivated, so everything that reaches through to
+        // it has to cope with it not existing yet. That is a C++ lifetime fact, not a defensive
+        // existence check: the editor calls the setters while the scene is still being built.
+        return static_cast<FollowCamera2D*>(this->baseCamera);
+    }
+
+    void CameraBehaviorFollow2DComponent::applyTuning(void)
+    {
+        FollowCamera2D* followCamera = this->getFollowCamera2D();
+
+        if (nullptr == followCamera)
+        {
+            return;
+        }
+
+        followCamera->setLookahead(this->lookaheadFactor->getVector2(), this->lookaheadMax->getVector2(), this->lookaheadSmooth->getReal());
+        followCamera->setZoomBlendTime(this->zoomBlendTime->getReal());
+        followCamera->setShakeParameters(this->shakeMaxOffset->getVector2(), this->shakeFrequency->getReal(), this->shakeDecay->getReal());
+        followCamera->setEdgeOrthographicEnabled(this->edgeOrthographic->getBool(), this->edgeOrthoBlendTime->getReal());
     }
 
     void CameraBehaviorFollow2DComponent::setSmoothValue(Ogre::Real smoothValue)
@@ -2024,6 +2247,257 @@ namespace NOWA
         return this->borderOffset->getVector3();
     }
 
+    // ── Lookahead configuration ──────────────────────────────────────────────────────
+
+    void CameraBehaviorFollow2DComponent::setLookaheadFactor(const Ogre::Vector2& factor)
+    {
+        this->lookaheadFactor->setValue(factor);
+        this->applyTuning();
+    }
+
+    Ogre::Vector2 CameraBehaviorFollow2DComponent::getLookaheadFactor(void) const
+    {
+        return this->lookaheadFactor->getVector2();
+    }
+
+    void CameraBehaviorFollow2DComponent::setLookaheadMax(const Ogre::Vector2& maximum)
+    {
+        this->lookaheadMax->setValue(maximum);
+        this->applyTuning();
+    }
+
+    Ogre::Vector2 CameraBehaviorFollow2DComponent::getLookaheadMax(void) const
+    {
+        return this->lookaheadMax->getVector2();
+    }
+
+    void CameraBehaviorFollow2DComponent::setLookaheadSmooth(Ogre::Real smooth)
+    {
+        this->lookaheadSmooth->setValue(Ogre::Math::Clamp(smooth, 0.0f, 3.0f));
+        this->applyTuning();
+    }
+
+    Ogre::Real CameraBehaviorFollow2DComponent::getLookaheadSmooth(void) const
+    {
+        return this->lookaheadSmooth->getReal();
+    }
+
+    // ── Zoom configuration ───────────────────────────────────────────────────────────
+
+    void CameraBehaviorFollow2DComponent::setZoomBlendTime(Ogre::Real blendTime)
+    {
+        this->zoomBlendTime->setValue(std::max(0.0f, blendTime));
+        this->applyTuning();
+    }
+
+    Ogre::Real CameraBehaviorFollow2DComponent::getZoomBlendTime(void) const
+    {
+        return this->zoomBlendTime->getReal();
+    }
+
+    // ── Shake configuration ──────────────────────────────────────────────────────────
+
+    void CameraBehaviorFollow2DComponent::setShakeMaxOffset(const Ogre::Vector2& maxOffset)
+    {
+        this->shakeMaxOffset->setValue(maxOffset);
+        this->applyTuning();
+    }
+
+    Ogre::Vector2 CameraBehaviorFollow2DComponent::getShakeMaxOffset(void) const
+    {
+        return this->shakeMaxOffset->getVector2();
+    }
+
+    void CameraBehaviorFollow2DComponent::setShakeFrequency(Ogre::Real frequency)
+    {
+        this->shakeFrequency->setValue(std::max(0.1f, frequency));
+        this->applyTuning();
+    }
+
+    Ogre::Real CameraBehaviorFollow2DComponent::getShakeFrequency(void) const
+    {
+        return this->shakeFrequency->getReal();
+    }
+
+    void CameraBehaviorFollow2DComponent::setShakeDecay(Ogre::Real decay)
+    {
+        this->shakeDecay->setValue(std::max(0.01f, decay));
+        this->applyTuning();
+    }
+
+    Ogre::Real CameraBehaviorFollow2DComponent::getShakeDecay(void) const
+    {
+        return this->shakeDecay->getReal();
+    }
+
+    // ── Edge orthographic configuration ──────────────────────────────────────────────
+
+    void CameraBehaviorFollow2DComponent::setEdgeOrthographic(bool enabled)
+    {
+        this->edgeOrthographic->setValue(enabled);
+        this->applyTuning();
+    }
+
+    bool CameraBehaviorFollow2DComponent::getEdgeOrthographic(void) const
+    {
+        return this->edgeOrthographic->getBool();
+    }
+
+    void CameraBehaviorFollow2DComponent::setEdgeOrthoBlendTime(Ogre::Real blendTime)
+    {
+        this->edgeOrthoBlendTime->setValue(std::max(0.0f, blendTime));
+        this->applyTuning();
+    }
+
+    Ogre::Real CameraBehaviorFollow2DComponent::getEdgeOrthoBlendTime(void) const
+    {
+        return this->edgeOrthoBlendTime->getReal();
+    }
+
+    // ── Runtime actions, the part game mechanics drive from Lua ──────────────────────
+
+    void CameraBehaviorFollow2DComponent::setZoom(Ogre::Real zoom, Ogre::Real blendTime)
+    {
+        this->zoomBlendTime->setValue(std::max(0.0f, blendTime));
+
+        FollowCamera2D* followCamera = this->getFollowCamera2D();
+
+        if (nullptr == followCamera)
+        {
+            return;
+        }
+
+        followCamera->setZoom(zoom, blendTime);
+    }
+
+    Ogre::Real CameraBehaviorFollow2DComponent::getZoom(void) const
+    {
+        FollowCamera2D* followCamera = this->getFollowCamera2D();
+
+        if (nullptr == followCamera)
+        {
+            return 1.0f;
+        }
+
+        return followCamera->getZoom();
+    }
+
+    Ogre::Real CameraBehaviorFollow2DComponent::getAppliedZoom(void) const
+    {
+        FollowCamera2D* followCamera = this->getFollowCamera2D();
+
+        if (nullptr == followCamera)
+        {
+            return 1.0f;
+        }
+
+        return followCamera->getAppliedZoom();
+    }
+
+    void CameraBehaviorFollow2DComponent::punchZoom(Ogre::Real amount, Ogre::Real duration)
+    {
+        FollowCamera2D* followCamera = this->getFollowCamera2D();
+
+        if (nullptr == followCamera)
+        {
+            return;
+        }
+
+        followCamera->punchZoom(amount, duration);
+    }
+
+    void CameraBehaviorFollow2DComponent::addShake(Ogre::Real strength)
+    {
+        FollowCamera2D* followCamera = this->getFollowCamera2D();
+
+        if (nullptr == followCamera)
+        {
+            return;
+        }
+
+        followCamera->addShake(strength);
+    }
+
+    Ogre::Real CameraBehaviorFollow2DComponent::getShakeTrauma(void) const
+    {
+        FollowCamera2D* followCamera = this->getFollowCamera2D();
+
+        if (nullptr == followCamera)
+        {
+            return 0.0f;
+        }
+
+        return followCamera->getShakeTrauma();
+    }
+
+    void CameraBehaviorFollow2DComponent::startHitstop(Ogre::Real duration)
+    {
+        FollowCamera2D* followCamera = this->getFollowCamera2D();
+
+        if (nullptr == followCamera)
+        {
+            return;
+        }
+
+        followCamera->startHitstop(duration);
+    }
+
+    void CameraBehaviorFollow2DComponent::impact(Ogre::Real strength)
+    {
+        FollowCamera2D* followCamera = this->getFollowCamera2D();
+
+        if (nullptr == followCamera)
+        {
+            return;
+        }
+
+        const Ogre::Real clampedStrength = Ogre::Math::Clamp(strength, 0.0f, 1.0f);
+
+        // The three effects scaled off ONE number, because that is how they are meant to be
+        // used: a hit is a single event, and hand tuning shake, punch and hitstop separately at
+        // every call site is how they drift apart until a light hit shakes harder than a heavy
+        // one. Call the three individually only when a specific hit needs to break the pattern.
+        followCamera->addShake(0.15f + 0.55f * clampedStrength);
+        followCamera->punchZoom(-0.04f - 0.06f * clampedStrength, 0.12f + 0.08f * clampedStrength);
+        followCamera->startHitstop(0.04f + 0.08f * clampedStrength);
+    }
+
+    void CameraBehaviorFollow2DComponent::addCameraZone(const Ogre::String& zoneId, Ogre::Real minimumX, Ogre::Real minimumY, Ogre::Real maximumX, Ogre::Real maximumY, Ogre::Real zoom)
+    {
+        FollowCamera2D* followCamera = this->getFollowCamera2D();
+
+        if (nullptr == followCamera)
+        {
+            return;
+        }
+
+        followCamera->addCameraZone(zoneId, Ogre::Vector2(minimumX, minimumY), Ogre::Vector2(maximumX, maximumY), zoom);
+    }
+
+    void CameraBehaviorFollow2DComponent::removeCameraZone(const Ogre::String& zoneId)
+    {
+        FollowCamera2D* followCamera = this->getFollowCamera2D();
+
+        if (nullptr == followCamera)
+        {
+            return;
+        }
+
+        followCamera->removeCameraZone(zoneId);
+    }
+
+    void CameraBehaviorFollow2DComponent::clearCameraZones(void)
+    {
+        FollowCamera2D* followCamera = this->getFollowCamera2D();
+
+        if (nullptr == followCamera)
+        {
+            return;
+        }
+
+        followCamera->clearCameraZones();
+    }
+
     // Lua registration part
 
     CameraBehaviorFollow2DComponent* getCameraBehaviorFollow2DComponent(GameObject* gameObject, unsigned int occurrenceIndex)
@@ -2057,11 +2531,40 @@ namespace NOWA
         // classes in (that call is itself idempotent per lua_State, see its own guard).
         CameraBehaviorComponent::createStaticApiForLua(lua, gameObjectClass, gameObjectControllerClass);
 
+        // Every runtime entry point below takes plain numbers and strings, never a Vector2. The
+        // zone bounds and the shake amplitudes are the only vector-shaped values here, and
+        // passing them as four and two scalars keeps this whole API usable from Lua without
+        // depending on which Ogre math types happen to be registered in a given build.
         module(lua)[class_<CameraBehaviorFollow2DComponent, CameraBehaviorComponent>("CameraBehaviorFollow2DComponent")
                 .def("setSmoothValue", &CameraBehaviorFollow2DComponent::setSmoothValue)
                 .def("getSmoothValue", &CameraBehaviorFollow2DComponent::getSmoothValue)
                 .def("setOffsetPosition", &CameraBehaviorFollow2DComponent::setOffsetPosition)
-                .def("getOffsetPosition", &CameraBehaviorFollow2DComponent::getOffsetPosition)];
+                .def("getOffsetPosition", &CameraBehaviorFollow2DComponent::getOffsetPosition)
+
+                // ── Zoom and camera zones ─────────────────────────────────────
+                .def("setZoom", &CameraBehaviorFollow2DComponent::setZoom)
+                .def("getZoom", &CameraBehaviorFollow2DComponent::getZoom)
+                .def("getAppliedZoom", &CameraBehaviorFollow2DComponent::getAppliedZoom)
+                .def("addCameraZone", &CameraBehaviorFollow2DComponent::addCameraZone)
+                .def("removeCameraZone", &CameraBehaviorFollow2DComponent::removeCameraZone)
+                .def("clearCameraZones", &CameraBehaviorFollow2DComponent::clearCameraZones)
+
+                // ── Impact ────────────────────────────────────────────────────
+                .def("impact", &CameraBehaviorFollow2DComponent::impact)
+                .def("punchZoom", &CameraBehaviorFollow2DComponent::punchZoom)
+                .def("addShake", &CameraBehaviorFollow2DComponent::addShake)
+                .def("getShakeTrauma", &CameraBehaviorFollow2DComponent::getShakeTrauma)
+                .def("startHitstop", &CameraBehaviorFollow2DComponent::startHitstop)
+
+                // ── Lookahead ─────────────────────────────────────────────────
+                .def("setLookaheadSmooth", &CameraBehaviorFollow2DComponent::setLookaheadSmooth)
+                .def("getLookaheadSmooth", &CameraBehaviorFollow2DComponent::getLookaheadSmooth)
+
+                // ── Edge orthographic ─────────────────────────────────────────
+                .def("setEdgeOrthographic", &CameraBehaviorFollow2DComponent::setEdgeOrthographic)
+                .def("getEdgeOrthographic", &CameraBehaviorFollow2DComponent::getEdgeOrthographic)
+                .def("setEdgeOrthoBlendTime", &CameraBehaviorFollow2DComponent::setEdgeOrthoBlendTime)
+                .def("getEdgeOrthoBlendTime", &CameraBehaviorFollow2DComponent::getEdgeOrthoBlendTime)];
 
         LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "class inherits CameraBehaviorComponent", CameraBehaviorFollow2DComponent::getStaticInfoText());
         LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "void setSmoothValue(float smoothValue)",
@@ -2069,6 +2572,39 @@ namespace NOWA
         LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "float getSmoothValue()", "Gets the camera value for more smooth transform.");
         LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "void setOffsetPosition(Vector3 offsetPosition)", "Sets the camera offset position, it should be away from the game object.");
         LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "Vector3 getOffsetPosition()", "Gets the offset position, the camera is away from the game object.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "void setZoom(float zoom, float blendTime)",
+            "Sets the framing. 1.0 is the authored one, below 1 moves closer, above 1 pulls back. Implemented by scaling the distance to the play plane, not the field of view, so the perspective never breathes. blendTime in seconds, 0 snaps.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "float getZoom()", "Gets the scripted zoom, without the camera zone and the punch folded in.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "float getAppliedZoom()", "Gets the zoom actually in effect this frame: scripted zoom times the zone the player stands in times the current punch.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "void addCameraZone(String zoneId, float minimumX, float minimumY, float maximumX, float maximumY, float zoom)",
+            "Adds or retunes a rectangular zone in the play plane that imposes its own zoom while the player is inside it: narrow corridors below 1, halls above 1. The zone zoom multiplies the scripted zoom. Adding the same id again replaces that "
+            "zone.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "void removeCameraZone(String zoneId)", "Removes one camera zone by id.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "void clearCameraZones()", "Removes every camera zone, e.g. when unloading a room set.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "void impact(float strength)",
+            "One call for a hit, strength 0 to 1: scales shake, punch zoom and hitstop together off that single number. Prefer this over the three separate calls - tuning them per call site is how a light hit ends up shaking harder than a heavy "
+            "one.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "void addShake(float strength)",
+            "Adds shake trauma, which decays on its own. Accumulates and is applied squared, so several hits in a row build into a real jolt. 0.15 light, 0.35 solid, 0.7 explosion.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "float getShakeTrauma()", "Current shake trauma, 0 to 1. Useful to avoid stacking a second effect on top of a shake that is already at full strength.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "void punchZoom(float amount, float duration)",
+            "A short self-decaying zoom kick. amount is relative: -0.08 snaps 8 percent closer, which is the usual direction for a hit. duration 0.12 to 0.2 reads as an impact, longer reads as a zoom.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "void startHitstop(float duration)",
+            "Freezes the camera follow for a moment while the shake and the punch keep running - the world stops, the lens does not. 0.05 to 0.12 seconds. This freezes the camera only; freezing the simulation is the game logic's job.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "void setLookaheadSmooth(float smooth)",
+            "Low pass factor for the lookahead, 0 to 1. Separate from the camera's own smooth value on purpose: a lead that snaps reads as a twitch on every direction tap.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "float getLookaheadSmooth()", "Gets the lookahead low pass factor.");
+
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "void setEdgeOrthographic(bool enabled)",
+            "Morphs towards an orthographic projection while the camera is clamped at a horizontal bound and the player walks further out, so a wall in front of the play plane cannot swallow him. Off by default: going orthographic collapses the "
+            "parallax between depth layers, so background and foreground bands visibly slide during the blend.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "bool getEdgeOrthographic()", "Whether the orthographic edge morph is enabled.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "void setEdgeOrthoBlendTime(float blendTime)",
+            "Seconds the orthographic morph takes each way. 0 restores the old hard switch, which is where the pop came from.");
+        LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "float getEdgeOrthoBlendTime()", "Gets the orthographic morph blend time.");
 
         gameObjectClass.def("getCameraBehaviorFollow2DComponentFromName", &getCameraBehaviorFollow2DComponentFromName);
         gameObjectClass.def("getCameraBehaviorFollow2DComponent", (CameraBehaviorFollow2DComponent * (*)(GameObject*)) & getCameraBehaviorFollow2DComponent);

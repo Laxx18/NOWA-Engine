@@ -227,6 +227,46 @@ namespace NOWA
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralGeometryComponent] Init component for game object: " + this->gameObjectPtr->getName());
 
+#if 1
+        std::vector<Ogre::Item*> itemsToDestroy;
+
+        Ogre::SceneNode* sceneNode = this->gameObjectPtr->getSceneNode();
+        if (nullptr != sceneNode)
+        {
+            Ogre::SceneNode::ObjectIterator objectIterator = sceneNode->getAttachedObjectIterator();
+
+            while (objectIterator.hasMoreElements())
+            {
+                Ogre::MovableObject* movableObject = objectIterator.getNext();
+
+                Ogre::Item* item = dynamic_cast<Ogre::Item*>(movableObject);
+                if (nullptr != item)
+                {
+                    itemsToDestroy.push_back(item);
+                }
+            }
+
+            for (Ogre::Item* item : itemsToDestroy)
+            {
+                sceneNode->detachObject(item);
+                this->gameObjectPtr->getSceneManager()->destroyItem(item);
+            }
+        }
+        this->geomItem = nullptr;
+        this->gameObjectPtr->nullMovableObject();
+#else
+        this->gameObjectPtr->nullMovableObject();
+        // Attention: for group loading necessary
+        this->geomItem = nullptr;
+        if (nullptr != this->geomItem)
+        {
+            this->gameObjectPtr->getSceneNode()->detachObject(this->geomItem);
+            this->gameObjectPtr->getSceneManager()->destroyItem(this->geomItem);
+            this->geomItem = nullptr;
+        }
+        this->gameObjectPtr->nullMovableObject();
+#endif
+
         // ── Build geometry from loaded (or default) parameters ────────────────
         this->rebuildMesh();
 
