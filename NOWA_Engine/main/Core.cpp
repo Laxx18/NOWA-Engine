@@ -2820,6 +2820,18 @@ namespace NOWA
         int left, top;
         renderWindow->getMetrics(width, height, left, top);
 
+        // Attention: alt tab and minimizing report a degenerate size - 0 x 0 while minimized, and a
+        // transient intermediate size while restoring. Everything below this point reacts to that
+        // size: the OIS mouse clamping region, and above all EventDataWindowChanged, which makes
+        // every MyGUI component re-apply its relative coordinates. Against a size of zero those
+        // coordinates collapse into the middle of the screen, and because the recomputed values
+        // overwrite the old ones the layout stays broken even after the real size comes back - and
+        // gets written into the scene on the next save.
+        if (0 == width || 0 == height)
+        {
+            return;
+        }
+
         const OIS::MouseState& ms = InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
         ms.width = width;
         ms.height = height;
@@ -2939,6 +2951,19 @@ namespace NOWA
             Win32_ResetCursorToArrow();
             Win32_SetCursorVisible(false);
             setMyGuiPointerVisible(true);
+
+            // Safety net: while the window was away, windowResized may have been called with a
+            // degenerate size and skipped above. Rebuild the layout once against the size that is
+            // valid now. queueEvent only, see the note in windowResized - this runs on the OS
+            // message pump.
+            if (nullptr != AppStateManager::getSingletonPtr() && AppStateManager::getSingletonPtr()->getAppStatesCount() > 0)
+            {
+                if (nullptr != AppStateManager::getSingletonPtr()->getEventManager())
+                {
+                    boost::shared_ptr<EventDataWindowChanged> eventDataWindowChanged(new EventDataWindowChanged());
+                    AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataWindowChanged);
+                }
+            }
 
             // If you use confinement, restore it here.
             // ClipCursor(&rect);

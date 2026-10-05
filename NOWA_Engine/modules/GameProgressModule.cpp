@@ -287,7 +287,10 @@ namespace NOWA
     class SetPlayerLocationProcess : public NOWA::Process
     {
     public:
-        explicit SetPlayerLocationProcess(PhysicsComponent* physicsComponent, const Ogre::Vector3& position, const Ogre::Quaternion& orientation) : position(position), orientation(orientation), physicsComponent(physicsComponent)
+		explicit SetPlayerLocationProcess(PhysicsComponent* physicsComponent, const Ogre::Vector3& position, const Ogre::Quaternion& orientation)
+			: position(position),
+			orientation(orientation),
+			physicsComponent(physicsComponent)
         {
         }
 
@@ -312,7 +315,13 @@ namespace NOWA
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    GameProgressModule::GameProgressModule(const Ogre::String& appStateName) : appStateName(appStateName), player(nullptr), dotSceneImportModule(nullptr), dotSceneExportModule(nullptr), bSceneLoading(false), keepPlayerTransform(false)
+	GameProgressModule::GameProgressModule(const Ogre::String& appStateName)
+		: appStateName(appStateName),
+		player(nullptr),
+		dotSceneImportModule(nullptr),
+		dotSceneExportModule(nullptr),
+		bSceneLoading(false),
+		keepPlayerTransform(false)
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameProgressModule] Module created");
     }
@@ -669,21 +678,23 @@ namespace NOWA
         }
     }
 
-    bool GameProgressModule::loadProgress(const Ogre::String& saveName, bool sceneSnapshot, bool showProgress)
+	void GameProgressModule::loadProgress(const Ogre::String& saveName, bool sceneSnapshot, bool showProgress)
     {
+		// Attention: this used to return a bool that was ALWAYS false - 'success' was set to false and never touched again, because the real
+		// loading happens later in the LoadProgressProcess. Callers that tested it therefore always saw a failure. Use hasSaveGame to find
+		// out whether there is something to load.
         if (true == saveName.empty())
         {
-            return false;
+			return;
         }
 
         if (true == this->internalIsSceneLoadAlreadyRequested(saveName))
         {
-            return false;
+			return;
         }
 
         this->bSceneLoading = true;
 
-        bool success = false;
         this->saveName = saveName;
         Ogre::String tempSaveName = saveName;
 
@@ -697,7 +708,7 @@ namespace NOWA
         if (true == streamData.second.empty())
         {
             this->bSceneLoading = false;
-            return success;
+			return;
         }
 
         // Only a snapshot tears the scene down - black before that, see notifyBeforeSceneLoaded().
@@ -713,8 +724,29 @@ namespace NOWA
         // and the game object map in update loop becomes invalid while its iterating
         delayProcess->attachChild(NOWA::ProcessPtr(new LoadProgressProcess(this->appStateName, this->dotSceneImportModule, saveName, streamData.first, sceneSnapshot, streamData.second, nullptr != this->player ? this->player->getName() : "", true)));
         NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+	}
 
-        return success;
+	bool GameProgressModule::hasSaveGame(const Ogre::String& saveName)
+	{
+		if (true == saveName.empty())
+		{
+			return false;
+		}
+
+		// Attention: deliberately NOT getSaveFileContent, that one overwrites this->saveName as a side effect and reads the whole file.
+		const Ogre::String openFilePathName = Core::getSingletonPtr()->getSaveFilePathName(saveName);
+		if (true == openFilePathName.empty())
+		{
+			return false;
+		}
+
+		std::ifstream inFile(openFilePathName.c_str(), std::ios::in);
+		return true == inFile.good();
+	}
+
+	void GameProgressModule::clearGlobalValues(void)
+	{
+		AppStateManager::getSingletonPtr()->clearGlobalValues();
     }
 
     bool GameProgressModule::internalReadGlobalAttributes(const Ogre::String& globalAttributesStream)

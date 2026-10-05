@@ -60,6 +60,10 @@ local attackId = 0;
 -- tracked separately in invulnerableTimer, so the two can never switch each other off.
 local isInvulnerable = false;
 
+-- True from the moment the run is over. The disconnect that follows the scene change must NOT push the
+-- values of the dead player into the global values anymore, otherwise a new run would start with them.
+local isRespawning = false;
+
 ---------------------------------------------------------------------------------------------------
 -- Attack
 --
@@ -629,6 +633,10 @@ PrehistoricLax["connect"] = function(gameObject)
     coinsText = mainGameObject:getMyGUITextComponentFromName("Coins");
     killedEnemiesText = mainGameObject:getMyGUITextComponentFromName("KilledEnemies");
 
+    -- The component only holds the start values of the scene. Whatever the run has reached so far lives in
+    -- the global values of the GameProgressModule, see init.lua.
+    pullPlayerAttributesFromProgress(attributesComponent);
+
     -- The needed experience always follows the formula in init.lua, also for a saved game made
     -- with other balancing values.
     ascension:setValueNumber(getRequiredExperience(getLevel()));
@@ -640,10 +648,14 @@ PrehistoricLax["connect"] = function(gameObject)
     moneySound = prehistoricLax:getSimpleSoundComponentFromName("Money");
     hurtSound = prehistoricLax:getSimpleSoundComponentFromName("Hurt");
 
+    -- Abilities that have been unlocked during the game
+    playerController:setCanSlide(isWorldFlagSet(ABILITY_CAN_SLIDE));
+
     isAttacking = false;
     attackTime = 0;
     attackHitActive = false;
     isInvulnerable = false;
+    isRespawning = false;
     invulnerableTimer = 0;
     blinkTimer = 0;
     playerBlinkVisible = true;
@@ -685,7 +697,9 @@ PrehistoricLax["connect"] = function(gameObject)
     animationBlender:registerAnimation(AnimationBlender.ANIM_PICKUP_1, "Boy 1 Idle Pick Up Item");
     animationBlender:registerAnimation(AnimationBlender.ANIM_ACTION_1, "Boy 1 Pass Out");
     animationBlender:registerAnimation(AnimationBlender.ANIM_NO_IDEA, "Boy 1 Look Side");
-
+    animationBlender:registerAnimation(AnimationBlender.ANIM_SALTO, "Boy 1 Air Flip");
+    animationBlender:registerAnimation(AnimationBlender.ANIM_DUCK, "Boy 1 Idle Pick Up Item");
+    
     -----------------------------------------------------------------------------------------
     -- State setup
     --
@@ -797,6 +811,12 @@ PrehistoricLax["connect"] = function(gameObject)
 end
 
 PrehistoricLax["disconnect"] = function()
+    -- Hand the current values over to the next scene. Skipped while respawning: there the values either come
+    -- from the save game or are reset completely, and the dead player must not overwrite them.
+    if (false == isRespawning) then
+        pushPlayerAttributesToProgress(attributesComponent);
+    end
+
     AppStateManager:getScriptEventManager():removeEventListener(playerDeadListenerId);
     AppStateManager:getScriptEventManager():removeEventListener(enemyDeadListenerId);
     AppStateManager:getScriptEventManager():removeEventListener(enemyNearPlayerListenerId);
@@ -970,12 +990,17 @@ end
 RagDollState["execute"] = function(gameObject, dt)
     ragDollTime = ragDollTime - dt;
 
-    if (ragDollTime <= 0) then
-        if (getEnergy() <= 0) then
-            setEnergy(getMaxEnergy(getLevel()));
+    if (ragDollTime <= 0 and false == isRespawning) then
+        -- From here on nothing of the dead player may reach the global values anymore, see disconnect.
+        isRespawning = true;
+        if (true == hasSaveGame()) then
+            -- Back to the last save point: scene, player position and all global values come from the file.
+            loadGame();
+        else
+            -- No save point reached yet: everything starts over with the editor values of the first scene.
+            startNewRun();
         end
 
-        --playerController:requestState("WalkingStateJumpNRun");
     end
 end
 

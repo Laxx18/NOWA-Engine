@@ -808,8 +808,22 @@ namespace NOWA
 
     void MyGUIComponent::handleWindowChangedDelegate(NOWA::EventDataPtr eventData)
     {
-        // Messes up in simulation mode, e.g. a position controller is active and when this event occurs, the widget will get its origin position, instead the one of the controller
-        // this->setRealPosition(this->position->getVector2());
+        // Re-applying the configured coordinates used to fight a running position controller in
+        // simulation mode, which is why this was switched off completely. It is only needed in editor
+        // mode anyway, where nothing else moves the widget - and that is exactly the mode in which a
+        // collapsed layout would otherwise be saved into the scene.
+        if (true == this->isSimulating)
+        {
+            return;
+        }
+
+        if (nullptr == this->widget)
+        {
+            return;
+        }
+
+        this->setRealPosition(this->position->getVector2());
+        this->setRealSize(this->size->getVector2());
     }
 
     void MyGUIComponent::handleTagNameChangedDelegate(EventDataPtr eventData)

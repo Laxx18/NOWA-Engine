@@ -71,6 +71,10 @@ Elephant["onEnemyHit"] = function(eventData)
     if (eventData["enemyId"] ~= elephantId) then
         do return end;
     end
+	
+	if (animationBlender:isAnimationActive(AnimationBlender.ANIM_TAKE_DAMAGE) == false) then
+        animationBlender:blend5(AnimationBlender.ANIM_TAKE_DAMAGE, AnimationBlender.BLEND_WHILE_ANIMATING, 0.1, false);
+    end
 
     showEnergyBar(eventData["remainingEnergy"]);
 end

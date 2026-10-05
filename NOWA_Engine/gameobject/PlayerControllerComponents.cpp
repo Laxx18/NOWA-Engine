@@ -1283,7 +1283,7 @@ namespace NOWA
     PlayerControllerJumpNRunComponent::PlayerControllerJumpNRunComponent() :
         PlayerControllerComponent(),
         stateMachine(nullptr),
-        animationsCount(14),
+        animationsCount(15),
         jumpForce(new Variant(PlayerControllerJumpNRunComponent::AttrJumpForce(), 15.0f, this->attributes)),
         doubleJump(new Variant(PlayerControllerJumpNRunComponent::AttrDoubleJump(), false, this->attributes)),
         runAfterWalkTime(new Variant(PlayerControllerJumpNRunComponent::AttrRunAfterWalkTime(), 0.0f, this->attributes)),
@@ -1291,6 +1291,8 @@ namespace NOWA
         xJump(new Variant(PlayerControllerJumpNRunComponent::AttrXJump(), false, this->attributes)),
         useAcceleration(new Variant(PlayerControllerJumpNRunComponent::AttrUseAcceleration(), false, this->attributes)),
         accelerationDuration(new Variant(PlayerControllerJumpNRunComponent::AttrAccelerationDuration(), 10.0f, this->attributes)),
+        fallSaltoTime(new Variant(PlayerControllerJumpNRunComponent::AttrFallSaltoTime(), 0.0f, this->attributes)),
+        canSlide(new Variant(PlayerControllerJumpNRunComponent::AttrCanSlide(), false, this->attributes)),
         hasStateRequest(false),
         hasChildStateRequest(false)
     {
@@ -1323,11 +1325,15 @@ namespace NOWA
         this->animations[12]->addUserData(GameObject::AttrActionAutoComplete());
         this->animations[13] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimDuck(), std::vector<Ogre::String>(), this->attributes);
         this->animations[13]->addUserData(GameObject::AttrActionAutoComplete());
+        this->animations[14] = new Variant(PlayerControllerJumpNRunComponent::AttrAnimSalto(), std::vector<Ogre::String>(), this->attributes);
+        this->animations[14]->addUserData(GameObject::AttrActionAutoComplete());
 
         this->runAfterWalkTime->setDescription("Specifies the time in seconds at which the player will start to run, after walking without interruption. If set to 0, the player will never run.");
         this->for2D->setDescription("If set to true, in the PhysicsActiveComponent the 'ConstraintAxis' attribute should be set to '0 0 1'. So that the player only can move on x and y axis.");
         this->xJump->setDescription("If set to true, the player may jump an unlimited number of times while in the air (metroid style). Overrides 'Double Jump'. Air jumps play the 'Anim Air Jump' animation.");
         this->useAcceleration->setDescription("If set to true, the player accelerates from the physics component's speed up to its max speed while running without interruption.");
+        this->canSlide->setDescription("If set to true, the player slides down a slope while ducking. Can be switched on at runtime, e.g. when the ability has been unlocked.");
+        this->fallSaltoTime->setDescription("Seconds of falling after which the player starts a salto. 0 switches the salto off. The salto repeats as long as the fall lasts and needs 'Anim Salto' to be set.");
         this->accelerationDuration->setDescription("Seconds of uninterrupted running needed to reach max speed. The ramp is reset by a direction change or by hitting something in front, but deliberately NOT by jumping.");
     }
 
@@ -1389,6 +1395,16 @@ namespace NOWA
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AccelerationDuration")
         {
             this->accelerationDuration->setValue(XMLConverter::getAttribReal(propertyElement, "data", 10.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "FallSaltoTime")
+        {
+            this->fallSaltoTime->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.0f));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CanSlide")
+        {
+            this->canSlide->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
             propertyElement = propertyElement->next_sibling("property");
         }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimIdle1")
@@ -1461,6 +1477,11 @@ namespace NOWA
             this->animations[13]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
             propertyElement = propertyElement->next_sibling("property");
         }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnimSalto")
+        {
+            this->animations[14]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", "None"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
         return success;
     }
 
@@ -1479,6 +1500,8 @@ namespace NOWA
         clonedCompPtr->setXJump(this->xJump->getBool());
         clonedCompPtr->setUseAcceleration(this->useAcceleration->getBool());
         clonedCompPtr->setAccelerationDuration(this->accelerationDuration->getReal());
+        clonedCompPtr->setFallSaltoTime(this->fallSaltoTime->getReal());
+        clonedCompPtr->setCanSlide(this->canSlide->getBool());
         clonedCompPtr->setAnimationSpeed(this->animationSpeed->getReal());
         clonedCompPtr->setAcceleration(this->acceleration->getReal());
         clonedCompPtr->setCategories(this->categories->getString());
@@ -1702,6 +1725,14 @@ namespace NOWA
         {
             this->setAnimationName(attribute->getListSelectedValue(), 13);
         }
+        else if (PlayerControllerJumpNRunComponent::AttrFallSaltoTime() == attribute->getName())
+        {
+            this->setFallSaltoTime(attribute->getReal());
+        }
+        else if (PlayerControllerJumpNRunComponent::AttrCanSlide() == attribute->getName())
+        {
+            this->setCanSlide(attribute->getBool());
+        }
     }
 
     void PlayerControllerJumpNRunComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
@@ -1750,6 +1781,18 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
         propertyXML->append_attribute(doc.allocate_attribute("name", "AccelerationDuration"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->accelerationDuration->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "FallSaltoTime"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->fallSaltoTime->getReal())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "CanSlide"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->canSlide->getBool())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(node_element, "property");
@@ -1835,6 +1878,12 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("name", "AnimDuck"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[13]->getListSelectedValue())));
         propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "AnimSalto"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->animations[14]->getListSelectedValue())));
+        propertiesXML->append_node(propertyXML);
     }
 
     void PlayerControllerJumpNRunComponent::setActivated(bool activated)
@@ -1857,6 +1906,7 @@ namespace NOWA
             this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_RUN, this->animations[11]->getListSelectedValue());
             this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_SNEAK, this->animations[12]->getListSelectedValue());
             this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_DUCK, this->animations[13]->getListSelectedValue());
+            this->animationBlender->registerAnimation(NOWA::AnimationBlenderV2::ANIM_SALTO, this->animations[14]->getListSelectedValue());
 
             this->animationBlender->init(NOWA::AnimationBlenderV2::ANIM_IDLE_1);
 
@@ -1949,6 +1999,30 @@ namespace NOWA
     Ogre::Real PlayerControllerJumpNRunComponent::getAccelerationDuration(void) const
     {
         return this->accelerationDuration->getReal();
+    }
+
+    void PlayerControllerJumpNRunComponent::setFallSaltoTime(Ogre::Real fallSaltoTime)
+    {
+        if (fallSaltoTime < 0.0f)
+        {
+            fallSaltoTime = 0.0f;
+        }
+        this->fallSaltoTime->setValue(fallSaltoTime);
+    }
+
+    Ogre::Real PlayerControllerJumpNRunComponent::getFallSaltoTime(void) const
+    {
+        return this->fallSaltoTime->getReal();
+    }
+
+    void PlayerControllerJumpNRunComponent::setCanSlide(bool canSlide)
+    {
+        this->canSlide->setValue(canSlide);
+    }
+
+    bool PlayerControllerJumpNRunComponent::getCanSlide(void) const
+    {
+        return this->canSlide->getBool();
     }
 
     void PlayerControllerJumpNRunComponent::reactOnDirectionChanged(luabind::object closureFunction)
@@ -3104,6 +3178,15 @@ namespace NOWA
         accelerationTimer(0.0f),
         lastReportedSpeed(0.0f),
         fallTimer(0.0f),
+        jumpAnimationLockTimer(0.0f),
+        currentRequestedAnimId(NOWA::AnimationBlenderV2::ANIM_NONE),
+        duckKeyWasDown(false),
+        duckToggleCooldown(0.0f),
+        oldCollisionSize(Ogre::Vector3::UNIT_SCALE),
+        oldCollisionPosition(Ogre::Vector3::ZERO),
+        duckSlideSpeed(0.0f),
+        duckSlideDirection(Ogre::Vector3::ZERO),
+        hasOldCollisionSize(false),
         hasInputDevice(true),
         sceneManager(nullptr),
         walkSound(nullptr),
@@ -3133,7 +3216,7 @@ namespace NOWA
         this->jumpSound = OgreALModule::getInstance()->createSound(this->playerController->getOwner()->getSceneManager(), "PlayerJump1", "Jump1.wav");
         this->jumpSound->setGain(1.0f);
 
-        this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_IDLE_1, NOWA::AnimationBlenderV2::BlendThenAnimate, 0.2f, true);
+        this->blendAnimation(NOWA::AnimationBlenderV2::ANIM_IDLE_1, NOWA::AnimationBlenderV2::BlendThenAnimate, 0.2f, true);
 
         // -------------------------------------------------------------------------
         // Full reset of this state's own data.
@@ -3193,6 +3276,12 @@ namespace NOWA
         this->canDoubleJump = true;
         this->highFalling = false;
         this->fallTimer = 0.0f;
+        this->jumpAnimationLockTimer = 0.0f;
+        this->currentRequestedAnimId = NOWA::AnimationBlenderV2::ANIM_NONE;
+        this->duckKeyWasDown = false;
+        this->duckToggleCooldown = 0.0f;
+        this->duckSlideSpeed = 0.0f;
+        this->duckSlideDirection = Ogre::Vector3::ZERO;
         this->groundedOnce = false;
         this->duckedOnce = false;
         this->isAttacking = false;
@@ -3210,6 +3299,82 @@ namespace NOWA
         }
 
         this->sceneManager = this->playerController->getOwner()->getSceneManager();
+    }
+
+    bool WalkingStateJumpNRun::shouldBlendAnimation(NOWA::AnimationBlenderV2::AnimID animId)
+    {
+        // Attention: AnimationBlenderV2::isAnimationActive asks OGRE's list of ENABLED animations, and during a cross fade BOTH the outgoing
+        // and the incoming clip are enabled. It therefore cannot answer the question "is this animation the one that is playing".
+        // That was the reason why a jump right after a landing did nothing: the landing blend runs for half a second, and during that time
+        // the outgoing ANIM_JUMP_START was still enabled, so the guard 'false == isAnimationActive(ANIM_JUMP_START)' refused to start the
+        // take off animation again. The player jumped, but visually only played the landing clip.
+        // The state therefore remembers what IT asked for last. The blender is only asked as a fall back, so that an animation which
+        // something else (e.g. a lua script) has blended over in the meantime is started again.
+        if (this->currentRequestedAnimId != animId)
+        {
+            return true;
+        }
+        return false == this->playerController->getAnimationBlender()->isAnimationActive(animId);
+    }
+
+    void WalkingStateJumpNRun::blendAnimation(NOWA::AnimationBlenderV2::AnimID animId, NOWA::AnimationBlenderV2::BlendingTransition transition, Ogre::Real duration, bool loop)
+    {
+        this->currentRequestedAnimId = animId;
+        this->playerController->getAnimationBlender()->blend(animId, transition, duration, loop);
+    }
+
+    void WalkingStateJumpNRun::setDucked(bool ducked)
+    {
+        if (ducked == this->duckedOnce)
+        {
+            return;
+        }
+
+        this->duckedOnce = ducked;
+
+        PhysicsActiveComponent* physicsComponent = dynamic_cast<PhysicsActiveComponent*>(this->playerController->getPhysicsComponent());
+        if (nullptr == physicsComponent)
+        {
+            return;
+        }
+
+        // Attention: the collision position is written straight into its Variant and NOT via a setter. A setter would rebuild the collision
+        // hull, and the setCollisionSize below rebuilds it a second time - so the hull would be created twice on every single duck.
+        // This way the new position is already in place when setCollisionSize does the ONE rebuild.
+        Variant* collisionPositionAttribute = physicsComponent->getAttribute(PhysicsActiveComponent::AttrCollisionPosition());
+        if (nullptr == collisionPositionAttribute)
+        {
+            return;
+        }
+
+        if (true == ducked)
+        {
+            // Remembered ONCE, so that repeated ducking can never shrink the hull further and further
+            if (false == this->hasOldCollisionSize)
+            {
+                this->oldCollisionSize = physicsComponent->getCollisionSize();
+                this->oldCollisionPosition = collisionPositionAttribute->getVector3();
+                this->hasOldCollisionSize = true;
+            }
+
+            // Tune here: the factor the standing collision hull is multiplied with while ducking
+            const Ogre::Vector3 duckCollisionFactor(1.0f, 0.5f, 1.0f);
+            const Ogre::Vector3 duckCollisionSize = this->oldCollisionSize * duckCollisionFactor;
+
+            // The collision position is the CENTER of the hull, so shrinking it alone would lift the player off the ground by half of what
+            // was cut away: he would hover, be counted as airborne and fall again. Lowering the center by that same half keeps the feet
+            // exactly where they are. Example with the default values: size 0.3 0.8 0.3 and position 0 0.7 0 become 0.3 0.4 0.3 and 0 0.5 0.
+            Ogre::Vector3 duckCollisionPosition = this->oldCollisionPosition;
+            duckCollisionPosition.y -= (this->oldCollisionSize.y - duckCollisionSize.y) * 0.5f;
+
+            collisionPositionAttribute->setValue(duckCollisionPosition);
+            physicsComponent->setCollisionSize(duckCollisionSize);
+        }
+        else if (true == this->hasOldCollisionSize)
+        {
+            collisionPositionAttribute->setValue(this->oldCollisionPosition);
+            physicsComponent->setCollisionSize(this->oldCollisionSize);
+        }
     }
 
     void WalkingStateJumpNRun::update(GameObject* player, Ogre::Real dt)
@@ -3322,6 +3487,41 @@ namespace NOWA
         // -------------------------------------------------------------------------
         const bool childStateOwnsAnimation = (false == this->playerController->getCurrentChildStateName().empty());
 
+        // -------------------------------------------------------------------------
+        // Duck
+        //
+        // Ducking is a MODIFIER, not a branch of the animation chain: the idle/movement branches below keep running, so facing, turning,
+        // the speed ramp and the sounds all behave exactly as when standing. Only the ANIMATION is taken over by the duck clip and the
+        // speed is reduced, see the block right after the chain.
+        //
+        // It is a toggle: the duck key (or the down key, which is what a 2D jump n run uses) switches it on, pressing it again switches it
+        // off, and so does the up key. The cooldown debounces the toggle - on a game pad the down direction comes from an ANALOG stick, and
+        // a stick resting near the threshold produced several key edges per press, which switched the duck on and off again at random.
+        // -------------------------------------------------------------------------
+        if (this->duckToggleCooldown > 0.0f)
+        {
+            this->duckToggleCooldown -= dt;
+        }
+
+        const bool duckKeyDown = inputDeviceModule->isActionDown(NOWA_A_DUCK) || movingDown;
+        // Attention: 'false == this->inAir' only blocks STARTING to duck. Standing up has to stay possible at any time, otherwise the player
+        // could get stuck in the crouch if he ever ends up airborne while ducking.
+        const bool mayStartDucking = false == this->duckedOnce && false == this->inAir;
+        if (true == duckKeyDown && false == this->duckKeyWasDown && this->duckToggleCooldown <= 0.0f && false == childStateOwnsAnimation && (true == this->duckedOnce || true == mayStartDucking))
+        {
+            this->setDucked(false == this->duckedOnce);
+            this->duckToggleCooldown = 0.25f;
+        }
+        this->duckKeyWasDown = duckKeyDown;
+
+        // Walking away ends the duck: the up key, or a sideways key, which then simply walks on normally.
+        // Attention: deliberately NOT 'inAir'. Shrinking the collision hull lifts the body off the ground for a moment, so the state
+        // briefly believes the player is airborne - that is what made the duck flicker and let the jump animation cut in.
+        if (true == this->duckedOnce && (true == movingUp || true == movingLeft || true == movingRight))
+        {
+            this->setDucked(false);
+        }
+
         if (false == anyMove && false == this->jumpKeyPressed && false == this->isJumping)
         {
             // ------------------------------------------------------------------
@@ -3343,9 +3543,9 @@ namespace NOWA
                 this->keyDirection = Ogre::Vector3::ZERO;
             }
 
-            if (false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_1) && false == this->inAir && false == childStateOwnsAnimation)
+            if (false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_IDLE_1) && false == this->inAir && false == childStateOwnsAnimation && false == this->duckedOnce)
             {
-                this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_IDLE_1, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.2f, true);
+                this->blendAnimation(NOWA::AnimationBlenderV2::ANIM_IDLE_1, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.2f, true);
             }
 
             tempAnimationSpeed = this->playerController->getAnimationSpeed() * 0.5f;
@@ -3396,10 +3596,10 @@ namespace NOWA
                 }
 
                 if (true == this->playerController->getAnimationBlender()->hasAnimation(animID) && true == this->playerController->getAnimationBlender()->isComplete() &&
-                    false == this->playerController->getAnimationBlender()->isAnimationActive(animID) && false == childStateOwnsAnimation)
+                    false == this->playerController->getAnimationBlender()->isAnimationActive(animID) && false == childStateOwnsAnimation && false == this->duckedOnce)
                 {
                     tempAnimationSpeed = this->playerController->getAnimationSpeed();
-                    this->playerController->getAnimationBlender()->blend(animID, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.2f, true);
+                    this->blendAnimation(animID, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.2f, true);
                 }
             }
         }
@@ -3653,42 +3853,43 @@ namespace NOWA
                                                 this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_JUMP_END) ||
                                                 (true == isTouchedDown && this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_JUMP_START));
 
-            if (animId != NOWA::AnimationBlenderV2::AnimID::ANIM_NONE && false == this->playerController->getAnimationBlender()->isAnimationActive(animId) && false == this->inAir && false == this->jumpKeyPressed && false == this->isJumping &&
-                true == blenderIsInterruptible && false == childStateOwnsAnimation)
+            // Attention: 'jumpAnimationLockTimer' protects a jump that has just been started. The take off animation is blended BEFORE the
+            // jump force reaches the body, so for the first few frames the player is still on the ground (height below the 'inAir' threshold)
+            // and 'blenderIsInterruptible' is true: 'isComplete()' reports the state of the OUTGOING clip, and while a non looping blend is
+            // fading in, AnimationBlenderV2::addTime clamps that outgoing clip (setLoop(this->loop) with loop == false), so it reports complete
+            // at once. The idle/movement blend then overwrote ANIM_JUMP_START on the very next frame, which is why jumping again right after a
+            // landing showed the idle animation instead of the jump.
+            if (animId != NOWA::AnimationBlenderV2::AnimID::ANIM_NONE && true == this->shouldBlendAnimation(animId) && false == this->inAir && false == this->jumpKeyPressed && false == this->isJumping && this->jumpAnimationLockTimer <= 0.0f &&
+                true == blenderIsInterruptible && false == childStateOwnsAnimation && false == this->duckedOnce)
             {
                 tempAnimationSpeed = this->playerController->getAnimationSpeed();
-                this->playerController->getAnimationBlender()->blend(animId, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.2f, true);
+                this->blendAnimation(animId, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.2f, true);
             }
         }
-        else if (inputDeviceModule->isActionDown(NOWA_A_DUCK))
-        {
-            // ------------------------------------------------------------------
-            // DUCK
-            // ------------------------------------------------------------------
-            this->boringTimer = 0;
 
-            if (false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_DUCK) && false == this->duckedOnce)
-            {
-                this->duckedOnce = true;
-                this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_DUCK, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.1f, false);
-
-                // Scale collision hull down while ducking.
-                this->playerController->getPhysicsComponent()->getBody()->scaleCollision(Ogre::Vector3(1.0f, 0.5f, 1.0f));
-            }
-            if (this->playerController->getAnimationBlender()->getTimePosition() >= this->playerController->getAnimationBlender()->getLength() - 0.3f)
-            {
-                this->playerController->getAnimationBlender()->setTimePosition(0.7f);
-            }
-        }
-        else if (false == inputDeviceModule->isActionDown(NOWA_A_DUCK) && true == this->duckedOnce)
+        // -------------------------------------------------------------------------
+        // Duck: animation and speed
+        //
+        // Runs AFTER the chain above, so it always wins: the duck clip is played once into the crouch and then held there, instead of
+        // letting it play on and stand the player up again.
+        // -------------------------------------------------------------------------
+        if (true == this->duckedOnce && false == childStateOwnsAnimation)
         {
-            // ------------------------------------------------------------------
-            // UNDUCK
-            // ------------------------------------------------------------------
-            this->boringTimer = 0;
-            // Restore full collision hull when standing up.
-            this->playerController->getPhysicsComponent()->getBody()->scaleCollision(Ogre::Vector3(1.0f, 1.0f, 1.0f));
-            this->duckedOnce = false;
+            this->boringTimer = 0.0f;
+
+            // The player stands still while ducking: a sideways key ends the duck above and the normal walk takes over from there.
+            if (true == this->shouldBlendAnimation(NOWA::AnimationBlenderV2::ANIM_DUCK))
+            {
+                this->blendAnimation(NOWA::AnimationBlenderV2::ANIM_DUCK, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.1f, false);
+            }
+
+            // Tune here: where in the clip the player stays crouched. 0.5 is the middle, i.e. the lowest point of a bend down and stand up clip.
+            const Ogre::Real duckHoldFraction = 0.5f;
+            const Ogre::Real duckHoldTime = this->playerController->getAnimationBlender()->getLength() * duckHoldFraction;
+            if (this->playerController->getAnimationBlender()->getTimePosition() >= duckHoldTime)
+            {
+                this->playerController->getAnimationBlender()->setTimePosition(duckHoldTime);
+            }
         }
 
         // -------------------------------------------------------------------------
@@ -3727,24 +3928,53 @@ namespace NOWA
         {
             this->boringTimer = 0;
 
-            if (false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_JUMP_START))
+            // Jumping stands the player up again
+            this->setDucked(false);
+
+            if (true == this->shouldBlendAnimation(NOWA::AnimationBlenderV2::ANIM_JUMP_START))
             {
-                this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_JUMP_START, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, false);
+                this->blendAnimation(NOWA::AnimationBlenderV2::ANIM_JUMP_START, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, false);
             }
             if (this->playerController->getAnimationBlender()->getTimePosition() >= this->playerController->getAnimationBlender()->getLength() - 0.3f)
             {
                 this->playerController->getAnimationBlender()->setTimePosition(0.7f);
             }
+
+            // The take off animation must survive until the body is really off the ground, see the movement blend above
+            this->jumpAnimationLockTimer = 0.3f;
+
             this->jumpSound->play();
         }
         // Falling: in air, no jump key, moving with gravity.
         // Fixed: was "velocity.y < -1.0f" which breaks on tilted planet surfaces.
-        else if (true == this->inAir && false == this->jumpKeyPressed && true == isFalling)
+        else if (true == this->inAir && false == this->jumpKeyPressed && true == isFalling && false == this->duckedOnce)
         {
             this->jumpCount = 0;
-            if (false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_JUMP_START))
+
+            // Optional salto on a long fall, switched on with the component attribute "Fall Salto Time" (0 = off).
+            // The clip is blended LOOPING on purpose: that is what makes the player turn as many times as the remaining fall allows,
+            // without having to detect the end of every single flip. The salto is left early enough above the ground (saltoEndHeight),
+            // so the player always lands on his feet instead of in the middle of a flip.
+            const Ogre::Real saltoTime = this->playerController->getFallSaltoTime();
+            // Only from this height on, so a flip never starts right above the ground
+            const Ogre::Real saltoStartHeight = 4.0f;
+            // Back to the normal fall pose from here on down, so the landing is clean
+            const Ogre::Real saltoEndHeight = 1.5f;
+
+            const bool saltoWanted = saltoTime > 0.0f && this->fallTimer >= saltoTime;
+            const bool saltoActive = NOWA::AnimationBlenderV2::ANIM_SALTO == this->currentRequestedAnimId;
+
+            if (true == saltoWanted && height > saltoStartHeight && false == saltoActive)
             {
-                this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_JUMP_START, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, false);
+                this->blendAnimation(NOWA::AnimationBlenderV2::ANIM_SALTO, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.2f, true);
+            }
+            else if (true == saltoActive && height > saltoEndHeight)
+            {
+                // Keep flipping, nothing to do here. The looping clip is advanced by the single addTime call at the end of this update.
+            }
+            else if (true == this->shouldBlendAnimation(NOWA::AnimationBlenderV2::ANIM_JUMP_START))
+            {
+                this->blendAnimation(NOWA::AnimationBlenderV2::ANIM_JUMP_START, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, false);
             }
             else if (this->playerController->getAnimationBlender()->getTimePosition() >= this->playerController->getAnimationBlender()->getLength() - 0.3f)
             {
@@ -3755,16 +3985,16 @@ namespace NOWA
 
         // Landing: just touched ground while moving with gravity.
         // groundedOnce prevents the landing animation from retriggering every frame.
-        if (false == this->inAir && true == isFalling && false == this->groundedOnce)
+        if (false == this->inAir && true == isFalling && false == this->groundedOnce && false == this->duckedOnce)
         {
             // The landing clip is only played when the player actually comes to a stop.
             // Landing while a movement key is held must not insert a stop-and-recover
             // animation at all - the movement branch above already blended straight into
             // walking or running on this very frame, and blending JUMP_END over it here
             // would put the slide right back in.
-            if (false == anyMove && false == this->playerController->getAnimationBlender()->isAnimationActive(NOWA::AnimationBlenderV2::ANIM_JUMP_END))
+            if (false == anyMove && true == this->shouldBlendAnimation(NOWA::AnimationBlenderV2::ANIM_JUMP_END))
             {
-                this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_JUMP_END, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, false);
+                this->blendAnimation(NOWA::AnimationBlenderV2::ANIM_JUMP_END, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.5f, false);
             }
             this->boringTimer = 0;
             this->walkSound->setPitch(0.35f);
@@ -3776,6 +4006,9 @@ namespace NOWA
             // camera shake or damage by the drop height.
             enqueuePlayerClosure(this->playerController->getLandClosure(), "reactOnLand", this->fallTimer);
             this->fallTimer = 0.0f;
+
+            // The take off is over, from here on the landing owns the animation
+            this->jumpAnimationLockTimer = 0.0f;
         }
 
         // Counted while airborne, consumed by the land closure above.
@@ -3784,8 +4017,14 @@ namespace NOWA
             this->fallTimer += dt;
         }
 
-        // Reset groundedOnce once the player has risen above the landing threshold.
-        if (height > 2.0f)
+        if (this->jumpAnimationLockTimer > 0.0f)
+        {
+            this->jumpAnimationLockTimer -= dt;
+        }
+
+        // Attention: groundedOnce is released as soon as the player is airborne again. Previously it was only released above a height of 2,
+        // so after a low jump it stayed set and neither the landing animation nor the reactOnLand closure fired a second time.
+        if (true == this->inAir)
         {
             this->groundedOnce = false;
         }
@@ -3837,7 +4076,7 @@ namespace NOWA
                 // salto rather than repeating the ground jump.
                 if (true == doDoubleJump || true == doXJump)
                 {
-                    this->playerController->getAnimationBlender()->blend(NOWA::AnimationBlenderV2::ANIM_SALTO, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.1f, false);
+                    this->blendAnimation(NOWA::AnimationBlenderV2::ANIM_SALTO, NOWA::AnimationBlenderV2::BlendWhileAnimating, 0.1f, false);
                 }
 
                 enqueuePlayerClosure(this->playerController->getJumpClosure(), "reactOnJump", static_cast<int>(this->jumpCount));
@@ -4129,6 +4368,98 @@ namespace NOWA
                             verticalVelocity = Ogre::Vector3::ZERO;
                         }
                     }
+                }
+            }
+        }
+
+        // -------------------------------------------------------------------------
+        // Sliding downhill while ducked
+        //
+        // Runs AFTER the slope handling above, which has already rebuilt the vertical speed from the surface. The slide is then simply added
+        // on top as a velocity along the downhill direction, so it goes through the same single velocity servo as everything else instead of
+        // being a second, competing force.
+        //
+        // The speed builds up and decays over time rather than switching on and off: a slide that starts at full speed reads as being pushed,
+        // and one that stops dead at the end of the slope reads as hitting a wall.
+        // -------------------------------------------------------------------------
+
+        // Tune here. 'duckSlideMinSteepness' is the COSINE of the slope angle, so a SMALLER value means a STEEPER slope: 0.98 is about 11
+        // degrees, below that nothing slides. 0.5 (60 degrees) is where walkable ground ends, and that is where the full speed is reached.
+        const Ogre::Real duckSlideMinSteepness = 0.98f;
+        const Ogre::Real duckSlideAcceleration = 12.0f;
+        const Ogre::Real duckSlideMaxSpeed = 10.0f;
+        const Ogre::Real duckSlideDeceleration = 6.0f;
+
+        bool isSlidingDownhill = false;
+
+        if (true == this->playerController->getCanSlide() && true == this->duckedOnce && false == this->inAir && nullptr != this->playerController->getHitGameObjectBelow())
+        {
+            Ogre::Vector3 groundNormal = this->playerController->getNormal();
+            if (groundNormal.squaredLength() > 0.0001f)
+            {
+                groundNormal.normalise();
+
+                const Ogre::Real normalDotUp = groundNormal.dotProduct(upDir);
+
+                // Walkable ground only, and only from the minimum steepness on
+                if (normalDotUp > 0.5f && normalDotUp < duckSlideMinSteepness)
+                {
+                    // Downhill is gravity projected onto the ground plane
+                    Ogre::Vector3 downhillDirection = gravityDir - groundNormal * gravityDir.dotProduct(groundNormal);
+                    if (downhillDirection.squaredLength() > 0.0001f)
+                    {
+                        downhillDirection.normalise();
+
+                        // 0 at the minimum steepness, 1 at the steepest walkable ground
+                        const Ogre::Real steepness = (duckSlideMinSteepness - normalDotUp) / (duckSlideMinSteepness - 0.5f);
+
+                        this->duckSlideSpeed += duckSlideAcceleration * steepness * dt;
+                        if (this->duckSlideSpeed > duckSlideMaxSpeed)
+                        {
+                            this->duckSlideSpeed = duckSlideMaxSpeed;
+                        }
+
+                        this->duckSlideDirection = downhillDirection;
+                        isSlidingDownhill = true;
+                    }
+                }
+            }
+        }
+
+        if (false == isSlidingDownhill)
+        {
+            // Not steep enough anymore, standing up or airborne: the slide runs out instead of stopping dead
+            this->duckSlideSpeed -= duckSlideDeceleration * dt;
+            if (this->duckSlideSpeed < 0.0f)
+            {
+                this->duckSlideSpeed = 0.0f;
+            }
+        }
+
+        // Attention: the speed is applied HERE and not inside the branch above. Previously the velocity was only added while the slope was
+        // steep enough, so the moment it flattened out the player stopped dead - the speed was still counted down, but nobody used it
+        // anymore. Now the remembered direction keeps carrying him until the speed has really run out.
+        if (this->duckSlideSpeed > 0.0f)
+        {
+            Ogre::Vector3 slideDirection = this->duckSlideDirection;
+
+            if (false == isSlidingDownhill)
+            {
+                // Coasting out on flatter ground: only the horizontal part. The remembered downhill direction still points into the ground
+                // and would press the player into the surface there.
+                slideDirection -= upDir * slideDirection.dotProduct(upDir);
+            }
+
+            if (slideDirection.squaredLength() > 0.0001f)
+            {
+                slideDirection.normalise();
+                directionMove += slideDirection * this->duckSlideSpeed;
+
+                if (true == isSlidingDownhill)
+                {
+                    // The slide follows the surface, the downhill direction already contains the downward part. Keeping the remembered
+                    // falling speed on top of it would push the player into the ground and make the contact solver fight the servo.
+                    verticalVelocity = Ogre::Vector3::ZERO;
                 }
             }
         }

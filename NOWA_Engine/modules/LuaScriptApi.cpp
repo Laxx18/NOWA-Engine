@@ -4355,6 +4355,8 @@ namespace NOWA
             .def("loadProgress", &GameProgressModule::loadProgress)
             .def("loadValue", &loadValue)
             .def("loadValues", &loadValues)
+            .def("hasSaveGame", &GameProgressModule::hasSaveGame)
+            .def("clearGlobalValues", &GameProgressModule::clearGlobalValues)
             .def("getGlobalValue", &GameProgressModule::getGlobalValue)
             .def("setGlobalBoolValue", &GameProgressModule::setGlobalBoolValue)
             // Lua knows only about number!
@@ -4383,10 +4385,12 @@ namespace NOWA
             "Saves a value for the given game object id and its attribute index. Optionally crypts the content, so that it is not readable anymore.");
         AddClassToCollection("GameProgressModule", "String saveValues(String saveName, String gameObjectId, bool crypted)",
             "Saves all values for the given game object id and its attribute components. Optionally crypts the content, so that it is not readable anymore.");
-        AddClassToCollection("GameProgressModule", "bool loadProgress(String saveName, bool sceneSnapshot, bool showProgress)",
+        AddClassToCollection("GameProgressModule", "void loadProgress(String saveName, bool sceneSnapshot, bool showProgress)",
             "Loads all values for all game objects with attributes components for the given save name. "
-            "Optionally can load a whole scene snapshot. If the scene is in the snapshot is the same as the current one, just values are set. Else first a whole new scene is loaded and after that the snapshot on the top. Returns false, if no save "
-            "file could be found.");
+            "Optionally can load a whole scene snapshot. If the scene in the snapshot is the same as the current one, just values are set. "
+            "Else first a whole new scene is loaded and after that the snapshot on the top.");
+        AddClassToCollection("GameProgressModule", "bool hasSaveGame(String saveName)", "Gets whether a save game with the given name does exist. Use this instead of the return value of loadProgress.");
+        AddClassToCollection("GameProgressModule", "void clearGlobalValues()", "Deletes all global values, e.g. when a new game is started. Attention: every Variant from getGlobalValue becomes invalid.");
         AddClassToCollection("GameProgressModule", "bool loadValue(String saveName, String gameObjectId, unsigned int attributeIndex)",
             "Loads a value for the given game object id and attribute index and the given save name. Returns false, if no save file could be found or index or game object id is invalid.");
         AddClassToCollection("GameProgressModule", "bool loadValue(String saveName, String gameObjectId)",
@@ -5609,6 +5613,10 @@ namespace NOWA
         .def("getUseAcceleration", &PlayerControllerJumpNRunComponent::getUseAcceleration)
         .def("setAccelerationDuration", &PlayerControllerJumpNRunComponent::setAccelerationDuration)
         .def("getAccelerationDuration", &PlayerControllerJumpNRunComponent::getAccelerationDuration)
+        .def("setFallSaltoTime", &PlayerControllerJumpNRunComponent::setFallSaltoTime)
+        .def("getFallSaltoTime", &PlayerControllerJumpNRunComponent::getFallSaltoTime)
+        .def("setCanSlide", &PlayerControllerJumpNRunComponent::setCanSlide)
+        .def("getCanSlide", &PlayerControllerJumpNRunComponent::getCanSlide)
         .def("reactOnDirectionChanged", &PlayerControllerJumpNRunComponent::reactOnDirectionChanged)
         .def("reactOnJump", &PlayerControllerJumpNRunComponent::reactOnJump)
         .def("reactOnLand", &PlayerControllerJumpNRunComponent::reactOnLand)
@@ -5644,7 +5652,11 @@ namespace NOWA
     AddClassToCollection("PlayerControllerJumpNRunComponent", "bool getUseAcceleration()", "Gets whether the continuous speed ramp is used.");
     AddClassToCollection("PlayerControllerJumpNRunComponent", "void setAccelerationDuration(float accelerationDuration)", "Sets how many seconds of uninterrupted running the speed ramp needs to reach the max speed.");
     AddClassToCollection("PlayerControllerJumpNRunComponent", "float getAccelerationDuration()", "Gets the duration in seconds the speed ramp needs to reach the max speed.");
- 
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "void setFallSaltoTime(number fallSaltoTime)", "Sets after how many seconds of falling the player starts a salto. 0 switches the salto off.");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "number getFallSaltoTime()", "Gets after how many seconds of falling the player starts a salto. 0 means the salto is off.");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "void setCanSlide(bool canSlide)", "Sets whether the player slides down a slope while ducking. Meant as an ability that is unlocked during the game.");
+    AddClassToCollection("PlayerControllerJumpNRunComponent", "bool getCanSlide()", "Gets whether the player slides down a slope while ducking.");
+
     AddClassToCollection("PlayerControllerJumpNRunComponent", "void reactOnDirectionChanged(func closureFunction)",
         "Sets the closure function which is called when the player reverses his walking direction in 2.5D mode. The closure receives the old and the new direction as numbers "
         "(0 = none, 1 = up, 2 = down, 3 = left, 4 = right). Example: reactOnDirectionChanged(function(oldDirection, newDirection) ... end).");

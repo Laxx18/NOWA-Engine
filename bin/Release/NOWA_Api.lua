@@ -14643,11 +14643,27 @@ return {
 			},
 			loadProgress =
 			{
-				type = "function",
-				description = "Loads all values for all game objects with attributes components for the given save name. Optionally can load a whole scene snapshot. If the scene is in the snapshot is the same as the current one, just values are set. Else first a whole new scene is loaded and after that the snapshot on the top. Returns false, if no save file could be found.",
+				type = "method",
+				description = "Loads all values for all game objects with attributes components for the given save name. Optionally can load a whole scene snapshot. If the scene in the snapshot is the same as the current one, just values are set. Else first a whole new scene is loaded and after that the snapshot on the top.",
 				args = "(string saveName, boolean sceneSnapshot, boolean showProgress)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			hasSaveGame =
+			{
+				type = "function",
+				description = "Gets whether a save game with the given name does exist. Use this instead of the return value of loadProgress.",
+				args = "(string saveName)",
 				returns = "(boolean)",
 				valuetype = "boolean"
+			},
+			clearGlobalValues =
+			{
+				type = "method",
+				description = "Deletes all global values, e.g. when a new game is started. Attention: every Variant from getGlobalValue becomes invalid.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
 			},
 			loadValue =
 			{
@@ -30513,6 +30529,38 @@ return {
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
+			},
+			setFallSaltoTime =
+			{
+				type = "method",
+				description = "Sets after how many seconds of falling the player starts a salto. 0 switches the salto off.",
+				args = "(number fallSaltoTime)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFallSaltoTime =
+			{
+				type = "function",
+				description = "Gets after how many seconds of falling the player starts a salto. 0 means the salto is off.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setCanSlide =
+			{
+				type = "method",
+				description = "Sets whether the player slides down a slope while ducking. Meant as an ability that is unlocked during the game.",
+				args = "(boolean canSlide)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCanSlide =
+			{
+				type = "function",
+				description = "Gets whether the player slides down a slope while ducking.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
 			},
 			reactOnDirectionChanged =
 			{

@@ -281,6 +281,12 @@ namespace NOWA
         // Physics update closure for V2 (registered only when source has physics)
         void updateV2PhysicsFromTagPoint(void);
 
+        /**
+         * @brief   Creates and wires the JointKinematicComponent, which drives a non kinematic source body.
+         * @note    Attention: MAIN thread only, because creating a joint is OgreNewt work and OgreNewt is not thread safe.
+         */
+        void setupSourcePhysicsDrive(void);
+
         // Works out where the source currently sits relative to the given bone. This is the same
         // computation connect() uses, factored out so bakeOffset() can run it with the simulation
         // switched off - before any tag point exists.

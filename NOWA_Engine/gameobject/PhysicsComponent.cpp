@@ -1802,6 +1802,7 @@ namespace NOWA
     void PhysicsComponent::setCollisionType(const Ogre::String& collisionType)
     {
         this->collisionType->setListSelectedValue(collisionType);
+        this->reCreateCollision();
     }
 
     const Ogre::String PhysicsComponent::getCollisionType(void) const

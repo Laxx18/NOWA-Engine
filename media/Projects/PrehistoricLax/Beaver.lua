@@ -5,6 +5,7 @@ require("init");
 
 local beaver = nil;
 local player = nil;
+local animationBlender;
 -- Event handlers compare against this id, never against Beaver:getId(): an event can still reach this
 -- script after the game object was deleted, and then 'Beaver' points to freed memory.
 local beaverId = nil;
@@ -15,6 +16,10 @@ local enemyDeadListenerId = nil;
 -- Shown for ENEMY_ENERGY_BAR_TIME seconds after every hit.
 local energyBar = nil;
 local energyBarTimer = 0;
+
+-- Runs while the damage animation plays. The beaver does not attack during that time, so the animation is
+-- never cut short by its own attack.
+local damageTimer = 0;
 
 Beaver = {}
 
@@ -33,14 +38,15 @@ Beaver["connect"] = function(gameObject)
     energyBar = beaver:getValueBarComponent();
     setupEnemyEnergyBar(energyBar, profile);
     energyBarTimer = 0;
+    damageTimer = 0;
 
-    local animationBlender = beaver:getAnimationComponentV2():getAnimationBlender();
-    animationBlender:registerAnimation(AnimationBlender.ANIM_IDLE_1, "Beaver Idle");
+    animationBlender = beaver:getAnimationComponentV2():getAnimationBlender();
+    animationBlender:registerAnimation(AnimationBlender.ANIM_IDLE_1, "Beaver Talk");
     animationBlender:registerAnimation(AnimationBlender.ANIM_IDLE_2, "Beaver Idle 2");
     animationBlender:registerAnimation(AnimationBlender.ANIM_WALK_NORTH, "Beaver Walk In Place");
     animationBlender:registerAnimation(AnimationBlender.ANIM_FALL, "Beaver Fall");
-    animationBlender:registerAnimation(AnimationBlender.ANIM_ATTACK_1, "Beaver Roll In Place");
-    animationBlender:registerAnimation(AnimationBlender.ANIM_ATTACK_2, "Beaver Kick");
+    animationBlender:registerAnimation(AnimationBlender.ANIM_ATTACK_1, "Beaver Kick");
+    animationBlender:registerAnimation(AnimationBlender.ANIM_ATTACK_2, "Beaver Roll In Place");
     animationBlender:registerAnimation(AnimationBlender.ANIM_TAKE_DAMAGE, "Beaver Damage");
 
     enemyHitListenerId = AppStateManager:getScriptEventManager():registerEventListener(EventType.EnemyHitEvent, Beaver["onEnemyHit"]);
@@ -59,6 +65,7 @@ Beaver["disconnect"] = function()
     energyBar = nil;
     beaverId = nil;
     profile = nil;
+    damageTimer = 0;
 end
 
 Beaver["onEnemyHit"] = function(eventData)
@@ -66,6 +73,9 @@ Beaver["onEnemyHit"] = function(eventData)
     if (eventData["enemyId"] ~= beaverId) then
         do return end;
     end
+    
+    -- Restarted on every hit, so a second blow extends the reaction instead of cutting it off.
+    damageTimer = startEnemyDamageAnimation(animationBlender, profile);
 
     showEnergyBar(eventData["remainingEnergy"]);
 end
@@ -112,6 +122,16 @@ Beaver["update"] = function(dt)
         if (energyBarTimer <= 0) then
             energyBar:setActivated(false);
         end
+    end
+
+    -- The damage animation runs its full time, then the beaver goes back to idle. While it runs no
+    -- EnemyNearPlayerEvent is sent, so the player's script does not start an attack that would blend over it.
+    if (damageTimer > 0) then
+        damageTimer = damageTimer - dt;
+        if (damageTimer <= 0) then
+            endEnemyDamageAnimation(animationBlender);
+        end
+        do return end;
     end
 
     -- Tells the player's script every frame while the player is within the attack reach. The

@@ -292,6 +292,13 @@ namespace NOWA
 
 		void saveProgress(const Ogre::String& saveFilePathName, bool crypted, bool sceneSnapshot);
 
+		/**
+         * @brief   Deletes ALL global values.
+         * @note    Attention: every Variant pointer that getGlobalValue has handed out becomes invalid, see
+         *          GameProgressModule::clearGlobalValues.
+         */
+        void clearGlobalValues(void);
+
 		void processAll(void);
 	protected:
 		void linkInputWithCore(AppState* oldState, AppState* state);

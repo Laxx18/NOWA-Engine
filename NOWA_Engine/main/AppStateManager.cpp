@@ -66,39 +66,26 @@ namespace NOWA
             graphicsModule->clearSceneResources();
             graphicsModule->releaseStall();
 
-            if (nullptr != this->state)
-            {
-                this->state->beforeSceneLoaded();
-            }
+            this->state->beforeSceneLoaded();
 
             switch (this->stateOperation)
             {
             case eAppStateOperation::ChangeAppState:
-                if (nullptr != this->state)
-                {
-                    AppStateManager::getSingletonPtr()->internalChangeAppState(this->state);
-                }
+                AppStateManager::getSingletonPtr()->internalChangeAppState(this->state);
                 break;
             case eAppStateOperation::PushAppState:
-                if (nullptr != this->state)
-                {
-                    AppStateManager::getSingletonPtr()->internalPushAppState(this->state);
-                }
+                AppStateManager::getSingletonPtr()->internalPushAppState(this->state);
                 break;
             case eAppStateOperation::PopAppState:
                 AppStateManager::getSingletonPtr()->internalPopAppState();
                 break;
             case eAppStateOperation::PopAllAndPushAppState:
-                if (nullptr != this->state)
-                {
-                    AppStateManager::getSingletonPtr()->internalPopAllAndPushAppState(this->state);
-                }
+                AppStateManager::getSingletonPtr()->internalPopAllAndPushAppState(this->state);
                 break;
             case eAppStateOperation::ExitGame:
                 AppStateManager::getSingletonPtr()->internalExitGame();
                 break;
             }
-            
         }
 
         virtual void onUpdate(float dt) override
@@ -508,7 +495,7 @@ namespace NOWA
         this->markCurrentThreadAsLogicThread();
 
         // The simulation rate is an engine/game constant (physics, gameplay and Lua timing depend on it), NOT a player setting.
-        // Rendering is decoupled via interpolation, so 60 logic steps per second are enough also for 90/120/144 Hz displays.
+        // Rendering is decoupled via interpolation, so the display refresh rate does not matter. Default 120 (see Core constructor), because OgreNewt needs it.
         unsigned int simulationUpdates = static_cast<unsigned int>(Core::getSingletonPtr()->getOptionDesiredSimulationUpdates());
         if (simulationUpdates < 30)
         {
@@ -1554,6 +1541,24 @@ namespace NOWA
         }
 
         return nullptr;
+    }
+
+    void AppStateManager::clearGlobalValues(void)
+    {
+        // Attention: every Variant pointer that getGlobalValue has handed out becomes invalid here. Only call this when nothing is holding
+        // one anymore, e.g. right before a new run is started.
+        auto it = this->globalAttributesMap.begin();
+
+        while (it != this->globalAttributesMap.end())
+        {
+            Variant* globalAttribute = it->second;
+            delete globalAttribute;
+            globalAttribute = nullptr;
+            ++it;
+        }
+        this->globalAttributesMap.clear();
+
+        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[AppStateManager] All global values cleared.");
     }
 
     Variant* AppStateManager::getGlobalValue(const Ogre::String& attributeName)

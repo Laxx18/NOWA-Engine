@@ -67,6 +67,7 @@ namespace NOWA
         hitstopRemaining(0.0f),
         edgeOrthographicEnabled(false),
         edgeOrthoBlendTime(0.35f),
+        edgeOrthoBlend(0.0f),
         edgeOrthoMorph(0.0f),
         lastLoggedOrthographicState(false)
     {
@@ -499,7 +500,7 @@ namespace NOWA
         return this->edgeOrthoMorph;
     }
 
-    void FollowCamera2D::updateEdgeOrthographic(const Ogre::Vector3& playerPosition, const Ogre::Vector3& cameraPosition, bool cameraClampedX, bool cameraClampedY)
+    void FollowCamera2D::updateEdgeOrthographic(Ogre::Real dt, const Ogre::Vector3& playerPosition, const Ogre::Vector3& cameraPosition, bool cameraClampedX, bool cameraClampedY)
     {
         this->edgePlayerPosition = playerPosition;
         this->edgeCameraPosition = cameraPosition;
@@ -545,21 +546,76 @@ namespace NOWA
 
         this->edgeOrthographicActive = this->edgeOrthographicEnabled && (shouldEnterOrtho || shouldStayOrtho);
 
-        // Keep the horizontal orthographic size identical to the
-        // perspective view, but add a small vertical safety margin.
+        // ── The orthographic window ──────────────────────────────────────────────────
+        // Built from the TRUE view extents at the play plane, NOT from mostRightUp.
         //
-        // Without this margin the orthographic bottom edge can land
-        // exactly on minimumBounds.y. A one-unit-high platform below
-        // the player can then disappear when the player falls back
-        // down from a higher platform.
-        const Ogre::Real orthographicVerticalMargin = 1.0f;
+        // mostRightUp is the CLAMP MARGIN, not the view: it is deliberately the half extents
+        // MINUS borderOffset, so that the camera stops short of the scene bound. Using it as the
+        // window made the orthographic view narrower than the perspective one by exactly
+        // borderOffset on each side - with a border offset of 1 that is the missing metre at the
+        // right edge, and it also meant the two ends of the morph never showed the same thing, so
+        // every blend carried a hidden zoom.
+        //
+        // No safety margin either. With the window matching the perspective view exactly at the
+        // play plane, nothing that was visible can drop out, and a margin would be one more
+        // reason for the blend to read as a zoom.
+        const Ogre::Real viewHalfHeight = this->baseHalfHeight * this->appliedZoom;
 
-        this->edgeOrthoWindow = Ogre::Vector2(this->mostRightUp.x * 2.0f, this->mostRightUp.y * 2.0f + orthographicVerticalMargin);
+        const Ogre::Real viewHalfWidth = viewHalfHeight * this->baseAspectRatio;
+
+        this->edgeOrthoWindow = Ogre::Vector2(viewHalfWidth * 2.0f, viewHalfHeight * 2.0f);
+
+        // ── The morph factor ─────────────────────────────────────────────────────────
+        // Advanced here, on the logic thread, off the logic dt. The render closure only APPLIES
+        // whatever value it finds, so the blend no longer depends on what the tracked closure
+        // passes as its delta or on how often it gets ticked - which is what made the way into
+        // orthographic ease over the blend time while the way back snapped in a single frame.
+        const Ogre::Real morphTarget = (true == this->edgeOrthographicActive) ? 1.0f : 0.0f;
+
+        if (this->edgeOrthoBlendTime > 0.0f)
+        {
+            // LINEAR in time, not exponential. An exponential approach is symmetric in the maths -
+            // both directions reach the same threshold after the same number of seconds - but it
+            // is not symmetric to the EYE, and that is what still read as a fast way back. An
+            // exponential spends most of its speed at the START of the blend. Going towards
+            // orthographic that speed falls in the 0.0 to 0.4 range, where the picture barely
+            // changes, and the long slow tail lands in the part that is actually visible. Going
+            // back, the very same curve spends its speed in the 1.0 to 0.6 range - which is
+            // exactly where the projection changes most - so the whole visible part of the
+            // transition is over in a fraction of a second and the invisible tail eats the rest
+            // of the blend time.
+            //
+            // A linear ramp gives every part of the transition the same share of the time in both
+            // directions, and it finishes in EXACTLY the blend time instead of approaching
+            // forever, which also removes the need for any snap threshold at the ends.
+            const Ogre::Real blendStep = dt / this->edgeOrthoBlendTime;
+
+            if (this->edgeOrthoBlend < morphTarget)
+            {
+                this->edgeOrthoBlend = std::min(morphTarget, this->edgeOrthoBlend + blendStep);
+            }
+            else
+            {
+                this->edgeOrthoBlend = std::max(morphTarget, this->edgeOrthoBlend - blendStep);
+            }
+        }
+        else
+        {
+            // Blend time 0 is the old hard switch, kept deliberately as an opt out.
+            this->edgeOrthoBlend = morphTarget;
+        }
+
+        // Smoothstep over the linear ramp: soft start and soft end, and the curve is its own
+        // mirror image, so neither direction begins or finishes with a visible step. The ease is
+        // what the exponential was there for - the linear ramp underneath it is what makes the
+        // two directions actually match.
+        this->edgeOrthoMorph = this->edgeOrthoBlend * this->edgeOrthoBlend * (3.0f - 2.0f * this->edgeOrthoBlend);
 
         if (false == this->edgeOrthographicClosureRegistered)
         {
             this->edgeOrthographicClosureRegistered = true;
 
+            // renderDt is intentionally unused: this closure integrates nothing any more.
             auto closureFunction = [this](Ogre::Real renderDt)
             {
                 if (nullptr == this->camera)
@@ -600,28 +656,10 @@ namespace NOWA
                     this->lastLoggedOrthographicState = this->edgeOrthographicActive;
                 }
 
-                // ── The morph itself ─────────────────────────────────────────────────
-                // Driven on the RENDER thread off the render dt, not on the logic thread.
-                // The projection matrix is written here, so blending it here is what keeps
-                // every intermediate frame consistent instead of stepping once per logic tick.
-                const Ogre::Real morphTarget = (true == this->edgeOrthographicActive) ? 1.0f : 0.0f;
-
-                const Ogre::Real morphAlpha = (this->edgeOrthoBlendTime > 0.0f) ? (1.0f - std::exp(-renderDt / (this->edgeOrthoBlendTime * 0.33f))) : 1.0f;
-
-                this->edgeOrthoMorph += (morphTarget - this->edgeOrthoMorph) * morphAlpha;
-
-                // Snap the tails. An exponential approach never actually arrives, and leaving a
-                // custom projection matrix installed at a morph of 0.0004 keeps the camera off
-                // its normal code path forever for no visible benefit.
-                if (this->edgeOrthoMorph < 0.002f)
-                {
-                    this->edgeOrthoMorph = 0.0f;
-                }
-                else if (this->edgeOrthoMorph > 0.998f)
-                {
-                    this->edgeOrthoMorph = 1.0f;
-                }
-
+                // ── Apply only ───────────────────────────────────────────────────────
+                // The morph factor is advanced on the logic thread in updateEdgeOrthographic.
+                // Nothing here integrates anything, so this closure is indifferent to what it is
+                // handed as a delta and to how often it runs - it just draws the current value.
                 if (0.0f == this->edgeOrthoMorph)
                 {
                     // Fully perspective: hand the camera back to its own projection path so
@@ -870,7 +908,7 @@ namespace NOWA
 
         GraphicsModule::getInstance()->updateCameraPosition(this->camera, renderPosition);
 
-        this->updateEdgeOrthographic(playerPosition, finalPosition, cameraClampedX, cameraClampedY);
+        this->updateEdgeOrthographic(dt, playerPosition, finalPosition, cameraClampedX, cameraClampedY);
     }
 
     void FollowCamera2D::rotateCamera(Ogre::Real dt, bool forJoyStick)

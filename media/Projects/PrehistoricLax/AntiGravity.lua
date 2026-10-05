@@ -12,6 +12,7 @@ AntiGravity = {}
 AntiGravity["connect"] = function(gameObject)
     antiGravity = AppStateManager:getGameObjectController():castGameObject(gameObject);
     physicsTriggerComponent = antiGravity:getPhysicsTriggerComponent();
+	
     physicsTriggerComponent:reactOnEnter(function(visitorGameObject)
           visitorGameObject = AppStateManager:getGameObjectController():castGameObject(visitorGameObject);
           local phyiscsActiveComponent = visitorGameObject:getPhysicsActiveComponent();

@@ -364,8 +364,6 @@ namespace NOWA
         bool createSound(void);
         void destroySound(void);
         void soundSpectrumFuncPtr(OgreAL::Sound* sound);
-        std::vector<Ogre::ManualObject*> lines;
-        Ogre::SceneNode* lineNode;
 
     private:
         Variant* activated;

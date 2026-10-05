@@ -531,6 +531,33 @@ namespace NOWA
         Ogre::Real getAccelerationDuration(void) const;
 
         /**
+         * @brief   Sets after how many seconds of falling the player starts a salto. 0 switches the salto off.
+         * @note    The salto repeats as long as the fall lasts, so the player turns as many times as it allows.
+         *          It needs the attribute 'Anim Salto' to be set.
+         * @param[in] fallSaltoTime The fall time in seconds, or 0 to switch the salto off.
+         */
+        void setFallSaltoTime(Ogre::Real fallSaltoTime);
+
+        /**
+         * @brief   Gets after how many seconds of falling the player starts a salto. 0 means the salto is off.
+         * @return  fallSaltoTime   The fall time in seconds.
+         */
+        Ogre::Real getFallSaltoTime(void) const;
+
+        /**
+         * @brief   Sets whether the player slides down a slope while ducking.
+         * @note    Meant as an ability that is unlocked during the game, so it can be switched on at runtime.
+         * @param[in] canSlide  Whether the player may slide.
+         */
+        void setCanSlide(bool canSlide);
+
+        /**
+         * @brief   Gets whether the player slides down a slope while ducking.
+         * @return  canSlide    Whether the player may slide.
+         */
+        bool getCanSlide(void) const;
+
+        /**
          * @brief		Lua closure called when the player reverses direction in 2D mode.
          *				Receives the old and the new direction as numbers (see the Direction enum).
          */
@@ -667,6 +694,10 @@ namespace NOWA
         {
             return "Acceleration Duration Sec";
         }
+        static const Ogre::String AttrCanSlide(void)
+        {
+            return "Can Slide";
+        }
         static const Ogre::String AttrAnimAirJump(void)
         {
             return "Anim Air Jump";
@@ -727,7 +758,14 @@ namespace NOWA
         {
             return "Anim Duck";
         }
-
+        static const Ogre::String AttrAnimSalto(void)
+        {
+            return "Anim Salto";
+        }
+        static const Ogre::String AttrFallSaltoTime(void)
+        {
+            return "Fall Salto Time";
+        }
     private:
         Variant* jumpForce;
         Variant* doubleJump;
@@ -736,6 +774,8 @@ namespace NOWA
         Variant* xJump;
         Variant* useAcceleration;
         Variant* accelerationDuration;
+        Variant* fallSaltoTime;
+        Variant* canSlide;
 
         luabind::object directionChangedClosureFunction;
         luabind::object jumpClosureFunction;
@@ -1149,6 +1189,30 @@ namespace NOWA
         virtual void exit(GameObject* player) override;
 
     private:
+        /**
+         * @brief   Gets whether the given animation still has to be blended.
+         * @note    Do NOT use AnimationBlenderV2::isAnimationActive for this. During a cross fade both the outgoing and the incoming
+         *          clip are enabled, so it cannot tell which animation is really playing.
+         * @param[in] animId    The animation id to check.
+         * @return  true, if the animation has to be blended.
+         */
+        bool shouldBlendAnimation(NOWA::AnimationBlenderV2::AnimID animId);
+
+        /**
+         * @brief   Blends the given animation and remembers it as the one this state has asked for.
+         * @param[in] animId        The animation id to blend.
+         * @param[in] transition    The blending transition.
+         * @param[in] duration      The blend duration in seconds.
+         * @param[in] loop          Whether the animation loops.
+         */
+        void blendAnimation(NOWA::AnimationBlenderV2::AnimID animId, NOWA::AnimationBlenderV2::BlendingTransition transition, Ogre::Real duration, bool loop);
+
+        /**
+         * @brief   Ducks or stands the player up again, including the collision hull.
+         * @param[in] ducked    Whether the player shall duck.
+         */
+        void setDucked(bool ducked);
+    private:
         PlayerControllerJumpNRunComponent* playerController;
         Direction direction;
         bool directionChanged;
@@ -1173,6 +1237,20 @@ namespace NOWA
         // Reset on a direction change and on hitting something in front, but NOT on jumping.
         Ogre::Real accelerationTimer;
         Ogre::Real lastReportedSpeed;
+        // Protects the take off animation for the first frames of a jump, see the movement blend in update
+        Ogre::Real jumpAnimationLockTimer;
+        // The animation this state has asked the blender for last, see shouldBlendAnimation
+        NOWA::AnimationBlenderV2::AnimID currentRequestedAnimId;
+        // Edge detection and debounce for the duck toggle
+        bool duckKeyWasDown;
+        Ogre::Real duckToggleCooldown;
+        // Current downhill speed and direction while ducking on a slope
+        Ogre::Real duckSlideSpeed;
+        Ogre::Vector3 duckSlideDirection;
+        // The standing collision hull and its position, remembered once when ducking for the first time
+        Ogre::Vector3 oldCollisionSize;
+        Ogre::Vector3 oldCollisionPosition;
+        bool hasOldCollisionSize;
         // How long the player has been falling, handed to the land closure on touchdown.
         Ogre::Real fallTimer;
         bool groundedOnce;

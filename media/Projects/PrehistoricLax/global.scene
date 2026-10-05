@@ -108,6 +108,8 @@
 					<property type="12" name="XJump" data="false"/>
 					<property type="12" name="UseAcceleration" data="false"/>
 					<property type="6" name="AccelerationDuration" data="10"/>
+					<property type="6" name="FallSaltoTime" data="1"/>
+					<property type="12" name="CanSlide" data="true"/>
 					<property type="7" name="AnimIdle1" data="Boy 1 Idle"/>
 					<property type="7" name="AnimIdle2" data="Boy 1 Idle Turn Right"/>
 					<property type="7" name="AnimIdle3" data="Boy 1 Idle Turn Left"/>
@@ -121,7 +123,8 @@
 					<property type="7" name="AnimJumpEnd" data="Boy 1 Idle"/>
 					<property type="7" name="AnimRun" data="Boy 1 Run"/>
 					<property type="7" name="AnimSneak" data="None"/>
-					<property type="7" name="AnimDuck" data="Boy 1 Walk"/>
+					<property type="7" name="AnimDuck" data="Boy 1 Land"/>
+					<property type="7" name="AnimSalto" data="Boy 1 Air Flip"/>
 					<property type="7" name="ComponentWindInteractionComponent" data="WindInteractionComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -483,20 +486,6 @@
 					<property type="7" name="AttributeName6" data="KilledEnemies"/>
 					<property type="7" name="AttributeType6" data="Int"/>
 					<property type="7" name="AttributeValue6" data="0"/>
-					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="7" name="SoundName" data="Level 1 - Awakening Moon Overworld.ogg"/>
-					<property type="6" name="Volume" data="100"/>
-					<property type="6" name="Speed" data="1"/>
-					<property type="12" name="Loop" data="true"/>
-					<property type="8" name="FadeInFadeOut" data="2 2"/>
-					<property type="12" name="Stream" data="true"/>
-					<property type="12" name="RelativeToListener" data="false"/>
-					<property type="12" name="PlayWhenInMotion" data="false"/>
-					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
 					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>

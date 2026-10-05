@@ -238,14 +238,6 @@ namespace NOWA
             this->maxSpeed->setValue(XMLConverter::getAttribReal(propertyElement, "data", 10.0f));
             propertyElement = propertyElement->next_sibling("property");
         }
-
-        /*
-        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "DefaultPoseName")
-        {
-        this->defaultPoseName = XMLConverter::getAttrib(propertyElement, "data", "");
-        propertyElement = propertyElement->next_sibling("property");
-        }*/
-
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CollisionType")
         {
             this->collisionType->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", ""));
@@ -697,6 +689,19 @@ namespace NOWA
         // which resets m_shapeMaterial.m_userId to 0
         const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->gameObjectPtr.get(), this->ogreNewt);
         this->physicsBody->setMaterialGroupID(materialId);
+
+        if (true == this->bShowDebugData)
+        {
+            GraphicsModule::RenderCommand renderCommand = [this]()
+            {
+                this->physicsBody->showDebugCollision(false, false);
+                if (true == this->bShowDebugData)
+                {
+                    this->physicsBody->showDebugCollision(false, this->bShowDebugData);
+                }
+            };
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "PhysicsActiveComponent::showDebugData");
+        }
     }
 
     void PhysicsActiveComponent::createCompoundBody(const std::vector<PhysicsActiveComponent*>& physicsComponentList)
@@ -1018,6 +1023,10 @@ namespace NOWA
     void PhysicsActiveComponent::setLinearDamping(Ogre::Real linearDamping)
     {
         this->linearDamping->setValue(linearDamping);
+        if (nullptr != this->physicsBody)
+        {
+            this->physicsBody->setLinearDamping(linearDamping);
+        }
     }
 
     Ogre::Real PhysicsActiveComponent::getLinearDamping(void) const
@@ -1028,6 +1037,10 @@ namespace NOWA
     void PhysicsActiveComponent::setAngularDamping(const Ogre::Vector3& angularDamping)
     {
         this->angularDamping->setValue(angularDamping);
+        if (nullptr != this->physicsBody)
+        {
+            this->physicsBody->setAngularDamping(angularDamping);
+        }
     }
 
     const Ogre::Vector3 PhysicsActiveComponent::getAngularDamping(void) const
@@ -1555,6 +1568,7 @@ namespace NOWA
     void PhysicsActiveComponent::setCollisionDirection(const Ogre::Vector3& collisionDirection)
     {
         this->collisionDirection->setValue(collisionDirection);
+        this->reCreateCollision();
     }
 
     const Ogre::Vector3 PhysicsActiveComponent::getCollisionDirection(void) const
@@ -1565,6 +1579,7 @@ namespace NOWA
     void PhysicsActiveComponent::setCollisionPosition(const Ogre::Vector3& collisionPosition)
     {
         this->collisionPosition->setValue(collisionPosition);
+        this->reCreateCollision();
     }
 
     const Ogre::Vector3 PhysicsActiveComponent::getCollisionPosition(void) const
@@ -1575,6 +1590,7 @@ namespace NOWA
     void PhysicsActiveComponent::setCollisionSize(const Ogre::Vector3& collisionSize)
     {
         this->collisionSize->setValue(collisionSize);
+        this->reCreateCollision();
     }
 
     const Ogre::Vector3 PhysicsActiveComponent::getCollisionSize(void) const
@@ -1727,18 +1743,15 @@ namespace NOWA
         }
         else if (PhysicsActiveComponent::AttrCollisionSize() == attribute->getName())
         {
-            this->collisionSize->setValue(attribute->getVector3());
-            this->reCreateCollision();
+            this->setCollisionSize(attribute->getVector3());
         }
         else if (PhysicsActiveComponent::AttrCollisionPosition() == attribute->getName())
         {
-            this->collisionPosition->setValue(attribute->getVector3());
-            this->reCreateCollision();
+            this->setCollisionPosition(attribute->getVector3());
         }
         else if (PhysicsActiveComponent::AttrCollisionDirection() == attribute->getName())
         {
-            this->collisionDirection->setValue(attribute->getVector3());
-            this->reCreateCollision();
+            this->setCollisionDirection(attribute->getVector3());
         }
         else if (PhysicsComponent::AttrMass() == attribute->getName())
         {
@@ -1746,27 +1759,15 @@ namespace NOWA
         }
         else if (PhysicsActiveComponent::AttrMassOrigin() == attribute->getName())
         {
-            this->massOrigin->setValue(attribute->getVector3());
-            if (nullptr != this->physicsBody)
-            {
-                this->physicsBody->setCenterOfMass(attribute->getVector3());
-            }
+            this->setMassOrigin(attribute->getVector3());
         }
         else if (PhysicsActiveComponent::AttrLinearDamping() == attribute->getName())
         {
-            this->linearDamping->setValue(attribute->getReal());
-            if (nullptr != this->physicsBody)
-            {
-                this->physicsBody->setLinearDamping(attribute->getReal());
-            }
+            this->setLinearDamping(attribute->getReal());
         }
         else if (PhysicsActiveComponent::AttrAngularDamping() == attribute->getName())
         {
-            this->angularDamping->setValue(attribute->getVector3());
-            if (nullptr != this->physicsBody)
-            {
-                this->physicsBody->setAngularDamping(attribute->getVector3());
-            }
+            this->setAngularDamping(attribute->getVector3());
         }
         else if (PhysicsActiveComponent::AttrDensity() == attribute->getName())
         {
@@ -1805,12 +1806,10 @@ namespace NOWA
         else if (PhysicsComponent::AttrCollisionType() == attribute->getName())
         {
             // Only do something if the collision type changed
-            this->collisionType->setListSelectedValue(attribute->getListSelectedValue());
-            this->reCreateCollision();
+            this->setCollisionType(attribute->getListSelectedValue());
         }
         else if (PhysicsActiveComponent::AttrConstraintAxis() == attribute->getName())
         {
-            this->constraintAxis->setValue(attribute->getVector3());
             this->setConstraintAxis(attribute->getVector3());
         }
         else if (PhysicsActiveComponent::AttrAsSoftBody() == attribute->getName())

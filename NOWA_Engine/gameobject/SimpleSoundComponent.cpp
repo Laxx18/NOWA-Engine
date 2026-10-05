@@ -138,8 +138,6 @@ namespace NOWA
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[SimpleSoundComponent] Init simple sound component for game object: " + this->gameObjectPtr->getName());
 
-        this->lineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-
         this->createSound();
 
         return true;

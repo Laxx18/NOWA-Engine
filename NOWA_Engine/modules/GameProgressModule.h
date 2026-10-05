@@ -133,14 +133,15 @@ namespace NOWA
 		*/
 		void saveValue(const Ogre::String& saveName, unsigned long gameObjectId, unsigned int attributeIndex, bool crypted);
 		
-	   /**
-		* @brief		Loads all values for all game objects with attributes components for the given save name.
-		* @param[in]	saveName The save name to set.
-		* @param[in]	sceneSnapshot	Optionally whether to load also a snapshot of the current scene.
-		* @return		success	 Whether the progress could be loaded (file does exist).
-		* @details		If AttributeComponents are used, those values are set after the scene snapshot has been loaded, so they have most priority.
-		*/
-		bool loadProgress(const Ogre::String& saveName, bool sceneSnapshot = false, bool showProgress = false);
+        /**
+         * @brief   Loads the progress for the given save name.
+         * @note    Attention: this used to return a bool that was always false, because the real loading happens
+         *          later in a process. Use hasSaveGame to find out whether there is something to load.
+         * @param[in] saveName      The save name.
+         * @param[in] sceneSnapshot If true, the whole scene snapshot is loaded as well.
+         * @param[in] showProgress  If true, the loading progress is shown.
+         */
+        void loadProgress(const Ogre::String& saveName, bool sceneSnapshot, bool showProgress);
 		
 	   /**
 		* @brief		Loads all values for the given game object id and the given save name.
@@ -155,6 +156,20 @@ namespace NOWA
 		* @return		success	 Whether the progress could be loaded (file does exist).
 		*/
 		bool loadValue(const Ogre::String& saveName, unsigned long gameObjectId, unsigned int attributeIndex);
+
+		/**
+         * @brief   Gets whether a save game with the given name does exist.
+         * @param[in] saveName  The save name.
+         * @return  true, if the save game file does exist.
+         */
+        bool hasSaveGame(const Ogre::String& saveName);
+
+        /**
+         * @brief   Deletes ALL global values.
+         * @note    Attention: every Variant pointer that getGlobalValue has handed out becomes invalid. Only call this
+         *          when nothing is holding one anymore, e.g. right before a new run is started.
+         */
+        void clearGlobalValues(void);
 		
 		// This values are user values and can be created in lua script directly without the need of attributes component
 		/*void saveUserValue(const Ogre::String& saveName, const Ogre::String& attributeName);

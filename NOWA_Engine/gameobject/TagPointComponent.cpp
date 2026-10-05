@@ -28,7 +28,7 @@ namespace
         // Make sure the bone's cached transform is not stale before we
         // read it (Ogre::Bone does not have Node-style _getDerivedXyzUpdated()
         // methods, this is the equivalent for bones).
-        bone->_getFullTransformUpdated();
+        // bone->_getFullTransformUpdated();
 
         const Ogre::SimpleMatrixAf4x3& t = bone->_getLocalSpaceTransform();
 
@@ -519,78 +519,74 @@ namespace NOWA
                         movableObjects[i]->detachFromParent();
                         this->tagPointV2->attachObject(movableObjects[i]);
                     }
-
-                    // Get the bone by name
-                    if (nullptr != this->sourcePhysicsActiveComponent)
-                    {
-                        // For non-kinematic bodies (regular PhysicsActiveComponent)
-                        // we need a JointKinematicComponent to drive the body,
-                        // mirroring exactly what the v1 TagPointListener does.
-                        auto sourcePhysicsActiveKinematicComponent = dynamic_cast<PhysicsActiveKinematicComponent*>(this->sourcePhysicsActiveComponent);
-                        if (nullptr == sourcePhysicsActiveKinematicComponent)
-                        {
-                            auto existingJointKinematicCompPtr = NOWA::makeStrongPtr(this->sourcePhysicsActiveComponent->getOwner()->getComponent<JointKinematicComponent>());
-                            if (nullptr == existingJointKinematicCompPtr)
-                            {
-                                boost::shared_ptr<JointKinematicComponent> jointKinematicCompPtr(boost::make_shared<JointKinematicComponent>());
-                                this->sourcePhysicsActiveComponent->getOwner()->addDelayedComponent(jointKinematicCompPtr, true);
-                                jointKinematicCompPtr->setOwner(this->sourcePhysicsActiveComponent->getOwner());
-                                jointKinematicCompPtr->setBody(this->sourcePhysicsActiveComponent->getBody());
-                                jointKinematicCompPtr->setPickingMode(4);
-                                jointKinematicCompPtr->setMaxLinearAngleFriction(10000.0f, 10000.0f);
-                                jointKinematicCompPtr->createJoint();
-                            }
-                            else
-                            {
-                                auto jointCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<JointComponent>());
-                                if (nullptr != jointCompPtr)
-                                {
-                                    existingJointKinematicCompPtr->connectPredecessorId(jointCompPtr->getId());
-                                    existingJointKinematicCompPtr->createJoint();
-                                }
-                            }
-                        }
-
-                        // Attention: only the ID is built here, the closure itself is NOT
-                        // registered from this render command.
-                        //
-                        // GraphicsModule::updateTrackedClosure() is meant to be called from an
-                        // update() function, once per frame - that is how every other caller in
-                        // the engine uses it. When it is called FROM the render thread it takes
-                        // its documented shortcut: run the closure once with dt = 0 and return,
-                        // without adding it to the tracked list. And connectV2Item() runs as a
-                        // RenderCommand.
-                        //
-                        // So this used to register the physics update exactly once. The attached
-                        // object's body was driven to the bone a single time and then stayed
-                        // frozen at that transform forever, while the mesh kept following the
-                        // bone - body and visual drifted apart with no error anywhere. The
-                        // registration now happens in update(), see there.
-                        this->updateClosureId = this->gameObjectPtr->getName() + this->getClassName() + "::updateTagPointV2Physics" + Ogre::StringConverter::toString(this->index);
-                    }
                 }
 
                 this->alreadyConnected = true;
             }
         };
-        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "TagPointComponent::connectV2Item");
+        // Attention: enqueueAndWait, not enqueue. The OgreNewt part below runs on the MAIN thread and must only start once the tag point
+        // really exists, otherwise the body would be hooked up to something that is not there yet.
+        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "TagPointComponent::connectV2Item");
+
+        // Everything from here on is OgreNewt and therefore stays OUTSIDE the render command. Creating a joint touches the Newton world,
+        // which is as little thread safe as moving a body.
+        this->setupSourcePhysicsDrive();
+    }
+
+    void TagPointComponent::setupSourcePhysicsDrive(void)
+    {
+        // Runs on the MAIN thread, see connectV2Item.
+        if (nullptr == this->sourcePhysicsActiveComponent)
+        {
+            return;
+        }
+
+        // A kinematic body is driven directly by setKinematicPositionOrientation in updateV2PhysicsFromTagPoint, it needs no joint.
+        auto sourcePhysicsActiveKinematicComponent = dynamic_cast<PhysicsActiveKinematicComponent*>(this->sourcePhysicsActiveComponent);
+        if (nullptr == sourcePhysicsActiveKinematicComponent)
+        {
+            // For non-kinematic bodies (regular PhysicsActiveComponent) a JointKinematicComponent drives the body, mirroring exactly what
+            // the v1 TagPointListener does.
+            auto existingJointKinematicCompPtr = NOWA::makeStrongPtr(this->sourcePhysicsActiveComponent->getOwner()->getComponent<JointKinematicComponent>());
+            if (nullptr == existingJointKinematicCompPtr)
+            {
+                boost::shared_ptr<JointKinematicComponent> jointKinematicCompPtr(boost::make_shared<JointKinematicComponent>());
+                this->sourcePhysicsActiveComponent->getOwner()->addDelayedComponent(jointKinematicCompPtr, true);
+                jointKinematicCompPtr->setOwner(this->sourcePhysicsActiveComponent->getOwner());
+                jointKinematicCompPtr->setBody(this->sourcePhysicsActiveComponent->getBody());
+                jointKinematicCompPtr->setPickingMode(4);
+                jointKinematicCompPtr->setMaxLinearAngleFriction(10000.0f, 10000.0f);
+                jointKinematicCompPtr->createJoint();
+            }
+            else
+            {
+                auto jointCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<JointComponent>());
+                if (nullptr != jointCompPtr)
+                {
+                    existingJointKinematicCompPtr->connectPredecessorId(jointCompPtr->getId());
+                    existingJointKinematicCompPtr->createJoint();
+                }
+            }
+        }
+
+        this->updateClosureId = this->gameObjectPtr->getName() + this->getClassName() + "::updateTagPointV2Physics" + Ogre::StringConverter::toString(this->index);
     }
 
     void TagPointComponent::updateV2PhysicsFromTagPoint(void)
     {
-        // Runs on the render thread (tracked closure, after renderOneFrame).
+        // Runs on the MAIN thread, called from update(). Must stay there: it drives an OgreNewt body.
 
         // TEMPORARY DIAGNOSTICS - logged BEFORE the early return, so "the closure never runs"
         // can be told apart from "it runs but returns immediately".
-       /* {
-            static unsigned int diagEnterCounter = 0;
-            diagEnterCounter++;
-            if (diagEnterCounter % 300 == 1)
-            {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TagPoint-DIAG] updateV2PhysicsFromTagPoint ENTERED #" + Ogre::StringConverter::toString(diagEnterCounter) + " tagPointV2: " +
-                                                                                        Ogre::String(nullptr != this->tagPointV2 ? "ok" : "NULL") + " sourcePhysics: " + Ogre::String(nullptr != this->sourcePhysicsActiveComponent ? "ok" : "NULL"));
-            }
-        }*/
+        /* {
+             static unsigned int diagEnterCounter = 0;
+             diagEnterCounter++;
+             if (diagEnterCounter % 300 == 1)
+             {
+                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TagPoint-DIAG] updateV2PhysicsFromTagPoint ENTERED #" + Ogre::StringConverter::toString(diagEnterCounter) + " tagPointV2: " +
+                                                                                         Ogre::String(nullptr != this->tagPointV2 ? "ok" : "NULL") + " sourcePhysics: " + Ogre::String(nullptr != this->sourcePhysicsActiveComponent ? "ok" : "NULL"));
+             }
+         }*/
 
         // attachedBone and the character's scene node are dereferenced below now, so they are
         // part of the guard.
@@ -776,22 +772,15 @@ namespace NOWA
     {
         if (false == notSimulating)
         {
-            // The physics update closure is (re)registered from HERE, on the logic thread,
-            // every frame - the way updateTrackedClosure() is meant to be used. Registering it
-            // from connectV2Item() did not work, see the comment there.
+            // Attention: called DIRECTLY here, on the main thread, and deliberately NOT as a tracked render closure.
             //
-            // Calling this every frame is cheap and intended: addPersistentClosure() is
-            // idempotent, so repeated calls from the same caller are no-ops once the closure
-            // sits in the list.
-            if (false == this->updateClosureId.empty() && nullptr != this->tagPointV2 && nullptr != this->sourcePhysicsActiveComponent)
+            // The closure ran on the render thread, and setKinematicPositionOrientation inside it crashed in ndBody::SetMatrix.
+            // OgreNewt must only ever be driven from the main thread. From Ogre only the bone and the node transforms are READ here, and
+            // everything that leaves this function goes into the body - OgreNewt caches the transform itself and hands the node update back
+            // through the render callback (OgreNewtModule::registerRenderCallbackForBody), so nothing writes to a scene node from here.
+            if (nullptr != this->tagPointV2 && nullptr != this->sourcePhysicsActiveComponent)
             {
-                NOWA::GraphicsModule::getInstance()->updateTrackedClosure(
-                    this->updateClosureId,
-                    [this](Ogre::Real /*renderDt*/)
-                    {
-                        this->updateV2PhysicsFromTagPoint();
-                    },
-                    false);
+                this->updateV2PhysicsFromTagPoint();
             }
 
             if (true == this->bShowDebugData && nullptr != this->debugGeometryArrowNode)

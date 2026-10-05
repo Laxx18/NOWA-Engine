@@ -154,6 +154,120 @@ ENEMY_ENERGY_BAR_BORDER = 0.025;
 ENEMY_ENERGY_BAR_FILL_COLOR = Vector3(0.85, 0.10, 0.06);
 ENEMY_ENERGY_BAR_FRAME_COLOR = Vector3(0.05, 0.04, 0.03);
 
+---------------------------------------------------------------------------------------------------
+-- Save game and player progress
+--
+-- Two storages are involved and they have different life times:
+--
+--   The AttributesComponent on the main game object belongs to the SCENE. It holds the start values from
+--   the editor and is the working copy the HUD reads from. A scene change rebuilds it, so without the
+--   helpers below everything would be back to the editor values after every level.
+--
+--   The global values of the GameProgressModule live in the AppStateManager. They survive every scene
+--   change, and saveProgress writes them into the save game.
+--
+-- So the global values are the truth, the component is the working copy: connect pulls, disconnect pushes.
+-- Between two levels NO file is involved, only at a save point.
+---------------------------------------------------------------------------------------------------
+
+SAVE_GAME_NAME = "save1";
+START_SCENE_NAME = "Level1";
+
+-- Player attributes that survive a scene change and end up in the save game. They must exist with these
+-- names in the AttributesComponent of the main game object.
+PLAYER_ATTRIBUTE_NAMES = { "Energy", "Strength", "Experience", "Ascension", "Level", "Coins", "KilledEnemies" };
+
+-- Abilities that are unlocked during the game, see isWorldFlagSet.
+ABILITY_CAN_SLIDE = "Ability_CanSlide";
+
+-- Called in connect. A global value that is already there wins - that is either the running game or a save
+-- game that has just been loaded. Is there none, this is the first scene of a new run and the editor values
+-- of the component become the globals.
+function pullPlayerAttributesFromProgress(attributesComponent)
+    local gameProgressModule = AppStateManager:getGameProgressModule();
+
+    for i = 1, #PLAYER_ATTRIBUTE_NAMES do
+        local attributeName = PLAYER_ATTRIBUTE_NAMES[i];
+        local attributeValue = attributesComponent:getAttributeValueByName(attributeName);
+        local globalValue = gameProgressModule:getGlobalValue(attributeName);
+
+        if (globalValue ~= nil) then
+            attributeValue:setValueNumber(globalValue:getValueNumber());
+        else
+            gameProgressModule:setGlobalNumberValue(attributeName, attributeValue:getValueNumber());
+        end
+    end
+end
+
+-- Called in disconnect, so the next scene can pull the current values, and before saving.
+function pushPlayerAttributesToProgress(attributesComponent)
+    local gameProgressModule = AppStateManager:getGameProgressModule();
+
+    for i = 1, #PLAYER_ATTRIBUTE_NAMES do
+        local attributeName = PLAYER_ATTRIBUTE_NAMES[i];
+        gameProgressModule:setGlobalNumberValue(attributeName, attributesComponent:getAttributeValueByName(attributeName):getValueNumber());
+    end
+end
+
+-- World state: collected special items, defeated bosses, triggered mechanisms, unlocked abilities. All of
+-- them are global values and therefore part of the save game.
+--
+-- Attention: the key has to stay the same across sessions. The game object NAME is unique within its scene,
+-- its id is not - that one is handed out while loading.
+function makeWorldFlagKey(gameObject)
+    return AppStateManager:getGameProgressModule():getCurrentSceneName() .. "_" .. gameObject:getName();
+end
+
+function isWorldFlagSet(key)
+    local globalValue = AppStateManager:getGameProgressModule():getGlobalValue(key);
+    if (globalValue == nil) then
+        return false;
+    end
+    return globalValue:getValueNumber() > 0;
+end
+
+function setWorldFlag(key)
+    -- A number and not a bool on purpose: setGlobalNumberValue is the one setter that is bound for both.
+    AppStateManager:getGameProgressModule():setGlobalNumberValue(key, 1);
+end
+
+-- Called by the save point. The scene snapshot is written as well, so loading restores the exact world with
+-- one single call and no scene name has to be remembered anywhere.
+function saveGame(attributesComponent)
+    pushPlayerAttributesToProgress(attributesComponent);
+    AppStateManager:getGameProgressModule():saveProgress(SAVE_GAME_NAME, true, true);
+end
+
+function hasSaveGame()
+    return AppStateManager:getGameProgressModule():hasSaveGame(SAVE_GAME_NAME);
+end
+
+function loadGame()
+    AppStateManager:getGameProgressModule():loadProgress(SAVE_GAME_NAME, true, false);
+end
+
+-- Death without a save point. Nothing of the failed run may survive: attributes, collected items, defeated
+-- bosses, unlocked abilities.
+function startNewRun()
+    AppStateManager:getGameProgressModule():clearGlobalValues();
+    AppStateManager:getGameProgressModule():changeScene(START_SCENE_NAME);
+end
+
+-- Damage reaction of an enemy. Called from the enemy's onEnemyHit, returns the time the animation runs.
+--
+-- Attention: the clip is blended LOOPING, exactly like the attack and for the same reason. A non looping clip
+-- blocks every other blend until it has played to the end, and the enemy's MovingBehavior slows the clip down
+-- while the enemy stands still - the enemy would get stuck in its damage pose. The returned timer ends it.
+function startEnemyDamageAnimation(animationBlender, profile)
+    animationBlender:blend5(AnimationBlender.ANIM_TAKE_DAMAGE, AnimationBlender.BLEND_WHILE_ANIMATING, 0.1, true);
+    return profile.damageDuration;
+end
+
+-- Back to idle once the damage animation has run its time. Called from the enemy's update.
+function endEnemyDamageAnimation(animationBlender)
+    animationBlender:blend5(AnimationBlender.ANIM_IDLE_1, AnimationBlender.BLEND_WHILE_ANIMATING, 0.2, true);
+end
+
 -- Sets up an enemy's energy bar at connect: look, full energy, hidden until the first hit.
 function setupEnemyEnergyBar(energyBar, profile)
     energyBar:setWidth(ENEMY_ENERGY_BAR_WIDTH);
@@ -176,6 +290,7 @@ end
 --   experience                 experience the player gets for the kill (before the penalty)
 --   attackImpactDelay          seconds from the attack start to the moment it hurts (0 = on contact)
 --   attackDuration             length of the enemy's ANIM_ATTACK_1 clip, then back to locomotion
+--   damageDuration             length of the enemy's ANIM_TAKE_DAMAGE clip, then back to idle
 --   attackCooldown             minimum time between two attacks, measured from the attack start
 --   attackReach                horizontal distance at which the attack still lands
 --   attackReachVertical        vertical distance at which the attack still lands
@@ -192,7 +307,7 @@ EnemyProfiles =
     Rhino = 
 	{
         level = 1, energy = 10, strength = 20, experience = 10,
-        attackImpactDelay = 0.25, attackDuration = 0.9, attackCooldown = 1.0,
+        attackImpactDelay = 0.25, attackDuration = 0.9, attackCooldown = 1.0, damageDuration = 0.6,
         attackReach = 1.6, attackReachVertical = 1,
         playerKnockbackHorizontal = 6.0, playerKnockbackUp = 4.0, playerKnockbackTime = 0.3,
         deathKnockbackHorizontal = 40.0, deathKnockbackUp = 30.0, deathDeleteDelay = 2.0,
@@ -204,7 +319,7 @@ EnemyProfiles =
     Elephant = 
 	{
         level = 1, energy = 30, strength = 10, experience = 15,
-        attackImpactDelay = 0.45, attackDuration = 0.9, attackCooldown = 0.8,
+        attackImpactDelay = 0.45, attackDuration = 0.9, attackCooldown = 0.8, damageDuration = 0.6,
         attackReach = 1.2, attackReachVertical = 1,
         playerKnockbackHorizontal = 8.0, playerKnockbackUp = 6.0, playerKnockbackTime = 0.3,
         deathKnockbackHorizontal = 50.0, deathKnockbackUp = 40.0, deathDeleteDelay = 2.0,
@@ -216,7 +331,7 @@ EnemyProfiles =
     Coyote = 
 	{
         level = 3, energy = 50, strength = 25, experience = 20,
-        attackImpactDelay = 0.35, attackDuration = 1.33, attackCooldown = 1.0,
+        attackImpactDelay = 0.35, attackDuration = 1.33, attackCooldown = 1.0, damageDuration = 0.6,
         attackReach = 1.6, attackReachVertical = 1,
         playerKnockbackHorizontal = 7.0, playerKnockbackUp = 4.5, playerKnockbackTime = 0.35,
         deathKnockbackHorizontal = 50.0, deathKnockbackUp = 35.0, deathDeleteDelay = 2.5,
@@ -227,11 +342,11 @@ EnemyProfiles =
     Beaver = 
 	{
         level = 3, energy = 200, strength = 80, experience = 40,
-        attackImpactDelay = 0.35, attackDuration = 1.33, attackCooldown = 1.0,
+        attackImpactDelay = 0.35, attackDuration = 1.33, attackCooldown = 1.0, damageDuration = 0.8,
         attackReach = 1, attackReachVertical = 1,
         playerKnockbackHorizontal = 7.0, playerKnockbackUp = 4.5, playerKnockbackTime = 0.35,
         deathKnockbackHorizontal = 50.0, deathKnockbackUp = 35.0, deathDeleteDelay = 2.5,
-        locomotionAnimation = "ANIM_WALK",
+        locomotionAnimation = "ANIM_IDLE_1",
         energyBarOffsetY = 2
     }
 };

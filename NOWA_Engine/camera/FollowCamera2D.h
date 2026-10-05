@@ -196,7 +196,15 @@ namespace NOWA
     private:
         void handleUpdateBounds(NOWA::EventDataPtr eventData);
 
-        void updateEdgeOrthographic(const Ogre::Vector3& playerPosition, const Ogre::Vector3& cameraPosition, bool cameraClampedX, bool cameraClampedY);
+        /**
+         * @brief Decides whether the edge morph should be on and advances the morph factor. Takes
+         *        dt because the morph is driven HERE, on the logic thread - the render side only
+         *        applies the value it finds. Driving it inside the render closure made the blend
+         *        depend on what the tracked closure passes as its delta and on how often it is
+         *        ticked, which is what let the way into orthographic ease over the blend time
+         *        while the way back snapped.
+         */
+        void updateEdgeOrthographic(Ogre::Real dt, const Ogre::Vector3& playerPosition, const Ogre::Vector3& cameraPosition, bool cameraClampedX, bool cameraClampedY);
 
         /**
          * @brief Recomputes the half extents of the view at the play plane from the CURRENT zoom.
@@ -314,6 +322,17 @@ namespace NOWA
         // ── Edge orthographic morph ──────────────────────────────────────────────────
         bool edgeOrthographicEnabled;
         Ogre::Real edgeOrthoBlendTime;
+
+        // The blend as a LINEAR ramp in 0..1, stepped by dt / blendTime. edgeOrthoMorph below is
+        // this value run through a smoothstep, and that is what the render side applies.
+        //
+        // Two values rather than one because an exponential approach is symmetric in the maths
+        // and asymmetric to the eye: it spends most of its speed at the start of the blend, which
+        // on the way to orthographic falls in the range where the picture hardly changes, and on
+        // the way back falls exactly where the projection changes most. A linear ramp gives every
+        // part of the transition the same share of the time in both directions, and the smoothstep
+        // supplies the soft ends the exponential was there for.
+        Ogre::Real edgeOrthoBlend;
         Ogre::Real edgeOrthoMorph;
 
         // Member, not a function-local static: a static is shared by EVERY FollowCamera2D in
