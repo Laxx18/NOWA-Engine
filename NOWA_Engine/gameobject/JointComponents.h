@@ -459,6 +459,8 @@ namespace NOWA
 
 		void setAnchorPosition(const Ogre::Vector3& anchorPosition);
 
+		void setActivated(bool activated);
+
 		Ogre::Vector3 getAnchorPosition(void) const;
 	
 		void setPin(const Ogre::Vector3& pin);
@@ -1506,6 +1508,8 @@ namespace NOWA
 		{
 			return "Requirements: A kind of physics component must exist.";
 		}
+
+		void setActivated(bool activated);
 
 		void setAnchorPosition(const Ogre::Vector3& anchorPosition);
 
@@ -2843,6 +2847,8 @@ namespace NOWA
 		}
 
 		void setAnchorPosition(const Ogre::Vector3& anchorPosition);
+
+		void setActivated(bool activated);
 
 		Ogre::Vector3 getAnchorPosition(void) const;
 		

@@ -513,6 +513,7 @@ namespace NOWA
         // ── Ogre-Next scene objects ───────────────────────────────────────────
         Ogre::MeshPtr stairsMesh;
         Ogre::Item* stairsItem;
+        bool isCloning;
 
         // ── Physics ───────────────────────────────────────────────────────────
         PhysicsArtifactComponent* physicsArtifactComponent;

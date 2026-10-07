@@ -884,6 +884,7 @@ namespace NOWA
         // Set by clone() when it copied a non-empty path; postInit does the single rebuild.
         // A clone has neither an init() nor a scene-parsed event to hang its first build on.
         bool pipeClonedNeedsRebuild;
+        bool isCloning;
 
         PhysicsArtifactComponent* physicsArtifactComponent;
     };

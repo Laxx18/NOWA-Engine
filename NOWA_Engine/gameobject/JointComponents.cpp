@@ -2232,7 +2232,7 @@ namespace NOWA
 
         // Release joint each time, to create new one with new values
         this->internalReleaseJoint();
-        this->joint = new OgreNewt::HingeActuator(this->body, predecessorBody, this->jointPosition, this->body->getOrientation() * this->pin->getVector3(), Ogre::Degree(this->angleRate->getReal()), Ogre::Degree(this->minAngleLimit->getReal()),
+        this->joint = new OgreNewt::HingeActuator(this->body, predecessorBody, this->jointPosition, this->body->getOrientation() * this->pin->getVector3(), Ogre::Degree(0.0f), Ogre::Degree(this->minAngleLimit->getReal()),
             Ogre::Degree(this->maxAngleLimit->getReal()));
 
         this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
@@ -2329,6 +2329,32 @@ namespace NOWA
         else if (JointHingeActuatorComponent::AttrRepeat() == attribute->getName())
         {
             this->setRepeat(attribute->getBool());
+        }
+    }
+
+    void JointHingeActuatorComponent::setActivated(bool activated)
+    {
+        JointComponent::setActivated(activated);
+
+        OgreNewt::HingeActuator* hingeActuatorJoint = dynamic_cast<OgreNewt::HingeActuator*>(this->joint);
+        if (nullptr == hingeActuatorJoint)
+        {
+            return;
+        }
+
+        // Attention: the target angle only ever reached the joint in createJoint(), and only when
+        // the component was already activated there. A joint that is switched on later therefore
+        // kept its target of 0 and never moved - which is exactly what a lever pulled from a script
+        // does. Pushing the target here is what makes setActivated(true) actually do something.
+        if (true == activated)
+        {
+            hingeActuatorJoint->SetTargetAngle(Ogre::Degree(this->targetAngle->getReal()));
+            hingeActuatorJoint->SetAngularRate(Ogre::Degree(this->angleRate->getReal()));
+        }
+        else
+        {
+            // Stop where it stands instead of springing back
+            hingeActuatorJoint->SetTargetAngle(Ogre::Degree(hingeActuatorJoint->GetActuatorAngle()));
         }
     }
 
@@ -6461,7 +6487,7 @@ namespace NOWA
         // Release joint each time, to create new one with new values
         this->internalReleaseJoint();
         this->joint =
-            new OgreNewt::SliderActuator(this->body, predecessorBody, this->jointPosition, this->body->getOrientation() * this->pin->getVector3(), this->linearRate->getReal(), this->minStopDistance->getReal(), this->maxStopDistance->getReal());
+            new OgreNewt::SliderActuator(this->body, predecessorBody, this->jointPosition, this->body->getOrientation() * this->pin->getVector3(), 0.0f, this->minStopDistance->getReal(), this->maxStopDistance->getReal());
 
         this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
         // Bad, because causing jerky behavior on ragdolls?
@@ -6540,6 +6566,32 @@ namespace NOWA
         else if (JointSliderActuatorComponent::AttrRepeat() == attribute->getName())
         {
             this->setRepeat(attribute->getBool());
+        }
+    }
+
+    void JointSliderActuatorComponent::setActivated(bool activated)
+    {
+        JointComponent::setActivated(activated);
+
+        OgreNewt::SliderActuator* sliderActuatorJoint = dynamic_cast<OgreNewt::SliderActuator*>(this->joint);
+        if (nullptr == sliderActuatorJoint)
+        {
+            return;
+        }
+
+        // Attention: the target angle only ever reached the joint in createJoint(), and only when
+        // the component was already activated there. A joint that is switched on later therefore
+        // kept its target of 0 and never moved - which is exactly what a lever pulled from a script
+        // does. Pushing the target here is what makes setActivated(true) actually do something.
+        if (true == activated)
+        {
+            sliderActuatorJoint->SetTargetPosition(this->targetPosition->getReal());
+            sliderActuatorJoint->SetLinearRate(this->linearRate->getReal());
+        }
+        else
+        {
+            // Stop where it stands instead of springing back
+            sliderActuatorJoint->SetTargetPosition(sliderActuatorJoint->GetActuatorPosition());
         }
     }
 
@@ -11971,7 +12023,14 @@ namespace NOWA
 
     /*******************************JointUniversalActuatorComponent*******************************/
 
-    JointUniversalActuatorComponent::JointUniversalActuatorComponent() : JointComponent(), round0(0), round1(0), internalDirectionChange0(false), internalDirectionChange1(false), oppositeDir0(1.0f), oppositeDir1(1.0f)
+    JointUniversalActuatorComponent::JointUniversalActuatorComponent()
+        : JointComponent(),
+        round0(0),
+        round1(0),
+        internalDirectionChange0(false),
+        internalDirectionChange1(false),
+        oppositeDir0(1.0f),
+        oppositeDir1(1.0f)
     {
         // Note that also in JointComponent internalBaseInit() is called, which sets the values for JointComponent, so this is called for already existing values
         // But luckely in Variant, no new attributes are added, but the values changed via interalAdd(...) in Variant
@@ -12580,6 +12639,35 @@ namespace NOWA
         else if (JointUniversalActuatorComponent::AttrRepeat1() == attribute->getName())
         {
             this->setRepeat1(attribute->getBool());
+        }
+    }
+
+    void JointUniversalActuatorComponent::setActivated(bool activated)
+    {
+        JointComponent::setActivated(activated);
+
+         OgreNewt::UniversalActuator* universalActuatorJoint = dynamic_cast<OgreNewt::UniversalActuator*>(this->joint);
+        if (nullptr == universalActuatorJoint)
+        {
+            return;
+        }
+
+        // Attention: the target angle only ever reached the joint in createJoint(), and only when
+        // the component was already activated there. A joint that is switched on later therefore
+        // kept its target of 0 and never moved - which is exactly what a lever pulled from a script
+        // does. Pushing the target here is what makes setActivated(true) actually do something.
+        if (true == activated)
+        {
+            universalActuatorJoint->SetTargetAngle0(Ogre::Degree(this->targetAngle0->getReal()));
+            universalActuatorJoint->SetTargetAngle1(Ogre::Degree(this->targetAngle1->getReal()));
+            universalActuatorJoint->SetAngularRate0(Ogre::Degree(this->angleRate0->getReal()));
+            universalActuatorJoint->SetAngularRate1(Ogre::Degree(this->angleRate1->getReal()));
+        }
+        else
+        {
+            // Stop where it stands instead of springing back
+            universalActuatorJoint->SetTargetAngle0(Ogre::Degree(universalActuatorJoint->GetActuatorAngle0()));
+            universalActuatorJoint->SetTargetAngle1(Ogre::Degree(universalActuatorJoint->GetActuatorAngle1()));
         }
     }
 

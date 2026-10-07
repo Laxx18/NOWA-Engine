@@ -1127,6 +1127,7 @@ namespace NOWA
         // init() never runs for it (there is no XML to read) and EventDataSceneParsed has
         // long since fired by the time the user presses the clone key.
         bool platformClonedNeedsRebuild;
+        bool isCloning;
 
         PhysicsArtifactComponent* physicsArtifactComponent;
     };

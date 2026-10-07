@@ -483,6 +483,12 @@ namespace NOWA
             contactDataFront[1] = this->physicsActiveComponent->getContactToDirection(2, direction, Ogre::Vector3(0.0f, 0.2f, playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
             contactDataFront[2] = this->physicsActiveComponent->getContactToDirection(3, direction, Ogre::Vector3(0.0f, centerBottom.y + (playerSize.y * 0.5f), playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
 
+            /*const Ogre::Real actionRayLength = 0.5f;
+
+            contactDataFront[0] = this->physicsActiveComponent->getContactToDirection(1, direction, Ogre::Vector3(0.0f, centerBottom.y + playerSize.y, playerSize.z - 0.2f), 0.0f, actionRayLength, showDebugData, this->categoriesId);
+            contactDataFront[1] = this->physicsActiveComponent->getContactToDirection(2, direction, Ogre::Vector3(0.0f, 0.2f, playerSize.z - 0.2f), 0.0f, actionRayLength, showDebugData, this->categoriesId);
+            contactDataFront[2] = this->physicsActiveComponent->getContactToDirection(3, direction, Ogre::Vector3(0.0f, centerBottom.y + (playerSize.y * 0.5f), playerSize.z - 0.2f), 0.0f, actionRayLength, showDebugData, this->categoriesId);*/
+
             this->hitGameObjectFront = nullptr;
             this->frontNormal = Ogre::Vector3::ZERO;
 
@@ -4385,10 +4391,10 @@ namespace NOWA
 
         // Tune here. 'duckSlideMinSteepness' is the COSINE of the slope angle, so a SMALLER value means a STEEPER slope: 0.98 is about 11
         // degrees, below that nothing slides. 0.5 (60 degrees) is where walkable ground ends, and that is where the full speed is reached.
-        const Ogre::Real duckSlideMinSteepness = 0.98f;
+        const Ogre::Real duckSlideMinSteepness = 0.95f;
         const Ogre::Real duckSlideAcceleration = 12.0f;
         const Ogre::Real duckSlideMaxSpeed = 10.0f;
-        const Ogre::Real duckSlideDeceleration = 6.0f;
+        const Ogre::Real duckSlideDeceleration = 14.0f;
 
         bool isSlidingDownhill = false;
 
@@ -4426,13 +4432,23 @@ namespace NOWA
             }
         }
 
-        if (false == isSlidingDownhill)
+        if (true == this->inAir)
         {
-            // Not steep enough anymore, standing up or airborne: the slide runs out instead of stopping dead
+            // Attention: no coasting in the air. The run-out used to keep nearly the full speed for
+            // more than a second, which carried the player straight across a gap and dropped him onto
+            // the next platform still sliding - where the slope branch picked that speed up again and
+            // added on top of it.
+            this->duckSlideSpeed = 0.0f;
+            this->duckSlideDirection = Ogre::Vector3::ZERO;
+        }
+        else if (false == isSlidingDownhill)
+        {
+            // Not steep enough anymore or standing up: the slide runs out instead of stopping dead
             this->duckSlideSpeed -= duckSlideDeceleration * dt;
-            if (this->duckSlideSpeed < 0.0f)
+            if (this->duckSlideSpeed < 0.1f)
             {
                 this->duckSlideSpeed = 0.0f;
+                this->duckSlideDirection = Ogre::Vector3::ZERO;
             }
         }
 

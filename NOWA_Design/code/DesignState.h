@@ -98,6 +98,8 @@ private:
 	void handleSceneModified(NOWA::EventDataPtr eventData);
 	void handleGeometryChanged(NOWA::EventDataPtr eventData);
 	void handleEventDataGameObjectMadeGlobal(NOWA::EventDataPtr eventData);
+    void handleGameObjectDeleted(NOWA::EventDataPtr eventData);
+
 private:
 	ProjectManager* projectManager;
 	OgreNewt::World* ogreNewt;

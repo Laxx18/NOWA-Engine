@@ -67,6 +67,7 @@ namespace NOWA
         uvTiling(new Variant(ProceduralThornComponent::AttrUVTiling(), Ogre::Vector2(1.0f, 5.0f), this->attributes)),
         currentVertexIndex(0),
         thornItem(nullptr),
+        isCloning(false),
         physicsArtifactComponent(nullptr)
     {
         this->activated->setDescription("Activates the spike strip. When deactivated the mesh is removed.");
@@ -174,6 +175,8 @@ namespace NOWA
     {
         ProceduralThornCompPtr clonedCompPtr(boost::make_shared<ProceduralThornComponent>());
 
+        clonedCompPtr->isCloning = true;
+
         clonedCompPtr->setOwner(clonedGameObjectPtr);
 
         clonedCompPtr->setThornLength(this->thornLength->getReal());
@@ -188,6 +191,8 @@ namespace NOWA
 
         GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 
+        clonedCompPtr->isCloning = false;
+
         return clonedCompPtr;
     }
 
@@ -201,7 +206,6 @@ namespace NOWA
         // Names are not unique here: internalClone gives both Items the GameObject name.
         // Keep the Item tracked by the GameObject and remove every other Item before
         // rebuilding, otherwise stale geometry remains visible and selectable.
-#if 1
         std::vector<Ogre::Item*> itemsToDestroy;
 
         Ogre::SceneNode* sceneNode = this->gameObjectPtr->getSceneNode();
@@ -224,22 +228,11 @@ namespace NOWA
             {
                 sceneNode->detachObject(item);
                 this->gameObjectPtr->getSceneManager()->destroyItem(item);
+                this->currentVertexIndex = 0;
             }
         }
         this->thornItem = nullptr;
         this->gameObjectPtr->nullMovableObject();
-#else
-        this->gameObjectPtr->nullMovableObject();
-        // Attention: for group loading necessary
-        this->thornItem = nullptr;
-        if (nullptr != this->thornItem)
-        {
-            this->gameObjectPtr->getSceneNode()->detachObject(this->thornItem);
-            this->gameObjectPtr->getSceneManager()->destroyItem(this->thornItem);
-            this->thornItem = nullptr;
-        }
-        this->gameObjectPtr->nullMovableObject();
-#endif
 
         if (true == this->activated->getBool())
         {
@@ -531,6 +524,11 @@ namespace NOWA
 
     void ProceduralThornComponent::rebuildMesh(void)
     {
+        if (true == this->isCloning)
+        {
+            return;
+        }
+
         this->vertices.clear();
         this->indices.clear();
         this->currentVertexIndex = 0;

@@ -7,4 +7,11 @@
     <LocalDebuggerWorkingDirectory>$(NOWA)\bin\Debug</LocalDebuggerWorkingDirectory>
     <LocalDebuggerCommandArgumentsHistory>PrehistoricLaxGraphics.cfg|</LocalDebuggerCommandArgumentsHistory>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LocalDebuggerCommand>$(NOWA)\bin\Release\PrehistoricLax.exe</LocalDebuggerCommand>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArguments>PrehistoricLaxGraphics.cfg</LocalDebuggerCommandArguments>
+    <LocalDebuggerWorkingDirectory>$(NOWA)\bin\Release</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerCommandArgumentsHistory>PrehistoricLaxGraphics.cfg|</LocalDebuggerCommandArgumentsHistory>
+  </PropertyGroup>
 </Project>

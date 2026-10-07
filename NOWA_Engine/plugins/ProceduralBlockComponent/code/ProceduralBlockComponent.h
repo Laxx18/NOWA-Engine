@@ -326,6 +326,8 @@ namespace NOWA
         Ogre::Item* blockItem;
         Ogre::String blockMeshName;
 
+        bool isCloning;
+
         PhysicsArtifactComponent* physicsArtifactComponent;
     };
 

@@ -70,6 +70,7 @@ namespace NOWA
         stringerVertexBase(0u),
         stairsMesh(nullptr),
         stairsItem(nullptr),
+        isCloning(false),
         physicsArtifactComponent(nullptr)
     {
         this->activated = new Variant(ProceduralStairsComponent::AttrActivated(), true, this->attributes);
@@ -361,7 +362,6 @@ namespace NOWA
         // The component pointer is not copied, so destroyConveyorMesh() cannot see that
         // stale Item. Remove every attached Item before the first clone rebuild; otherwise
         // both the old and the resized conveyor remain renderable and selectable.
-#if 1
         std::vector<Ogre::Item*> itemsToDestroy;
 
         Ogre::SceneNode* sceneNode = this->gameObjectPtr->getSceneNode();
@@ -388,18 +388,6 @@ namespace NOWA
         }
         this->stairsItem = nullptr;
         this->gameObjectPtr->nullMovableObject();
-#else
-        this->gameObjectPtr->nullMovableObject();
-        // Attention: for group loading necessary
-        this->stairsItem = nullptr;
-        if (nullptr != this->stairsItem)
-        {
-            this->gameObjectPtr->getSceneNode()->detachObject(this->stairsItem);
-            this->gameObjectPtr->getSceneManager()->destroyItem(this->stairsItem);
-            this->stairsItem = nullptr;
-        }
-        this->gameObjectPtr->nullMovableObject();
-#endif
 
         this->rebuildMesh();
 
@@ -460,36 +448,41 @@ namespace NOWA
 
     GameObjectCompPtr ProceduralStairsComponent::clone(GameObjectPtr clonedGameObjectPtr)
     {
-        ProceduralStairsComponentPtr cloned(boost::make_shared<ProceduralStairsComponent>());
+        ProceduralStairsComponentPtr clonedCompPtr(boost::make_shared<ProceduralStairsComponent>());
 
-        cloned->setActivated(this->activated->getBool());
-        cloned->setStairShape(this->stairShape->getListSelectedValue());
-        cloned->setStepCount(this->stepCount->getInt());
-        cloned->setStepHeight(this->stepHeight->getReal());
-        cloned->setStepDepth(this->stepDepth->getReal());
-        cloned->setStepWidth(this->stepWidth->getReal());
-        cloned->setStepNosing(this->stepNosing->getReal());
-        cloned->setOpenRiser(this->openRiser->getBool());
-        cloned->setStringerStyle(this->stringerStyle->getListSelectedValue());
-        cloned->setBottomStyle(this->bottomStyle->getListSelectedValue());
-        cloned->setInnerRadius(this->innerRadius->getReal());
-        cloned->setOuterRadius(this->outerRadius->getReal());
-        cloned->setArcAngle(this->arcAngle->getReal());
-        cloned->setRotationDir(this->rotationDir->getListSelectedValue());
-        cloned->setCentrePole(this->centrePole->getBool());
-        cloned->setPivotPosition(this->pivotPosition->getListSelectedValue());
-        cloned->setRampCollider(this->rampCollider->getBool());
-        cloned->setUVMode(this->uvMode->getListSelectedValue());
-        cloned->setUVTiling(this->uvTiling->getVector2());
-        cloned->setTreadDatablock(this->treadDatablock->getString());
-        cloned->setRiserDatablock(this->riserDatablock->getString());
-        cloned->setStringerDatablock(this->stringerDatablock->getString());
+        clonedCompPtr->isCloning = true;
 
-        clonedGameObjectPtr->addComponent(cloned);
-        cloned->setOwner(clonedGameObjectPtr);
+        clonedCompPtr->setActivated(this->activated->getBool());
+        clonedCompPtr->setStairShape(this->stairShape->getListSelectedValue());
+        clonedCompPtr->setStepCount(this->stepCount->getInt());
+        clonedCompPtr->setStepHeight(this->stepHeight->getReal());
+        clonedCompPtr->setStepDepth(this->stepDepth->getReal());
+        clonedCompPtr->setStepWidth(this->stepWidth->getReal());
+        clonedCompPtr->setStepNosing(this->stepNosing->getReal());
+        clonedCompPtr->setOpenRiser(this->openRiser->getBool());
+        clonedCompPtr->setStringerStyle(this->stringerStyle->getListSelectedValue());
+        clonedCompPtr->setBottomStyle(this->bottomStyle->getListSelectedValue());
+        clonedCompPtr->setInnerRadius(this->innerRadius->getReal());
+        clonedCompPtr->setOuterRadius(this->outerRadius->getReal());
+        clonedCompPtr->setArcAngle(this->arcAngle->getReal());
+        clonedCompPtr->setRotationDir(this->rotationDir->getListSelectedValue());
+        clonedCompPtr->setCentrePole(this->centrePole->getBool());
+        clonedCompPtr->setPivotPosition(this->pivotPosition->getListSelectedValue());
+        clonedCompPtr->setRampCollider(this->rampCollider->getBool());
+        clonedCompPtr->setUVMode(this->uvMode->getListSelectedValue());
+        clonedCompPtr->setUVTiling(this->uvTiling->getVector2());
+        clonedCompPtr->setTreadDatablock(this->treadDatablock->getString());
+        clonedCompPtr->setRiserDatablock(this->riserDatablock->getString());
+        clonedCompPtr->setStringerDatablock(this->stringerDatablock->getString());
 
-        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(cloned));
-        return cloned;
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+
+        clonedCompPtr->isCloning = false;
+
+        return clonedCompPtr;
     }
 
     // =========================================================================
@@ -2022,6 +2015,11 @@ namespace NOWA
 
     void ProceduralStairsComponent::rebuildMesh(void)
     {
+        if (true == this->isCloning)
+        {
+            return;
+        }
+
         this->destroyStairsMesh();
         this->createStairsMesh();
     }

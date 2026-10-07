@@ -107,6 +107,7 @@ namespace NOWA
         snapRadius(0.0f),
         pipeLoadedFromScene(false),
         pipeClonedNeedsRebuild(false),
+        isCloning(false),
         physicsArtifactComponent(nullptr)
     {
         this->pipeRadius->setDescription("Outer radius of the tube in meters. Also the step size for the U / SHIFT+U depth nudge.");
@@ -429,6 +430,8 @@ namespace NOWA
     {
         ProceduralPipeComponentPtr clonedCompPtr(boost::make_shared<ProceduralPipeComponent>());
 
+        clonedCompPtr->isCloning = true;
+
         clonedCompPtr->setOwner(clonedGameObjectPtr);
 
         // Attribute setters FIRST, while the clone's path is still empty - every
@@ -478,6 +481,8 @@ namespace NOWA
 
         GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 
+        clonedCompPtr->isCloning = false;
+
         return clonedCompPtr;
     }
 
@@ -495,7 +500,6 @@ namespace NOWA
         // The component pointer is not copied, so destroyPipeMesh() cannot see that
         // stale Item. Remove every attached Item before the first clone rebuild;
         // otherwise both the old and the resized pipe remain renderable/selectable.
-#if 1
         std::vector<Ogre::Item*> itemsToDestroy;
 
         Ogre::SceneNode* sceneNode = this->gameObjectPtr->getSceneNode();
@@ -518,22 +522,12 @@ namespace NOWA
             {
                 sceneNode->detachObject(item);
                 this->gameObjectPtr->getSceneManager()->destroyItem(item);
+                this->currentFarVertexIndex = 0;
+                this->currentNearVertexIndex = 0;
             }
         }
         this->pipeItem = nullptr;
         this->gameObjectPtr->nullMovableObject();
-#else
-        this->gameObjectPtr->nullMovableObject();
-        // Attention: for group loading necessary
-        this->pipeItem = nullptr;
-        if (nullptr != this->pipeItem)
-        {
-            this->gameObjectPtr->getSceneNode()->detachObject(this->pipeItem);
-            this->gameObjectPtr->getSceneManager()->destroyItem(this->pipeItem);
-            this->pipeItem = nullptr;
-        }
-        this->gameObjectPtr->nullMovableObject();
-#endif
 
         // The fixed depth plane comes from the GameObject's OWN transform: "fixed -Z axis"
         // means the depth layer was already decided by wherever the (empty) GameObject was
@@ -2716,6 +2710,11 @@ namespace NOWA
 
     void ProceduralPipeComponent::rebuildMesh(void)
     {
+        if (true == this->isCloning)
+        {
+            return;
+        }
+
         this->farVertices.clear();
         this->farIndices.clear();
         this->currentFarVertexIndex = 0;

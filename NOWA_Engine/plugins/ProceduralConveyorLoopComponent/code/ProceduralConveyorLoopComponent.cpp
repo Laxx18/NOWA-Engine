@@ -88,6 +88,7 @@ namespace NOWA
         scrollOffset(0.0f),
         conveyorItem(nullptr),
         dynamicVertexBuffer(nullptr),
+        isCloning(false),
         physicsArtifactComponent(nullptr)
     {
         this->activated->setDescription("Activates the belt. When deactivated the mesh is removed.");
@@ -211,10 +212,8 @@ namespace NOWA
     {
         ProceduralConveyorLoopCompPtr clonedCompPtr(boost::make_shared<ProceduralConveyorLoopComponent>());
 
-        // setOwner() must come before any setter below - every one of them calls rebuildMesh()
-        // internally, which reaches through this->gameObjectPtr for the scene manager and scene
-        // node. Confirmed the hard way earlier this session on three sibling components whose
-        // clone() called setters before the owner was set.
+        clonedCompPtr->isCloning = true;
+
         clonedCompPtr->setOwner(clonedGameObjectPtr);
 
         clonedCompPtr->setBeltLength(this->beltLength->getReal());
@@ -232,6 +231,8 @@ namespace NOWA
 
         GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 
+        clonedCompPtr->isCloning = false;
+
         return clonedCompPtr;
     }
 
@@ -247,7 +248,6 @@ namespace NOWA
         // The component pointer is not copied, so destroyConveyorMesh() cannot see that
         // stale Item. Remove every attached Item before the first clone rebuild; otherwise
         // both the old and the resized conveyor remain renderable and selectable.
-#if 1
         std::vector<Ogre::Item*> itemsToDestroy;
 
         Ogre::SceneNode* sceneNode = this->gameObjectPtr->getSceneNode();
@@ -270,22 +270,11 @@ namespace NOWA
             {
                 sceneNode->detachObject(item);
                 this->gameObjectPtr->getSceneManager()->destroyItem(item);
+                this->currentBeltVertexIndex = 0;
             }
         }
         this->conveyorItem = nullptr;
         this->gameObjectPtr->nullMovableObject();
-#else
-        this->gameObjectPtr->nullMovableObject();
-        // Attention: for group loading necessary
-        this->conveyorItem = nullptr;
-        if (nullptr != this->conveyorItem)
-        {
-            this->gameObjectPtr->getSceneNode()->detachObject(this->conveyorItem);
-            this->gameObjectPtr->getSceneManager()->destroyItem(this->conveyorItem);
-            this->conveyorItem = nullptr;
-        }
-        this->gameObjectPtr->nullMovableObject();
-#endif
 
         if (true == this->activated->getBool())
         {
@@ -685,6 +674,11 @@ namespace NOWA
 
     void ProceduralConveyorLoopComponent::rebuildMesh(void)
     {
+        if (true == this->isCloning)
+        {
+            return;
+        }
+
         this->beltVertices.clear();
         this->beltIndices.clear();
         this->beltVertexArcLength.clear();

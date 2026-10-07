@@ -41,8 +41,8 @@
 	</OgreNewt>
 	<nodes>
 		<node name="MainCamera" id="4010617415">
-			<position x="12.1513" y="18.4818" z="4.58601"/>
-			<rotation qw="0.938824" qx="-0.129946" qy="0.315923" qz="0.0437789"/>
+			<position x="19.2649" y="3.8897" z="6.81782"/>
+			<rotation qw="0.995338" qx="-0.0942857" qy="0.00715699" qz="0.0189856"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -72,8 +72,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="10.6798 18.8712 3.78944"/>
-					<property type="9" name="CameraOrientation" data="3.26178 8.17624 0.00630835"/>
+					<property type="9" name="CameraPosition" data="23.8998 12.8015 7.69057"/>
+					<property type="9" name="CameraOrientation" data="-10.9579 6.22553 2.12678"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -560,7 +560,7 @@
 			</item>
 		</node>
 		<node name="Level2_East_Lower" id="3204290677">
-			<position x="0.690205" y="3.48014" z="-7"/>
+			<position x="0.69021" y="3.5" z="-7"/>
 			<rotation qw="0.707107" qx="0" qy="0" qz="0.707107"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="" meshFile="Procedural.mesh" castShadows="true" visible="true">
@@ -1173,7 +1173,7 @@
 			</item>
 		</node>
 		<node name="Level2_West_Upper" id="3087720770">
-			<position x="0.77597" y="36.9517" z="-6.76219"/>
+			<position x="0.8" y="37" z="-7"/>
 			<rotation qw="0.707107" qx="0" qy="0" qz="0.707107"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="" meshFile="Procedural.mesh" castShadows="true" visible="true">
@@ -1223,7 +1223,7 @@
 			</item>
 		</node>
 		<node name="Platform_0" id="1500555365">
-			<position x="0.38" y="35.8" z="-10.01"/>
+			<position x="0.38" y="35.8" z="-10.0276"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Platform_0" meshFile="Procedural.mesh" castShadows="true" visible="true">
@@ -4472,7 +4472,7 @@
 			</item>
 		</node>
 		<node name="Elephant" id="1425596708">
-			<position x="18.708" y="1.02143" z="-6.99544"/>
+			<position x="18.708" y="1.02143" z="-7"/>
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Elephant" meshFile="Elephant.mesh" castShadows="true" visible="true">
@@ -4504,7 +4504,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="9" name="CollisionSize" data="0.4 0.9 0.4"/>
-					<property type="9" name="OffsetPosition" data="0 0.7 0"/>
+					<property type="9" name="OffsetPosition" data="0 0.6 0"/>
 					<property type="9" name="OffsetDirection" data="0 0 90"/>
 					<property type="6" name="Mass" data="500"/>
 					<property type="9" name="MassOrigin" data="0 0 0"/>
@@ -4570,7 +4570,7 @@
 					<property type="9" name="OuterColor" data="1 1 1"/>
 					<property type="6" name="BorderSize" data="0.1"/>
 					<property type="9" name="OffsetPosition" data="0 2 0"/>
-					<property type="9" name="OffsetOrientation" data="0 90 0"/>
+					<property type="9" name="OffsetOrientation" data="0 0 0"/>
 					<property type="2" name="OrientationTargetId" data="0"/>
 					<property type="6" name="Width" data="1"/>
 					<property type="6" name="Height" data="0.5"/>
@@ -5300,7 +5300,7 @@
 			</item>
 		</node>
 		<node name="Elephant_0" id="247627587">
-			<position x="16.2748" y="1.02143" z="-6.99544"/>
+			<position x="16.2748" y="1.02143" z="-7"/>
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Elephant_0" meshFile="Elephant.mesh" castShadows="true" visible="true">
@@ -5332,7 +5332,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="9" name="CollisionSize" data="0.4 0.9 0.4"/>
-					<property type="9" name="OffsetPosition" data="0 0.7 0"/>
+					<property type="9" name="OffsetPosition" data="0 0.6 0"/>
 					<property type="9" name="OffsetDirection" data="0 0 90"/>
 					<property type="6" name="Mass" data="500"/>
 					<property type="9" name="MassOrigin" data="0 0 0"/>
@@ -5346,7 +5346,7 @@
 					<property type="6" name="MinSpeed" data="1"/>
 					<property type="6" name="MaxSpeed" data="10"/>
 					<property type="7" name="CollisionType" data="Capsule"/>
-					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="9" name="ConstraintAxis" data="0 0 1"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
 					<property type="12" name="Activated" data="true"/>
@@ -5398,7 +5398,7 @@
 					<property type="9" name="OuterColor" data="1 1 1"/>
 					<property type="6" name="BorderSize" data="0.1"/>
 					<property type="9" name="OffsetPosition" data="0 2 0"/>
-					<property type="9" name="OffsetOrientation" data="0 90 0"/>
+					<property type="9" name="OffsetOrientation" data="0 0 0"/>
 					<property type="2" name="OrientationTargetId" data="0"/>
 					<property type="6" name="Width" data="1"/>
 					<property type="6" name="Height" data="0.5"/>
@@ -5455,7 +5455,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="9" name="CollisionSize" data="0.4 0.9 0.4"/>
-					<property type="9" name="OffsetPosition" data="0 0.7 0"/>
+					<property type="9" name="OffsetPosition" data="0 0.6 0"/>
 					<property type="9" name="OffsetDirection" data="0 0 90"/>
 					<property type="6" name="Mass" data="500"/>
 					<property type="9" name="MassOrigin" data="0 0 0"/>
@@ -5469,7 +5469,7 @@
 					<property type="6" name="MinSpeed" data="1"/>
 					<property type="6" name="MaxSpeed" data="10"/>
 					<property type="7" name="CollisionType" data="Capsule"/>
-					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="9" name="ConstraintAxis" data="0 0 1"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
 					<property type="12" name="Activated" data="true"/>
@@ -5521,7 +5521,7 @@
 					<property type="9" name="OuterColor" data="1 1 1"/>
 					<property type="6" name="BorderSize" data="0.1"/>
 					<property type="9" name="OffsetPosition" data="0 2 0"/>
-					<property type="9" name="OffsetOrientation" data="0 90 0"/>
+					<property type="9" name="OffsetOrientation" data="0 0 0"/>
 					<property type="2" name="OrientationTargetId" data="0"/>
 					<property type="6" name="Width" data="1"/>
 					<property type="6" name="Height" data="0.5"/>
@@ -7558,6 +7558,128 @@
 					<property type="6" name="ScaleSpeed" data="0.1"/>
 					<property type="12" name="ScaleRepeat" data="true"/>
 					<property type="12" name="ScaleDirectionChange" data="true"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Geometry_1" id="4266517921">
+			<position x="0.75" y="3.5" z="-4.99"/>
+			<rotation qw="0.707107" qx="0.707107" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="" meshFile="Procedural.mesh" castShadows="true" visible="true">
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="4217646453"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
+					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="ComponentProceduralGeometryComponent" data="ProceduralGeometryComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="Shape" data="Plane"/>
+					<property type="9" name="Size" data="0.5 1 3"/>
+					<property type="6" name="Segments H" data="16"/>
+					<property type="6" name="Segments V" data="8"/>
+					<property type="12" name="Flip Normals" data="false"/>
+					<property type="7" name="Datablock" data="BlackMaterial"/>
+					<property type="8" name="UV Tiling" data="1 1"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Geometry_3" id="4266517051">
+			<position x="0.75" y="37" z="-4.98129"/>
+			<rotation qw="0.707107" qx="0.707107" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="" meshFile="Procedural.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName=""/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3121775384"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
+					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="ComponentProceduralGeometryComponent" data="ProceduralGeometryComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="Shape" data="Plane"/>
+					<property type="9" name="Size" data="0.5 1 2"/>
+					<property type="6" name="Segments H" data="16"/>
+					<property type="6" name="Segments V" data="8"/>
+					<property type="12" name="Flip Normals" data="false"/>
+					<property type="7" name="Datablock" data="BlackMaterial"/>
+					<property type="8" name="UV Tiling" data="1 1"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Geometry_4" id="4266519226">
+			<position x="49.25" y="5" z="-4.98129"/>
+			<rotation qw="0.707107" qx="0.707107" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="" meshFile="Procedural.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName=""/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3925534337"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
+					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="ComponentProceduralGeometryComponent" data="ProceduralGeometryComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="Shape" data="Plane"/>
+					<property type="9" name="Size" data="0.5 1 2"/>
+					<property type="6" name="Segments H" data="16"/>
+					<property type="6" name="Segments V" data="8"/>
+					<property type="12" name="Flip Normals" data="false"/>
+					<property type="7" name="Datablock" data="BlackMaterial"/>
+					<property type="8" name="UV Tiling" data="1 1"/>
 				</userData>
 			</item>
 		</node>

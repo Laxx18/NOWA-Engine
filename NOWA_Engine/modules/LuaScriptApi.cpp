@@ -205,6 +205,29 @@ namespace
         lua_pop(lua, 2);
     }
 
+        /**
+     * @brief   Scoped marker for the lua error handler: names the API call that is CURRENTLY running.
+     * @note    Attention: the two variables used to be set at the END of each API function and were
+     *          never cleared. They therefore survived the successful call and were picked up by the
+     *          NEXT lua error - often in a completely different script - which was then reported as
+     *          "Cannot get game object 'X' from function 'Y'" although neither had anything to do
+     *          with it. Setting them on entry and clearing them on exit fixes that, and the
+     *          destructor makes it impossible to forget the clear.
+     */
+    struct ScopedLuaErrorContext
+    {
+        ScopedLuaErrorContext(const Ogre::String& gameObjectName, const Ogre::String& functionName)
+        {
+            currentErrorGameObject = gameObjectName;
+            currentCalledFunction = functionName;
+        }
+
+        ~ScopedLuaErrorContext()
+        {
+            currentErrorGameObject.clear();
+            currentCalledFunction.clear();
+        }
+    };
 }
 
 namespace NOWA
@@ -610,6 +633,8 @@ namespace NOWA
 
     luabind::object toAngleAxisFromRadian(Ogre::Quaternion* instance)
     {
+        ScopedLuaErrorContext luaErrorContext("Quaternion", "toAngleAxisFromRadian");
+
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
         Ogre::Radian rad;
@@ -624,6 +649,8 @@ namespace NOWA
 
     luabind::object toAngleAxisFromDegree(Ogre::Quaternion* instance)
     {
+        ScopedLuaErrorContext luaErrorContext("Quaternion", "toAngleAxisFromDegree");
+
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
         Ogre::Degree deg;
@@ -638,6 +665,8 @@ namespace NOWA
 
     luabind::object intermediate(Ogre::Quaternion* instance, const Quaternion& rkQ0, const Quaternion& rkQ1, const Quaternion& rkQ2)
     {
+        ScopedLuaErrorContext luaErrorContext("Quaternion", "intermediate");
+
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
         Quaternion rka;
@@ -876,6 +905,8 @@ namespace NOWA
 
     luabind::object getPressedButtons(InputDeviceModule* instance)
     {
+        ScopedLuaErrorContext luaErrorContext("InputDeviceModule", "getPressedButtons");
+
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
         const auto pressedButtons = instance->getPressedButtons();
@@ -3675,6 +3706,8 @@ namespace NOWA
 
     luabind::object getGameObjectsFromCategory(GameObjectController* instance, const Ogre::String& category)
     {
+        ScopedLuaErrorContext luaErrorContext(category, "getGameObjectsFromCategory");
+
         // Game objects need to be transformed to a lua object, which is a table
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
@@ -3687,14 +3720,13 @@ namespace NOWA
             }
         }
 
-        currentErrorGameObject = category;
-        currentCalledFunction = "getGameObjectsFromCategory";
-
         return obj;
     }
 
     luabind::object getGameObjectsFromRenderCategory(GameObjectController* instance, const Ogre::String& renderCategory)
     {
+        ScopedLuaErrorContext luaErrorContext(renderCategory, "getGameObjectsFromRenderCategory");
+
         // Game objects need to be transformed to a lua object, which is a table
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
@@ -3707,14 +3739,13 @@ namespace NOWA
             }
         }
 
-        currentErrorGameObject = renderCategory;
-        currentCalledFunction = "getGameObjectsFromRenderCategory";
-
         return obj;
     }
 
     luabind::object getGameObjectsFromComponent(GameObjectController* instance, const Ogre::String& componentClassName)
     {
+        ScopedLuaErrorContext luaErrorContext(componentClassName, "getGameObjectsFromComponent");
+
         // Game objects need to be transformed to a lua object, which is a table
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
@@ -3745,6 +3776,8 @@ namespace NOWA
 
     luabind::object getVUPointsData(SimpleSoundComponent* instance)
     {
+        ScopedLuaErrorContext luaErrorContext(instance->getClassName(), "getVUPointsData");
+
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
         OgreAL::Sound* sound = instance->getSound();
@@ -3761,6 +3794,8 @@ namespace NOWA
 
     luabind::object getAmplitudeData(SimpleSoundComponent* instance)
     {
+        ScopedLuaErrorContext luaErrorContext(instance->getClassName(), "getAmplitudeData");
+
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
         OgreAL::Sound* sound = instance->getSound();
@@ -3777,6 +3812,8 @@ namespace NOWA
 
     luabind::object getLevelData(SimpleSoundComponent* instance)
     {
+        ScopedLuaErrorContext luaErrorContext(instance->getClassName(), "getLevelData");
+
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
         OgreAL::Sound* sound = instance->getSound();
@@ -3793,6 +3830,8 @@ namespace NOWA
 
     luabind::object getFrequencyData(SimpleSoundComponent* instance)
     {
+        ScopedLuaErrorContext luaErrorContext(instance->getClassName(), "getFrequencyData");
+
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
         OgreAL::Sound* sound = instance->getSound();
@@ -3809,6 +3848,8 @@ namespace NOWA
 
     luabind::object getPhaseData(SimpleSoundComponent* instance)
     {
+        ScopedLuaErrorContext luaErrorContext(instance->getClassName(), "getPhaseData");
+
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
         OgreAL::Sound* sound = instance->getSound();
@@ -3825,6 +3866,8 @@ namespace NOWA
 
     luabind::object getGameObjectsFromNamePrefix(GameObjectController* instance, const Ogre::String& pattern)
     {
+        ScopedLuaErrorContext luaErrorContext("GameObjectController", "getGameObjectsFromNamePrefix");
+
         // Game objects need to be transformed to a lua object, which is a table
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
@@ -3842,6 +3885,8 @@ namespace NOWA
 
     luabind::object getGameObjects(GameObjectController* instance)
     {
+        ScopedLuaErrorContext luaErrorContext("GameObjectController", "getGameObjects");
+
         // Game objects need to be transformed to a lua object, which is a table
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
@@ -3856,6 +3901,8 @@ namespace NOWA
 
     luabind::object getIdsFromCategory(GameObjectController* instance, const Ogre::String& category)
     {
+        ScopedLuaErrorContext luaErrorContext(category, "getIdsFromCategory");
+
         // Game objects need to be transformed to a lua object, which is a table
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
@@ -3873,6 +3920,8 @@ namespace NOWA
 
     luabind::object getIdsFromRenderCategory(GameObjectController* instance, const Ogre::String& renderCategory)
     {
+        ScopedLuaErrorContext luaErrorContext(renderCategory, "getIdsFromRenderCategory");
+
         // Game objects need to be transformed to a lua object, which is a table
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
@@ -3890,6 +3939,8 @@ namespace NOWA
 
     luabind::object getOtherIdsFromCategory(GameObjectController* instance, GameObject* excludedGameObject, const Ogre::String& category)
     {
+        ScopedLuaErrorContext luaErrorContext(category, "getOtherIdsFromCategory");
+
         // Game objects need to be transformed to a lua object, which is a table
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
@@ -3907,6 +3958,8 @@ namespace NOWA
 
     luabind::object getOtherIdsFromRenderCategory(GameObjectController* instance, GameObject* excludedGameObject, const Ogre::String& renderCategory)
     {
+        ScopedLuaErrorContext luaErrorContext(renderCategory, "getOtherIdsFromRenderCategory");
+
         // Game objects need to be transformed to a lua object, which is a table
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
@@ -3924,6 +3977,8 @@ namespace NOWA
 
     luabind::object getGameObjectsControlledByClientId(GameObjectController* instance, unsigned int clientID)
     {
+        ScopedLuaErrorContext luaErrorContext(Ogre::StringConverter::toString(clientID), "getGameObjectsControlledByClientId");
+
         // Game objects need to be transformed to a lua object, which is a table
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
@@ -3947,6 +4002,8 @@ namespace NOWA
 
     luabind::object getGameObjectsFromTagName(GameObjectController* instance, const Ogre::String& tagName)
     {
+        ScopedLuaErrorContext luaErrorContext(tagName, "getGameObjectsFromTagName");
+
         // Game objects need to be transformed to a lua object, which is a table
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
@@ -3970,6 +4027,8 @@ namespace NOWA
 
     GameObject* getGameObjectFromReferenceId(GameObjectController* instance, const Ogre::String& referenceId)
     {
+        ScopedLuaErrorContext luaErrorContext(referenceId, "getGameObjectFromReferenceId");
+
         auto gameObject = instance->getGameObjectFromId(Ogre::StringConverter::parseUnsignedLong(referenceId));
         if (nullptr != gameObject)
         {
@@ -3984,6 +4043,8 @@ namespace NOWA
 
     luabind::object getGameObjectComponentsFromReferenceId(GameObjectController* instance, const Ogre::String& referenceId)
     {
+        ScopedLuaErrorContext luaErrorContext(referenceId, "getGameObjectComponentsFromReferenceId");
+
         // Game objects need to be transformed to a lua object, which is a table
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
@@ -4935,6 +4996,8 @@ namespace NOWA
 
     luabind::object getAllAvailableAnimationNames(AnimationBlenderV2* instance, bool skipLogging)
     {
+        ScopedLuaErrorContext luaErrorContext("AnimationBlenderV2", "getAllAvailableAnimationNames");
+
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
         auto animationNames = instance->getAllAvailableAnimationNames(skipLogging);
@@ -5351,6 +5414,8 @@ namespace NOWA
     // TODO: No documentation and no inner type declared for luabind
     luabind::object getAttributes(DistributedComponent* instance)
     {
+        ScopedLuaErrorContext luaErrorContext(instance->getClassName(), "getAttributes");
+
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
         const auto attributes = instance->getAttributes();
@@ -6926,6 +6991,8 @@ namespace NOWA
 
     luabind::object getAllBrushNames(TerraComponent* instance)
     {
+        ScopedLuaErrorContext luaErrorContext(instance->getClassName(), "getAllBrushNames");
+
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
         for (size_t i = 0; i < instance->getAllBrushNames().size(); i++)
@@ -6938,6 +7005,8 @@ namespace NOWA
 
     luabind::object getAllImageLayer(TerraComponent* instance)
     {
+        ScopedLuaErrorContext luaErrorContext(instance->getClassName(), "getAllImageLayer");
+
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
         for (size_t i = 0; i < instance->getAllImageLayer().size(); i++)
@@ -7204,6 +7273,8 @@ namespace NOWA
 
     luabind::object getMaxLinearAngleFriction(JointKinematicComponent* instance)
     {
+        ScopedLuaErrorContext luaErrorContext(instance->getClassName(), "getMaxLinearAngleFriction");
+
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
         Ogre::Real linearFriction = 0.0f;
@@ -7213,7 +7284,6 @@ namespace NOWA
 
         obj[0] = std::get<0>(result);
         obj[1] = std::get<1>(result);
-        ;
 
         return obj;
     }
@@ -7578,6 +7648,8 @@ namespace NOWA
         AddClassToCollection("JointSliderActuatorComponent", "Vector3 getPin()", "Gets joint pin axis.");
         AddClassToCollection("JointSliderActuatorComponent", "void setTargetPosition(float targetPosition)", "Sets target position, the game object will move to. Note: This does only work, if 'setDirectionChange' is off.");
         AddClassToCollection("JointSliderActuatorComponent", "float getTargetPosition()", "Gets target position.");
+        AddClassToCollection("JointSliderActuatorComponent", "void setLinearRate(float linearRate)", "Sets linear movement rate to reach the target position.");
+        AddClassToCollection("JointSliderActuatorComponent", "float getLinearRate()", "Gets the linear rate.");
         AddClassToCollection("JointSliderActuatorComponent", "void setMinStopDistance(float minStopDistance)",
             "Sets the min stop limit."
             "Note: If 'setDirectionChange' is enabled, this is the min stop limit at which the motion direction will be changed.");
@@ -8365,38 +8437,41 @@ namespace NOWA
 
     void bindPhysicsComponent(lua_State* lua)
     {
-        module(lua)[class_<PhysicsComponent, GameObjectComponent>("PhysicsComponent")
-                //.def("getFromCast", &PhysicsObject::getFromCast)
-                // .def("getClassName", &PhysicsComponent::getClassName)
-                .def("getParentClassName", &PhysicsComponent::getParentClassName)
-                .def("isMovable", &PhysicsComponent::isMovable)
-                .def("setDirection", &PhysicsComponent::setDirection)
-                .def("setOrientation", &PhysicsComponent::setOrientation)
-                .def("getOrientation", &PhysicsComponent::getOrientation)
-                .def("setPosition", (void (PhysicsComponent::*)(const Vector3&))&PhysicsComponent::setPosition)
-                .def("setPosition", (void (PhysicsComponent::*)(Real, Real, Real))&PhysicsComponent::setPosition)
-                .def("getPosition", &PhysicsComponent::getPosition)
-                .def("setScale", &PhysicsComponent::setScale)
-                .def("getScale", &PhysicsComponent::getScale)
-                .def("translate", &PhysicsComponent::translate)
-                .def("rotate", &PhysicsComponent::rotate)
+        module(lua)
+        [
+            class_<PhysicsComponent, GameObjectComponent>("PhysicsComponent")
+            //.def("getFromCast", &PhysicsObject::getFromCast)
+            // .def("getClassName", &PhysicsComponent::getClassName)
+            .def("getParentClassName", &PhysicsComponent::getParentClassName)
+            .def("isMovable", &PhysicsComponent::isMovable)
+            .def("setDirection", &PhysicsComponent::setDirection)
+            .def("setOrientation", &PhysicsComponent::setOrientation)
+            .def("getOrientation", &PhysicsComponent::getOrientation)
+            .def("setPosition", (void (PhysicsComponent::*)(const Vector3&))&PhysicsComponent::setPosition)
+            .def("setPosition", (void (PhysicsComponent::*)(Real, Real, Real))&PhysicsComponent::setPosition)
+            .def("getPosition", &PhysicsComponent::getPosition)
+            .def("setScale", &PhysicsComponent::setScale)
+            .def("getScale", &PhysicsComponent::getScale)
+            .def("translate", &PhysicsComponent::translate)
+            .def("rotate", &PhysicsComponent::rotate)
 
-                // .def("getBody", &PhysicsComponent::getBody)
-                // .def("getOgreNewt", &PhysicsComponent::getOgreNewt)
-                // .def("reCreateCollision", &PhysicsComponent::reCreateCollision)
-                // .def("destroyCollision", &PhysicsComponent::destroyCollision)
-                .def("setMass", &PhysicsComponent::setMass)
-                .def("getMass", &PhysicsComponent::getMass)
-                .def("setVolume", &PhysicsComponent::setVolume)
-                .def("getVolume", &PhysicsComponent::getVolume)
-                .def("setCollidable", &PhysicsComponent::setCollidable)
-                .def("getCollidable", &PhysicsComponent::getCollidable)
+            // .def("getBody", &PhysicsComponent::getBody)
+            // .def("getOgreNewt", &PhysicsComponent::getOgreNewt)
+            // .def("reCreateCollision", &PhysicsComponent::reCreateCollision)
+            // .def("destroyCollision", &PhysicsComponent::destroyCollision)
+            .def("setMass", &PhysicsComponent::setMass)
+            .def("getMass", &PhysicsComponent::getMass)
+            .def("setVolume", &PhysicsComponent::setVolume)
+            .def("getVolume", &PhysicsComponent::getVolume)
+            .def("setCollidable", &PhysicsComponent::setCollidable)
+            .def("getCollidable", &PhysicsComponent::getCollidable)
 
-                // .def("setCollisionType", &PhysicsComponent::setCollisionType)
-                // .def("getCollisionType", &PhysicsComponent::getCollisionType)
-                .def("getInitialPosition", &PhysicsComponent::getInitialPosition)
-                .def("getInitialScale", &PhysicsComponent::getInitialScale)
-                .def("getInitialOrientation", &PhysicsComponent::getInitialOrientation)];
+            // .def("setCollisionType", &PhysicsComponent::setCollisionType)
+            // .def("getCollisionType", &PhysicsComponent::getCollisionType)
+            .def("getInitialPosition", &PhysicsComponent::getInitialPosition)
+            .def("getInitialScale", &PhysicsComponent::getInitialScale)
+            .def("getInitialOrientation", &PhysicsComponent::getInitialOrientation)
+        ];
 
         AddClassToCollection("PhysicsComponent", "class inherits GameObjectComponent", "Base class for some kind of physics components.");
         AddClassToCollection("PhysicsComponent", "bool isMovable()", "Gets whether this physics component is movable.");
@@ -8993,6 +9068,8 @@ namespace NOWA
 
     luabind::object getPositionAndNormalSnapshot(OgreNewt::ContactSnapshot* instance)
     {
+        ScopedLuaErrorContext luaErrorContext("ContactSnapshot", "getPositionAndNormalSnapshot");
+
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
         obj[0] = instance->position;
         obj[1] = instance->normal;
@@ -9001,6 +9078,8 @@ namespace NOWA
 
     luabind::object getTangentDirectionsSnapshot(OgreNewt::ContactSnapshot* instance)
     {
+        ScopedLuaErrorContext luaErrorContext("ContactSnapshot", "getTangentDirectionsSnapshot");
+
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
         obj[0] = instance->tangentDir0;
         obj[1] = instance->tangentDir1;
@@ -9501,6 +9580,8 @@ namespace NOWA
 
     luabind::object getWayPoints(KI::Path* instance)
     {
+        ScopedLuaErrorContext luaErrorContext("KI::Path", "getWayPoints");
+
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
         for (size_t i = 0; i < instance->getWayPoints().size(); i++)
@@ -10975,6 +11056,8 @@ namespace NOWA
 
     luabind::object getSceneSnapshotsInProject(Core* instance, const Ogre::String& projectName)
     {
+        ScopedLuaErrorContext luaErrorContext(projectName, "getSceneSnapshotsInProject");
+
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
         const auto snapshotsInProject = instance->getSceneSnapshotsInProject(projectName);
@@ -10990,6 +11073,8 @@ namespace NOWA
 
     luabind::object getSaveNamesInProject(Core* instance, const Ogre::String& projectName)
     {
+        ScopedLuaErrorContext luaErrorContext(projectName, "getSaveNamesInProject");
+
         luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
 
         const auto snapshotsInProject = instance->getSaveNamesInProject(projectName);

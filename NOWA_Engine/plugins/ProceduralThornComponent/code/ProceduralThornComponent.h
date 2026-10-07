@@ -318,6 +318,7 @@ namespace NOWA
 
         Ogre::Item* thornItem;
         Ogre::String thornMeshName;
+        bool isCloning;
 
         PhysicsArtifactComponent* physicsArtifactComponent;
     };

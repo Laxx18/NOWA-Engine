@@ -68,6 +68,11 @@ namespace NOWA
 
 		virtual void reCreateCollision(bool overwrite = false) override;
 
+		/**
+         * @see		GameObjectComponent::setActivated
+         */
+        virtual void setActivated(bool activated) override;
+
 		void setSerialize(bool serialize);
 
 		bool getSerialize(void) const;

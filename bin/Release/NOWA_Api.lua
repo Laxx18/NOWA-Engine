@@ -18434,6 +18434,22 @@ return {
 				returns = "(number)",
 				valuetype = "number"
 			},
+			setLinearRate =
+			{
+				type = "method",
+				description = "Sets linear movement rate to reach the target position.",
+				args = "(number linearRate)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getLinearRate =
+			{
+				type = "function",
+				description = "Gets the linear rate.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
 			setMinStopDistance =
 			{
 				type = "method",

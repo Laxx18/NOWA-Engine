@@ -620,6 +620,7 @@ namespace NOWA
         Ogre::Quaternion wallFrame;
         bool wallFrameSet;
         Ogre::String editFocusOwner;
+        bool isCloning;
 
         PhysicsArtifactComponent* physicsArtifactComponent;
     };

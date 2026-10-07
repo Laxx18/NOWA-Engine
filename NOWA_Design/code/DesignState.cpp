@@ -139,6 +139,7 @@ void DesignState::exit(void)
     NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneModified), NOWA::EventDataSceneModified::getStaticEventType());
     NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleGeometryChanged), NOWA::EventDataGeometryChanged::getStaticEventType());
     NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleEventDataGameObjectMadeGlobal), NOWA::EventDataGameObjectMadeGlobal::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleGameObjectDeleted), NOWA::EventDataDeleteGameObject::getStaticEventType());
 
     NOWA::Core::getSingletonPtr()->switchFullscreen(false, 0, 0, 0);
 
@@ -274,6 +275,7 @@ void DesignState::createScene(void)
     NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneModified), NOWA::EventDataSceneModified::getStaticEventType());
     NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleGeometryChanged), NOWA::EventDataGeometryChanged::getStaticEventType());
     NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleEventDataGameObjectMadeGlobal), NOWA::EventDataGameObjectMadeGlobal::getStaticEventType());
+    NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleGameObjectDeleted), NOWA::EventDataDeleteGameObject::getStaticEventType());
 
     // this->sceneManager->setAmbientLight(Ogre::ColourValue(0.3f, 0.5f, 0.7f) * 0.1f * 0.75f, Ogre::ColourValue(0.6f, 0.45f, 0.3f) * 0.065f * 0.75f, Ogre::Vector3(-1, -1, -1).normalisedCopy());
     ////Set sane defaults for proper shadow mapping
@@ -1133,6 +1135,21 @@ void DesignState::handleEventDataGameObjectMadeGlobal(NOWA::EventDataPtr eventDa
         this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName());
     };
     NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "DesignState::handleEventDataGameObjectMadeGlobal");
+}
+
+void DesignState::handleGameObjectDeleted(NOWA::EventDataPtr eventData)
+{
+    if (false == NOWA::AppStateManager::getSingletonPtr()->isSafeToDispatchEvents() || nullptr == this->selectedGameObject)
+    {
+        return;
+    }
+
+    boost::shared_ptr<NOWA::EventDataDeleteGameObject> castEventData = boost::static_pointer_cast<NOWA::EventDataDeleteGameObject>(eventData);
+
+    if (this->selectedGameObject->getId() == castEventData->getGameObjectId())
+    {
+        this->selectedGameObject = nullptr;
+    }
 }
 
 void DesignState::itemSelected(MyGUI::ComboBox* sender, size_t index)

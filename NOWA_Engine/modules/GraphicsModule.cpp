@@ -6,7 +6,7 @@
 #include "utilities/LoadingIndicator.h"
 
 // Attention: TEMPORARY diagnostic for the loading indicator. Comment out when done.
-// #define NOWA_LOADING_INDICATOR_TIMING
+#define NOWA_LOADING_INDICATOR_TIMING
 
 #include <Animation/OgreBone.h>
 #include <chrono>
@@ -15,8 +15,8 @@
 // Attention: TEMPORARY diagnostic for the suspended-render wait and for the render loop itself.
 // Comment the define out once the measurement is done. Everything it adds is aggregated, never one
 // log line per iteration.
-// #define NOWA_SUSPEND_WAIT_TIMING
-// #define CLOSURE_DEBUG
+#define NOWA_SUSPEND_WAIT_TIMING
+#define CLOSURE_DEBUG
 
 #ifdef NOWA_SUSPEND_WAIT_TIMING
 
@@ -1447,12 +1447,64 @@ namespace NOWA
 
                 // TEMPORARY: log a stage breakdown whenever the whole iteration took
                 // more than 100ms.
-                if (tClosures > 100000)
+                /*if (tClosures > 100000)
                 {
                     Ogre::LogManager::getSingletonPtr()->logMessage("[GraphicsModule] Slow render iteration - processAllCommands: " + Ogre::StringConverter::toString(tCommands / 1000.0) + "ms, updateAllTransforms: " +
                                                                         Ogre::StringConverter::toString((tTransforms - tCommands) / 1000.0) + "ms, renderOneFrame: " + Ogre::StringConverter::toString((tRenderOneFrame - tTransforms) / 1000.0) +
                                                                         "ms, updateAndExecuteClosures: " + Ogre::StringConverter::toString((tClosures - tRenderOneFrame) / 1000.0) + "ms",
                         Ogre::LML_NORMAL);
+                }*/
+
+                // Throttled steady state breakdown: ONE line per 200 iterations, not one per
+                // iteration - a log line per frame would itself cost more than the stages it
+                // measures, because Ogre's LogManager flushes to disk per message.
+                //
+                // The stage timestamps are cumulative from stageTimerStart, so each stage is the
+                // difference to the previous one. Only iterations that really rendered are counted;
+                // in the stalled / loading branch tTransforms and the following stamps are never
+                // written.
+                {
+                    // Attention: render thread only, so plain statics are fine here.
+                    static Ogre::uint64 stageSumCommands = 0;
+                    static Ogre::uint64 stageSumTransforms = 0;
+                    static Ogre::uint64 stageSumRenderOneFrame = 0;
+                    static Ogre::uint64 stageSumClosures = 0;
+                    static Ogre::uint64 stageWorstTotal = 0;
+                    static size_t stageSampleCount = 0;
+
+                    const Ogre::uint64 stageCommands = tCommands;
+                    const Ogre::uint64 stageTransforms = tTransforms - tCommands;
+                    const Ogre::uint64 stageRenderOneFrame = tRenderOneFrame - tTransforms;
+                    const Ogre::uint64 stageClosures = tClosures - tRenderOneFrame;
+
+                    stageSumCommands += stageCommands;
+                    stageSumTransforms += stageTransforms;
+                    stageSumRenderOneFrame += stageRenderOneFrame;
+                    stageSumClosures += stageClosures;
+                    stageSampleCount++;
+
+                    if (tClosures > stageWorstTotal)
+                    {
+                        stageWorstTotal = tClosures;
+                    }
+
+                    if (stageSampleCount >= 200)
+                    {
+                        const double sampleCount = static_cast<double>(stageSampleCount);
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                            "[STAGE-AVG] over " + Ogre::StringConverter::toString(stageSampleCount) + " iterations - commands: " + Ogre::StringConverter::toString(stageSumCommands / sampleCount / 1000.0) +
+                                "ms, transforms: " + Ogre::StringConverter::toString(stageSumTransforms / sampleCount / 1000.0) + "ms, renderOneFrame: " + Ogre::StringConverter::toString(stageSumRenderOneFrame / sampleCount / 1000.0) +
+                                "ms, closures: " + Ogre::StringConverter::toString(stageSumClosures / sampleCount / 1000.0) +
+                                "ms, total: " + Ogre::StringConverter::toString((stageSumCommands + stageSumTransforms + stageSumRenderOneFrame + stageSumClosures) / sampleCount / 1000.0) +
+                                "ms, worst: " + Ogre::StringConverter::toString(stageWorstTotal / 1000.0) + "ms");
+
+                        stageSumCommands = 0;
+                        stageSumTransforms = 0;
+                        stageSumRenderOneFrame = 0;
+                        stageSumClosures = 0;
+                        stageWorstTotal = 0;
+                        stageSampleCount = 0;
+                    }
                 }
 #endif
             }

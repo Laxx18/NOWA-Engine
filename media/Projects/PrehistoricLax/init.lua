@@ -23,6 +23,13 @@ AppStateManager:getScriptEventManager():registerEvent("PlayerAttackEvent");
 AppStateManager:getScriptEventManager():registerEvent("EnemyHitEvent");
 -- Sent by an enemy's script every frame while the player is within its attack reach (enemyId).
 AppStateManager:getScriptEventManager():registerEvent("EnemyNearPlayerEvent");
+-- Sent by the boss area trigger when the player has entered the arena. The boss script starts its
+-- fight on it, until then the boss only hovers and ignores the player.
+AppStateManager:getScriptEventManager():registerEvent("BossFightStartEvent");
+-- Sent by an enemy that makes itself defenceless on purpose (enemyId, isVulnerable). A boss does
+-- that after every attack, so the player gets a window to strike: while it is set, the player's
+-- script does not let that enemy start a contact attack, no matter how close the two bodies are.
+AppStateManager:getScriptEventManager():registerEvent("EnemyVulnerableEvent");
 
 
 CameraFx =
@@ -75,6 +82,90 @@ CameraFx =
     portalZoomTime = 0.5
 };
 
+-- Levers and other mechanics
+LEVER_ANIMATION = "ANIM_PICKUP_1";
+LEVER_PULL_TIME = 1.2;
+
+-- Blink platforms. All times in seconds.
+-- solidTime:   fully visible and solid
+-- fadeOutTime: fades out but STAYS solid - this is the warning the player has to read
+-- goneTime:    invisible and passable, the player falls through
+-- fadeInTime:  fades back in, still passable
+-- startDelay:  shifts the whole cycle once at the start, so several platforms blink out of phase
+BLINK_PLATFORM_1 =
+{
+    solidTime = 1.0,
+    fadeOutTime = 1.0,
+    goneTime = 1.0,
+    fadeInTime = 0.5,
+    startDelay = 0.0
+};
+
+---------------------------------------------------------------------------------------------------
+-- Pterodactyl, the first end boss. Everything the fight is tuned with lives here, Pterodactyl.lua
+-- only reads it.
+--
+-- The fight is one readable loop: patrol -> attack -> hold still -> patrol. The holding still is
+-- the whole point. The boss flies out of reach most of the time, so the ONLY moment the player can
+-- land a hit is the window after an attack, and the player has to jump for it.
+---------------------------------------------------------------------------------------------------
+PTERODACTYL =
+{
+    -- ── Arena ────────────────────────────────────────────────────────────────────────
+    -- The box the boss may fly in. Every flight target is clamped into it, so the boss can never
+    -- end up inside the level geometry or outside of the camera. z is the 2.5D depth plane.
+    minX = 14.5,
+    maxX = 38.5,
+    minY = 2.5,
+    maxY = 18.0,
+    z = -7.0,
+
+    -- ── Speeds ───────────────────────────────────────────────────────────────────────
+    -- Attention: both must stay below the MaxSpeed of the physics component, the moving behavior
+    -- clamps the steering velocity against it.
+    cruiseSpeed = 6.0,
+    diveSpeed = 13.0,
+
+    -- ── Start of the fight ───────────────────────────────────────────────────────────
+    -- One roar before the first attack, so the player knows what just started.
+    roarTime = 1.3,
+
+    -- ── Patrol ───────────────────────────────────────────────────────────────────────
+    -- A sweep across the whole arena, always starting away from the player, so the boss crosses the
+    -- screen once before it attacks. patrolAmplitude lifts the middle waypoint, which turns the
+    -- straight line into an arc.
+    patrolY = 13.0,
+    patrolAmplitude = 3.0,
+
+    -- ── Dive attack ──────────────────────────────────────────────────────────────────
+    -- Climbs over the player first and comes down from there, so the swoop reads as a swoop. The
+    -- damage itself is the ordinary contact attack every enemy has, see the profile below.
+    diveApproachHeight = 5.0,
+    diveHeightOverPlayer = 0.8,
+
+    -- ── Egg attack ───────────────────────────────────────────────────────────────────
+    -- Hovers above the player and lets the SpawnComponent drop eggs for this long. With a spawn
+    -- interval of 500 ms that is five eggs - enough to force the player out of the spot.
+    eggHeight = 11.0,
+    eggDropTime = 2.5,
+
+    -- ── The window the player is supposed to use ─────────────────────────────────────
+    -- After EVERY attack the boss drops to jump height next to the player and holds still. Beside
+    -- him and not on top of him, otherwise the two bodies push each other around.
+    vulnerableHeightOverPlayer = 2.2,
+    vulnerableOffsetX = 2.2,
+    vulnerableTime = 2.5,
+
+    -- ── Reaction to a landed hit ─────────────────────────────────────────────────────
+    -- Thrown back and stunned briefly, then it carries on with whatever it was doing. The stun time
+    -- is NOT subtracted from the window above: the window is paused while the boss is thrown back,
+    -- so a hit is always rewarded with a chance at the next one.
+    hitKnockbackHorizontal = 9.0,
+    hitKnockbackUp = 3.5,
+    hitStunTime = 0.7,
+
+    goalRadius = 1.0
+};
 
 ---------------------------------------------------------------------------------------------------
 -- Global game balancing. Everything static and global lives here, so it is encrypted together with
@@ -214,6 +305,9 @@ end
 --
 -- Attention: the key has to stay the same across sessions. The game object NAME is unique within its scene,
 -- its id is not - that one is handed out while loading.
+-- Builds a key that is unique across the whole game and stays the same across sessions: the scene
+-- name plus the game object name. The object NAME is unique within its scene, its id is not - that
+-- one is handed out while loading.
 function makeWorldFlagKey(gameObject)
     return AppStateManager:getGameProgressModule():getCurrentSceneName() .. "_" .. gameObject:getName();
 end
@@ -229,6 +323,21 @@ end
 function setWorldFlag(key)
     -- A number and not a bool on purpose: setGlobalNumberValue is the one setter that is bound for both.
     AppStateManager:getGameProgressModule():setGlobalNumberValue(key, 1);
+end
+
+-- Levers. One flag per lever, so a pulled lever stays pulled for the whole run and is cleared again
+-- by startNewRun() after a death. The 'Lever_' prefix only namespaces the key, so it stays readable
+-- in the save game: "Lever_Level5_Lever1_0".
+function makeLeverFlagKey(leverGameObject)
+    return "Lever_" .. makeWorldFlagKey(leverGameObject);
+end
+
+function isLeverPulled(leverGameObject)
+    return isWorldFlagSet(makeLeverFlagKey(leverGameObject));
+end
+
+function setLeverPulled(leverGameObject)
+    setWorldFlag(makeLeverFlagKey(leverGameObject));
 end
 
 -- Called by the save point. The scene snapshot is written as well, so loading restores the exact world with
@@ -302,10 +411,12 @@ end
 --   deathDeleteDelay           seconds until the corpse is deleted
 --   locomotionAnimation        AnimationBlender constant the enemy goes back to after an attack
 --   energyBarOffsetY           height of the energy bar above the enemy's origin
+--   isProjectile               optional. A thrown thing, not a creature: it has no attack animation
+--                              and no cooldown, it simply costs the player 'strength' on contact.
 EnemyProfiles = 
 {
     Rhino = 
-	{
+    {
         level = 1, energy = 10, strength = 20, experience = 10,
         attackImpactDelay = 0.25, attackDuration = 0.9, attackCooldown = 1.0, damageDuration = 0.6,
         attackReach = 1.6, attackReachVertical = 1,
@@ -317,7 +428,7 @@ EnemyProfiles =
     
     -- Same as rhino, but more energy.
     Elephant = 
-	{
+    {
         level = 1, energy = 30, strength = 10, experience = 15,
         attackImpactDelay = 0.45, attackDuration = 0.9, attackCooldown = 0.8, damageDuration = 0.6,
         attackReach = 1.2, attackReachVertical = 1,
@@ -329,7 +440,7 @@ EnemyProfiles =
 
     -- A bit stronger and faster than the rhino. Its attack is the rolling charge (Roll_InPlace, 1.33 s).
     Coyote = 
-	{
+    {
         level = 3, energy = 50, strength = 25, experience = 20,
         attackImpactDelay = 0.35, attackDuration = 1.33, attackCooldown = 1.0, damageDuration = 0.6,
         attackReach = 1.6, attackReachVertical = 1,
@@ -338,9 +449,9 @@ EnemyProfiles =
         locomotionAnimation = "ANIM_RUN",
         energyBarOffsetY = 2
     },
-	-- Slow but totally strong and much energy
+    -- Slow but totally strong and much energy
     Beaver = 
-	{
+    {
         level = 3, energy = 200, strength = 80, experience = 40,
         attackImpactDelay = 0.35, attackDuration = 1.33, attackCooldown = 1.0, damageDuration = 0.8,
         attackReach = 1, attackReachVertical = 1,
@@ -348,5 +459,41 @@ EnemyProfiles =
         deathKnockbackHorizontal = 50.0, deathKnockbackUp = 35.0, deathDeleteDelay = 2.5,
         locomotionAnimation = "ANIM_IDLE_1",
         energyBarOffsetY = 2
+    },
+
+    -- First end boss. Much energy and a lot of experience, but not a damage monster: the challenge
+    -- is reaching it at all, not surviving it. Its values are tuned around the window it opens after
+    -- every attack (see PTERODACTYL above) - roughly seven landed hits.
+    --
+    -- attackDuration is the length of Air_Attack_Claw (1.33 s), damageDuration the one of
+    -- Air_Damage_Light (1.33 s). attackReachVertical is generous because the boss attacks from the
+    -- air and the player is below it.
+    Pterodactyl =
+    {
+        level = 5, energy = 180, strength = 25, experience = 300,
+        attackImpactDelay = 0.3, attackDuration = 1.33, attackCooldown = 1.5, damageDuration = 1.33,
+        attackReach = 1.8, attackReachVertical = 1.8,
+        playerKnockbackHorizontal = 9.0, playerKnockbackUp = 5.0, playerKnockbackTime = 0.35,
+        deathKnockbackHorizontal = 25.0, deathKnockbackUp = 10.0, deathDeleteDelay = 4.0,
+        locomotionAnimation = "ANIM_WALK_NORTH",
+        energyBarOffsetY = 2.0
+    },
+
+    -- The egg the pterodactyl drops. A projectile, see isProjectile: it hurts on contact and that is
+    -- all it does.
+    --
+    -- Attention: the energy is deliberately out of reach. An egg is category 'Enemy', so the cudgel
+    -- can hit it - it should spark and make a noise, but it must never die, otherwise an
+    -- EnemyDeadEvent would count it as a kill and hand out experience for it.
+    Egg =
+    {
+        isProjectile = true,
+        level = 5, energy = 100000, strength = 20, experience = 1,
+        attackImpactDelay = 0, attackDuration = 0, attackCooldown = 0, damageDuration = 0,
+        attackReach = 0.5, attackReachVertical = 0.5,
+        playerKnockbackHorizontal = 4.0, playerKnockbackUp = 2.5, playerKnockbackTime = 0.2,
+        deathKnockbackHorizontal = 0, deathKnockbackUp = 0, deathDeleteDelay = 0,
+        locomotionAnimation = "ANIM_IDLE_1",
+        energyBarOffsetY = 0
     }
 };

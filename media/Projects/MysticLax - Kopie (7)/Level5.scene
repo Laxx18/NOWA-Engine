@@ -317,7 +317,6 @@
 					<property type="9" name="Gravity" data="0 0 0"/>
 					<property type="7" name="GravitySourceCategory" data=""/>
 					<property type="9" name="ConstraintDirection" data="0 0 0"/>
-					
 					<property type="6" name="Speed" data="1"/>
 					<property type="6" name="MinSpeed" data="1"/>
 					<property type="6" name="MaxSpeed" data="5"/>
@@ -325,7 +324,6 @@
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
-					
 					<property type="7" name="ComponentJointHingeActuatorComponent" data="JointHingeActuatorComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -364,14 +362,6 @@
 					<property type="12" name="RelativeToListener" data="true"/>
 					<property type="12" name="PlayWhenInMotion" data="true"/>
 					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
-					<property type="7" name="ComponentAttributesComponent" data="AttributesComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="AttributesCount" data="1"/>
-					<property type="7" name="AttributeName0" data="FirstTimeActivated"/>
-					<property type="7" name="AttributeType0" data="Bool"/>
-					<property type="7" name="AttributeValue0" data="false"/>
 				</userData>
 			</item>
 		</node>

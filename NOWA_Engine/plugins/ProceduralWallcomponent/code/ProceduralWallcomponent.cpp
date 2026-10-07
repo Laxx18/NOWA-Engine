@@ -69,6 +69,7 @@ namespace NOWA
         snapOverlayObject(nullptr),
         wallFrame(Ogre::Quaternion::IDENTITY),
         wallFrameSet(false),
+        isCloning(false),
         physicsArtifactComponent(nullptr)
     {
         this->activated = new Variant(ProceduralWallComponent::AttrActivated(), true, this->attributes);
@@ -275,7 +276,6 @@ namespace NOWA
         this->wallFrame = this->gameObjectPtr->getSceneNode()->_getDerivedOrientationUpdated();
         this->wallFrameSet = true;
 
-#if 1
         std::vector<Ogre::Item*> itemsToDestroy;
 
         Ogre::SceneNode* sceneNode = this->gameObjectPtr->getSceneNode();
@@ -298,22 +298,12 @@ namespace NOWA
             {
                 sceneNode->detachObject(item);
                 this->gameObjectPtr->getSceneManager()->destroyItem(item);
+                this->currentPillarVertexIndex = 0;
+                this->currentVertexIndex = 0;
             }
         }
         this->wallItem = nullptr;
         this->gameObjectPtr->nullMovableObject();
-#else
-        this->gameObjectPtr->nullMovableObject();
-        // Attention: for group loading necessary
-        this->wallItem = nullptr;
-        if (nullptr != this->wallItem)
-        {
-            this->gameObjectPtr->getSceneNode()->detachObject(this->wallItem);
-            this->gameObjectPtr->getSceneManager()->destroyItem(this->wallItem);
-            this->wallItem = nullptr;
-        }
-        this->gameObjectPtr->nullMovableObject();
-#endif
 
         // Load wall data from file
         if (true == this->loadWallDataFromFile())
@@ -410,6 +400,8 @@ namespace NOWA
     {
         ProceduralWallComponentPtr clonedCompPtr(boost::make_shared<ProceduralWallComponent>());
 
+        clonedCompPtr->isCloning = true;
+
         clonedCompPtr->setActivated(this->activated->getBool());
         clonedCompPtr->setWallHeight(this->wallHeight->getReal());
         clonedCompPtr->setWallThickness(this->wallThickness->getReal());
@@ -426,6 +418,9 @@ namespace NOWA
         clonedCompPtr->setOwner(clonedGameObjectPtr);
 
         GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+
+        clonedCompPtr->isCloning = false;
+
         return clonedCompPtr;
     }
 
@@ -1382,6 +1377,11 @@ namespace NOWA
 
     void ProceduralWallComponent::rebuildMesh(void)
     {
+        if (true == this->isCloning)
+        {
+            return;
+        }
+
         this->destroyWallMesh();
 
         if (true == this->wallSegments.empty())

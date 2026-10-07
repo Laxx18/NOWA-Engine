@@ -134,6 +134,7 @@ namespace NOWA
         bBatchMode(false),
         platformLoadedFromScene(false),
         legacyPathDataMigrationPending(false),
+        isCloning(false),
         physicsArtifactComponent(nullptr)
     {
         this->platformStyle->setDescription("Style of the platform to generate.");
@@ -415,6 +416,8 @@ namespace NOWA
     {
         ProceduralPlatformComponentPtr clonedCompPtr(boost::make_shared<ProceduralPlatformComponent>());
 
+        clonedCompPtr->isCloning = true;
+
         // setOwner() must come before anything else - the setters below reach through
         // gameObjectPtr, and a null owner there would crash rather than silently do nothing.
         clonedCompPtr->setOwner(clonedGameObjectPtr);
@@ -492,6 +495,8 @@ namespace NOWA
 
         GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 
+        clonedCompPtr->isCloning = false;
+
         return clonedCompPtr;
     }
 
@@ -529,7 +534,6 @@ namespace NOWA
         // normal destroy path cannot remove them. Clear every inherited Item before the
         // first clone rebuild; otherwise the old platform (including grass/trees) remains
         // renderable and selectable beside the resized clone.
-#if 1
         std::vector<Ogre::Item*> itemsToDestroy;
 
         Ogre::SceneNode* sceneNode = this->gameObjectPtr->getSceneNode();
@@ -552,23 +556,13 @@ namespace NOWA
             {
                 sceneNode->detachObject(item);
                 this->gameObjectPtr->getSceneManager()->destroyItem(item);
+                this->currentGroundVertexIndex = 0;
+                this->currentSurfaceVertexIndex = 0;
             }
         }
 
         this->platformItem = nullptr;
         this->gameObjectPtr->nullMovableObject();
-#else
-        this->gameObjectPtr->nullMovableObject();
-        // Attention: for group loading necessary
-        this->platformItem = nullptr;
-        if (nullptr != this->platformItem)
-        {
-            this->gameObjectPtr->getSceneNode()->detachObject(this->platformItem);
-            this->gameObjectPtr->getSceneManager()->destroyItem(this->platformItem);
-            this->platformItem = nullptr;
-        }
-        this->gameObjectPtr->nullMovableObject();
-#endif
 
         // Create preview scene node
         this->previewNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
@@ -1924,6 +1918,11 @@ namespace NOWA
 
     void ProceduralPlatformComponent::rebuildMesh(void)
     {
+        if (true == this->isCloning)
+        {
+            return;
+        }
+
         this->surfaceVertices.clear();
         this->surfaceIndices.clear();
         this->currentSurfaceVertexIndex = 0;

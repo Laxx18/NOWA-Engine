@@ -400,6 +400,7 @@ namespace NOWA
         Ogre::VertexBufferPacked* dynamicVertexBuffer;
 
         PhysicsArtifactComponent* physicsArtifactComponent;
+        bool isCloning;
     };
 
 }; // namespace end

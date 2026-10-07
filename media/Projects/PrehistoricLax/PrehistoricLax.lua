@@ -42,6 +42,7 @@ local hitParticle = nil;
 local playerDeadListenerId = nil;
 local enemyDeadListenerId = nil;
 local enemyNearPlayerListenerId = nil;
+local enemyVulnerableListenerId = nil;
 
 -- Mirrors NOWA::Direction from PlayerControllerComponents.h.
 -- Attention: this order is NOT the one the old script used - RIGHT comes before LEFT here.
@@ -171,6 +172,12 @@ local enemyCombat = {};
 
 -- Enemies killed but not deleted yet, keyed by game object id (from EnemyDeadEvent).
 local deadEnemies = {};
+
+-- Enemies that have made themselves defenceless on purpose, keyed by game object id (from
+-- EnemyVulnerableEvent). The pterodactyl sets this while it hovers after an attack: without it the
+-- player could never land a hit on it, because touching the boss would start the boss's own
+-- contact attack in the same moment.
+local passiveEnemies = {};
 
 ---------------------------------------------------------------------------------------------------
 -- Helpers
@@ -582,6 +589,26 @@ function updateAttack(dt)
     end
 end
 
+-- Re-applies every lever that has already been pulled in this run. After a scene change the gate is
+-- back at its authored position, but the lever counts as pulled - so it is opened again here,
+-- without animation and without locking the player.
+function applyPulledLevers()
+    local mechanics = AppStateManager:getGameObjectController():getGameObjectsFromCategory("Mechanics");
+
+    -- Attention: the table from C++ is filled starting at index 0, so '#' and a numeric loop are
+    -- both wrong here. pairs() does not care about the base.
+    for key, mechanicGameObject in pairs(mechanics) do
+        -- The table holds the raw pointer. Without the cast lua only sees part of the class, which
+        -- is why getTagName() worked and getName() came back nil.
+        local leverGameObject = AppStateManager:getGameObjectController():castGameObject(mechanicGameObject);
+
+        if (leverGameObject:getTagName() == "Lever" and true == isLeverPulled(leverGameObject)) then
+            leverGameObject:getJointHingeActuatorComponent():setActivated(true);
+            AppStateManager:getGameObjectController():activateGameObjectComponentsFromReferenceId(leverGameObject:getReferenceId(), true);
+        end
+    end
+end
+
 ---------------------------------------------------------------------------------------------------
 
 PrehistoricLax = {}
@@ -641,6 +668,8 @@ PrehistoricLax["connect"] = function(gameObject)
     -- with other balancing values.
     ascension:setValueNumber(getRequiredExperience(getLevel()));
     updateHud();
+    -- If a level is loaded, variable if lever has been activated (for boss is read and set properly)
+    --applyPulledLevers();
 
     playerController = prehistoricLax:getPlayerControllerJumpNRunComponent();
     animationBlender = playerController:getAnimationBlender();
@@ -710,6 +739,7 @@ PrehistoricLax["connect"] = function(gameObject)
     playerController:registerLuaState("RagDollState", RagDollState);
     playerController:registerLuaState("PortalState", PortalState);
     playerController:registerLuaState("KnockbackState", KnockbackState);
+    playerController:registerLuaState("LeverState", LeverState);
 
     playerController:reactOnStateChanged(function(oldStateName, newStateName)
         log("[PrehistoricLax] State: " .. oldStateName .. " -> " .. newStateName);
@@ -724,18 +754,36 @@ PrehistoricLax["connect"] = function(gameObject)
     playerController:setActionKey(NOWA_A_ATTACK_1);
 
     playerController:reactOnActionPressed(function(otherGameObject)
+        if (otherGameObject == nil) then
+            log("[PrehistoricLax] Action pressed - nothing in front of the player");
+        else
+            otherGameObject = AppStateManager:getGameObjectController():castGameObject(otherGameObject);
+            log("[PrehistoricLax] Action pressed on: " .. otherGameObject:getName() .. " category: " .. otherGameObject:getCategory() .. " tag: '" .. otherGameObject:getTagName() .. "'");
+        end
+    
         -- No swinging while ragdolling or walking through a portal.
         if (false == playerController:isInState("WalkingStateJumpNRun")) then
             do return end;
         end
 
-        -- nil simply means: nothing in front of the player.
+        -- nil simply means: nothing in front of the player. The cast already happened above.
         if (otherGameObject ~= nil) then
-            otherGameObject = AppStateManager:getGameObjectController():castGameObject(otherGameObject);
-
             if (otherGameObject:getTagName() == "Portal") then
                 playerController:setInteractionGameObject(otherGameObject);
                 playerController:requestState("PortalState");
+                do return end;
+            end
+
+            if (otherGameObject:getTagName() == "Lever") then
+                -- A lever may only be pulled once per run. The flag lives in the global values, so it
+                -- survives a scene change and is cleared again by startNewRun() after a death.
+                if (true == isLeverPulled(otherGameObject)) then
+                    do return end;
+                end
+                setLeverPulled(otherGameObject);
+
+                playerController:setInteractionGameObject(otherGameObject);
+                playerController:requestState("LeverState");
                 do return end;
             end
         end
@@ -808,6 +856,10 @@ PrehistoricLax["connect"] = function(gameObject)
     enemyDeadListenerId = AppStateManager:getScriptEventManager():registerEventListener(EventType.EnemyDeadEvent, PrehistoricLax["onEnemyDead"]);
     -- An enemy came within its attack reach.
     enemyNearPlayerListenerId = AppStateManager:getScriptEventManager():registerEventListener(EventType.EnemyNearPlayerEvent, PrehistoricLax["onEnemyNearPlayer"]);
+    -- A boss opened or closed its "hit me now" window.
+    enemyVulnerableListenerId = AppStateManager:getScriptEventManager():registerEventListener(EventType.EnemyVulnerableEvent, PrehistoricLax["onEnemyVulnerable"]);
+    passiveEnemies = {};
+    
 end
 
 PrehistoricLax["disconnect"] = function()
@@ -820,9 +872,11 @@ PrehistoricLax["disconnect"] = function()
     AppStateManager:getScriptEventManager():removeEventListener(playerDeadListenerId);
     AppStateManager:getScriptEventManager():removeEventListener(enemyDeadListenerId);
     AppStateManager:getScriptEventManager():removeEventListener(enemyNearPlayerListenerId);
+    AppStateManager:getScriptEventManager():removeEventListener(enemyVulnerableListenerId);
     playerDeadListenerId = nil;
     enemyDeadListenerId = nil;
     enemyNearPlayerListenerId = nil;
+    enemyVulnerableListenerId = nil;
 
     PointerManager:showMouse(true);
     cameraComponent:setActivated(false);
@@ -837,6 +891,7 @@ PrehistoricLax["disconnect"] = function()
     setPlayerVisible(true);
     enemyCombat = {};
     deadEnemies = {};
+    passiveEnemies = {};
 
     -- Hand the camera back in a neutral state, so the next scene does not inherit a death zoom
     -- or the zones of this level.
@@ -868,6 +923,7 @@ end
 PrehistoricLax["onEnemyDead"] = function(eventData)
     deadEnemies[eventData["enemyId"]] = true;
     enemyCombat[eventData["enemyId"]] = nil;
+    passiveEnemies[eventData["enemyId"]] = nil;
 
     killedEnemies:setValueNumber(killedEnemies:getValueNumber() + 1);
 
@@ -916,7 +972,23 @@ function tryStartEnemyAttack(enemyGameObject)
         do return end;
     end
 
+    -- A boss that has made itself defenceless does not attack either - that window is the whole
+    -- reason the player can get close to it at all.
+    if (true == passiveEnemies[enemyGameObject:getId()]) then
+        do return end;
+    end
+
     if (false == canPlayerBeHit()) then
+        do return end;
+    end
+
+    local profile = EnemyProfiles[enemyGameObject:getTagName()];
+
+    -- A thrown thing (the pterodactyl's eggs): no swing, no cooldown, no animation. It hurts the
+    -- moment it touches the player and that is all it does. The trade rule does not apply - a
+    -- falling egg can not be parried with the cudgel.
+    if (true == profile.isProjectile) then
+        hitPlayer(enemyGameObject:getPosition(), profile);
         do return end;
     end
 
@@ -925,7 +997,7 @@ function tryStartEnemyAttack(enemyGameObject)
         do return end;
     end
 
-    startEnemyAttack(enemyGameObject, EnemyProfiles[enemyGameObject:getTagName()]);
+    startEnemyAttack(enemyGameObject, profile);
 end
 
 -- Sent by the enemy's script every frame while the player is within its attack reach. Without this the enemy
@@ -933,6 +1005,11 @@ end
 -- every hit never touched the player and never attacked.
 PrehistoricLax["onEnemyNearPlayer"] = function(eventData)
     tryStartEnemyAttack(AppStateManager:getGameObjectController():getGameObjectFromId(eventData["enemyId"]));
+end
+
+-- Sent by a boss while it holds still after its own attack. See passiveEnemies.
+PrehistoricLax["onEnemyVulnerable"] = function(eventData)
+    passiveEnemies[eventData["enemyId"]] = eventData["isVulnerable"];
 end
 
 -- Called once when the player's body starts touching an enemy's body.
@@ -1089,4 +1166,54 @@ PortalState["exit"] = function(gameObject)
     playerController:setInteractionGameObject(nil);
 
     followCamera2DComponent:setZoom(1.0, CameraFx.portalZoomTime);
+end
+
+---------------------------------------------------------------------------------------------------
+-- Pulling a lever
+--
+-- Same shape as the PortalState: the action key hands the lever over as the interaction game object,
+-- this state owns the player while the animation runs, and everything that carries the lever's
+-- REFERENCE ID - the gate, its slider actuator, its sound - is switched on from here.
+--
+-- Attention: the references are deliberately NOT switched off again at the end. The portal does
+-- that because its path has finished; a gate has to keep travelling and then stay open until
+-- something closes it on purpose.
+---------------------------------------------------------------------------------------------------
+
+LeverState = { };
+
+local leverTimer = 0;
+
+LeverState["enter"] = function(gameObject)
+    -- A swing that was still in the air when the key was pressed is dropped here.
+    stopAttack();
+
+    -- No input while the lever is being pulled
+    playerController:lockMovement("mechanics", true);
+
+    local lever = playerController:getInteractionGameObject();
+
+    animationBlender:blend5(AnimationBlender[LEVER_ANIMATION], AnimationBlender.BLEND_WHILE_ANIMATING, 0.1, false);
+    leverTimer = LEVER_PULL_TIME;
+
+    -- The lever itself swings over
+    lever:getJointHingeActuatorComponent():setActivated(true);
+    lever:getSimpleSoundComponent():setActivated(true);
+
+    AppStateManager:getGameObjectController():activateGameObjectComponentsFromReferenceId(lever:getReferenceId(), true);
+end
+
+LeverState["execute"] = function(gameObject, dt)
+    animationBlender:addTime(dt * playerController:getAnimationSpeed() / animationBlender:getLength(), "PlayerControllerJumpNRunComponent");
+
+    leverTimer = leverTimer - dt;
+    if (leverTimer <= 0) then
+        -- Back to wherever the player came from, instead of hardcoding the walk state.
+        playerController:requestPreviousState();
+    end
+end
+
+LeverState["exit"] = function(gameObject)
+    playerController:lockMovement("mechanics", false);
+    playerController:setInteractionGameObject(nil);
 end

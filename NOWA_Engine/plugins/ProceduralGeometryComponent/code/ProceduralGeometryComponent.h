@@ -314,6 +314,7 @@ namespace NOWA
         // ── Ogre-Next scene objects ───────────────────────────────────────────
         Ogre::MeshPtr geomMesh;
         Ogre::Item* geomItem;
+        bool isCloning;
 
         // ── Physics (optional) ────────────────────────────────────────────────
         PhysicsArtifactComponent* physicsArtifactComponent;

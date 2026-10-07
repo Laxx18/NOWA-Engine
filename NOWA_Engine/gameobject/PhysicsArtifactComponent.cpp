@@ -638,6 +638,55 @@ namespace NOWA
         this->physicsBody->setMaterialGroupID(materialId);
     }
 
+    void PhysicsArtifactComponent::setActivated(bool activated)
+    {
+        PhysicsComponent::setActivated(activated);
+
+        if (nullptr == this->physicsBody)
+        {
+            return;
+        }
+
+        if (nullptr != this->ogreNewt && this->ogreNewt->isShuttingDown())
+        {
+            return;
+        }
+
+        if (false == activated)
+        {
+            // Wait for the running physics update FIRST. The force and torque callback is a
+            // std::function bound to this component, and the physics thread may be calling it right
+            // now; replacing it underneath that call is a data race. Only once Sync() has returned is
+            // it safe to unbind, and only then is it safe for a caller to destroy this component.
+            if (nullptr != this->ogreNewt)
+            {
+                this->ogreNewt->Sync();
+            }
+
+            // Only remove from world if it was actually added.
+            // During createDynamicBody the body is not yet in the world -
+            // in that case just store the flag and skip, the body will
+            // simply never be added (enqueuePhysics checks m_isInWorld).
+            if (this->physicsBody->isInWorld())
+            {
+                this->physicsBody->setUserData(OgreNewt::Any(nullptr));
+                this->physicsBody->removeFromWorld();
+            }
+        }
+        else
+        {
+            // Re-add to world if not already in it
+            if (false == this->physicsBody->isInWorld())
+            {
+                this->ogreNewt->Sync();
+                this->physicsBody->setUserData(OgreNewt::Any(static_cast<PhysicsComponent*>(this)));
+                this->physicsBody->addToWorld();
+            }
+
+            this->physicsBody->unFreeze();
+        }
+    }
+
     void PhysicsArtifactComponent::setSerialize(bool serialize)
     {
         this->serialize->setValue(serialize);

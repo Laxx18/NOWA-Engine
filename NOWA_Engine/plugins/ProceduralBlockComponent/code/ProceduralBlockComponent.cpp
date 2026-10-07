@@ -62,6 +62,7 @@ namespace NOWA
         bevelSize(new Variant(ProceduralBlockComponent::AttrBevelSize(), 0.1f, this->attributes)),
         currentVertexIndex(0),
         blockItem(nullptr),
+        isCloning(false),
         physicsArtifactComponent(nullptr)
     {
         this->activated->setDescription("Activates the block. When deactivated the mesh is removed.");
@@ -184,6 +185,8 @@ namespace NOWA
     {
         ProceduralBlockCompPtr clonedCompPtr(boost::make_shared<ProceduralBlockComponent>());
 
+        clonedCompPtr->isCloning = true;
+
         clonedCompPtr->setOwner(clonedGameObjectPtr);
 
         clonedCompPtr->setColumns(this->columns->getInt());
@@ -200,6 +203,8 @@ namespace NOWA
 
         GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 
+        clonedCompPtr->isCloning = false;
+
         return clonedCompPtr;
     }
 
@@ -215,44 +220,32 @@ namespace NOWA
         // The cloned component does not own that stale pointer, so destroyBlockMesh()
         // cannot remove it. Clear every inherited Item before rebuilding; otherwise
         // the old and resized blocks remain renderable and selectable together.
-#if 1
         std::vector<Ogre::Item*> itemsToDestroy;
-
+        
         Ogre::SceneNode* sceneNode = this->gameObjectPtr->getSceneNode();
         if (nullptr != sceneNode)
         {
             Ogre::SceneNode::ObjectIterator objectIterator = sceneNode->getAttachedObjectIterator();
-
+        
             while (objectIterator.hasMoreElements())
             {
                 Ogre::MovableObject* movableObject = objectIterator.getNext();
-
+        
                 Ogre::Item* item = dynamic_cast<Ogre::Item*>(movableObject);
                 if (nullptr != item)
                 {
                     itemsToDestroy.push_back(item);
                 }
             }
-
+        
             for (Ogre::Item* item : itemsToDestroy)
             {
                 sceneNode->detachObject(item);
                 this->gameObjectPtr->getSceneManager()->destroyItem(item);
+                this->currentVertexIndex = 0;
             }
         }
         this->gameObjectPtr->nullMovableObject();
-#else
-        // Attention: for group loading necessary
-        this->blockItem = nullptr;
-        if (nullptr != this->blockItem)
-        {
-            this->gameObjectPtr->getSceneNode()->detachObject(this->blockItem);
-            this->gameObjectPtr->getSceneManager()->destroyItem(this->blockItem);
-            this->blockItem = nullptr;
-        }
-        this->blockItem = nullptr;
-        this->gameObjectPtr->nullMovableObject();
-#endif
 
         if (true == this->activated->getBool())
         {
@@ -643,6 +636,11 @@ namespace NOWA
 
     void ProceduralBlockComponent::rebuildMesh(void)
     {
+        if (true == this->isCloning)
+        {
+            return;
+        }
+
         this->vertices.clear();
         this->indices.clear();
         this->currentVertexIndex = 0;

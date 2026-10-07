@@ -58,6 +58,7 @@ namespace NOWA
         vertBase(0u),
         geomMesh(nullptr),
         geomItem(nullptr),
+        isCloning(false),
         physicsArtifactComponent(nullptr)
     {
         // ── Activation ────────────────────────────────────────────────────────
@@ -227,7 +228,6 @@ namespace NOWA
     {
         Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralGeometryComponent] Init component for game object: " + this->gameObjectPtr->getName());
 
-#if 1
         std::vector<Ogre::Item*> itemsToDestroy;
 
         Ogre::SceneNode* sceneNode = this->gameObjectPtr->getSceneNode();
@@ -254,18 +254,6 @@ namespace NOWA
         }
         this->geomItem = nullptr;
         this->gameObjectPtr->nullMovableObject();
-#else
-        this->gameObjectPtr->nullMovableObject();
-        // Attention: for group loading necessary
-        this->geomItem = nullptr;
-        if (nullptr != this->geomItem)
-        {
-            this->gameObjectPtr->getSceneNode()->detachObject(this->geomItem);
-            this->gameObjectPtr->getSceneManager()->destroyItem(this->geomItem);
-            this->geomItem = nullptr;
-        }
-        this->gameObjectPtr->nullMovableObject();
-#endif
 
         // ── Build geometry from loaded (or default) parameters ────────────────
         this->rebuildMesh();
@@ -321,22 +309,27 @@ namespace NOWA
 
     GameObjectCompPtr ProceduralGeometryComponent::clone(GameObjectPtr clonedGameObjectPtr)
     {
-        ProceduralGeometryComponentPtr cloned(boost::make_shared<ProceduralGeometryComponent>());
+        ProceduralGeometryComponentPtr clonedCompPtr(boost::make_shared<ProceduralGeometryComponent>());
 
-        cloned->setOwner(clonedGameObjectPtr);
-        cloned->setActivated(activated->getBool());
-        cloned->setShape(shape->getListSelectedValue());
-        cloned->setSize(size->getVector3());
-        cloned->setSegmentsH(segmentsH->getReal());
-        cloned->setSegmentsV(segmentsV->getReal());
-        cloned->setFlipNormals(flipNormals->getBool());
-        cloned->setDatablock(datablock->getString());
-        cloned->setUVTiling(uvTiling->getVector2());
+        clonedCompPtr->isCloning = true;
 
-        clonedGameObjectPtr->addComponent(cloned);
+        clonedCompPtr->setOwner(clonedGameObjectPtr);
+        clonedCompPtr->setActivated(activated->getBool());
+        clonedCompPtr->setShape(shape->getListSelectedValue());
+        clonedCompPtr->setSize(size->getVector3());
+        clonedCompPtr->setSegmentsH(segmentsH->getReal());
+        clonedCompPtr->setSegmentsV(segmentsV->getReal());
+        clonedCompPtr->setFlipNormals(flipNormals->getBool());
+        clonedCompPtr->setDatablock(datablock->getString());
+        clonedCompPtr->setUVTiling(uvTiling->getVector2());
 
-        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(cloned));
-        return cloned;
+        clonedGameObjectPtr->addComponent(clonedCompPtr);
+
+        GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+
+        clonedCompPtr->isCloning = false;
+
+        return clonedCompPtr;
     }
 
     // =========================================================================
@@ -637,6 +630,11 @@ namespace NOWA
 
     void ProceduralGeometryComponent::rebuildMesh(void)
     {
+        if (true == this->isCloning)
+        {
+            return;
+        }
+
         this->destroyGeometryMesh();
         this->createGeometryMesh();
     }
