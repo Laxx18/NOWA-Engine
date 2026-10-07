@@ -528,6 +528,9 @@ namespace NOWA
         this->resourceLocationName = new Variant(MyGUIItemBoxComponent::AttrResourceLocationName(), "InventoryItemsTemplateClean.xml", this->attributes);
         this->useToolTip = new Variant(MyGUIItemBoxComponent::AttrUseToolTip(), true, this->attributes);
         this->allowDragDrop = new Variant(MyGUIItemBoxComponent::AttrAllowDragDrop(), true, this->attributes);
+        this->focusable = new Variant(MyGUIItemBoxComponent::AttrFocusable(), false, this->attributes);
+        this->focusable->setDescription("Whether the single inventory slots can be reached with the gamepad or the keyboard. A MyGUIPadFocusComponent collects all "
+                                        "focusable widgets and steps the focus from one to the next.");
         this->style = new Variant(MyGUIComponent::AttrStyle(), std::vector<Ogre::String>{"ItemBox", "ItemBoxInventory", "ItemBoxInventory_MysticLax"}, this->attributes);
         this->style->setListSelectedValue("ItemBox");
         this->itemCount = new Variant(MyGUIItemBoxComponent::AttrItemCount(), 0, this->attributes);
@@ -546,6 +549,8 @@ namespace NOWA
 
         this->position->setValue(Ogre::Vector2(0.0f, 0.8f));
         this->size->setValue(Ogre::Vector2(0.2f, 1.0f));
+
+        this->repaintTicket = 0;
     }
 
     MyGUIItemBoxComponent::~MyGUIItemBoxComponent()
@@ -613,6 +618,14 @@ namespace NOWA
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AllowDragDrop")
         {
             this->allowDragDrop->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+            propertyElement = propertyElement->next_sibling("property");
+        }
+        // Attention: parsed here, in front of the per slot list, and written in writeXML at the very same spot. A
+        // scene saved before this property existed simply does not match here and the parsing continues with
+        // 'ItemCount', as usual.
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Focusable")
+        {
+            this->focusable->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
             propertyElement = propertyElement->next_sibling("property");
         }
         if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ItemCount")
@@ -776,6 +789,7 @@ namespace NOWA
         clonedCompPtr->setResourceLocationName(this->resourceLocationName->getString());
         clonedCompPtr->setUseToolTip(this->useToolTip->getBool());
         clonedCompPtr->setAllowDragDrop(this->allowDragDrop->getBool());
+        clonedCompPtr->setFocusable(this->focusable->getBool());
         clonedCompPtr->setItemCount(this->itemCount->getUInt());
 
         for (unsigned int i = 0; i < this->itemCount->getUInt(); i++)
@@ -1063,6 +1077,10 @@ namespace NOWA
         {
             this->setAllowDragDrop(attribute->getBool());
         }
+        else if (MyGUIItemBoxComponent::AttrFocusable() == attribute->getName())
+        {
+            this->setFocusable(attribute->getBool());
+        }
         else if (MyGUIItemBoxComponent::AttrItemCount() == attribute->getName())
         {
             this->setItemCount(attribute->getUInt());
@@ -1126,6 +1144,12 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
         propertyXML->append_attribute(doc.allocate_attribute("name", "AllowDragDrop"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->allowDragDrop->getBool())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Focusable"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->focusable->getBool())));
         propertiesXML->append_node(propertyXML);
 
         propertyXML = doc.allocate_node(node_element, "property");
@@ -2760,6 +2784,42 @@ namespace NOWA
         return this->itemCount->getUInt();
     }
 
+    void MyGUIItemBoxComponent::requestRepaint(void)
+    {
+        if (nullptr == this->itemBoxWindow)
+        {
+            return;
+        }
+
+        // Attention: the size jiggle is what makes MyGUI re-run requestDrawItem for the cells - changing the
+        // ItemData alone does not mark the item box dirty. It is a whole relayout though, so it must not run
+        // once per setter: adding a single coin touches the resource name, the quantity, the sell value and
+        // the buy value, which used to be four relayouts in a row.
+        //
+        // Every request draws a ticket. A queued repaint that is no longer the newest one does nothing, so a
+        // burst of setters collapses into exactly ONE relayout, and since the queue is FIFO that one runs
+        // after all data commands of the burst.
+        const unsigned int ticket = this->repaintTicket.fetch_add(1) + 1;
+        const Ogre::Vector2 currentSize = this->size->getVector2();
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, ticket, currentSize]()
+        {
+            if (ticket != this->repaintTicket.load())
+            {
+                return;
+            }
+
+            if (nullptr == this->itemBoxWindow)
+            {
+                return;
+            }
+
+            this->itemBoxWindow->getMainWidget()->setRealSize(currentSize.x - 0.001f, currentSize.y - 0.001f);
+            this->itemBoxWindow->getMainWidget()->setRealSize(currentSize.x + 0.001f, currentSize.y + 0.001f);
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MyGUIItemBoxComponent::requestRepaint");
+    }
+
     void MyGUIItemBoxComponent::setResourceName(unsigned int index, const Ogre::String& resourceName)
     {
         if (index >= this->resourceNames.size())
@@ -2797,11 +2857,13 @@ namespace NOWA
             {
                 (*item)->setResourceName(resourceName);
             }
-
-            this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-            this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::setResourceName repaint");
+        // Attention: fire and forget, NOT enqueueAndWait. Nothing here delivers a result, so there is no reason
+        // for the logic thread to park until the render thread comes around. Picking up one coin ran through
+        // five enqueueAndWait in a row (resource name, quantity, repaint, sell value, buy value), and each one
+        // waits for up to a whole render frame - that was the hitch.
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MyGUIItemBoxComponent::setResourceName");
+        this->requestRepaint();
     }
 
     Ogre::String MyGUIItemBoxComponent::getResourceName(unsigned int index)
@@ -2827,7 +2889,14 @@ namespace NOWA
             return;
         }
 
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this, index, quantity]()
+        // Read here, on the logic thread, instead of inside the command: the variants belong to this thread.
+        Ogre::String slotResourceName;
+        if (index < this->resourceNames.size() && nullptr != this->resourceNames[index])
+        {
+            slotResourceName = this->resourceNames[index]->getListSelectedValue();
+        }
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, index, quantity, slotResourceName]()
         {
             // Guard: fresh box may have fewer items than the variant arrays
             if (index >= this->itemBoxWindow->getItemBox()->getItemBox()->getItemCount())
@@ -2838,17 +2907,15 @@ namespace NOWA
             ItemData** item = this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(index, false);
             if (nullptr != item && nullptr != *item)
             {
-                if (quantity > 0 && (*item)->isEmpty() && index < this->resourceNames.size() && nullptr != this->resourceNames[index] && !this->resourceNames[index]->getListSelectedValue().empty())
+                if (quantity > 0 && true == (*item)->isEmpty() && false == slotResourceName.empty())
                 {
-                    (*item)->setResourceName(this->resourceNames[index]->getListSelectedValue());
+                    (*item)->setResourceName(slotResourceName);
                 }
                 (*item)->setQuantity(quantity);
             }
-
-            this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-            this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::setQuantity repaint");
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MyGUIItemBoxComponent::setQuantity");
+        this->requestRepaint();
     }
 
     void MyGUIItemBoxComponent::setQuantity(const Ogre::String& resourceName, unsigned int quantity)
@@ -2863,13 +2930,8 @@ namespace NOWA
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Could not set quantity, because the resource name: " + resourceName + " does not exist for game object: " + this->gameObjectPtr->getName());
         }
 
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
-        {
-            // Trigger item box repaint update, so that resource will be visible
-            this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-            this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::setQuantity2 repaint");
+        // No own repaint anymore: setQuantity(index, ...) above already requested one. The second command that
+        // used to sit here also dereferenced itemBoxWindow without a null check.
     }
 
     unsigned int MyGUIItemBoxComponent::getQuantity(unsigned int index)
@@ -2988,66 +3050,43 @@ namespace NOWA
 
     void MyGUIItemBoxComponent::addQuantity(const Ogre::String& resourceName, unsigned int quantity)
     {
-        if (nullptr != this->itemBoxWindow)
+        if (nullptr == this->itemBoxWindow)
         {
-            ItemData** item = nullptr;
-            bool foundResource = false;
-            int freeIndex = -1;
+            return;
+        }
 
+        // Attention: which slot is used is decided ONLY from the logic thread mirror (resourceNameToIndex and
+        // the resourceNames / quantities variants), never from the live ItemData of MyGUI. Reading ItemData
+        // here used to be harmless by accident, because every setter blocked on the render thread and thereby
+        // synchronized both threads. Now that the setters are fire and forget, a read here would race against
+        // the render thread drawing those very cells.
+        int index = this->getIndexFromResourceName(resourceName);
+
+        // Not in the inventory yet, so the first free slot takes it.
+        if (-1 == index)
+        {
             for (unsigned int i = 0; i < this->itemCount->getUInt(); i++)
             {
-                item = this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(i, false);
-                if (nullptr != item)
+                if (true == this->resourceNames[i]->getListSelectedValue().empty())
                 {
-                    if ((*item)->getResourceName() == resourceName)
-                    {
-                        this->setResourceName(i, resourceName);
-                        this->setQuantity(i, this->quantities[i]->getUInt() + quantity);
-                        foundResource = true;
-                        break;
-                    }
+                    index = static_cast<int>(i);
+                    break;
                 }
             }
-
-            if (false == foundResource)
-            {
-                // Check if there is a free index
-                for (unsigned int i = 0; i < this->itemCount->getUInt(); i++)
-                {
-                    item = this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(i, false);
-                    if (nullptr != item)
-                    {
-                        if (true == (*item)->getResourceName().empty())
-                        {
-                            freeIndex = i;
-                            break;
-                        }
-                    }
-                }
-                // Add new resource to item
-
-                // Is there a free index?
-                if (-1 != freeIndex)
-                {
-                    // Image and description is associated in resource xml!
-                    this->setResourceName(freeIndex, resourceName);
-                    this->setQuantity(freeIndex, quantity); // Attention: is quantity incremented
-                }
-                else
-                {
-                    Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-                        "[MyGUIItemBoxComponent] ERROR: Could not add resource: " + resourceName + ", because there is no free index anymore, because the inventory is full, for game object: " + this->gameObjectPtr->getName());
-                }
-            }
-
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
-            {
-                // Trigger item box repaint update, so that resource will be visible
-                this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-                this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::addQuantity repaint");
         }
+
+        if (-1 == index)
+        {
+            Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                "[MyGUIItemBoxComponent] ERROR: Could not add resource: " + resourceName + ", because there is no free index anymore, because the inventory is full, for game object: " + this->gameObjectPtr->getName());
+            return;
+        }
+
+        const unsigned int slotIndex = static_cast<unsigned int>(index);
+        const unsigned int newQuantity = this->quantities[slotIndex]->getUInt() + quantity;
+
+        this->setResourceName(slotIndex, resourceName);
+        this->setQuantity(slotIndex, newQuantity);
     }
 
     void MyGUIItemBoxComponent::increaseQuantity(const Ogre::String& resourceName, unsigned int quantity)
@@ -3072,47 +3111,56 @@ namespace NOWA
 
     void MyGUIItemBoxComponent::removeQuantity(const Ogre::String& resourceName, unsigned int quantity)
     {
-        if (nullptr != this->itemBoxWindow)
+        if (nullptr == this->itemBoxWindow)
         {
-            ItemData** item = nullptr;
+            return;
+        }
 
-            int index = this->getIndexFromResourceName(resourceName);
-            if (-1 != index)
+        // Same rule as in addQuantity: decided on the mirror, ItemData is only touched inside a render command.
+        const int index = this->getIndexFromResourceName(resourceName);
+        if (-1 == index)
+        {
+            return;
+        }
+
+        const unsigned int slotIndex = static_cast<unsigned int>(index);
+        const unsigned int currentQuantity = this->quantities[slotIndex]->getUInt();
+
+        // Enough quantity, so just adapt
+        if (currentQuantity > quantity)
+        {
+            this->setQuantity(slotIndex, currentQuantity - quantity);
+            return;
+        }
+
+        // No quantity left, the item is removed from the inventory. setResourceName with an empty name also
+        // removes the entry from resourceNameToIndex - the old code wrote the variant directly and left the map
+        // entry behind, so afterwards the free slot still counted as occupied by that resource.
+        this->setResourceName(slotIndex, "");
+        this->setQuantity(slotIndex, 0);
+        this->setSellValue(slotIndex, 0.0f);
+        this->setBuyValue(slotIndex, 0.0f);
+
+        NOWA::GraphicsModule::RenderCommand renderCommand = [this, slotIndex]()
+        {
+            if (nullptr == this->itemBoxWindow)
             {
-                item = this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(index, false);
-
-                unsigned int currentQuantity = (*item)->getQuantity();
-                int differenceQuantity = currentQuantity - quantity;
-                // Enough quantity, so just adapt
-                if (differenceQuantity > 0)
-                {
-                    (*item)->setQuantity(differenceQuantity);
-                    this->quantities[index]->setValue(static_cast<unsigned int>(differenceQuantity));
-                }
-                else
-                {
-                    // No quantity, remove item from inventory
-                    this->resourceNames[index]->setListSelectedValue("");
-                    this->quantities[index]->setValue(static_cast<unsigned int>(0));
-                    this->sellValues[index]->setValue(0.0f);
-                    this->buyValues[index]->setValue(0.0f);
-
-                    // if (this->itemCount->getUInt() > 0)
-                    // 	this->itemCount->setValue(this->itemCount->getUInt() - 1);
-                    // Hier eher die resource entfernen, die inventarplätze bleiben ja gleich
-                    // this->itemBoxWindow->getItemBox()->removeItem(i);
-                    (*item)->clear();
-                }
+                return;
             }
 
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+            if (slotIndex >= this->itemBoxWindow->getItemBox()->getItemBox()->getItemCount())
             {
-                // Trigger item box repaint update, so that resource will be visible
-                this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-                this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::removeQuantity repaint");
-        }
+                return;
+            }
+
+            ItemData** item = this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(slotIndex, false);
+            if (nullptr != item && nullptr != *item)
+            {
+                (*item)->clear();
+            }
+        };
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MyGUIItemBoxComponent::removeQuantity clear");
+        this->requestRepaint();
     }
 
     void MyGUIItemBoxComponent::setSellValue(unsigned int index, Ogre::Real sellValue)
@@ -3138,12 +3186,9 @@ namespace NOWA
                     (*item)->setSellValue(sellValue);
                 }
             }
-
-            // Trigger item box repaint update, so that resource will be visible
-            this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-            this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::setSellValue repaint");
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MyGUIItemBoxComponent::setSellValue");
+        this->requestRepaint();
     }
 
     void MyGUIItemBoxComponent::setSellValue(const Ogre::String& resourceName, Ogre::Real sellValue)
@@ -3158,16 +3203,7 @@ namespace NOWA
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Could not set sell value, because the resource name: " + resourceName + " does not exist for game object: " + this->gameObjectPtr->getName());
         }
 
-        if (nullptr != this->itemBoxWindow)
-        {
-            NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
-            {
-                // Trigger item box repaint update, so that resource will be visible
-                this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-                this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
-            };
-            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::setSellValue2 repaint");
-        }
+        // No own repaint anymore: setSellValue(index, ...) above already requested one.
     }
 
     Ogre::Real MyGUIItemBoxComponent::getSellValue(unsigned int index)
@@ -3212,11 +3248,9 @@ namespace NOWA
                     (*item)->setBuyValue(buyValue);
                 }
             }
-            // Trigger item box repaint update, so that resource will be visible
-            this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-            this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::setBuyValue repaint");
+        NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "MyGUIItemBoxComponent::setBuyValue");
+        this->requestRepaint();
     }
 
     void MyGUIItemBoxComponent::setBuyValue(const Ogre::String& resourceName, Ogre::Real buyValue)
@@ -3231,13 +3265,7 @@ namespace NOWA
             Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Could not set buy value, because the resource name: " + resourceName + " does not exist for game object: " + this->gameObjectPtr->getName());
         }
 
-        NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
-        {
-            // Trigger item box repaint update, so that resource will be visible
-            this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-            this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
-        };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "MyGUIItemBoxComponent::setBuyValue2 repaint");
+        // No own repaint anymore: setBuyValue(index, ...) above already requested one.
     }
 
     Ogre::Real MyGUIItemBoxComponent::getBuyValue(unsigned int index)
@@ -3288,6 +3316,33 @@ namespace NOWA
     bool MyGUIItemBoxComponent::getAllowDragDrop(void) const
     {
         return this->allowDragDrop->getBool();
+    }
+
+    void MyGUIItemBoxComponent::setFocusable(bool focusable)
+    {
+        this->focusable->setValue(focusable);
+    }
+
+    bool MyGUIItemBoxComponent::getFocusable(void) const
+    {
+        return this->focusable->getBool();
+    }
+
+    bool MyGUIItemBoxComponent::isFocusable(void) const
+    {
+        return this->focusable->getBool();
+    }
+
+    MyGUI::ItemBox* MyGUIItemBoxComponent::getItemBoxWidget(void) const
+    {
+        // Attention: in shared widget mode 'itemBoxWindow' is set from the GOC user data in onActivated(), so this
+        // works for an own as well as for a shared item box window.
+        if (nullptr == this->itemBoxWindow)
+        {
+            return nullptr;
+        }
+
+        return this->itemBoxWindow->getItemBox()->getItemBox();
     }
 
     void MyGUIItemBoxComponent::clearItems(void)

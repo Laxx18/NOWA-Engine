@@ -636,7 +636,7 @@
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2734943123"/>
-					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="Category" data="Platform"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
@@ -723,7 +723,7 @@
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1973210724"/>
-					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="Category" data="Platform"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
@@ -1179,7 +1179,7 @@
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2353188201"/>
-					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="Category" data="Platform"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
@@ -2109,7 +2109,7 @@
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1302620487"/>
-					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="Category" data="Platform"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
@@ -2150,7 +2150,7 @@
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2674200921"/>
-					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="Category" data="Platform"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
@@ -2238,7 +2238,7 @@
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2486551799"/>
-					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="Category" data="Platform"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
@@ -2652,7 +2652,7 @@
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="997507524"/>
-					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="Category" data="Platform"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
@@ -2693,7 +2693,7 @@
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="237584222"/>
-					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="Category" data="Platform"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
@@ -2976,6 +2976,14 @@
 					<property type="6" name="ScaleSpeed" data="0.1"/>
 					<property type="12" name="ScaleRepeat" data="true"/>
 					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ComponentInventoryItemComponent" data="InventoryItemComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="2" name="SellValue" data="0"/>
+					<property type="2" name="BuyValue" data="1"/>
+					<property type="2" name="GameObjectId" data="0"/>
 				</userData>
 			</item>
 		</node>
@@ -3032,6 +3040,14 @@
 					<property type="6" name="ScaleSpeed" data="0.1"/>
 					<property type="12" name="ScaleRepeat" data="true"/>
 					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ComponentInventoryItemComponent" data="InventoryItemComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="2" name="SellValue" data="0"/>
+					<property type="2" name="BuyValue" data="1"/>
+					<property type="2" name="GameObjectId" data="0"/>
 				</userData>
 			</item>
 		</node>
@@ -3088,6 +3104,14 @@
 					<property type="6" name="ScaleSpeed" data="0.1"/>
 					<property type="12" name="ScaleRepeat" data="true"/>
 					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ComponentInventoryItemComponent" data="InventoryItemComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="2" name="SellValue" data="0"/>
+					<property type="2" name="BuyValue" data="1"/>
+					<property type="2" name="GameObjectId" data="0"/>
 				</userData>
 			</item>
 		</node>
@@ -3267,6 +3291,14 @@
 					<property type="6" name="ScaleSpeed" data="0.1"/>
 					<property type="12" name="ScaleRepeat" data="true"/>
 					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ComponentInventoryItemComponent" data="InventoryItemComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="2" name="SellValue" data="0"/>
+					<property type="2" name="BuyValue" data="1"/>
+					<property type="2" name="GameObjectId" data="0"/>
 				</userData>
 			</item>
 		</node>
@@ -3323,6 +3355,14 @@
 					<property type="6" name="ScaleSpeed" data="0.1"/>
 					<property type="12" name="ScaleRepeat" data="true"/>
 					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ComponentInventoryItemComponent" data="InventoryItemComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="2" name="SellValue" data="0"/>
+					<property type="2" name="BuyValue" data="1"/>
+					<property type="2" name="GameObjectId" data="0"/>
 				</userData>
 			</item>
 		</node>
@@ -3379,6 +3419,14 @@
 					<property type="6" name="ScaleSpeed" data="0.1"/>
 					<property type="12" name="ScaleRepeat" data="true"/>
 					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ComponentInventoryItemComponent" data="InventoryItemComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="2" name="SellValue" data="0"/>
+					<property type="2" name="BuyValue" data="1"/>
+					<property type="2" name="GameObjectId" data="0"/>
 				</userData>
 			</item>
 		</node>
@@ -3435,6 +3483,14 @@
 					<property type="6" name="ScaleSpeed" data="0.1"/>
 					<property type="12" name="ScaleRepeat" data="true"/>
 					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ComponentInventoryItemComponent" data="InventoryItemComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="2" name="SellValue" data="0"/>
+					<property type="2" name="BuyValue" data="1"/>
+					<property type="2" name="GameObjectId" data="0"/>
 				</userData>
 			</item>
 		</node>
@@ -3491,6 +3547,14 @@
 					<property type="6" name="ScaleSpeed" data="0.1"/>
 					<property type="12" name="ScaleRepeat" data="true"/>
 					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ComponentInventoryItemComponent" data="InventoryItemComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="2" name="SellValue" data="0"/>
+					<property type="2" name="BuyValue" data="1"/>
+					<property type="2" name="GameObjectId" data="0"/>
 				</userData>
 			</item>
 		</node>
@@ -3547,6 +3611,14 @@
 					<property type="6" name="ScaleSpeed" data="0.1"/>
 					<property type="12" name="ScaleRepeat" data="true"/>
 					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ComponentInventoryItemComponent" data="InventoryItemComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="2" name="SellValue" data="0"/>
+					<property type="2" name="BuyValue" data="1"/>
+					<property type="2" name="GameObjectId" data="0"/>
 				</userData>
 			</item>
 		</node>
@@ -3603,6 +3675,14 @@
 					<property type="6" name="ScaleSpeed" data="0.1"/>
 					<property type="12" name="ScaleRepeat" data="true"/>
 					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ComponentInventoryItemComponent" data="InventoryItemComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="2" name="SellValue" data="0"/>
+					<property type="2" name="BuyValue" data="1"/>
+					<property type="2" name="GameObjectId" data="0"/>
 				</userData>
 			</item>
 		</node>
@@ -3659,6 +3739,14 @@
 					<property type="6" name="ScaleSpeed" data="0.1"/>
 					<property type="12" name="ScaleRepeat" data="true"/>
 					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ComponentInventoryItemComponent" data="InventoryItemComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="2" name="SellValue" data="0"/>
+					<property type="2" name="BuyValue" data="1"/>
+					<property type="2" name="GameObjectId" data="0"/>
 				</userData>
 			</item>
 		</node>
@@ -3715,6 +3803,14 @@
 					<property type="6" name="ScaleSpeed" data="0.1"/>
 					<property type="12" name="ScaleRepeat" data="true"/>
 					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ComponentInventoryItemComponent" data="InventoryItemComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="2" name="SellValue" data="0"/>
+					<property type="2" name="BuyValue" data="1"/>
+					<property type="2" name="GameObjectId" data="0"/>
 				</userData>
 			</item>
 		</node>
@@ -3771,6 +3867,14 @@
 					<property type="6" name="ScaleSpeed" data="0.1"/>
 					<property type="12" name="ScaleRepeat" data="true"/>
 					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ComponentInventoryItemComponent" data="InventoryItemComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="2" name="SellValue" data="0"/>
+					<property type="2" name="BuyValue" data="1"/>
+					<property type="2" name="GameObjectId" data="0"/>
 				</userData>
 			</item>
 		</node>
@@ -3827,6 +3931,14 @@
 					<property type="6" name="ScaleSpeed" data="0.1"/>
 					<property type="12" name="ScaleRepeat" data="true"/>
 					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ComponentInventoryItemComponent" data="InventoryItemComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="2" name="SellValue" data="0"/>
+					<property type="2" name="BuyValue" data="1"/>
+					<property type="2" name="GameObjectId" data="0"/>
 				</userData>
 			</item>
 		</node>
@@ -3883,6 +3995,14 @@
 					<property type="6" name="ScaleSpeed" data="0.1"/>
 					<property type="12" name="ScaleRepeat" data="true"/>
 					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ComponentInventoryItemComponent" data="InventoryItemComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="2" name="SellValue" data="0"/>
+					<property type="2" name="BuyValue" data="1"/>
+					<property type="2" name="GameObjectId" data="0"/>
 				</userData>
 			</item>
 		</node>
@@ -3939,6 +4059,14 @@
 					<property type="6" name="ScaleSpeed" data="0.1"/>
 					<property type="12" name="ScaleRepeat" data="true"/>
 					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ComponentInventoryItemComponent" data="InventoryItemComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="2" name="SellValue" data="0"/>
+					<property type="2" name="BuyValue" data="1"/>
+					<property type="2" name="GameObjectId" data="0"/>
 				</userData>
 			</item>
 		</node>
@@ -3995,6 +4123,14 @@
 					<property type="6" name="ScaleSpeed" data="0.1"/>
 					<property type="12" name="ScaleRepeat" data="true"/>
 					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ComponentInventoryItemComponent" data="InventoryItemComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="2" name="SellValue" data="0"/>
+					<property type="2" name="BuyValue" data="1"/>
+					<property type="2" name="GameObjectId" data="0"/>
 				</userData>
 			</item>
 		</node>
@@ -4051,6 +4187,14 @@
 					<property type="6" name="ScaleSpeed" data="0.1"/>
 					<property type="12" name="ScaleRepeat" data="true"/>
 					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ComponentInventoryItemComponent" data="InventoryItemComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="2" name="SellValue" data="0"/>
+					<property type="2" name="BuyValue" data="1"/>
+					<property type="2" name="GameObjectId" data="0"/>
 				</userData>
 			</item>
 		</node>
@@ -4107,6 +4251,14 @@
 					<property type="6" name="ScaleSpeed" data="0.1"/>
 					<property type="12" name="ScaleRepeat" data="true"/>
 					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ComponentInventoryItemComponent" data="InventoryItemComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="2" name="SellValue" data="0"/>
+					<property type="2" name="BuyValue" data="1"/>
+					<property type="2" name="GameObjectId" data="0"/>
 				</userData>
 			</item>
 		</node>
@@ -4163,6 +4315,14 @@
 					<property type="6" name="ScaleSpeed" data="0.1"/>
 					<property type="12" name="ScaleRepeat" data="true"/>
 					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ComponentInventoryItemComponent" data="InventoryItemComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="2" name="SellValue" data="0"/>
+					<property type="2" name="BuyValue" data="1"/>
+					<property type="2" name="GameObjectId" data="0"/>
 				</userData>
 			</item>
 		</node>
@@ -4219,6 +4379,14 @@
 					<property type="6" name="ScaleSpeed" data="0.1"/>
 					<property type="12" name="ScaleRepeat" data="true"/>
 					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ComponentInventoryItemComponent" data="InventoryItemComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="2" name="SellValue" data="0"/>
+					<property type="2" name="BuyValue" data="1"/>
+					<property type="2" name="GameObjectId" data="0"/>
 				</userData>
 			</item>
 		</node>

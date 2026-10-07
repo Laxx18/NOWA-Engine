@@ -2727,11 +2727,14 @@ namespace NOWA
         fontHeight(new Variant(MyGUIButtonComponent::AttrFontHeight(), static_cast<unsigned int>(21), this->attributes)),
         textAlign(new Variant(MyGUIButtonComponent::AttrTextAlign(), {"HCenter", "Center", "Left", "Right", "HStretch", "Top", "Bottom", "VStretch", "Stretch", "Default"}, this->attributes)),
         textOffset(new Variant(MyGUIButtonComponent::AttrTextOffset(), Ogre::Vector2(0.0f, 0.0f), this->attributes)),
-        textColor(new Variant(MyGUIButtonComponent::AttrTextColor(), Ogre::Vector4(0.0f, 0.0f, 0.0, 1.0f), this->attributes))
+        textColor(new Variant(MyGUIButtonComponent::AttrTextColor(), Ogre::Vector4(0.0f, 0.0f, 0.0, 1.0f), this->attributes)),
+        focusable(new Variant(MyGUIButtonComponent::AttrFocusable(), false, this->attributes))
     {
         std::vector<Ogre::String> skins({"Button", "ButtonExpandSkin", "ButtonAcceptSkin", "ButtonLeftSkin", "ButtonRightSkin", "ButtonUpSkin", "ButtonDownSkin", "WoodButton"});
         this->skin = new Variant(MyGUIComponent::AttrSkin(), skins, this->attributes);
         this->textColor->addUserData(GameObject::AttrActionColorDialog());
+        this->focusable->setDescription("Whether this button can be reached with the gamepad or the keyboard. A MyGUIPadFocusComponent collects all focusable widgets "
+                                        "and steps the focus from one to the next.");
     }
 
     MyGUIButtonComponent::~MyGUIButtonComponent()
@@ -2768,6 +2771,11 @@ namespace NOWA
             this->setTextColor(XMLConverter::getAttribVector4(propertyElement, "data"));
             propertyElement = propertyElement->next_sibling("property");
         }
+        if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Focusable")
+        {
+            this->setFocusable(XMLConverter::getAttribBool(propertyElement, "data", false));
+            propertyElement = propertyElement->next_sibling("property");
+        }
 
         return success;
     }
@@ -2795,6 +2803,7 @@ namespace NOWA
         clonedCompPtr->setTextAlign(this->align->getListSelectedValue());
         clonedCompPtr->setTextOffset(this->textOffset->getVector2());
         clonedCompPtr->setTextColor(this->textColor->getVector4());
+        clonedCompPtr->setFocusable(this->focusable->getBool());
 
         clonedGameObjectPtr->addComponent(clonedCompPtr);
         clonedCompPtr->setOwner(clonedGameObjectPtr);
@@ -3009,6 +3018,10 @@ namespace NOWA
         {
             this->setTextColor(attribute->getVector4());
         }
+        else if (MyGUIButtonComponent::AttrFocusable() == attribute->getName())
+        {
+            this->setFocusable(attribute->getBool());
+        }
     }
 
     void MyGUIButtonComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
@@ -3043,6 +3056,12 @@ namespace NOWA
         propertyXML->append_attribute(doc.allocate_attribute("type", "10"));
         propertyXML->append_attribute(doc.allocate_attribute("name", "TextColor"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->textColor->getVector4())));
+        propertiesXML->append_node(propertyXML);
+
+        propertyXML = doc.allocate_node(node_element, "property");
+        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("name", "Focusable"));
+        propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->focusable->getBool())));
         propertiesXML->append_node(propertyXML);
     }
 
@@ -3154,6 +3173,21 @@ namespace NOWA
     Ogre::Vector4 MyGUIButtonComponent::getTextColor(void) const
     {
         return this->textColor->getVector4();
+    }
+
+    void MyGUIButtonComponent::setFocusable(bool focusable)
+    {
+        this->focusable->setValue(focusable);
+    }
+
+    bool MyGUIButtonComponent::getFocusable(void) const
+    {
+        return this->focusable->getBool();
+    }
+
+    bool MyGUIButtonComponent::isFocusable(void) const
+    {
+        return this->focusable->getBool();
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -168,6 +168,11 @@ namespace NOWA
     {
         boost::shared_ptr<EventDataDeleteGameObject> castEventData = boost::static_pointer_cast<NOWA::EventDataDeleteGameObject>(eventData);
 
+        if (true == NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getIsSimulating())
+        {
+            return;
+        }
+
         const unsigned long id = castEventData->getGameObjectId();
 
         auto it = this->selectedGameObjects.find(id);

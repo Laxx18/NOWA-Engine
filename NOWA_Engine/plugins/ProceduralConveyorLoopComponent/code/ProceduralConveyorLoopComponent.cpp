@@ -244,6 +244,8 @@ namespace NOWA
 
         assert(GraphicsModule::getInstance()->isRenderThread() && "postInit() must be called from the main/logic thread! Use queueEvent() from other threads.");
 
+        this->gameObjectPtr->changeCategory("Conveyor");
+
         // A cloned GameObject can still carry the source conveyor Item on its scene node.
         // The component pointer is not copied, so destroyConveyorMesh() cannot see that
         // stale Item. Remove every attached Item before the first clone rebuild; otherwise

@@ -966,10 +966,25 @@ namespace NOWA
 					}
 					else
 					{
+						// Attention: the behavior must be removed here, exactly like followPath does it for the
+						// 3D case. Without it the mask keeps FOLLOW_PATH_2D switched on while the path is already
+						// empty, so this method runs into the "no waypoints specified" warning below on EVERY
+						// following frame, until some script switches the behavior over.
+						if (this->actualizePathDelay == -1.0f && false == this->isSwitchOn(PATH_FINDING_WANDER))
+						{
+							this->removeBehavior(FOLLOW_PATH_2D);
+						}
+
 						Ogre::Vector3 resultVelocity = this->arrive2D(currentWaypoint.second, this->deceleration, dt);
 
 						// Check if there is an path goal observer, and call when path is reached
-						if (nullptr != this->pathGoalObserver && false == this->pPath->getWayPoints().empty())
+						//
+						// Attention: there must be NO 'getWayPoints().empty()' condition here, again like in
+						// followPath. Path::setNextWayPoint() clears the whole list by itself as soon as the last
+						// waypoint of a non repeating path without direction change is passed (round becomes 1 ->
+						// clear()). At this point the list is therefore ALWAYS empty, and that condition swallowed
+						// the callback for every one shot path - the script never learned that its flight ended.
+						if (nullptr != this->pathGoalObserver)
 						{
 							this->pathGoalObserver->onPathGoalReached();
 						}

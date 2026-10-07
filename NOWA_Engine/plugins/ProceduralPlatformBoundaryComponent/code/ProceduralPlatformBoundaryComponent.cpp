@@ -242,6 +242,8 @@ namespace NOWA
 
         this->boundaryMeshName = "ProceduralBoundaryMesh_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
 
+        this->gameObjectPtr->changeCategory("Platform");
+
         this->createSegmentOverlay();
 
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralPlatformBoundaryComponent::handleMeshModifyMode), EventDataEditorMode::getStaticEventType());

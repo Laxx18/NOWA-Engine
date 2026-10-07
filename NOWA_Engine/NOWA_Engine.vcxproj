@@ -218,6 +218,7 @@
     <ClInclude Include="gameobject\GraphicsConfigurationComponent.h" />
     <ClInclude Include="gameobject\InputDeviceComponent.h" />
     <ClInclude Include="gameobject\MeshEditComponentBase.h" />
+    <ClInclude Include="gameobject\MyGUIPadFocusComponent.h" />
     <ClInclude Include="gameobject\MyGUISpriteComponentBase.h" />
     <ClInclude Include="gameobject\PhysicsActiveComplexVehicleComponent.h" />
     <ClInclude Include="gameobject\PhysicsActiveSpiderComponent.h" />
@@ -445,6 +446,7 @@
     <ClCompile Include="gameobject\DistributedComponent.cpp" />
     <ClCompile Include="gameobject\GraphicsConfigurationComponent.cpp" />
     <ClCompile Include="gameobject\InputDeviceComponent.cpp" />
+    <ClCompile Include="gameobject\MyGUIPadFocusComponent.cpp" />
     <ClCompile Include="gameobject\PhysicsActiveComplexVehicleComponent.cpp" />
     <ClCompile Include="gameobject\PhysicsActiveSpiderComponent.cpp" />
     <ClCompile Include="gameobject\PhysicsActiveVehicleComponent.cpp" />

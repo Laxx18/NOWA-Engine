@@ -152,6 +152,15 @@ namespace NOWA
 
 		virtual bool isActivated(void) const override;
 
+		/**
+         * @brief   Gets whether this widget can be reached with the gamepad or the keyboard. Returns false here and
+         *          is overridden by every component which offers a 'Focusable' property. See MyGUIPadFocusComponent.
+         */
+        virtual bool isFocusable(void) const
+        {
+            return false;
+        }
+
 		void setRealPosition(const Ogre::Vector2& position);
 
 		Ogre::Vector2 getRealPosition(void) const;
@@ -678,12 +687,22 @@ namespace NOWA
 
 		Ogre::Vector4 getTextColor(void) const;
 
+		void setFocusable(bool focusable);
+
+        bool getFocusable(void) const;
+
+        /**
+         * @see     MyGUIComponent::isFocusable
+         */
+        virtual bool isFocusable(void) const override;
+
 	public:
 		static const Ogre::String AttrCaption(void) { return "Caption"; }
 		static const Ogre::String AttrFontHeight(void) { return "Font Height"; }
 		static const Ogre::String AttrTextAlign(void) { return "Text Align"; }
 		static const Ogre::String AttrTextOffset(void) { return "Text Offset"; }
 		static const Ogre::String AttrTextColor(void) { return "Text Color"; }
+        static const Ogre::String AttrFocusable(void) { return "Focusable"; }
 	protected:
 		virtual void mouseButtonClick(MyGUI::Widget* sender) override;
 
@@ -698,6 +717,7 @@ namespace NOWA
 		Variant* textAlign;
 		Variant* textOffset;
 		Variant* textColor;
+        Variant* focusable;
 	};
 	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -6,7 +6,7 @@
 #include "utilities/LoadingIndicator.h"
 
 // Attention: TEMPORARY diagnostic for the loading indicator. Comment out when done.
-#define NOWA_LOADING_INDICATOR_TIMING
+// #define NOWA_LOADING_INDICATOR_TIMING
 
 #include <Animation/OgreBone.h>
 #include <chrono>
@@ -15,8 +15,8 @@
 // Attention: TEMPORARY diagnostic for the suspended-render wait and for the render loop itself.
 // Comment the define out once the measurement is done. Everything it adds is aggregated, never one
 // log line per iteration.
-#define NOWA_SUSPEND_WAIT_TIMING
-#define CLOSURE_DEBUG
+// #define NOWA_SUSPEND_WAIT_TIMING
+// #define CLOSURE_DEBUG
 
 #ifdef NOWA_SUSPEND_WAIT_TIMING
 
@@ -1136,34 +1136,7 @@ namespace NOWA
                 return hiddenWindowFrameRate;
             }
 
-            // Switchable via "LimitFrameRate" in the config (default off on PC: open end frame rate, e.g. for profiling frame drops)
-            if (false == NOWA::Core::getSingletonPtr()->getOptionFrameRateLimitEnabled())
-            {
-                return 0.0;
-            }
-
-            const int desiredFrames = static_cast<int>(NOWA::Core::getSingletonPtr()->getOptionDesiredFramesUpdates());
-            if (desiredFrames <= 0)
-            {
-                return 0.0;
-            }
-
-            if (true == renderWindow->getVSync())
-            {
-                // VSync interval 2 at 60 Hz = 30 fps etc.
-                unsigned int vsyncInterval = renderWindow->getVSyncInterval();
-                if (0 == vsyncInterval)
-                {
-                    vsyncInterval = 1;
-                }
-                const int vsyncFrameRate = static_cast<int>(displayRefreshRate / vsyncInterval);
-                if (desiredFrames + 1 >= vsyncFrameRate)
-                {
-                    return 0.0;
-                }
-            }
-
-            return static_cast<double>(desiredFrames);
+            return 0;
         };
 
         while (true == this->bRunning)
@@ -1312,6 +1285,7 @@ namespace NOWA
                 auto* workspaceModule = AppStateManager::getSingletonPtr()->getWorkspaceModule();
                 if (nullptr != workspaceModule)
                 {
+#if 0
                     // Attention: The time spent waiting in the frame limiter is no GPU/CPU load. Without subtracting it, a limit of e.g. 30 fps
                     // would look like a slow frame to the adaptive quality and it would reduce the quality for nothing.
                     Ogre::Real workTime = deltaTime - static_cast<Ogre::Real>(pacingWaitOfThisFrame);
@@ -1320,6 +1294,9 @@ namespace NOWA
                         workTime = 0.0f;
                     }
                     workspaceModule->updateAdaptiveQuality(workTime);
+#else
+                    workspaceModule->updateAdaptiveQuality(deltaTime);
+#endif
                 }
 
                 NOWA::InputDeviceCore::getSingletonPtr()->capture(deltaTime);

@@ -1103,6 +1103,11 @@ void ResourcesPanelGameObjects::handleGameObjectDeleted(NOWA::EventDataPtr event
         return;
     }
 
+	if (true == NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getIsSimulating())
+	{
+        return;
+    }
+
     boost::shared_ptr<NOWA::EventDataDeleteGameObject> castEventData = boost::static_pointer_cast<NOWA::EventDataDeleteGameObject>(eventData);
 
     this->pendingDeletionIds.erase(castEventData->getGameObjectId());

@@ -50,6 +50,7 @@
 #include "MyGUIControllerComponents.h"
 #include "MyGUIItemBoxComponent.h"
 #include "MyGUIMiniMapComponent.h"
+#include "MyGUIPadFocusComponent.h"
 #include "NavMeshComponent.h"
 #include "NavMeshTerraComponent.h"
 #include "NodeComponent.h"
@@ -294,6 +295,7 @@ namespace NOWA
         this->componentFactory.registerClass<MyGUIEdgeHideControllerComponent>(MyGUIEdgeHideControllerComponent::getStaticClassId(), MyGUIEdgeHideControllerComponent::getStaticClassName());
         this->componentFactory.registerClass<MyGUIRepeatClickControllerComponent>(MyGUIRepeatClickControllerComponent::getStaticClassId(), MyGUIRepeatClickControllerComponent::getStaticClassName());
         this->componentFactory.registerClass<MyGUIMiniMapComponent>(MyGUIMiniMapComponent::getStaticClassId(), MyGUIMiniMapComponent::getStaticClassName());
+        this->componentFactory.registerClass<MyGUIPadFocusComponent>(MyGUIPadFocusComponent::getStaticClassId(), MyGUIPadFocusComponent::getStaticClassName());
         this->componentFactory.registerClass<GraphicsConfigurationComponent>(GraphicsConfigurationComponent::getStaticClassId(), GraphicsConfigurationComponent::getStaticClassName());
         this->componentFactory.registerClass<PlayerStartComponent>(PlayerStartComponent::getStaticClassId(), PlayerStartComponent::getStaticClassName());
     }

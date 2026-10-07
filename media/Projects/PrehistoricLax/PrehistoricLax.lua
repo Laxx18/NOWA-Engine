@@ -836,10 +836,14 @@ PrehistoricLax["connect"] = function(gameObject)
         otherGameObject = AppStateManager:getGameObjectController():castGameObject(otherGameObject);
         if (otherGameObject:getCategory() == "Item") then
             if (otherGameObject:getTagName() == "Coin") then
-                AppStateManager:getGameObjectController():deleteGameObject(otherGameObject:getId());
-                coins:setValueNumber(coins:getValueNumber() + 1);
-                moneySound:setActivated(true);
-                updateHud();
+                local inventoryItem = otherGameObject:getInventoryItemComponent();
+                if (inventoryItem ~= nil) then
+                    inventoryItem:addQuantityToInventory(mainGameObject:getId(), 1, true);
+                    AppStateManager:getGameObjectController():deleteGameObject(otherGameObject:getId());
+                    coins:setValueNumber(coins:getValueNumber() + 1);
+                    moneySound:setActivated(true);
+                    updateHud();
+                end
             elseif (otherGameObject:getTagName() == "Energy") then
                 AppStateManager:getGameObjectController():deleteGameObject(otherGameObject:getId());
                 prehistoricLax:getSimpleSoundComponentFromName("Energy"):setActivated(true);

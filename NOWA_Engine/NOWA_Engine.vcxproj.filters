@@ -701,6 +701,9 @@
     <ClInclude Include="gameobject\PlayerStartComponent.h">
       <Filter>gameobject</Filter>
     </ClInclude>
+    <ClInclude Include="gameobject\MyGUIPadFocusComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
@@ -1277,6 +1280,9 @@
       <Filter>gameobject</Filter>
     </ClCompile>
     <ClCompile Include="gameobject\PlayerStartComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\MyGUIPadFocusComponent.cpp">
       <Filter>gameobject</Filter>
     </ClCompile>
   </ItemGroup>

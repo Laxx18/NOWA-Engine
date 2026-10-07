@@ -258,6 +258,69 @@
 					<property type="7" name="ContactFunctionName" data=""/>
 					<property type="7" name="ContactOnceFunctionName" data=""/>
 					<property type="7" name="ContactScratchFunctionName" data=""/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="Category1" data="Platform"/>
+					<property type="7" name="Category2" data="BossAreaDoor"/>
+					<property type="8" name="Friction" data="0.8 0.4"/>
+					<property type="6" name="Softness" data="0.01"/>
+					<property type="6" name="Elasticity" data="0.01"/>
+					<property type="6" name="SurfaceThickness" data="0.125"/>
+					<property type="12" name="Collideable" data="false"/>
+					<property type="7" name="ContactBehavior" data="None"/>
+					<property type="6" name="ContactSpeed" data="10"/>
+					<property type="9" name="ContactDirection" data="0 0 -1"/>
+					<property type="7" name="OneWayAxis" data="Y"/>
+					<property type="7" name="OneWayAllowedDirection" data="Positive"/>
+					<property type="6" name="WallSlideAngle" data="68"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data=""/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="Category1" data="Player"/>
+					<property type="7" name="Category2" data="BossAreaDoor"/>
+					<property type="8" name="Friction" data="0 0"/>
+					<property type="6" name="Softness" data="0.1"/>
+					<property type="6" name="Elasticity" data="0"/>
+					<property type="6" name="SurfaceThickness" data="0.082"/>
+					<property type="12" name="Collideable" data="true"/>
+					<property type="7" name="ContactBehavior" data="WallSlide"/>
+					<property type="6" name="ContactSpeed" data="10"/>
+					<property type="9" name="ContactDirection" data="0 0 -1"/>
+					<property type="7" name="OneWayAxis" data="Y"/>
+					<property type="7" name="OneWayAllowedDirection" data="Positive"/>
+					<property type="6" name="WallSlideAngle" data="68"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data=""/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="Category1" data="Weapon"/>
+					<property type="7" name="Category2" data="BossAreaDoor"/>
+					<property type="8" name="Friction" data="0.8 0.4"/>
+					<property type="6" name="Softness" data="0.01"/>
+					<property type="6" name="Elasticity" data="0.01"/>
+					<property type="6" name="SurfaceThickness" data="0.125"/>
+					<property type="12" name="Collideable" data="false"/>
+					<property type="7" name="ContactBehavior" data="None"/>
+					<property type="6" name="ContactSpeed" data="10"/>
+					<property type="9" name="ContactDirection" data="0 0 -1"/>
+					<property type="7" name="OneWayAxis" data="Y"/>
+					<property type="7" name="OneWayAllowedDirection" data="Positive"/>
+					<property type="6" name="WallSlideAngle" data="68"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data=""/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
 					<property type="7" name="ComponentMyGUIWindowComponent" data="MyGUIWindowComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -265,7 +328,7 @@
 					<property type="2" name="Id" data="2755466205"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="8" name="Position" data="0 0.9"/>
-					<property type="8" name="Size" data="1 0.1"/>
+					<property type="8" name="Size" data="1 0.11"/>
 					<property type="7" name="Align" data="HCenter"/>
 					<property type="7" name="Layer" data="Back"/>
 					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
@@ -449,6 +512,211 @@
 					<property type="12" name="ReadOnly" data="true"/>
 					<property type="12" name="MultiLine" data="false"/>
 					<property type="12" name="WordWrap" data="false"/>
+					<property type="7" name="ComponentMyGUIButtonComponent" data="MyGUIButtonComponent"/>
+					<property type="7" name="Name" data="TakeButton"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="2222594946"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.4 0.2"/>
+					<property type="8" name="Size" data="0.05 0.3"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Back"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="2755466205"/>
+					<property type="7" name="Skin" data="WoodButton"/>
+					<property type="12" name="CommonWidget" data="false"/>
+					<property type="7" name="Caption" data="Take"/>
+					<property type="2" name="FontHeight" data="16"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="0.88 0.88 0.88 1"/>
+					<property type="12" name="Focusable" data="true"/>
+					<property type="7" name="ComponentMyGUIButtonComponent" data="MyGUIButtonComponent"/>
+					<property type="7" name="Name" data="UseButton"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="2222594946"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.4 0.55"/>
+					<property type="8" name="Size" data="0.05 0.3"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Back"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="2755466205"/>
+					<property type="7" name="Skin" data="WoodButton"/>
+					<property type="12" name="CommonWidget" data="false"/>
+					<property type="7" name="Caption" data="Use"/>
+					<property type="2" name="FontHeight" data="16"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="0.88 0.88 0.88 1"/>
+					<property type="12" name="Focusable" data="true"/>
+					<property type="7" name="ComponentMyGUIButtonComponent" data="MyGUIButtonComponent"/>
+					<property type="7" name="Name" data="PullButton"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="2222594946"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.452 0.2"/>
+					<property type="8" name="Size" data="0.05 0.3"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Back"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="2755466205"/>
+					<property type="7" name="Skin" data="WoodButton"/>
+					<property type="12" name="CommonWidget" data="false"/>
+					<property type="7" name="Caption" data="Pull"/>
+					<property type="2" name="FontHeight" data="16"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="0.88 0.88 0.88 1"/>
+					<property type="12" name="Focusable" data="true"/>
+					<property type="7" name="ComponentMyGUIButtonComponent" data="MyGUIButtonComponent"/>
+					<property type="7" name="Name" data="TalkButton"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="2222594946"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.452 0.55"/>
+					<property type="8" name="Size" data="0.05 0.3"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Back"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="2755466205"/>
+					<property type="7" name="Skin" data="WoodButton"/>
+					<property type="12" name="CommonWidget" data="false"/>
+					<property type="7" name="Caption" data="Talk"/>
+					<property type="2" name="FontHeight" data="16"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="0.88 0.88 0.88 1"/>
+					<property type="12" name="Focusable" data="true"/>
+					<property type="7" name="ComponentMyGUIItemBoxComponent" data="MyGUIItemBoxComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="2413097247"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.52 0"/>
+					<property type="8" name="Size" data="0.5 1"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Overlapped"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="2755466205"/>
+					<property type="7" name="Skin" data="WindowCSX"/>
+					<property type="7" name="Style" data="ItemBoxInventory"/>
+					<property type="12" name="CommonWidget" data="false"/>
+					<property type="12" name="Movable" data="false"/>
+					<property type="7" name="WindowCaption" data=""/>
+					<property type="7" name="ResourceLocationName" data="InventoryItemsPrehistoricLax.xml"/>
+					<property type="12" name="UseToolTip" data="true"/>
+					<property type="12" name="AllowDragDrop" data="true"/>
+					<property type="12" name="Focusable" data="true"/>
+					<property type="2" name="ItemCount" data="15"/>
+					<property type="7" name="ResourceName0" data="CoinItem"/>
+					<property type="7" name="Quantity0" data="0"/>
+					<property type="6" name="SellValue0" data="0"/>
+					<property type="6" name="BuyValue0" data="0"/>
+					<property type="2" name="GameObjectId0" data="0"/>
+					<property type="2" name="SpriteComponentIndex0" data="-1"/>
+					<property type="7" name="ResourceName1" data="ShoesSpeedItem"/>
+					<property type="7" name="Quantity1" data="0"/>
+					<property type="6" name="SellValue1" data="0"/>
+					<property type="6" name="BuyValue1" data="0"/>
+					<property type="2" name="GameObjectId1" data="0"/>
+					<property type="2" name="SpriteComponentIndex1" data="-1"/>
+					<property type="7" name="ResourceName2" data="ShoesDoubleJumpItem"/>
+					<property type="7" name="Quantity2" data="0"/>
+					<property type="6" name="SellValue2" data="0"/>
+					<property type="6" name="BuyValue2" data="0"/>
+					<property type="2" name="GameObjectId2" data="0"/>
+					<property type="2" name="SpriteComponentIndex2" data="-1"/>
+					<property type="7" name="ResourceName3" data="ShoesSlideItem"/>
+					<property type="7" name="Quantity3" data="0"/>
+					<property type="6" name="SellValue3" data="0"/>
+					<property type="6" name="BuyValue3" data="0"/>
+					<property type="2" name="GameObjectId3" data="0"/>
+					<property type="2" name="SpriteComponentIndex3" data="-1"/>
+					<property type="7" name="ResourceName4" data="BirdItem"/>
+					<property type="7" name="Quantity4" data="0"/>
+					<property type="6" name="SellValue4" data="0"/>
+					<property type="6" name="BuyValue4" data="0"/>
+					<property type="2" name="GameObjectId4" data="0"/>
+					<property type="2" name="SpriteComponentIndex4" data="-1"/>
+					<property type="7" name="ResourceName5" data="FlowerItem"/>
+					<property type="7" name="Quantity5" data="0"/>
+					<property type="6" name="SellValue5" data="0"/>
+					<property type="6" name="BuyValue5" data="0"/>
+					<property type="2" name="GameObjectId5" data="0"/>
+					<property type="2" name="SpriteComponentIndex5" data="-1"/>
+					<property type="7" name="ResourceName6" data="YellowKeyItem"/>
+					<property type="7" name="Quantity6" data="0"/>
+					<property type="6" name="SellValue6" data="0"/>
+					<property type="6" name="BuyValue6" data="0"/>
+					<property type="2" name="GameObjectId6" data="0"/>
+					<property type="2" name="SpriteComponentIndex6" data="-1"/>
+					<property type="7" name="ResourceName7" data="RedKeyItem"/>
+					<property type="7" name="Quantity7" data="0"/>
+					<property type="6" name="SellValue7" data="0"/>
+					<property type="6" name="BuyValue7" data="0"/>
+					<property type="2" name="GameObjectId7" data="0"/>
+					<property type="2" name="SpriteComponentIndex7" data="-1"/>
+					<property type="7" name="ResourceName8" data="ClubItem"/>
+					<property type="7" name="Quantity8" data="0"/>
+					<property type="6" name="SellValue8" data="0"/>
+					<property type="6" name="BuyValue8" data="0"/>
+					<property type="2" name="GameObjectId8" data="0"/>
+					<property type="2" name="SpriteComponentIndex8" data="-1"/>
+					<property type="7" name="ResourceName9" data="ClubStrongItem"/>
+					<property type="7" name="Quantity9" data="0"/>
+					<property type="6" name="SellValue9" data="0"/>
+					<property type="6" name="BuyValue9" data="0"/>
+					<property type="2" name="GameObjectId9" data="0"/>
+					<property type="2" name="SpriteComponentIndex9" data="-1"/>
+					<property type="7" name="ResourceName10" data="SwordItem"/>
+					<property type="7" name="Quantity10" data="0"/>
+					<property type="6" name="SellValue10" data="0"/>
+					<property type="6" name="BuyValue10" data="0"/>
+					<property type="2" name="GameObjectId10" data="0"/>
+					<property type="2" name="SpriteComponentIndex10" data="-1"/>
+					<property type="7" name="ResourceName11" data="GearItem"/>
+					<property type="7" name="Quantity11" data="0"/>
+					<property type="6" name="SellValue11" data="0"/>
+					<property type="6" name="BuyValue11" data="0"/>
+					<property type="2" name="GameObjectId11" data="0"/>
+					<property type="2" name="SpriteComponentIndex11" data="-1"/>
+					<property type="7" name="ResourceName12" data="StoneTabletItem"/>
+					<property type="7" name="Quantity12" data="0"/>
+					<property type="6" name="SellValue12" data="0"/>
+					<property type="6" name="BuyValue12" data="0"/>
+					<property type="2" name="GameObjectId12" data="0"/>
+					<property type="2" name="SpriteComponentIndex12" data="-1"/>
+					<property type="7" name="ResourceName13" data="SheetMusicItem"/>
+					<property type="7" name="Quantity13" data="0"/>
+					<property type="6" name="SellValue13" data="0"/>
+					<property type="6" name="BuyValue13" data="0"/>
+					<property type="2" name="GameObjectId13" data="0"/>
+					<property type="2" name="SpriteComponentIndex13" data="-1"/>
+					<property type="7" name="ResourceName14" data="CrystalOrbItem"/>
+					<property type="7" name="Quantity14" data="0"/>
+					<property type="6" name="SellValue14" data="0"/>
+					<property type="6" name="BuyValue14" data="0"/>
+					<property type="2" name="GameObjectId14" data="0"/>
+					<property type="2" name="SpriteComponentIndex14" data="-1"/>
+					<property type="7" name="ComponentMyGUIPadFocusComponent" data="MyGUIPadFocusComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="NavigationDelay" data="0.25"/>
+					<property type="7" name="ConfirmAction" data="ACTION"/>
+					<property type="12" name="ShowPointer" data="true"/>
 					<property type="7" name="ComponentExplorationMapComponent" data="ExplorationMapComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -474,8 +742,8 @@
 			</item>
 		</node>
 		<node name="WeaponStick" id="3232914531">
-			<position x="1.57052" y="37.0987" z="-6.55203"/>
-			<rotation qw="0.742635" qx="-0.490219" qy="0.314747" qz="-0.330322"/>
+			<position x="51.6462" y="18.2158" z="-7.2632"/>
+			<rotation qw="0.314747" qx="0.330322" qy="-0.742635" qz="-0.490219"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="WeaponStick" meshFile="monster_item_cudgel.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="items_mat.004"/>
@@ -569,8 +837,8 @@
 			</item>
 		</node>
 		<node name="PrehistoricLax" id="3286738008">
-			<position x="1.35372" y="36.3279" z="-7"/>
-			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
+			<position x="51.863" y="17.445" z="-6.81523"/>
+			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="PrehistoricLax" meshFile="PrehistoricLaxBoy.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="PrehistoricLaxBoy"/>

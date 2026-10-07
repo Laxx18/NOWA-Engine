@@ -494,7 +494,7 @@ namespace NOWA
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralPipeComponent::handleGameObjectSelected), NOWA::EventDataGameObjectSelected::getStaticEventType());
         AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ProceduralPipeComponent::handleComponentManuallyDeleted), EventDataDeleteComponent::getStaticEventType());
 
-        this->gameObjectPtr->changeCategory("Pipe");
+        this->gameObjectPtr->changeCategory("Platform");
 
         // A cloned GameObject can still carry the source pipe Item on its scene node.
         // The component pointer is not copied, so destroyPipeMesh() cannot see that

@@ -1,0 +1,386 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+===========================================================================
+  InventoryItemsPrehistoricLax.png  -  1258 x 384 px
+===========================================================================
+
+  Same layout rules as InventoryItemsTemplateClean.xml - only the number of item
+  columns grew from 9 to 15, so the BackImage and SelectImage columns moved to the
+  right, behind the last item. Cell size, state rows and the tool tip row are unchanged.
+
+  ITEM ICON GRID  (74x74 px per cell, border included, step=74)
+
+    Item i: x = i * 74
+    y=0   Normal
+    y=74  Refuse   (red tint + red contour, drop not allowed)
+    y=148 Accept   (green tint + green contour, drop allowed)
+    y=222 (only BackImage Select state used here, items leave this row empty)
+
+  TOOLTIP ROW  (32x32 px per cell, step=32)  y=352
+    Tool tip i: x = i * 32
+
+  BACKIMAGE  (cell background)  x=1110, size=74x74
+    y=0   - None / Normal  (default cell)
+    y=74  - Active         (mouse hover, also the gamepad focus)
+    y=148 - Pressed        (cell selected, NOT hovered - see note below)
+    y=222 - Select         (cell selected AND hovered)
+
+  SELECTIMAGE  (border overlay, drawn ABOVE the item)  x=1184, size=74x74
+    y=0   - Normal  (thin frame, shown on every cell while nothing is dragged)
+    y=74  - Refuse  (drop not allowed, red border)
+    y=148 - Accept  (drop allowed, green border)
+    y=222 - None    (invisible, no drag)
+
+  Note on 'Pressed': CellView::update picks 'Select' for a hovered selected cell
+  and 'Pressed' for a selected cell the mouse is NOT over. 'Pressed' is therefore
+  the lasting marker of the chosen item (e.g. the key picked for 'Use') and is
+  drawn with a gold border, not as a short click feedback.
+
+  Items:
+     0  x=0     tooltip x=0    CoinItem             Coins
+     1  x=74    tooltip x=32   ShoesSpeedItem       Lightning Boots
+     2  x=148   tooltip x=64   ShoesDoubleJumpItem  Winged Boots
+     3  x=222   tooltip x=96   ShoesSlideItem       Bone Runner Boots
+     4  x=296   tooltip x=128  BirdItem             Sky Bird
+     5  x=370   tooltip x=160  FlowerItem           Magnolia
+     6  x=444   tooltip x=192  YellowKeyItem        Yellow Key
+     7  x=518   tooltip x=224  RedKeyItem           Red Key
+     8  x=592   tooltip x=256  ClubItem             Club
+     9  x=666   tooltip x=288  ClubStrongItem       Spiked Club
+    10  x=740   tooltip x=320  SwordItem            Sword
+    11  x=814   tooltip x=352  GearItem             Stone Gear
+    12  x=888   tooltip x=384  StoneTabletItem      Stone Tablet
+    13  x=962   tooltip x=416  SheetMusicItem       Sheet Music
+    14  x=1036  tooltip x=448  CrystalOrbItem       Crystal Orb
+
+===========================================================================
+-->
+<MyGUI type="Resource">
+
+    <!-- ==================================================================
+         CELL BACKGROUND  -  pic_ItemBackImage
+         Texture: InventoryItemsPrehistoricLax.png  |  Cell size: 74x74
+         ================================================================== -->
+    <Resource type="ResourceImageSet" name="pic_ItemBackImage">
+        <Group name="States" texture="InventoryItemsPrehistoricLax.png" size="74 74">
+            <Index name="None">
+                <Frame point="1110 0"/>   <!-- x=1110 y=0   - default, no interaction -->
+            </Index>
+            <Index name="Normal">
+                <Frame point="1110 0"/>   <!-- x=1110 y=0   - default -->
+            </Index>
+            <Index name="Active">
+                <Frame point="1110 74"/>  <!-- x=1110 y=74  - mouse hover / gamepad focus -->
+            </Index>
+            <Index name="Pressed">
+                <Frame point="1110 148"/> <!-- x=1110 y=148 - selected, not hovered -->
+            </Index>
+            <Index name="Select">
+                <Frame point="1110 222"/> <!-- x=1110 y=222 - selected and hovered -->
+            </Index>
+        </Group>
+    </Resource>
+
+    <!-- ==================================================================
+         DRAG-AND-DROP BORDER  -  pic_ItemSelectImage
+         Texture: InventoryItemsPrehistoricLax.png  |  Cell size: 74x74
+         ================================================================== -->
+    <Resource type="ResourceImageSet" name="pic_ItemSelectImage">
+        <Group name="States" texture="InventoryItemsPrehistoricLax.png" size="74 74">
+            <Index name="None">
+                <Frame point="1184 222"/> <!-- x=1184 y=222 - invisible, no drag -->
+            </Index>
+            <Index name="Normal">
+                <Frame point="1184 0"/>   <!-- x=1184 y=0   - thin frame on every cell -->
+            </Index>
+            <Index name="Refuse">
+                <Frame point="1184 74"/>  <!-- x=1184 y=74  - drop not allowed, red border -->
+            </Index>
+            <Index name="Accept">
+                <Frame point="1184 148"/> <!-- x=1184 y=148 - drop allowed, green border -->
+            </Index>
+        </Group>
+    </Resource>
+
+    <!-- ==================================================================
+         ITEM DEFINITIONS
+         To add a new item: copy one block, change name and RefID.
+         ================================================================== -->
+
+    <Resource type="ResourceItemInfo" name="CoinItem">
+        <Name>Coins</Name>
+        <Description>Shiny coins stamped with an ammonite. Traders all over the valley take them.</Description>
+        <Image RefID="pic_CoinItem"/>
+    </Resource>
+
+    <Resource type="ResourceItemInfo" name="ShoesSpeedItem">
+        <Name>Lightning Boots</Name>
+        <Description>Fur boots marked with a lightning bolt. Wearing them, you run much faster.</Description>
+        <Image RefID="pic_ShoesSpeedItem"/>
+    </Resource>
+
+    <Resource type="ResourceItemInfo" name="ShoesDoubleJumpItem">
+        <Name>Winged Boots</Name>
+        <Description>Red fur boots with a feathered wing at the heel. They let you jump a second time in mid-air.</Description>
+        <Image RefID="pic_ShoesDoubleJumpItem"/>
+    </Resource>
+
+    <Resource type="ResourceItemInfo" name="ShoesSlideItem">
+        <Name>Bone Runner Boots</Name>
+        <Description>Boots on a polished bone runner. Duck while running to slide far across the ground.</Description>
+        <Image RefID="pic_ShoesSlideItem"/>
+    </Resource>
+
+    <Resource type="ResourceItemInfo" name="BirdItem">
+        <Name>Sky Bird</Name>
+        <Description>A little bird that never leaves your side. Its spirit carries you up into the air.</Description>
+        <Image RefID="pic_BirdItem"/>
+    </Resource>
+
+    <Resource type="ResourceItemInfo" name="FlowerItem">
+        <Name>Magnolia</Name>
+        <Description>A rare blossom from the old forest. Someone is surely looking for it.</Description>
+        <Image RefID="pic_FlowerItem"/>
+    </Resource>
+
+    <Resource type="ResourceItemInfo" name="YellowKeyItem">
+        <Name>Yellow Key</Name>
+        <Description>A bright yellow key with a round bow. It fits a yellow lock.</Description>
+        <Image RefID="pic_YellowKeyItem"/>
+    </Resource>
+
+    <Resource type="ResourceItemInfo" name="RedKeyItem">
+        <Name>Red Key</Name>
+        <Description>A red key with a diamond shaped bow. It fits a red lock.</Description>
+        <Image RefID="pic_RedKeyItem"/>
+    </Resource>
+
+    <Resource type="ResourceItemInfo" name="ClubItem">
+        <Name>Club</Name>
+        <Description>A sturdy wooden club with a leather grip. Simple, but it hits hard.</Description>
+        <Image RefID="pic_ClubItem"/>
+    </Resource>
+
+    <Resource type="ResourceItemInfo" name="ClubStrongItem">
+        <Name>Spiked Club</Name>
+        <Description>A heavy club studded with flint spikes and bound with rope. Much stronger than a plain club.</Description>
+        <Image RefID="pic_ClubStrongItem"/>
+    </Resource>
+
+    <Resource type="ResourceItemInfo" name="SwordItem">
+        <Name>Sword</Name>
+        <Description>A gleaming sword from a forgotten age. Sharper and faster than any club.</Description>
+        <Image RefID="pic_SwordItem"/>
+    </Resource>
+
+    <Resource type="ResourceItemInfo" name="GearItem">
+        <Name>Stone Gear</Name>
+        <Description>A carved stone gear wheel. It must belong to some ancient machine.</Description>
+        <Image RefID="pic_GearItem"/>
+    </Resource>
+
+    <Resource type="ResourceItemInfo" name="StoneTabletItem">
+        <Name>Stone Tablet</Name>
+        <Description>An old stone tablet covered with carved signs: a sun, a spiral, waves and a dinosaur.</Description>
+        <Image RefID="pic_StoneTabletItem"/>
+    </Resource>
+
+    <Resource type="ResourceItemInfo" name="SheetMusicItem">
+        <Name>Sheet Music</Name>
+        <Description>A sheet of music with four notes on it. Maybe they are meant for a piano.</Description>
+        <Image RefID="pic_SheetMusicItem"/>
+    </Resource>
+
+    <Resource type="ResourceItemInfo" name="CrystalOrbItem">
+        <Name>Crystal Orb</Name>
+        <Description>A glowing crystal orb held by bone claws. Its light pulses like a heartbeat - this is what you are looking for.</Description>
+        <Image RefID="pic_CrystalOrbItem"/>
+    </Resource>
+
+    <!-- ==================================================================
+         IMAGE RESOURCES  -  sprite sheet coordinates
+         States group:  74x74,  3 rows  (Normal y=0 / Refuse y=74 / Accept y=148)
+         ToolTip group: 32x32,  y=352
+         ================================================================== -->
+
+    <!-- Item 0  |  Column x=0    |  Tooltip x=0   y=352  |  Coins -->
+    <Resource type="ResourceImageSet" name="pic_CoinItem">
+        <Group name="States" texture="InventoryItemsPrehistoricLax.png" size="74 74">
+            <Index name="Normal"> <Frame point="0 0"/>   </Index>
+            <Index name="Refuse"> <Frame point="0 74"/>  </Index>
+            <Index name="Accept"> <Frame point="0 148"/> </Index>
+        </Group>
+        <Group name="ToolTip" texture="InventoryItemsPrehistoricLax.png" size="32 32">
+            <Index name="Normal"> <Frame point="0 352"/> </Index>
+        </Group>
+    </Resource>
+
+    <!-- Item 1  |  Column x=74   |  Tooltip x=32  y=352  |  Lightning Boots -->
+    <Resource type="ResourceImageSet" name="pic_ShoesSpeedItem">
+        <Group name="States" texture="InventoryItemsPrehistoricLax.png" size="74 74">
+            <Index name="Normal"> <Frame point="74 0"/>   </Index>
+            <Index name="Refuse"> <Frame point="74 74"/>  </Index>
+            <Index name="Accept"> <Frame point="74 148"/> </Index>
+        </Group>
+        <Group name="ToolTip" texture="InventoryItemsPrehistoricLax.png" size="32 32">
+            <Index name="Normal"> <Frame point="32 352"/> </Index>
+        </Group>
+    </Resource>
+
+    <!-- Item 2  |  Column x=148  |  Tooltip x=64  y=352  |  Winged Boots -->
+    <Resource type="ResourceImageSet" name="pic_ShoesDoubleJumpItem">
+        <Group name="States" texture="InventoryItemsPrehistoricLax.png" size="74 74">
+            <Index name="Normal"> <Frame point="148 0"/>   </Index>
+            <Index name="Refuse"> <Frame point="148 74"/>  </Index>
+            <Index name="Accept"> <Frame point="148 148"/> </Index>
+        </Group>
+        <Group name="ToolTip" texture="InventoryItemsPrehistoricLax.png" size="32 32">
+            <Index name="Normal"> <Frame point="64 352"/> </Index>
+        </Group>
+    </Resource>
+
+    <!-- Item 3  |  Column x=222  |  Tooltip x=96  y=352  |  Bone Runner Boots -->
+    <Resource type="ResourceImageSet" name="pic_ShoesSlideItem">
+        <Group name="States" texture="InventoryItemsPrehistoricLax.png" size="74 74">
+            <Index name="Normal"> <Frame point="222 0"/>   </Index>
+            <Index name="Refuse"> <Frame point="222 74"/>  </Index>
+            <Index name="Accept"> <Frame point="222 148"/> </Index>
+        </Group>
+        <Group name="ToolTip" texture="InventoryItemsPrehistoricLax.png" size="32 32">
+            <Index name="Normal"> <Frame point="96 352"/> </Index>
+        </Group>
+    </Resource>
+
+    <!-- Item 4  |  Column x=296  |  Tooltip x=128 y=352  |  Sky Bird -->
+    <Resource type="ResourceImageSet" name="pic_BirdItem">
+        <Group name="States" texture="InventoryItemsPrehistoricLax.png" size="74 74">
+            <Index name="Normal"> <Frame point="296 0"/>   </Index>
+            <Index name="Refuse"> <Frame point="296 74"/>  </Index>
+            <Index name="Accept"> <Frame point="296 148"/> </Index>
+        </Group>
+        <Group name="ToolTip" texture="InventoryItemsPrehistoricLax.png" size="32 32">
+            <Index name="Normal"> <Frame point="128 352"/> </Index>
+        </Group>
+    </Resource>
+
+    <!-- Item 5  |  Column x=370  |  Tooltip x=160 y=352  |  Magnolia -->
+    <Resource type="ResourceImageSet" name="pic_FlowerItem">
+        <Group name="States" texture="InventoryItemsPrehistoricLax.png" size="74 74">
+            <Index name="Normal"> <Frame point="370 0"/>   </Index>
+            <Index name="Refuse"> <Frame point="370 74"/>  </Index>
+            <Index name="Accept"> <Frame point="370 148"/> </Index>
+        </Group>
+        <Group name="ToolTip" texture="InventoryItemsPrehistoricLax.png" size="32 32">
+            <Index name="Normal"> <Frame point="160 352"/> </Index>
+        </Group>
+    </Resource>
+
+    <!-- Item 6  |  Column x=444  |  Tooltip x=192 y=352  |  Yellow Key -->
+    <Resource type="ResourceImageSet" name="pic_YellowKeyItem">
+        <Group name="States" texture="InventoryItemsPrehistoricLax.png" size="74 74">
+            <Index name="Normal"> <Frame point="444 0"/>   </Index>
+            <Index name="Refuse"> <Frame point="444 74"/>  </Index>
+            <Index name="Accept"> <Frame point="444 148"/> </Index>
+        </Group>
+        <Group name="ToolTip" texture="InventoryItemsPrehistoricLax.png" size="32 32">
+            <Index name="Normal"> <Frame point="192 352"/> </Index>
+        </Group>
+    </Resource>
+
+    <!-- Item 7  |  Column x=518  |  Tooltip x=224 y=352  |  Red Key -->
+    <Resource type="ResourceImageSet" name="pic_RedKeyItem">
+        <Group name="States" texture="InventoryItemsPrehistoricLax.png" size="74 74">
+            <Index name="Normal"> <Frame point="518 0"/>   </Index>
+            <Index name="Refuse"> <Frame point="518 74"/>  </Index>
+            <Index name="Accept"> <Frame point="518 148"/> </Index>
+        </Group>
+        <Group name="ToolTip" texture="InventoryItemsPrehistoricLax.png" size="32 32">
+            <Index name="Normal"> <Frame point="224 352"/> </Index>
+        </Group>
+    </Resource>
+
+    <!-- Item 8  |  Column x=592  |  Tooltip x=256 y=352  |  Club -->
+    <Resource type="ResourceImageSet" name="pic_ClubItem">
+        <Group name="States" texture="InventoryItemsPrehistoricLax.png" size="74 74">
+            <Index name="Normal"> <Frame point="592 0"/>   </Index>
+            <Index name="Refuse"> <Frame point="592 74"/>  </Index>
+            <Index name="Accept"> <Frame point="592 148"/> </Index>
+        </Group>
+        <Group name="ToolTip" texture="InventoryItemsPrehistoricLax.png" size="32 32">
+            <Index name="Normal"> <Frame point="256 352"/> </Index>
+        </Group>
+    </Resource>
+
+    <!-- Item 9  |  Column x=666  |  Tooltip x=288 y=352  |  Spiked Club -->
+    <Resource type="ResourceImageSet" name="pic_ClubStrongItem">
+        <Group name="States" texture="InventoryItemsPrehistoricLax.png" size="74 74">
+            <Index name="Normal"> <Frame point="666 0"/>   </Index>
+            <Index name="Refuse"> <Frame point="666 74"/>  </Index>
+            <Index name="Accept"> <Frame point="666 148"/> </Index>
+        </Group>
+        <Group name="ToolTip" texture="InventoryItemsPrehistoricLax.png" size="32 32">
+            <Index name="Normal"> <Frame point="288 352"/> </Index>
+        </Group>
+    </Resource>
+
+    <!-- Item 10  |  Column x=740  |  Tooltip x=320 y=352  |  Sword -->
+    <Resource type="ResourceImageSet" name="pic_SwordItem">
+        <Group name="States" texture="InventoryItemsPrehistoricLax.png" size="74 74">
+            <Index name="Normal"> <Frame point="740 0"/>   </Index>
+            <Index name="Refuse"> <Frame point="740 74"/>  </Index>
+            <Index name="Accept"> <Frame point="740 148"/> </Index>
+        </Group>
+        <Group name="ToolTip" texture="InventoryItemsPrehistoricLax.png" size="32 32">
+            <Index name="Normal"> <Frame point="320 352"/> </Index>
+        </Group>
+    </Resource>
+
+    <!-- Item 11  |  Column x=814  |  Tooltip x=352 y=352  |  Stone Gear -->
+    <Resource type="ResourceImageSet" name="pic_GearItem">
+        <Group name="States" texture="InventoryItemsPrehistoricLax.png" size="74 74">
+            <Index name="Normal"> <Frame point="814 0"/>   </Index>
+            <Index name="Refuse"> <Frame point="814 74"/>  </Index>
+            <Index name="Accept"> <Frame point="814 148"/> </Index>
+        </Group>
+        <Group name="ToolTip" texture="InventoryItemsPrehistoricLax.png" size="32 32">
+            <Index name="Normal"> <Frame point="352 352"/> </Index>
+        </Group>
+    </Resource>
+
+    <!-- Item 12  |  Column x=888  |  Tooltip x=384 y=352  |  Stone Tablet -->
+    <Resource type="ResourceImageSet" name="pic_StoneTabletItem">
+        <Group name="States" texture="InventoryItemsPrehistoricLax.png" size="74 74">
+            <Index name="Normal"> <Frame point="888 0"/>   </Index>
+            <Index name="Refuse"> <Frame point="888 74"/>  </Index>
+            <Index name="Accept"> <Frame point="888 148"/> </Index>
+        </Group>
+        <Group name="ToolTip" texture="InventoryItemsPrehistoricLax.png" size="32 32">
+            <Index name="Normal"> <Frame point="384 352"/> </Index>
+        </Group>
+    </Resource>
+
+    <!-- Item 13  |  Column x=962  |  Tooltip x=416 y=352  |  Sheet Music -->
+    <Resource type="ResourceImageSet" name="pic_SheetMusicItem">
+        <Group name="States" texture="InventoryItemsPrehistoricLax.png" size="74 74">
+            <Index name="Normal"> <Frame point="962 0"/>   </Index>
+            <Index name="Refuse"> <Frame point="962 74"/>  </Index>
+            <Index name="Accept"> <Frame point="962 148"/> </Index>
+        </Group>
+        <Group name="ToolTip" texture="InventoryItemsPrehistoricLax.png" size="32 32">
+            <Index name="Normal"> <Frame point="416 352"/> </Index>
+        </Group>
+    </Resource>
+
+    <!-- Item 14  |  Column x=1036 |  Tooltip x=448 y=352  |  Crystal Orb -->
+    <Resource type="ResourceImageSet" name="pic_CrystalOrbItem">
+        <Group name="States" texture="InventoryItemsPrehistoricLax.png" size="74 74">
+            <Index name="Normal"> <Frame point="1036 0"/>   </Index>
+            <Index name="Refuse"> <Frame point="1036 74"/>  </Index>
+            <Index name="Accept"> <Frame point="1036 148"/> </Index>
+        </Group>
+        <Group name="ToolTip" texture="InventoryItemsPrehistoricLax.png" size="32 32">
+            <Index name="Normal"> <Frame point="448 352"/> </Index>
+        </Group>
+    </Resource>
+
+</MyGUI>

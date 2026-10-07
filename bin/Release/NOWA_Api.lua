@@ -3394,6 +3394,143 @@ return {
 			}
 		}
 	},
+	BlinkComponent =
+	{
+		type = "class",
+		description = "Usage: Attach to any manager GameObject. Assign GameObjectIds of the target objects (they need an Item movable object). Choose a BlinkMode and tune SolidTime, FadeOutTime, GoneTime and FadeInTime per entry. Optionally set StartDelay to offset individual platforms in Sequential mode.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setBlinkMode =
+			{
+				type = "method",
+				description = "Sets the blink preset mode: 'Single', 'Sequential', 'Alternating', 'AllAtOnce'.",
+				args = "(string mode)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getBlinkMode =
+			{
+				type = "function",
+				description = "Gets the current blink preset mode.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setGameObjectCount =
+			{
+				type = "method",
+				description = "Sets how many target GameObjects are managed. Adds or removes per-entry Variant rows.",
+				args = "(number count)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getGameObjectCount =
+			{
+				type = "function",
+				description = "Gets the number of managed target GameObjects.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setGameObjectId =
+			{
+				type = "method",
+				description = "Sets the GameObject id for the given entry index.",
+				args = "(number index, string id)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getGameObjectId =
+			{
+				type = "function",
+				description = "Gets the GameObject id for the given entry index.",
+				args = "(number index)",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setStartDelay =
+			{
+				type = "method",
+				description = "Sets the initial delay in seconds before the first cycle for entry index.",
+				args = "(number index, number delay)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getStartDelay =
+			{
+				type = "function",
+				description = "Gets the initial delay in seconds for entry index.",
+				args = "(number index)",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setSolidTime =
+			{
+				type = "method",
+				description = "Sets how long (seconds) entry index stays fully visible and solid before fading out.",
+				args = "(number index, number t)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSolidTime =
+			{
+				type = "function",
+				description = "Gets the solid duration in seconds for entry index.",
+				args = "(number index)",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setFadeOutTime =
+			{
+				type = "method",
+				description = "Sets the fade-out duration in seconds for entry index. Physics stays on during fade-out.",
+				args = "(number index, number t)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFadeOutTime =
+			{
+				type = "function",
+				description = "Gets the fade-out duration in seconds for entry index.",
+				args = "(number index)",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setGoneTime =
+			{
+				type = "method",
+				description = "Sets how long (seconds) entry index stays invisible (physics off) before fading back in.",
+				args = "(number index, number t)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getGoneTime =
+			{
+				type = "function",
+				description = "Gets the gone duration in seconds for entry index.",
+				args = "(number index)",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setFadeInTime =
+			{
+				type = "method",
+				description = "Sets the fade-in duration in seconds for entry index. Physics is re-enabled at the start of fade-in.",
+				args = "(number index, number t)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFadeInTime =
+			{
+				type = "function",
+				description = "Gets the fade-in duration in seconds for entry index.",
+				args = "(number index)",
+				returns = "(number)",
+				valuetype = "number"
+			}
+		}
+	},
 	Body =
 	{
 		type = "class",
@@ -10559,6 +10696,30 @@ return {
 				returns = "(BillboardComponent)",
 				valuetype = "BillboardComponent"
 			},
+			getBlinkComponent =
+			{
+				type = "function",
+				description = "Gets the BlinkComponent. Use when the game object has exactly one.",
+				args = "()",
+				returns = "(BlinkComponent)",
+				valuetype = "BlinkComponent"
+			},
+			getBlinkComponentFromIndex =
+			{
+				type = "function",
+				description = "Gets the BlinkComponent by occurrence index.",
+				args = "(number occurrenceIndex)",
+				returns = "(BlinkComponent)",
+				valuetype = "BlinkComponent"
+			},
+			getBlinkComponentFromName =
+			{
+				type = "function",
+				description = "Gets the BlinkComponent by its component name.",
+				args = "(string name)",
+				returns = "(BlinkComponent)",
+				valuetype = "BlinkComponent"
+			},
 			getCameraBehaviorAttachComponentFromIndex =
 			{
 				type = "function",
@@ -11286,6 +11447,22 @@ return {
 				args = "(string name)",
 				returns = "(MyGUIItemBoxComponent)",
 				valuetype = "MyGUIItemBoxComponent"
+			},
+			getMyGUIPadFocusComponent =
+			{
+				type = "function",
+				description = "Gets the MyGUI pad focus component.",
+				args = "()",
+				returns = "(MyGUIPadFocusComponent)",
+				valuetype = "MyGUIPadFocusComponent"
+			},
+			getMyGUIPadFocusComponentFromName =
+			{
+				type = "function",
+				description = "Gets the MyGUI pad focus component by name.",
+				args = "(string name)",
+				returns = "(MyGUIPadFocusComponent)",
+				valuetype = "MyGUIPadFocusComponent"
 			},
 			getMyGuiSpriteComponentFromIndex =
 			{
@@ -13623,6 +13800,14 @@ return {
 				returns = "(BillboardComponent)",
 				valuetype = "BillboardComponent"
 			},
+			castBlinkComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from a function for Lua auto completion.",
+				args = "(BlinkComponent other)",
+				returns = "(BlinkComponent)",
+				valuetype = "BlinkComponent"
+			},
 			castCameraBehaviorAttachComponent =
 			{
 				type = "function",
@@ -13942,6 +14127,14 @@ return {
 				args = "(MyGUIItemBoxComponent other)",
 				returns = "(MyGUIItemBoxComponent)",
 				valuetype = "MyGUIItemBoxComponent"
+			},
+			castMyGUIPadFocusComponent =
+			{
+				type = "function",
+				description = "Casts for Lua auto completion.",
+				args = "(MyGUIPadFocusComponent other)",
+				returns = "(MyGUIPadFocusComponent)",
+				valuetype = "MyGUIPadFocusComponent"
 			},
 			castMyGuiSpriteComponent =
 			{
@@ -24297,6 +24490,87 @@ return {
 				type = "method",
 				description = "Sets whether to react if a mouse button has been clicked on the minimap. The clicked map tile index will be received.",
 				args = "(func closureFunction, number mapTileIndex)",
+				returns = "(nil)",
+				valuetype = "nil"
+			}
+		}
+	},
+	MyGUIPadFocusComponent =
+	{
+		type = "class",
+		description = "Usage: Gamepad and keyboard navigation for MyGUI widgets. Every MyGUI component with its 'Focusable' property switched on becomes a focus target, no matter on which game object it sits. The mapped UP / DOWN / LEFT / RIGHT actions move the focus to the nearest widget in that direction, the mouse is snapped onto it, and the confirm action injects a real MyGUI click, so the widget's own click closure is called. A MyGUIItemBoxComponent contributes one target per inventory slot. Note: This component is a mode. Activate it from lua (setActivated(true)) and lock the player movement while it is active, because it uses the same UP / DOWN / LEFT / RIGHT actions as the player controller.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Switches the pad navigation on or off. Lock the player movement while it is on, because it uses the same UP / DOWN / LEFT / RIGHT actions.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Gets whether the pad navigation is active.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			refreshFocusTargets =
+			{
+				type = "method",
+				description = "Collects the focus targets again. Call it whenever widgets appeared, vanished or moved, e.g. after the inventory received its first item.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			focusNext =
+			{
+				type = "method",
+				description = "Steps the focus to the next target, e.g. for a shoulder button.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			focusPrevious =
+			{
+				type = "method",
+				description = "Steps the focus to the previous target, e.g. for a shoulder button.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			confirm =
+			{
+				type = "method",
+				description = "Clicks the focused widget, exactly as a real mouse click would.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFocusedGameObjectId =
+			{
+				type = "function",
+				description = "Gets the id of the game object the focused widget belongs to, or '0', if nothing is focused.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			getFocusedSlotIndex =
+			{
+				type = "function",
+				description = "Gets the inventory slot index of the focused target, or -1, if the focused widget is no inventory slot.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			reactOnFocusChanged =
+			{
+				type = "method",
+				description = "Sets whether to react if the focus moved to another widget. E.g. getMyGUIPadFocusComponent():reactOnFocusChanged(function(gameObjectId, slotIndex) ... end)",
+				args = "(func closureFunction, string gameObjectId, number slotIndex)",
 				returns = "(nil)",
 				valuetype = "nil"
 			}

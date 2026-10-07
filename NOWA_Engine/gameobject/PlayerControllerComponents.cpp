@@ -479,15 +479,15 @@ namespace NOWA
 
             PhysicsActiveComponent::ContactData contactDataFront[3];
 
-            contactDataFront[0] = this->physicsActiveComponent->getContactToDirection(1, direction, Ogre::Vector3(0.0f, centerBottom.y + playerSize.y, playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
+            /*contactDataFront[0] = this->physicsActiveComponent->getContactToDirection(1, direction, Ogre::Vector3(0.0f, centerBottom.y + playerSize.y, playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
             contactDataFront[1] = this->physicsActiveComponent->getContactToDirection(2, direction, Ogre::Vector3(0.0f, 0.2f, playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
-            contactDataFront[2] = this->physicsActiveComponent->getContactToDirection(3, direction, Ogre::Vector3(0.0f, centerBottom.y + (playerSize.y * 0.5f), playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
+            contactDataFront[2] = this->physicsActiveComponent->getContactToDirection(3, direction, Ogre::Vector3(0.0f, centerBottom.y + (playerSize.y * 0.5f), playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);*/
 
-            /*const Ogre::Real actionRayLength = 0.5f;
+            const Ogre::Real actionRayLength = 0.5f;
 
             contactDataFront[0] = this->physicsActiveComponent->getContactToDirection(1, direction, Ogre::Vector3(0.0f, centerBottom.y + playerSize.y, playerSize.z - 0.2f), 0.0f, actionRayLength, showDebugData, this->categoriesId);
             contactDataFront[1] = this->physicsActiveComponent->getContactToDirection(2, direction, Ogre::Vector3(0.0f, 0.2f, playerSize.z - 0.2f), 0.0f, actionRayLength, showDebugData, this->categoriesId);
-            contactDataFront[2] = this->physicsActiveComponent->getContactToDirection(3, direction, Ogre::Vector3(0.0f, centerBottom.y + (playerSize.y * 0.5f), playerSize.z - 0.2f), 0.0f, actionRayLength, showDebugData, this->categoriesId);*/
+            contactDataFront[2] = this->physicsActiveComponent->getContactToDirection(3, direction, Ogre::Vector3(0.0f, centerBottom.y + (playerSize.y * 0.5f), playerSize.z - 0.2f), 0.0f, actionRayLength, showDebugData, this->categoriesId);
 
             this->hitGameObjectFront = nullptr;
             this->frontNormal = Ogre::Vector3::ZERO;
@@ -855,6 +855,30 @@ namespace NOWA
                             return;
                         }
                         horizontalWallNormal.normalise();
+
+                        // Attention: the SIGN of a reported contact normal must not be trusted.
+                        //
+                        // Newton hands out the normal for the pair (body0, body1), and WHICH of the two ends
+                        // up as body0 is decided by the engine, not by us - ndContact::SetBodies swaps them
+                        // depending on the inverse masses. Against the static walls and platform blocks
+                        // (PhysicsArtifactComponent) the order always came out the same way, so the normal
+                        // always pointed from the wall towards the player and everything worked. A DYNAMIC
+                        // obstacle like the boss area door (PhysicsActiveComponent, mass 1000 plus a slider
+                        // joint) can land in the other order, and then the normal points INTO the door.
+                        //
+                        // 'intoWall' in WalkingStateJumpNRun is computed against the INVERTED normal, so a
+                        // flipped normal cancels exactly the wrong half of the movement: walking into the
+                        // door stays allowed and walking AWAY from it is dropped. That is the player gluing
+                        // himself to the gate and not getting off it again.
+                        //
+                        // The geometry settles it without asking the engine: the normal has to point from
+                        // the contact point towards the player.
+                        Ogre::Vector3 contactToPlayer = this->gameObjectPtr->getPosition() - contactSnapshot.position;
+                        contactToPlayer -= upAxis * contactToPlayer.dotProduct(upAxis);
+                        if (contactToPlayer.squaredLength() > 0.0001f && horizontalWallNormal.dotProduct(contactToPlayer) < 0.0f)
+                        {
+                            horizontalWallNormal = -horizontalWallNormal;
+                        }
 
                         // The BUILT-IN reaction, gated by the attribute: remember the normal so the
                         // walking state drops the movement input pointing into the wall. Switched
@@ -4387,14 +4411,42 @@ namespace NOWA
         //
         // The speed builds up and decays over time rather than switching on and off: a slide that starts at full speed reads as being pushed,
         // and one that stops dead at the end of the slope reads as hitting a wall.
+        //
+        // Attention: the acceleration is NOT a fixed number any more. It used to be
+        //
+        //     steepness        = (minSteepness - normalDotUp) / (minSteepness - 0.5)
+        //     duckSlideSpeed  += 12.0 * steepness * dt
+        //
+        // which on a 45 degree ramp (normalDotUp = 0.707) gives a factor of 0.54 and therefore 6.5 units per second squared - and the slide
+        // ALWAYS started at zero, even when the player ducked out of a full run. Building 6.5 up from a standstill on a ramp that is a few
+        // units long never reaches more than a crawl, which is the slow motion slide.
+        //
+        // Now it is the real thing: a = g * (sin(angle) - friction * cos(angle)), the textbook acceleration of a body on an inclined plane,
+        // multiplied by a feel factor. And the slide TAKES OVER the speed the player already carries downhill, so ducking while running
+        // continues the movement instead of braking it down to zero first.
         // -------------------------------------------------------------------------
 
-        // Tune here. 'duckSlideMinSteepness' is the COSINE of the slope angle, so a SMALLER value means a STEEPER slope: 0.98 is about 11
-        // degrees, below that nothing slides. 0.5 (60 degrees) is where walkable ground ends, and that is where the full speed is reached.
-        const Ogre::Real duckSlideMinSteepness = 0.95f;
-        const Ogre::Real duckSlideAcceleration = 12.0f;
-        const Ogre::Real duckSlideMaxSpeed = 10.0f;
+        // Tune here.
+        // 'duckSlideMinSteepness' is the COSINE of the slope angle, so a SMALLER value means a STEEPER slope: 0.97 is about 14 degrees, below
+        // that nothing slides. 0.5 (60 degrees) is where walkable ground ends.
+        // 'duckSlideFriction' is the friction coefficient of the slide: 0.0 is ice, and from tan(angle) upwards nothing moves at all any more
+        // (0.15 means everything steeper than about 9 degrees slides).
+        // 'duckSlideFeel' scales the whole thing, because a physically exact slide feels sluggish in a jump n run.
+        /*const Ogre::Real duckSlideMinSteepness = 0.97f;
+        const Ogre::Real duckSlideFriction = 0.15f;
+        const Ogre::Real duckSlideFeel = 1.6f;
+        const Ogre::Real duckSlideMaxSpeed = 18.0f;
+        const Ogre::Real duckSlideDeceleration = 14.0f;*/
+        const Ogre::Real duckSlideMinSteepness = 0.97f;
+        const Ogre::Real duckSlideFriction = 0.05f;
+        const Ogre::Real duckSlideFeel = 3.0f;
+        const Ogre::Real duckSlideMaxSpeed = 20.0f;
         const Ogre::Real duckSlideDeceleration = 14.0f;
+
+        // Flip to true if the slide still feels wrong. Logs the ground normal every 30th frame while ducked, so the log stays readable - the
+        // interesting number is 'normalDotUp': on a 45 degree ramp it must read about 0.707. Anything near 1.0 means the ground rays are
+        // reporting a flat normal instead of the ramp, and then the slide is not the problem.
+        const bool showDuckSlideDiagnostics = false;
 
         bool isSlidingDownhill = false;
 
@@ -4407,6 +4459,17 @@ namespace NOWA
 
                 const Ogre::Real normalDotUp = groundNormal.dotProduct(upDir);
 
+                if (true == showDuckSlideDiagnostics)
+                {
+                    static unsigned int duckSlideLogCounter = 0;
+                    duckSlideLogCounter++;
+                    if (0 == duckSlideLogCounter % 30)
+                    {
+                        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                            "[WalkingStateJumpNRun] duck slide: normalDotUp: " + Ogre::StringConverter::toString(normalDotUp) + " slideSpeed: " + Ogre::StringConverter::toString(this->duckSlideSpeed));
+                    }
+                }
+
                 // Walkable ground only, and only from the minimum steepness on
                 if (normalDotUp > 0.5f && normalDotUp < duckSlideMinSteepness)
                 {
@@ -4416,10 +4479,35 @@ namespace NOWA
                     {
                         downhillDirection.normalise();
 
-                        // 0 at the minimum steepness, 1 at the steepest walkable ground
-                        const Ogre::Real steepness = (duckSlideMinSteepness - normalDotUp) / (duckSlideMinSteepness - 0.5f);
+                        // Textbook acceleration on an inclined plane. normalDotUp IS the cosine of the slope angle, the sine follows from it.
+                        const Ogre::Real cosSlope = normalDotUp;
+                        const Ogre::Real sinSlope = Ogre::Math::Sqrt(std::max(0.0f, 1.0f - cosSlope * cosSlope));
 
-                        this->duckSlideSpeed += duckSlideAcceleration * steepness * dt;
+                        // The gravity of the player himself, not a constant: a level with a different gravity slides accordingly.
+                        Ogre::Real gravityMagnitude = this->playerController->getPhysicsComponent()->getGravity().length();
+                        if (gravityMagnitude < 1.0f)
+                        {
+                            gravityMagnitude = 19.8f;
+                        }
+
+                        Ogre::Real slideAcceleration = gravityMagnitude * (sinSlope - duckSlideFriction * cosSlope) * duckSlideFeel;
+                        if (slideAcceleration < 0.0f)
+                        {
+                            slideAcceleration = 0.0f;
+                        }
+
+                        // Starting the slide takes over the speed the player ALREADY carries downhill. Without this every slide began at zero,
+                        // so ducking out of a full run first braked the player to a standstill and then crawled up again.
+                        if (this->duckSlideSpeed <= 0.0f)
+                        {
+                            const Ogre::Real currentDownhillSpeed = currentVelocity.dotProduct(downhillDirection);
+                            if (currentDownhillSpeed > 0.0f)
+                            {
+                                this->duckSlideSpeed = currentDownhillSpeed;
+                            }
+                        }
+
+                        this->duckSlideSpeed += slideAcceleration * dt;
                         if (this->duckSlideSpeed > duckSlideMaxSpeed)
                         {
                             this->duckSlideSpeed = duckSlideMaxSpeed;

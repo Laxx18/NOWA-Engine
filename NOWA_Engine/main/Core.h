@@ -326,14 +326,6 @@ namespace NOWA
         Ogre::String getUserConfigurationFilePathName(const Ogre::String& fileName);
 
         /**
-         * @brief		Sets whether the frame rate is limited to getOptionDesiredFramesUpdates() ("LimitFrameRate" in the config).
-         *				False = open end frame rate (VSync still paces, if on). Default: false on PC, true on a Steam Deck.
-         */
-        void setOptionFrameRateLimitEnabled(bool frameRateLimitEnabled);
-
-        bool getOptionFrameRateLimitEnabled(void) const;
-
-        /**
          * @brief Initialized the lua console and MyGUI stuff. Hence this function must be called after graphicsmodule is available.
          */
         void initLuaConsole(void);

@@ -86,21 +86,6 @@ CameraFx =
 LEVER_ANIMATION = "ANIM_PICKUP_1";
 LEVER_PULL_TIME = 1.2;
 
--- Blink platforms. All times in seconds.
--- solidTime:   fully visible and solid
--- fadeOutTime: fades out but STAYS solid - this is the warning the player has to read
--- goneTime:    invisible and passable, the player falls through
--- fadeInTime:  fades back in, still passable
--- startDelay:  shifts the whole cycle once at the start, so several platforms blink out of phase
-BLINK_PLATFORM_1 =
-{
-    solidTime = 1.0,
-    fadeOutTime = 1.0,
-    goneTime = 1.0,
-    fadeInTime = 0.5,
-    startDelay = 0.0
-};
-
 ---------------------------------------------------------------------------------------------------
 -- Pterodactyl, the first end boss. Everything the fight is tuned with lives here, Pterodactyl.lua
 -- only reads it.

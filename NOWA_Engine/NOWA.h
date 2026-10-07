@@ -148,6 +148,7 @@ extern "C"
 #include "gameObject/MyGUIItemBoxComponent.h"
 #include "gameObject/MyGUIControllerComponents.h"
 #include "gameObject/MyGUIMiniMapComponent.h"
+#include "gameobject/MyGUIPadFocusComponent.h"
 #include "gameObject/LensFlareComponent.h"
 #include "gameObject/BackgroundScrollComponent.h"
 #include "gameobject/CrowdComponent.h"
@@ -341,6 +342,8 @@ namespace NOWA
 	typedef boost::shared_ptr<MyGUIEdgeHideControllerComponent> MyGUIEdgeHideControllerCompPtr;
 	typedef boost::shared_ptr<MyGUIRepeatClickControllerComponent> MyGUIRepeatClickControllerCompPtr;
     typedef boost::shared_ptr<NOWA::GraphicsConfigurationComponent> GraphicsConfigurationCompPtr;
+    typedef boost::shared_ptr<MyGUIPadFocusComponent> MyGUIPadFocusCompPtr;
+
 
 	typedef boost::shared_ptr<NOWA::BackgroundScrollComponent> BackgroundScrollCompPtr;
     typedef boost::shared_ptr<NOWA::PlayerStartComponent> PlayerStartCompPtr;

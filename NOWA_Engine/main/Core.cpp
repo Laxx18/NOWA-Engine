@@ -364,6 +364,8 @@ namespace NOWA
         // Player setting (frame rate limit), default: the refresh rate of the display (e.g. 60 on Steam Deck LCD, 90 on Steam Deck OLED)
         this->optionDesiredFramesUpdates = this->getScreenRefreshRate();
 
+        // Removed: because all camera movements become jerky
+#if 0
         // Frame rate limit off by default (open end frame rate on PC, e.g. to find frame drops while profiling; with VSync on, VSync paces anyway).
         // On a Steam Deck (Steam sets the environment variable "SteamDeck=1", also under Proton) the limit is on by default, to save power.
         // The value from the config file ("LimitFrameRate") overrides this default.
@@ -373,6 +375,7 @@ namespace NOWA
         {
             this->optionFrameRateLimitEnabled = true;
         }
+#endif
         // Engine/game constant, NOT a player setting: physics, gameplay and Lua timing depend on the fixed step. Rendering is decoupled
         // via interpolation, so 60 steps are enough for all displays. Not read from/written to the config file anymore.
         // Note: 60 steps are not enough for OgreNewt and physics behaves in a strange manner, hence, set to 120.
@@ -4731,11 +4734,6 @@ namespace NOWA
                     this->optionDesiredFramesUpdates = this->getScreenRefreshRate();
                 }
             }
-            if (pSubElement->first_attribute("LimitFrameRate"))
-            {
-                // true: the frame rate is limited to DesiredFramesUpdates. false: open end (VSync still paces, if on)
-                this->optionFrameRateLimitEnabled = Ogre::StringConverter::parseBool(pSubElement->first_attribute("LimitFrameRate")->value());
-            }
             // Note: "DesiredSimulationUpdates" is intentionally ignored (old files may still contain it), see Core constructor.
             if (pSubElement->first_attribute("RenderDistance"))
             {
@@ -4982,7 +4980,6 @@ namespace NOWA
                 << " TextureFiltering=\"" << Ogre::StringConverter::toString(this->optionTextureFiltering).c_str() << "\""
                 << " AnisotropyLevel=\"" << Ogre::StringConverter::toString(this->optionAnisotropyLevel).c_str() << "\""
                 << " DesiredFramesUpdates=\"" << Ogre::StringConverter::toString(this->optionDesiredFramesUpdates).c_str() << "\""
-                << " LimitFrameRate=\"" << Ogre::StringConverter::toString(this->optionFrameRateLimitEnabled).c_str() << "\""
                 << " RenderDistance=\"" << Ogre::StringConverter::toString(this->globalRenderDistance).c_str() << "\""
                 << " ShadowQuality=\"" << Ogre::StringConverter::toString(static_cast<int>(this->optionShadowQuality)).c_str() << "\""
                 << " ShadowFarDistance=\"" << Ogre::StringConverter::toString(this->optionShadowFarDistance).c_str() << "\""
@@ -5699,16 +5696,6 @@ namespace NOWA
         outText += text.c_str();
 
         return outText;
-    }
-
-    void Core::setOptionFrameRateLimitEnabled(bool frameRateLimitEnabled)
-    {
-        this->optionFrameRateLimitEnabled = frameRateLimitEnabled;
-    }
-
-    bool Core::getOptionFrameRateLimitEnabled(void) const
-    {
-        return this->optionFrameRateLimitEnabled;
     }
 
     unsigned int Core::getScreenRefreshRate(void)

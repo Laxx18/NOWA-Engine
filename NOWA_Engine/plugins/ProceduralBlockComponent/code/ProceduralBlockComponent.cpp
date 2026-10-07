@@ -214,6 +214,8 @@ namespace NOWA
 
         this->blockMeshName = "ProceduralBlockMesh_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
 
+        this->gameObjectPtr->changeCategory("Platform");
+
         assert(GraphicsModule::getInstance()->isRenderThread() && "postInit() must be called from the main/logic thread! Use queueEvent() from other threads.");
 
         // A cloned GameObject can still carry the source block Item on its scene node.

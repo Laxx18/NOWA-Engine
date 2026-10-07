@@ -217,7 +217,7 @@ namespace NOWA
 
         this->rdState = PhysicsRagDollComponentV2::INACTIVE;
         boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
-        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
+        NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGameObjectIsInRagDollingState);
         this->activated->setValue(false);
     }
 

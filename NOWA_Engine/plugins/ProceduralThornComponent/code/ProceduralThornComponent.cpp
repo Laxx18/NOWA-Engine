@@ -202,6 +202,8 @@ namespace NOWA
 
         this->thornMeshName = "ProceduralThornMesh_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
 
+        this->gameObjectPtr->changeCategory("Danger");
+
         // A cloned GameObject can still carry the old procedural Item on its scene node.
         // Names are not unique here: internalClone gives both Items the GameObject name.
         // Keep the Item tracked by the GameObject and remove every other Item before

@@ -356,6 +356,22 @@ namespace NOWA
 		void reactOnDropItemRequest(luabind::object closureFunction);
 
 		void reactOnDropItemAccepted(luabind::object closureFunction);
+
+		void setFocusable(bool focusable);
+
+        bool getFocusable(void) const;
+
+        /**
+         * @see     MyGUIComponent::isFocusable
+         */
+        virtual bool isFocusable(void) const override;
+
+		/**
+         * @brief   Gets the underlying MyGUI item box, so that other components can address the single cells, e.g. for
+         *          gamepad navigation. May be null, as long as no widget was created yet.
+         */
+        MyGUI::ItemBox* getItemBoxWidget(void) const;
+
 	public:
 		static const Ogre::String AttrResourceLocationName(void) { return "Resource Location Name"; }
 		static const Ogre::String AttrUseToolTip(void) { return "Use ToolTip"; }
@@ -367,6 +383,7 @@ namespace NOWA
         static const Ogre::String AttrGameObjectId(void) { return "GameObject Id "; }
 		static const Ogre::String AttrAllowDragDrop(void) { return "Allow Drag & Drop"; }
         static const Ogre::String AttrSpriteComponentIndex(void) { return "SpriteComponentIndex"; }
+        static const Ogre::String AttrFocusable(void) { return "Focusable"; }
 	protected:
 		virtual void mouseButtonClick(MyGUI::Widget* sender) override;
 
@@ -401,6 +418,12 @@ namespace NOWA
 		std::vector<Ogre::String> buildResourceItemNameList(void) const;
 
         void refreshResourceNameVariantLists(void);
+
+		/**
+         * @brief   Requests a repaint of the item box, fire and forget and coalesced, so that a burst of
+         *          setters ends in exactly one relayout.
+         */
+        void requestRepaint(void);
 	private:
 		ToolTip* toolTip;
 		ItemBoxWindow* itemBoxWindow;
@@ -408,6 +431,7 @@ namespace NOWA
 		
 		Variant* resourceLocationName;
 		Variant* useToolTip;
+        Variant* focusable;
 		Variant* itemCount;
 		std::vector<Variant*> resourceNames;
 		std::vector<Variant*> quantities;
@@ -437,6 +461,7 @@ namespace NOWA
         Ogre::String pendingGameObjectId;
         OIS::MouseButtonID pendingButtonId;
         unsigned int pendingSlotIndex;
+        std::atomic<unsigned int> repaintTicket;
 	};
 
 	//////////////////////////////////////////////////////////////////////////////////
