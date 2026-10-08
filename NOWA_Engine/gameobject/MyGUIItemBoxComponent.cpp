@@ -252,6 +252,75 @@ namespace NOWA
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    namespace
+    {
+        // Auto-hide of the item tooltip. Lives completely in this .cpp (no header change):
+        // every visible ToolTip gets a deadline, a MyGUI frame callback hides it once the deadline has passed.
+        // All ToolTip calls and MyGUI's frame event run on the render thread; the mutex is only a safety net.
+        constexpr float TOOLTIP_DISPLAY_SECONDS = 3.0f;
+
+        class ToolTipAutoHide
+        {
+        public:
+            static void start(ToolTip* toolTip)
+            {
+                {
+                    std::lock_guard<std::mutex> lock(getMutex());
+                    getDeadlines()[toolTip] = std::chrono::steady_clock::now() + std::chrono::milliseconds(static_cast<long long>(TOOLTIP_DISPLAY_SECONDS * 1000.0f));
+                }
+
+                // Remove first, then add: harmless if not registered yet and prevents double registration
+                MyGUI::Gui::getInstance().eventFrameStart -= MyGUI::newDelegate(&ToolTipAutoHide::onFrameStart);
+                MyGUI::Gui::getInstance().eventFrameStart += MyGUI::newDelegate(&ToolTipAutoHide::onFrameStart);
+            }
+
+            static void cancel(ToolTip* toolTip)
+            {
+                std::lock_guard<std::mutex> lock(getMutex());
+                getDeadlines().erase(toolTip);
+            }
+
+            static void onFrameStart(float /*time*/)
+            {
+                std::vector<ToolTip*> expired;
+                {
+                    std::lock_guard<std::mutex> lock(getMutex());
+                    if (true == getDeadlines().empty())
+                    {
+                        return;
+                    }
+                    const auto now = std::chrono::steady_clock::now();
+                    for (const auto& entry : getDeadlines())
+                    {
+                        if (now >= entry.second)
+                        {
+                            expired.push_back(entry.first);
+                        }
+                    }
+                }
+
+                // hide() calls cancel() which locks the mutex, so it must run outside of the lock
+                for (ToolTip* toolTip : expired)
+                {
+                    toolTip->hide();
+                }
+            }
+
+        private:
+            static std::unordered_map<ToolTip*, std::chrono::steady_clock::time_point>& getDeadlines()
+            {
+                static std::unordered_map<ToolTip*, std::chrono::steady_clock::time_point> deadlines;
+                return deadlines;
+            }
+
+            static std::mutex& getMutex()
+            {
+                static std::mutex mutex;
+                return mutex;
+            }
+        };
+    } // namespace
+
     ToolTip::ToolTip() : BaseLayout("ToolTip.layout")
     {
         assignWidget(mTextName, "text_Name");
@@ -295,10 +364,14 @@ namespace NOWA
         mMainWidget->setSize(mMainWidget->getWidth(), mOffsetHeight + text_size.height);
 
         mMainWidget->setVisible(true);
+
+        // Hide automatically after a few seconds, even if MyGUI never sends a Hide event
+        ToolTipAutoHide::start(this);
     }
 
     void ToolTip::hide()
     {
+        ToolTipAutoHide::cancel(this);
         mMainWidget->setVisible(false);
     }
 
@@ -575,6 +648,7 @@ namespace NOWA
             }
             if (nullptr != this->toolTip)
             {
+                ToolTipAutoHide::cancel(this->toolTip);
                 delete this->toolTip;
                 this->toolTip = nullptr;
             }

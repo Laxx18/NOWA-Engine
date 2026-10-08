@@ -165,7 +165,7 @@ namespace NOWA
 
         if (nullptr == this->sound)
         {
-            Ogre::String soundName = this->gameObjectPtr->getName() + "_" + this->soundName->getString();
+            Ogre::String soundName = this->gameObjectPtr->getName() + "_" + this->soundName->getString() + "_" + Ogre::StringConverter::toString(this->index);
             this->sound = OgreALModule::getInstance()->createSound(this->gameObjectPtr->getSceneManager(), soundName, this->soundName->getString(), loop, this->stream->getBool());
             if (nullptr == this->sound)
             {

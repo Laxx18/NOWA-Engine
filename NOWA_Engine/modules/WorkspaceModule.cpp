@@ -243,7 +243,6 @@ namespace NOWA
             }
         };
         GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "WorkspaceModule::setShadowQuality");
-        ;
 
         if (true == recreateWorkspace)
         {

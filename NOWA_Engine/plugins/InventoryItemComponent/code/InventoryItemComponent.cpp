@@ -151,7 +151,7 @@ namespace NOWA
         GameObjectComponent::writeXML(propertiesXML, doc);
 
         xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
-        propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+        propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
         propertyXML->append_attribute(doc.allocate_attribute("name", "ResourceName"));
         propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->resourceName->getString())));
         propertiesXML->append_node(propertyXML);

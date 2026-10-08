@@ -283,6 +283,8 @@ namespace NOWA
 
         GameObject* getInteractionGameObject(void) const;
 
+        bool isMovementLocked(void) const;
+
     protected:
         /**
          * @brief Fires the action key closure on the rising edge. Called from update().

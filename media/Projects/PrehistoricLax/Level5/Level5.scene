@@ -4,15 +4,15 @@
 	<environment>
 		<sceneManager name="NOWA_SceneManager" id="1980837708"/>
 		<ambient>
-			<ambientLightUpperHemisphere r="0.3" g="0.5" b="0.7"/>
-			<ambientLightLowerHemisphere r="0.6" g="0.45" b="0.3" a="1"/>
+			<ambientLightUpperHemisphere r="0.15" g="0.25" b="0.35"/>
+			<ambientLightLowerHemisphere r="0.18" g="0.135" b="0.09" a="1"/>
 			<hemisphereDir x="0.57735" y="0.577351" z="0.57735"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
 			<shadowFarDistance distance="500"/>
 			<shadowDirectionalLightExtrusionDistance distance="500"/>
-			<shadowDirLightTextureOffset offset="0.6"/>
+			<shadowDirLightTextureOffset offset="0.9"/>
 			<shadowColor r="0.25" g="0.25" b="0.25"/>
 			<shadowQuality index="1"/>
 			<ambientLightMode index="0"/>
@@ -41,8 +41,8 @@
 	</OgreNewt>
 	<nodes>
 		<node name="MainCamera" id="4010617415">
-			<position x="49.4648" y="8.14008" z="6.74745"/>
-			<rotation qw="0.996808" qx="0.0252591" qy="0.0757057" qz="-0.0019258"/>
+			<position x="29.4564" y="7.98065" z="8.68691"/>
+			<rotation qw="0.999114" qx="-0.0202293" qy="0.0369007" qz="0.00098891"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subitem index="0" datablockName="WhiteLine"/>
@@ -72,8 +72,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="39.726 9.42233 8.54687"/>
-					<property type="9" name="CameraOrientation" data="-1.66088 8.30592 -0.00367189"/>
+					<property type="9" name="CameraPosition" data="29.4564 7.98065 8.68691"/>
+					<property type="9" name="CameraOrientation" data="-2.32087 4.22978 0.0277031"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -99,10 +99,10 @@
 					<property type="12" name="UsePCC" data="false"/>
 					<property type="12" name="UseTerra" data="false"/>
 					<property type="12" name="UseOcean" data="false"/>
-					<property type="6" name="ShadowGlobalBias" data="2"/>
-					<property type="6" name="ShadowGlobalNormalOffset" data="164"/>
-					<property type="6" name="ShadowPSSMLambda" data="0.98"/>
-					<property type="6" name="ShadowSplitBlend" data="0.0125"/>
+					<property type="6" name="ShadowGlobalBias" data="1"/>
+					<property type="6" name="ShadowGlobalNormalOffset" data="90"/>
+					<property type="6" name="ShadowPSSMLambda" data="0.95"/>
+					<property type="6" name="ShadowSplitBlend" data="0.025"/>
 					<property type="6" name="ShadowSplitFade" data="0.313"/>
 					<property type="6" name="ShadowSplitPadding" data="1"/>
 				</userData>
@@ -141,7 +141,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="9" name="Diffuse" data="1 1 1"/>
 					<property type="9" name="Specular" data="0.8 0.8 0.8"/>
-					<property type="6" name="PowerScale" data="3.14159"/>
+					<property type="6" name="PowerScale" data="30"/>
 					<property type="9" name="Direction" data="-1 -1 -1"/>
 					<property type="12" name="AffectParentNode" data="true"/>
 					<property type="6" name="AttenuationRadius" data="10"/>
@@ -199,7 +199,7 @@
 					<property type="9" name="BackgroundColor" data="0 0 0"/>
 					<property type="10" name="ViewportRect" data="0 0 1 1"/>
 					<property type="6" name="SuperSampling" data="1"/>
-					<property type="12" name="UseHdr" data="false"/>
+					<property type="12" name="UseHdr" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="6" name="ReflectionCameraGameObjectId" data="0"/>
 					<property type="12" name="UsePlanarReflection" data="false"/>
@@ -210,10 +210,10 @@
 					<property type="12" name="UsePCC" data="false"/>
 					<property type="12" name="UseTerra" data="false"/>
 					<property type="12" name="UseOcean" data="false"/>
-					<property type="6" name="ShadowGlobalBias" data="2"/>
-					<property type="6" name="ShadowGlobalNormalOffset" data="164"/>
-					<property type="6" name="ShadowPSSMLambda" data="0.98"/>
-					<property type="6" name="ShadowSplitBlend" data="0.0125"/>
+					<property type="6" name="ShadowGlobalBias" data="1"/>
+					<property type="6" name="ShadowGlobalNormalOffset" data="90"/>
+					<property type="6" name="ShadowPSSMLambda" data="0.95"/>
+					<property type="6" name="ShadowSplitBlend" data="0.025"/>
 					<property type="6" name="ShadowSplitFade" data="0.313"/>
 					<property type="6" name="ShadowSplitPadding" data="1"/>
 					<property type="12" name="HardwareGammaEnabled" data="true"/>
@@ -253,6 +253,20 @@
 					<property type="12" name="FollowGameObjectY" data="false"/>
 					<property type="12" name="FollowGameObjectZ" data="false"/>
 					<property type="7" name="BackgroundName" data="Background_Yellow_Layer_2.png"/>
+					<property type="7" name="ComponentHdrEffectComponent" data="HdrEffectComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="EffectName" data="Custom"/>
+					<property type="10" name="SkyColor" data="1.2 2.4 3.6 6"/>
+					<property type="10" name="UpperHemisphere" data="0.15 0.25 0.35 0.5"/>
+					<property type="10" name="LowerHemisphere" data="0.18 0.135 0.09 0.3"/>
+					<property type="6" name="SunPower" data="30"/>
+					<property type="6" name="Exposure" data="0.2"/>
+					<property type="6" name="MinAutoExposure" data="-0.5"/>
+					<property type="6" name="MaxAutoExposure" data="1.5"/>
+					<property type="6" name="Bloom" data="4"/>
+					<property type="6" name="EnvMapScale" data="1"/>
 				</userData>
 			</item>
 		</node>
@@ -313,7 +327,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="7" name="ResourceName" data="CoinItem"/>
 					<property type="2" name="SellValue" data="0"/>
 					<property type="2" name="BuyValue" data="1"/>
 					<property type="2" name="GameObjectId" data="0"/>
@@ -488,7 +502,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="7" name="ResourceName" data="CoinItem"/>
 					<property type="2" name="SellValue" data="0"/>
 					<property type="2" name="BuyValue" data="1"/>
 					<property type="2" name="GameObjectId" data="0"/>
@@ -552,7 +566,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="7" name="ResourceName" data="CoinItem"/>
 					<property type="2" name="SellValue" data="0"/>
 					<property type="2" name="BuyValue" data="1"/>
 					<property type="2" name="GameObjectId" data="0"/>
@@ -593,7 +607,7 @@
 		</node>
 		<node name="Torch_01_185_0" id="3567425521">
 			<position x="41.4897" y="2.70859" z="-8.47299"/>
-			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Torch_01_185_0" meshFile="Torch_01_185.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="M_MasterMaterial"/>
@@ -695,7 +709,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="7" name="ResourceName" data="CoinItem"/>
 					<property type="2" name="SellValue" data="0"/>
 					<property type="2" name="BuyValue" data="1"/>
 					<property type="2" name="GameObjectId" data="0"/>
@@ -816,6 +830,20 @@
 					<property type="6" name="Fade Out Time0" data="0.5"/>
 					<property type="6" name="Gone Time0" data="1"/>
 					<property type="6" name="Fade In Time0" data="0.5"/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="SoundName" data="Boss Battle 1 - Midnight Siege.ogg"/>
+					<property type="6" name="Volume" data="100"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="12" name="Loop" data="true"/>
+					<property type="8" name="FadeInFadeOut" data="2 2"/>
+					<property type="12" name="Stream" data="true"/>
+					<property type="12" name="RelativeToListener" data="true"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -876,7 +904,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="7" name="ResourceName" data="CoinItem"/>
 					<property type="2" name="SellValue" data="0"/>
 					<property type="2" name="BuyValue" data="1"/>
 					<property type="2" name="GameObjectId" data="0"/>
@@ -940,7 +968,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="7" name="ResourceName" data="CoinItem"/>
 					<property type="2" name="SellValue" data="0"/>
 					<property type="2" name="BuyValue" data="1"/>
 					<property type="2" name="GameObjectId" data="0"/>
@@ -1037,11 +1065,13 @@
 			</item>
 		</node>
 		<node name="Lever1_0" id="3947561985">
-			<position x="45" y="1.5" z="-7.00176"/>
-			<rotation qw="-3.09086e-08" qx="3.09086e-08" qy="0.707107" qz="0.707107"/>
-			<scale x="0.5" y="2" z="0.3"/>
-			<item name="Lever1_0" meshFile="Bricks1.mesh" castShadows="true" visible="true">
-				<subitem index="0" datablockName="NOWA_RuntimeClone__BricksColor__go_4029566283__sub_0"/>
+			<position x="45" y="1" z="-7.00176"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="2" y="2" z="2"/>
+			<item name="Lever1_0" meshFile="Lever.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="NOWA_RuntimeClone__M_wood_06__go_4029566283__sub_0"/>
+				<subitem index="1" datablockName="M_wood_detail_01"/>
+				<subitem index="2" datablockName="M_metal_02"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4029566283"/>
@@ -1062,59 +1092,9 @@
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="4"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					<property type="7" name="DataBlock0" data="NOWA_RuntimeClone__BricksColor__go_4029566283__sub_0"/>
-					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="1805912328"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubItemIndex" data="0"/>
-					<property type="7" name="Workflow" data="SpecularWorkflow"/>
-					<property type="6" name="Metalness" data="0.01"/>
-					<property type="6" name="Roughness" data="3.162"/>
-					<property type="10" name="Fresnel" data="0.01 0.818 0.818 0"/>
-					<property type="10" name="IndexOfRefraction" data="0.9 0.9 0.9 0"/>
-					<property type="6" name="RefractionStrength" data="0"/>
-					<property type="7" name="Brdf" data="BlinnPhong"/>
-					<property type="12" name="TwoSidedLighting" data="false"/>
-					<property type="7" name="OneSidedShadowCastCullingMode" data="CULL_ANTICLOCKWISE"/>
-					<property type="7" name="AlphaTest" data="CMPF_ALWAYS_FAIL"/>
-					<property type="6" name="AlphaTestThreshold" data="0.5"/>
-					<property type="12" name="ReceiveShadows" data="true"/>
-					<property type="9" name="DiffuseColor" data="1 1 1"/>
-					<property type="10" name="BackgroundColor" data="1 1 1 1"/>
-					<property type="9" name="SpecularColor" data="1 1 1"/>
-					<property type="9" name="EmissiveColor" data="0 0 0"/>
-					<property type="7" name="DiffuseTextureName" data="BarkD.tga"/>
-					<property type="7" name="NormalTextureName" data="GardenBricksN.png"/>
-					<property type="6" name="NormalMapWeight" data="1"/>
-					<property type="6" name="ClearCoat" data="0.2"/>
-					<property type="6" name="ClearCoatRoughness" data="0.2"/>
-					<property type="7" name="SpecularTextureName" data=""/>
-					<property type="7" name="MetallicTextureName" data=""/>
-					<property type="7" name="RoughnessTextureName" data="GardenBricksR.png"/>
-					<property type="7" name="DetailWeightTextureName" data=""/>
-					<property type="7" name="Detail0TextureName" data=""/>
-					<property type="7" name="BlendMode0" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
-					<property type="7" name="Detail1TextureName" data=""/>
-					<property type="7" name="BlendMode1" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
-					<property type="7" name="Detail2TextureName" data=""/>
-					<property type="7" name="BlendMode2" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
-					<property type="7" name="Detail3TextureName" data=""/>
-					<property type="7" name="BlendMode3" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
-					<property type="7" name="Detail0NMTextureName" data=""/>
-					<property type="7" name="Detail1NMTextureName" data=""/>
-					<property type="7" name="Detail2NMTextureName" data=""/>
-					<property type="7" name="Detail3NMTextureName" data=""/>
-					<property type="7" name="ReflectionTextureName" data=""/>
-					<property type="7" name="EmissiveTextureName" data=""/>
-					<property type="7" name="TransparencyMode" data="None"/>
-					<property type="7" name="Transparency" data="1"/>
-					<property type="12" name="UseAlphaFromTextures" data="true"/>
-					<property type="2" name="UVScale" data="0"/>
-					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
-					<property type="7" name="ShadowConstBias" data="1"/>
-					<property type="12" name="BringToFront" data="false"/>
-					<property type="12" name="CutOff" data="false"/>
+					<property type="7" name="DataBlock0" data="NOWA_RuntimeClone__M_wood_06__go_4029566283__sub_0"/>
+					<property type="7" name="DataBlock1" data="M_wood_detail_01"/>
+					<property type="7" name="DataBlock2" data="M_metal_02"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -1150,10 +1130,10 @@
 					<property type="12" name="JointRecursiveCollision" data="false"/>
 					<property type="6" name="Stiffness" data="0.9"/>
 					<property type="8" name="BodyMassScale" data="1 1"/>
-					<property type="9" name="AnchorPosition" data="0 -0.45 0"/>
-					<property type="9" name="Pin" data="0 1 0"/>
-					<property type="6" name="TargetAngle" data="30"/>
-					<property type="6" name="AngleRate" data="15"/>
+					<property type="9" name="AnchorPosition" data="0 0 0"/>
+					<property type="9" name="Pin" data="0 0 1"/>
+					<property type="6" name="TargetAngle" data="-30"/>
+					<property type="6" name="AngleRate" data="-15"/>
 					<property type="6" name="MinAngleLimit" data="-30"/>
 					<property type="6" name="MaxAngleLimit" data="30"/>
 					<property type="6" name="MaxTorque" data="-1"/>
@@ -1169,7 +1149,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="false"/>
-					<property type="7" name="SoundName" data="open_creaky_door.wav"/>
+					<property type="7" name="SoundName" data="lever1.wav"/>
 					<property type="6" name="Volume" data="100"/>
 					<property type="6" name="Speed" data="1"/>
 					<property type="12" name="Loop" data="false"/>
@@ -1238,7 +1218,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="7" name="ResourceName" data="CoinItem"/>
 					<property type="2" name="SellValue" data="0"/>
 					<property type="2" name="BuyValue" data="1"/>
 					<property type="2" name="GameObjectId" data="0"/>
@@ -1302,7 +1282,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="7" name="ResourceName" data="CoinItem"/>
 					<property type="2" name="SellValue" data="0"/>
 					<property type="2" name="BuyValue" data="1"/>
 					<property type="2" name="GameObjectId" data="0"/>
@@ -1366,7 +1346,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="7" name="ResourceName" data="CoinItem"/>
 					<property type="2" name="SellValue" data="0"/>
 					<property type="2" name="BuyValue" data="1"/>
 					<property type="2" name="GameObjectId" data="0"/>
@@ -1430,7 +1410,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="7" name="ResourceName" data="CoinItem"/>
 					<property type="2" name="SellValue" data="0"/>
 					<property type="2" name="BuyValue" data="1"/>
 					<property type="2" name="GameObjectId" data="0"/>
@@ -1637,7 +1617,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="7" name="ResourceName" data="CoinItem"/>
 					<property type="2" name="SellValue" data="0"/>
 					<property type="2" name="BuyValue" data="1"/>
 					<property type="2" name="GameObjectId" data="0"/>
@@ -1701,7 +1681,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="7" name="ResourceName" data="CoinItem"/>
 					<property type="2" name="SellValue" data="0"/>
 					<property type="2" name="BuyValue" data="1"/>
 					<property type="2" name="GameObjectId" data="0"/>
@@ -1765,7 +1745,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="7" name="ResourceName" data="CoinItem"/>
 					<property type="2" name="SellValue" data="0"/>
 					<property type="2" name="BuyValue" data="1"/>
 					<property type="2" name="GameObjectId" data="0"/>
@@ -1907,7 +1887,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="7" name="ResourceName" data="CoinItem"/>
 					<property type="2" name="SellValue" data="0"/>
 					<property type="2" name="BuyValue" data="1"/>
 					<property type="2" name="GameObjectId" data="0"/>
@@ -1948,7 +1928,7 @@
 		</node>
 		<node name="SM_PROP_wall_wood_gate_frame_01_0" id="559133213">
 			<position x="41.2772" y="6.24532" z="-7.17599"/>
-			<rotation qw="-8.74228e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="SM_PROP_wall_wood_gate_frame_01_0" meshFile="SM_PROP_wall_wood_gate_frame_01.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="M_wood_06"/>
@@ -2513,71 +2493,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="ResourceName" data="CoinItem"/>
-					<property type="2" name="SellValue" data="0"/>
-					<property type="2" name="BuyValue" data="1"/>
-					<property type="2" name="GameObjectId" data="0"/>
-				</userData>
-			</item>
-		</node>
-		<node name="CoinCrown_21" id="3648116621">
-			<position x="77.1105" y="3.88969" z="-7"/>
-			<rotation qw="1" qx="0" qy="0" qz="0"/>
-			<scale x="1" y="1" z="1"/>
-			<item name="CoinCrown_21" meshFile="CoinCrown.mesh" castShadows="true" visible="true">
-				<subitem index="0" datablockName="CoinCrown"/>
-				<userData>
-					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="2620820195"/>
-					<property type="7" name="Category" data="Item"/>
-					<property type="7" name="RenderCategory" data="All"/>
-					<property type="7" name="TagName" data="Coin"/>
-					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
-					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
-					<property type="12" name="HideOnConnect" data="false"/>
-					<property type="9" name="DefaultDirection" data="0 0 1"/>
-					<property type="12" name="Global" data="false"/>
-					<property type="12" name="ClampY" data="false"/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="10"/>
-					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="100"/>
-					<property type="6" name="LodLevels" data="4"/>
-					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					<property type="7" name="DataBlock0" data="CoinCrown"/>
-					<property type="7" name="ComponentTransformComponent" data="TransformComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="12" name="RotationActivated" data="true"/>
-					<property type="9" name="RotationAxis" data="0 1 0"/>
-					<property type="6" name="RotationMin" data="0"/>
-					<property type="7" name="RotationMax" data="360"/>
-					<property type="6" name="RotationSpeed" data="1"/>
-					<property type="12" name="RotationRepeat" data="true"/>
-					<property type="12" name="RotationDirectionChange" data="false"/>
-					<property type="12" name="TranslationActivated" data="false"/>
-					<property type="9" name="TranslationAxis" data="0 0 0"/>
-					<property type="6" name="TranslationMin" data="0"/>
-					<property type="7" name="TranslationMax" data="10"/>
-					<property type="6" name="TranslationSpeed" data="1"/>
-					<property type="12" name="TranslationRepeat" data="true"/>
-					<property type="12" name="TranslationDirectionChange" data="true"/>
-					<property type="12" name="ScaleActivated" data="false"/>
-					<property type="9" name="ScaleAxis" data="0 0 0"/>
-					<property type="6" name="ScaleMin" data="0.5"/>
-					<property type="7" name="ScaleMax" data="10"/>
-					<property type="6" name="ScaleSpeed" data="0.1"/>
-					<property type="12" name="ScaleRepeat" data="true"/>
-					<property type="12" name="ScaleDirectionChange" data="true"/>
-					<property type="7" name="ComponentInventoryItemComponent" data="InventoryItemComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="7" name="ResourceName" data="CoinItem"/>
 					<property type="2" name="SellValue" data="0"/>
 					<property type="2" name="BuyValue" data="1"/>
 					<property type="2" name="GameObjectId" data="0"/>
@@ -2641,7 +2557,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="7" name="ResourceName" data="CoinItem"/>
 					<property type="2" name="SellValue" data="0"/>
 					<property type="2" name="BuyValue" data="1"/>
 					<property type="2" name="GameObjectId" data="0"/>
@@ -2705,7 +2621,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="7" name="ResourceName" data="CoinItem"/>
 					<property type="2" name="SellValue" data="0"/>
 					<property type="2" name="BuyValue" data="1"/>
 					<property type="2" name="GameObjectId" data="0"/>
@@ -2769,7 +2685,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="7" name="ResourceName" data="CoinItem"/>
 					<property type="2" name="SellValue" data="0"/>
 					<property type="2" name="BuyValue" data="1"/>
 					<property type="2" name="GameObjectId" data="0"/>
@@ -2833,7 +2749,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="ResourceName" data="CoinItem"/>
+					<property type="7" name="ResourceName" data="CoinItem"/>
 					<property type="2" name="SellValue" data="0"/>
 					<property type="2" name="BuyValue" data="1"/>
 					<property type="2" name="GameObjectId" data="0"/>
@@ -2842,7 +2758,7 @@
 		</node>
 		<node name="Torch_01_185_1" id="3567425086">
 			<position x="41.4897" y="2.70859" z="-5.50989"/>
-			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Torch_01_185_1" meshFile="Torch_01_185.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="M_MasterMaterial"/>
@@ -3169,7 +3085,7 @@
 			</item>
 		</node>
 		<node name="Pterodactyl" id="3145128482">
-			<position x="20" y="15.9768" z="-7"/>
+			<position x="20" y="11.154" z="-7"/>
 			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Pterodactyl" meshFile="Pterodactyl.mesh" castShadows="true" visible="true">
@@ -3202,9 +3118,9 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
-					<property type="9" name="CollisionSize" data="0 0 0"/>
-					<property type="9" name="OffsetPosition" data="0 0 0"/>
-					<property type="9" name="OffsetDirection" data="0 0 0"/>
+					<property type="9" name="CollisionSize" data="0.7 2 0.7"/>
+					<property type="9" name="OffsetPosition" data="0 0.7 0.4"/>
+					<property type="9" name="OffsetDirection" data="0 90 0"/>
 					<property type="6" name="Mass" data="50"/>
 					<property type="9" name="MassOrigin" data="0 0 0"/>
 					<property type="6" name="LinearDamping" data="0.1"/>
@@ -3216,7 +3132,7 @@
 					<property type="6" name="Speed" data="6"/>
 					<property type="6" name="MinSpeed" data="0"/>
 					<property type="6" name="MaxSpeed" data="16"/>
-					<property type="7" name="CollisionType" data="ConvexHull"/>
+					<property type="7" name="CollisionType" data="Capsule"/>
 					<property type="9" name="ConstraintAxis" data="0 0 1"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
@@ -3266,6 +3182,19 @@
 					<property type="2" name="MaxValue" data="180"/>
 					<property type="2" name="CurrentValue" data="180"/>
 					<property type="12" name="FaceCamera" data="true"/>
+					<property type="7" name="ComponentSpawnComponent" data="SpawnComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="SpawnActivate" data="false"/>
+					<property type="2" name="SpawnInterval" data="500"/>
+					<property type="2" name="SpawnCount" data="200"/>
+					<property type="2" name="SpawnLifeTime" data="8000"/>
+					<property type="9" name="SpawnOffsetPosition" data="0 2 0"/>
+					<property type="9" name="SpawnOffsetOrientation" data="0 0 0"/>
+					<property type="12" name="SpawnAtOrigin" data="false"/>
+					<property type="2" name="SpawnTarget" data="3528092836"/>
+					<property type="12" name="CloneDatablock" data="false"/>
 					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
 					<property type="7" name="Name" data="Death"/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -3280,24 +3209,67 @@
 					<property type="12" name="RelativeToListener" data="true"/>
 					<property type="12" name="PlayWhenInMotion" data="false"/>
 					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
-					<property type="7" name="ComponentSpawnComponent" data="SpawnComponent"/>
-					<property type="7" name="Name" data=""/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data="Fly"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="SpawnActivate" data="false"/>
-					<property type="2" name="SpawnInterval" data="500"/>
-					<property type="2" name="SpawnCount" data="200"/>
-					<property type="2" name="SpawnLifeTime" data="4000"/>
-					<property type="9" name="SpawnOffsetPosition" data="0 -1.5 0"/>
-					<property type="9" name="SpawnOffsetOrientation" data="0 0 0"/>
-					<property type="12" name="SpawnAtOrigin" data="true"/>
-					<property type="2" name="SpawnTarget" data="3528092836"/>
-					<property type="12" name="CloneDatablock" data="false"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="SoundName" data="wings2.wav"/>
+					<property type="6" name="Volume" data="100"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="12" name="Loop" data="true"/>
+					<property type="8" name="FadeInFadeOut" data="2 2"/>
+					<property type="12" name="Stream" data="false"/>
+					<property type="12" name="RelativeToListener" data="true"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data="Dive"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="SoundName" data="whoosh1.wav"/>
+					<property type="6" name="Volume" data="100"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="12" name="Loop" data="true"/>
+					<property type="8" name="FadeInFadeOut" data="2 2"/>
+					<property type="12" name="Stream" data="false"/>
+					<property type="12" name="RelativeToListener" data="true"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data="Roar"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="SoundName" data="roar1.wav"/>
+					<property type="6" name="Volume" data="100"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="12" name="Loop" data="false"/>
+					<property type="8" name="FadeInFadeOut" data="2 2"/>
+					<property type="12" name="Stream" data="false"/>
+					<property type="12" name="RelativeToListener" data="true"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data="Hurt"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="SoundName" data="Death13.wav"/>
+					<property type="6" name="Volume" data="100"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="12" name="Loop" data="false"/>
+					<property type="8" name="FadeInFadeOut" data="2 2"/>
+					<property type="12" name="Stream" data="false"/>
+					<property type="12" name="RelativeToListener" data="true"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
 				</userData>
 			</item>
 		</node>
 		<node name="Egg" id="2381819302">
-			<position x="20" y="14.3332" z="-7"/>
+			<position x="0.938734" y="1.41035" z="-7"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="5" y="5" z="5"/>
 			<item name="Egg" meshFile="SM_PROP_food_egg_01.mesh" castShadows="true" visible="true">
@@ -3336,7 +3308,7 @@
 					<property type="6" name="LinearDamping" data="1"/>
 					<property type="9" name="AngularDamping" data="1 1 1"/>
 					<property type="6" name="Density" data="1"/>
-					<property type="9" name="Gravity" data="0 -16.9 0"/>
+					<property type="9" name="Gravity" data="0 -26.9 0"/>
 					<property type="7" name="GravitySourceCategory" data=""/>
 					<property type="9" name="ConstraintDirection" data="0 0 0"/>
 					<property type="6" name="Speed" data="1"/>
@@ -3346,11 +3318,25 @@
 					<property type="9" name="ConstraintAxis" data="0 0 1"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="SoundName" data="fall1.ogg"/>
+					<property type="6" name="Volume" data="100"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="12" name="Loop" data="false"/>
+					<property type="8" name="FadeInFadeOut" data="2 2"/>
+					<property type="12" name="Stream" data="false"/>
+					<property type="12" name="RelativeToListener" data="true"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
 				</userData>
 			</item>
 		</node>
 		<node name="BossAreaMechanics" id="3849606556">
-			<position x="39.2219" y="1.81264" z="-7.18618"/>
+			<position x="38.2236" y="1.81264" z="-7.18618"/>
 			<rotation qw="0.707107" qx="0" qy="0" qz="0.707107"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="" meshFile="Procedural.mesh" castShadows="true" visible="true">
@@ -3467,6 +3453,218 @@
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 					<property type="7" name="Collidable" data="true"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Platform Block_10" id="3213347565">
+			<position x="14" y="14" z="-10"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Platform Block_10" meshFile="Procedural.mesh" castShadows="true" visible="true">
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3869927253"/>
+					<property type="7" name="Category" data="Platform"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
+					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="ComponentProceduralBlockComponent" data="ProceduralBlockComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="2" name="Columns" data="26"/>
+					<property type="2" name="Rows" data="1"/>
+					<property type="6" name="Depth" data="10"/>
+					<property type="7" name="Datablock" data="Brick1_big5"/>
+					<property type="8" name="UV Tiling" data="0.1 0.1"/>
+					<property type="12" name="Use Gradient" data="false"/>
+					<property type="12" name="Use Bevel" data="false"/>
+					<property type="6" name="Bevel Size" data="0.1"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="Collidable" data="true"/>
+				</userData>
+			</item>
+		</node>
+		<node name="ShoesSpeed" id="1144304782">
+			<position x="10.1022" y="2.29246" z="-6.78036"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="ShoesSpeed" meshFile="Shoes1.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="ShoesRope"/>
+				<subitem index="1" datablockName="ShoesUpper"/>
+				<subitem index="2" datablockName="ShoesLower"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3698449289"/>
+					<property type="7" name="Category" data="PointOfInterest"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="ShoesRope"/>
+					<property type="7" name="DataBlock1" data="ShoesUpper"/>
+					<property type="7" name="DataBlock2" data="ShoesLower"/>
+					<property type="7" name="ComponentTransformComponent" data="TransformComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="12" name="RotationActivated" data="true"/>
+					<property type="9" name="RotationAxis" data="0 1 0"/>
+					<property type="6" name="RotationMin" data="0"/>
+					<property type="7" name="RotationMax" data="360"/>
+					<property type="6" name="RotationSpeed" data="1"/>
+					<property type="12" name="RotationRepeat" data="true"/>
+					<property type="12" name="RotationDirectionChange" data="false"/>
+					<property type="12" name="TranslationActivated" data="false"/>
+					<property type="9" name="TranslationAxis" data="0 0 0"/>
+					<property type="6" name="TranslationMin" data="0"/>
+					<property type="7" name="TranslationMax" data="10"/>
+					<property type="6" name="TranslationSpeed" data="1"/>
+					<property type="12" name="TranslationRepeat" data="true"/>
+					<property type="12" name="TranslationDirectionChange" data="true"/>
+					<property type="12" name="ScaleActivated" data="false"/>
+					<property type="9" name="ScaleAxis" data="0 0 0"/>
+					<property type="6" name="ScaleMin" data="0.5"/>
+					<property type="7" name="ScaleMax" data="10"/>
+					<property type="6" name="ScaleSpeed" data="0.1"/>
+					<property type="12" name="ScaleRepeat" data="true"/>
+					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ComponentInventoryItemComponent" data="InventoryItemComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="ResourceName" data="ShoesSpeedItem"/>
+					<property type="2" name="SellValue" data="0"/>
+					<property type="2" name="BuyValue" data="0"/>
+					<property type="2" name="GameObjectId" data="0"/>
+				</userData>
+			</item>
+		</node>
+		<node name="SM_PROP_cart_wheel_big_0" id="60006264">
+			<position x="45" y="0.76675" z="-7"/>
+			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="SM_PROP_cart_wheel_big_0" meshFile="SM_PROP_cart_wheel_big.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="M_wood_07"/>
+				<subitem index="1" datablockName="M_metal_02"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="696187581"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="M_wood_07"/>
+					<property type="7" name="DataBlock1" data="M_metal_02"/>
+				</userData>
+			</item>
+		</node>
+		<node name="CoinCrown_21" id="3648116621">
+			<position x="77.1105" y="3.88969" z="-7"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="CoinCrown_21" meshFile="CoinCrown.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="CoinCrown"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2620820195"/>
+					<property type="7" name="Category" data="Item"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data="Coin"/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="HideOnConnect" data="false"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="4"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="CoinCrown"/>
+					<property type="7" name="ComponentTransformComponent" data="TransformComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="12" name="RotationActivated" data="true"/>
+					<property type="9" name="RotationAxis" data="0 1 0"/>
+					<property type="6" name="RotationMin" data="0"/>
+					<property type="7" name="RotationMax" data="360"/>
+					<property type="6" name="RotationSpeed" data="1"/>
+					<property type="12" name="RotationRepeat" data="true"/>
+					<property type="12" name="RotationDirectionChange" data="false"/>
+					<property type="12" name="TranslationActivated" data="false"/>
+					<property type="9" name="TranslationAxis" data="0 0 0"/>
+					<property type="6" name="TranslationMin" data="0"/>
+					<property type="7" name="TranslationMax" data="10"/>
+					<property type="6" name="TranslationSpeed" data="1"/>
+					<property type="12" name="TranslationRepeat" data="true"/>
+					<property type="12" name="TranslationDirectionChange" data="true"/>
+					<property type="12" name="ScaleActivated" data="false"/>
+					<property type="9" name="ScaleAxis" data="0 0 0"/>
+					<property type="6" name="ScaleMin" data="0.5"/>
+					<property type="7" name="ScaleMax" data="10"/>
+					<property type="6" name="ScaleSpeed" data="0.1"/>
+					<property type="12" name="ScaleRepeat" data="true"/>
+					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ComponentInventoryItemComponent" data="InventoryItemComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="ResourceName" data="CoinItem"/>
+					<property type="2" name="SellValue" data="0"/>
+					<property type="2" name="BuyValue" data="1"/>
+					<property type="2" name="GameObjectId" data="0"/>
 				</userData>
 			</item>
 		</node>

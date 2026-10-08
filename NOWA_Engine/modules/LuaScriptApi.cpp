@@ -10588,11 +10588,20 @@ namespace NOWA
 
     void bindCameraManager(lua_State* lua)
     {
-        module(lua)[class_<CameraManager>("CameraManager").def("setMoveCameraWeight", &CameraManager::setMoveCameraWeight).def("setRotateCameraWeight", &CameraManager::setRotateCameraWeight)];
+        module(lua)
+        [
+            class_<CameraManager>("CameraManager")
+            .def("setMoveCameraWeight", &CameraManager::setMoveCameraWeight)
+            .def("setRotateCameraWeight", &CameraManager::setRotateCameraWeight)
+            .def("getMoveCameraWeight", &CameraManager::getMoveCameraWeight)
+            .def("getRotateCameraWeight", &CameraManager::getRotateCameraWeight)
+        ];
 
         AddClassToCollection("CameraManager", "class", "CameraManager for some camera utilities operations.");
         AddClassToCollection("CameraManager", "void setMoveCameraWeight(float moveCameraWeight)", "Sets the move camera weight. Default value is 1. If set to 0, the current camera will not be moved.");
         AddClassToCollection("CameraManager", "void setRotateCameraWeight(float rotateCameraWeight)", "Sets the rotate camera weight. Default value is 1. If set to 0, the current camera will not be rotated.");
+        AddClassToCollection("CameraManager", "float getMoveCameraWeight()", "Gets the move camera weight. Default value is 1. If set to 0, the current camera will not be moved.");
+        AddClassToCollection("CameraManager", "float getRotateCameraWeight()", "Gets the rotate camera weight. Default value is 1. If set to 0, the current camera will not be rotated.");
     }
 
     void bindOgreRecastModule(lua_State* lua)

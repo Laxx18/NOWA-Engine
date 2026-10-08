@@ -958,7 +958,7 @@ namespace NOWA
             // left alone so bumping your head still stops you.
             const Ogre::Real upComponent = contactNormal.dotProduct(Ogre::Vector3::UNIT_Y);
 
-            if (upComponent > maxUpComponent || upComponent < 0.0f)
+            /*if (upComponent > maxUpComponent || upComponent < 0.0f)
             {
                 diagFloorCounter++;
                 continue;
@@ -971,7 +971,7 @@ namespace NOWA
                 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WallFriction-DIAG] calls: " + Ogre::StringConverter::toString(diagCallCounter) + " wallContacts: " + Ogre::StringConverter::toString(diagWallCounter) +
                                                                                         " floorContacts: " + Ogre::StringConverter::toString(diagFloorCounter) + " normal: " + Ogre::StringConverter::toString(contactNormal) +
                                                                                         " upComponent: " + Ogre::StringConverter::toString(upComponent) + " maxUpComponent: " + Ogre::StringConverter::toString(maxUpComponent));
-            }
+            }*/
 
             // ND4 gives every contact point two tangent friction directions spanning the
             // plane perpendicular to the normal. For a wall normal of (-1, 0, 0) that plane

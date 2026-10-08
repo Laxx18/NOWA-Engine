@@ -31,7 +31,7 @@ BossAreaMechanics["connect"] = function(gameObject)
             -- The rate is positive: the direction comes from the difference between the current position
             -- and the target, not from the sign of the rate (ndOgreSliderActuator::SetLinearRate applies
             -- ndAbs to it anyway).
-            areaDoorGameObject:getJointSliderActuatorComponent():setLinearRate(3);
+            areaDoorGameObject:getJointSliderActuatorComponent():setLinearRate(10);
             areaDoorGameObject:getJointSliderActuatorComponent():setTargetPosition(0);
             
             local eventData = {};

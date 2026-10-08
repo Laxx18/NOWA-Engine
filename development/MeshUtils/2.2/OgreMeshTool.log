@@ -1,15 +1,47 @@
-19:20:51: MeshSerializer writing mesh data to stream ...
-19:20:51: File header written.
-19:20:51: Writing mesh data...
-19:20:51: Writing submesh...
-19:20:51: Submesh exported.
-19:20:51: Exporting LOD level thresholds....
-19:20:51: LOD level thresholds exported.
-19:20:51: Exporting bounds information....
-19:20:51: Bounds information exported.
-19:20:51: Exporting submesh name table...
-19:20:51: Submesh name table exported.
-19:20:51: Exporting hash for caches...
-19:20:51: Exporting hash for caches exported.
-19:20:51: Mesh data exported.
-19:20:51: MeshSerializer export successful.
+15:13:58: Exporting bones..
+15:13:58: Bones exported.
+15:13:58: Exporting animations, count=22
+15:13:58: Exporting animation: Sabertooth_Attack_1
+15:13:58: Animation exported.
+15:13:58: Exporting animation: Sabertooth_Attack_2
+15:13:58: Animation exported.
+15:13:58: Exporting animation: Sabertooth_Attack_3
+15:13:58: Animation exported.
+15:13:58: Exporting animation: Sabertooth_Damage_Heavy
+15:13:58: Animation exported.
+15:13:58: Exporting animation: Sabertooth_Damage_Light
+15:13:58: Animation exported.
+15:13:58: Exporting animation: Sabertooth_Die
+15:13:58: Animation exported.
+15:13:58: Exporting animation: Sabertooth_Fall
+15:13:58: Animation exported.
+15:13:58: Exporting animation: Sabertooth_Get_Up
+15:13:58: Animation exported.
+15:13:58: Exporting animation: Sabertooth_Idle
+15:13:58: Animation exported.
+15:13:58: Exporting animation: Sabertooth_Jump_Up
+15:13:58: Animation exported.
+15:13:58: Exporting animation: Sabertooth_Land
+15:13:58: Animation exported.
+15:13:58: Exporting animation: Sabertooth_Look_Back
+15:13:58: Animation exported.
+15:13:58: Exporting animation: Sabertooth_Look_Side
+15:13:58: Animation exported.
+15:13:58: Exporting animation: Sabertooth_Roar
+15:13:58: Animation exported.
+15:13:58: Exporting animation: Sabertooth_Run
+15:13:58: Animation exported.
+15:13:58: Exporting animation: Sabertooth_Run_Turn_Left
+15:13:58: Animation exported.
+15:13:58: Exporting animation: Sabertooth_Run_Turn_Right
+15:13:58: Animation exported.
+15:13:58: Exporting animation: Sabertooth_Turn_Left
+15:13:58: Animation exported.
+15:13:58: Exporting animation: Sabertooth_Turn_Right
+15:13:58: Animation exported.
+15:13:58: Exporting animation: Sabertooth_Walk
+15:13:58: Animation exported.
+15:13:58: Exporting animation: Sabertooth_Walk_Turn_Left
+15:13:58: Animation exported.
+15:13:58: Exporting animation: Sabertooth_Walk_Turn_Right
+15:13:58: Animation exported.

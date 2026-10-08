@@ -32,6 +32,8 @@ local profile = nil;
 local config = nil;
 
 local physicsComponent = nil;
+-- Only for reading the position: the game object is just the shell, the physics component is the body that really moves.
+local physicsActiveComponent = nil;
 local animationBlender = nil;
 local spawnComponent = nil;
 local aiLuaComponent = nil;
@@ -62,7 +64,6 @@ local stateBehavior = nil;
 
 -- Only one of these runs at a time, each one belongs to exactly one state.
 local roarTimer = 0;
-local eggDropTimer = 0;
 local vulnerableTimer = 0;
 local stunTimer = 0;
 
@@ -89,6 +90,34 @@ local function clampValue(value, minimum, maximum)
         return maximum;
     end
     return value;
+end
+
+-- Switches one of the boss's sounds on or off. A missing sound component (typo, not added in the
+-- editor) is skipped instead of crashing the whole fight.
+local function setSound(name, active)
+    local sound = pterodactyl:getSimpleSoundComponentFromName(name);
+    if (nil ~= sound) then
+        sound:setActivated(active);
+    end
+end
+
+-- One-shot sounds (Roar, Dive, Hurt): off and on again, so the sound restarts even if the last one
+-- is still playing, e.g. two hits in quick succession.
+local function playSound(name)
+    setSound(name, false);
+    setSound(name, true);
+end
+
+-- The position of the boss BODY. pterodactyl is only the game object, the ragdoll physics component
+-- (derived from PhysicsActiveComponent) is what really moves.
+local function getBossPosition()
+    return physicsActiveComponent:getPosition();
+end
+
+-- Length of the horizontal run-up before the boss arrives somewhere, so that it arrives heading
+-- towards the player. The fallback keeps the fight working if the key is missing in init.lua.
+local function runUpDistance()
+    return config.facingRunUp or 4.0;
 end
 
 -- Every flight target goes through here, so none of them can ever leave the arena.
@@ -151,6 +180,7 @@ Pterodactyl["connect"] = function(gameObject)
     player = AppStateManager:getGameObjectController():getGameObjectFromName(PLAYER_NAME);
 
     physicsComponent = pterodactyl:getPhysicsRagDollComponentV2();
+    physicsActiveComponent = pterodactyl:getPhysicsActiveComponent();
 
     spawnComponent = pterodactyl:getSpawnComponent();
     spawnComponent:setActivated(false);
@@ -198,10 +228,12 @@ Pterodactyl["connect"] = function(gameObject)
     hasReachedGoal = false;
     goalReachedHandler = nil;
     roarTimer = 0;
-    eggDropTimer = 0;
     vulnerableTimer = 0;
     stunTimer = 0;
     attackCounter = 0;
+
+    -- The loop must not run before the boss flies.
+    setSound("Fly", false);
 
     bossFightStartListenerId = AppStateManager:getScriptEventManager():registerEventListener(EventType.BossFightStartEvent, Pterodactyl["onBossFightStart"]);
     enemyHitListenerId = AppStateManager:getScriptEventManager():registerEventListener(EventType.EnemyHitEvent, Pterodactyl["onEnemyHit"]);
@@ -228,6 +260,7 @@ Pterodactyl["disconnect"] = function()
     profile = nil;
     config = nil;
     physicsComponent = nil;
+    physicsActiveComponent = nil;
     animationBlender = nil;
     spawnComponent = nil;
     aiLuaComponent = nil;
@@ -258,6 +291,7 @@ Pterodactyl["onEnemyHit"] = function(eventData)
 
     showEnergyBar(eventData["remainingEnergy"]);
     blendAnimation(AnimationBlender.ANIM_TAKE_DAMAGE, 0.1);
+    playSound("Hurt");
 
     -- Thrown back. BehaviorType.NONE and not STOP: STOP would latch a velocity of zero every frame
     -- and brake the impulse away at once. update puts the state's behavior back when the stun is
@@ -291,7 +325,9 @@ Pterodactyl["onEnemyDead"] = function(eventData)
         directionX = -1;
     end
 
-    pterodactyl:getSimpleSoundComponentFromName("Death"):setActivated(true);
+    -- The loop would otherwise keep running while the corpse lies there.
+    setSound("Fly", false);
+    playSound("Death");
 
     local ragDollComponent = pterodactyl:getPhysicsRagDollComponentV2();
     -- The boss flies with a gravity of zero, so without this the corpse would hang in the air.
@@ -326,7 +362,9 @@ Pterodactyl["update"] = function(dt)
         stunTimer = stunTimer - dt;
         if (stunTimer <= 0) then
             stunTimer = 0;
-            movingBehavior:setBehavior(stateBehavior);
+            if (nil ~= stateBehavior) then
+                movingBehavior:setBehavior(stateBehavior);
+            end
             blendAnimation(AnimationBlender.ANIM_IDLE_1, 0.2);
         end
         do return end;
@@ -352,15 +390,6 @@ Pterodactyl["update"] = function(dt)
         end
     end
 
-    if (eggDropTimer > 0) then
-        eggDropTimer = eggDropTimer - dt;
-        if (eggDropTimer <= 0) then
-            eggDropTimer = 0;
-            spawnComponent:setActivated(false);
-            aiLuaComponent:changeState(VulnerableState);
-        end
-    end
-
     if (vulnerableTimer > 0) then
         vulnerableTimer = vulnerableTimer - dt;
         if (vulnerableTimer <= 0) then
@@ -369,10 +398,10 @@ Pterodactyl["update"] = function(dt)
         end
     end
 
-    -- Tells the player's script every frame while the player is within the attack reach. Not while
-    -- the boss is defenceless - that window exists so the player can walk up and strike.
-    if (false == isVulnerable) then
-        local delta = player:getPosition() - pterodactyl:getPosition();
+    -- Tells the player's script every frame while the player is within the attack reach. While the
+    -- boss is defenceless only if its profile says it still hurts on contact (hurtsWhileVulnerable).
+    if (false == isVulnerable or true == profile.hurtsWhileVulnerable) then
+        local delta = player:getPosition() - getBossPosition();
         if (math.abs(delta.x) <= profile.attackReach and math.abs(delta.y) <= profile.attackReachVertical) then
             local eventData = {};
             eventData["enemyId"] = pterodactylId;
@@ -402,10 +431,12 @@ RoarState["enter"] = function(gameObject)
     hover();
     blendAnimation(AnimationBlender.ANIM_ATTACK_3, 0.2);
     roarTimer = config.roarTime;
+    playSound("Roar");
 end
 
 RoarState["exit"] = function(gameObject)
     roarTimer = 0;
+    setSound("Roar", false);
 end
 
 ---------------------------------------------------------------------------------------------------
@@ -427,6 +458,8 @@ PatrolState["enter"] = function(gameObject)
         lastX = config.minX;
     end
 
+    setSound("Fly", true);
+
     local waypoints = {};
     waypoints[1] = arenaPosition(firstX, config.patrolY);
     waypoints[2] = arenaPosition(centerX, config.patrolY + config.patrolAmplitude);
@@ -443,29 +476,85 @@ PatrolState["enter"] = function(gameObject)
     end);
 end
 
+PatrolState["exit"] = function(gameObject)
+    setSound("Fly", false);
+end
+
 ---------------------------------------------------------------------------------------------------
 
-DiveState = {}
+-- Like arenaPosition, but the bottom of the dive has to be able to go below the arena floor limit
+-- to reach the player, so only x is limited.
+local function divePosition(x, y)
+    return Vector3(clampValue(x, config.minX, config.maxX), math.min(y, config.maxY), config.z);
+end
 
-DiveState["enter"] = function(gameObject)
-    log("[Pterodactyl] Enter DiveState");
+-- The dive itself: a U shaped arc through the position the player has RIGHT NOW. The boss starts
+-- where it is, goes down in a parabola, passes the player at the lowest point and climbs up the
+-- other side as high as it started.
+local function startDiveArc()
     blendAnimation(AnimationBlender.ANIM_RUN, 0.2);
 
-    local playerPosition = player:getPosition();
+    -- The flapping stops, the dive sound takes over.
+    setSound("Fly", false);
+    playSound("Dive");
 
-    -- First up and over the player, then straight down onto him. Two waypoints and not one, so the
-    -- swoop really looks like a swoop and the player gets a moment to see it coming.
+    local playerPosition = player:getPosition();
+    local bossPosition = getBossPosition();
+
+    -- Travels towards the player and on past him.
+    local direction = 1;
+    if (playerPosition.x < bossPosition.x) then
+        direction = -1;
+    end
+
+    -- At least a few units, so a player standing right below the boss still gets an arc.
+    local radius = math.max(math.abs(playerPosition.x - bossPosition.x), 3.0);
+    local topY = bossPosition.y;
+    local bottomY = playerPosition.y + config.diveHeightOverPlayer;
+    local points = config.diveArcPoints;
+
     local waypoints = {};
-    waypoints[1] = arenaPosition(playerPosition.x, playerPosition.y + config.diveApproachHeight);
-    waypoints[2] = arenaPosition(playerPosition.x, playerPosition.y + config.diveHeightOverPlayer);
+    for i = 1, points do
+        -- From just after the start (-1) to the exit (+1), the lowest point is at 0 = the player.
+        local t = -1 + 2 * i / points;
+        waypoints[i] = divePosition(playerPosition.x + direction * radius * t, bottomY + (topY - bottomY) * t * t);
+    end
 
     flyTo(waypoints, config.diveSpeed, function()
         aiLuaComponent:changeState(VulnerableState);
     end);
 end
 
+DiveState = {}
+
+DiveState["enter"] = function(gameObject)
+    log("[Pterodactyl] Enter DiveState");
+    setSound("Fly", true);
+    blendAnimation(AnimationBlender.ANIM_WALK_NORTH, 0.2);
+
+    local playerPosition = player:getPosition();
+    local side = -1;
+    if (getBossPosition().x > playerPosition.x) then
+        side = 1;
+    end
+
+    local entryX = playerPosition.x + side * config.diveArcRadius;
+    local entryY = playerPosition.y + config.diveApproachHeight;
+
+    -- Run-up as in VulnerableState: out first, then horizontally towards the player into the
+    -- start of the arc. That way the boss is already facing the right way when the dive begins,
+    -- wherever the player stands.
+    local waypoints = {};
+    waypoints[1] = arenaPosition(entryX + side * runUpDistance(), entryY);
+    waypoints[2] = arenaPosition(entryX, entryY);
+
+    flyTo(waypoints, config.cruiseSpeed, startDiveArc);
+end
+
 DiveState["exit"] = function(gameObject)
     physicsComponent:setSpeed(config.cruiseSpeed);
+    setSound("Fly", false);
+    setSound("Dive", false);
 end
 
 ---------------------------------------------------------------------------------------------------
@@ -474,24 +563,46 @@ EggState = {}
 
 EggState["enter"] = function(gameObject)
     log("[Pterodactyl] Enter EggState");
+    setSound("Fly", true);
     blendAnimation(AnimationBlender.ANIM_WALK_NORTH, 0.2);
 
     local waypoints = {};
     waypoints[1] = arenaPosition(player:getPosition().x, config.eggHeight);
 
     flyTo(waypoints, config.cruiseSpeed, function()
-        -- Arrived above the player: roar once and let the SpawnComponent do the rest. The boss keeps
-        -- hovering while it drops, so the eggs come down as a cluster the player has to leave.
-        hover();
-        blendAnimation(AnimationBlender.ANIM_ATTACK_3, 0.2);
+        -- Above the player. From here on the boss drops eggs WHILE it sweeps, so they land
+        -- all over the arena. No roar and no hovering: it keeps flying the whole time.
+        local halfWidth = config.eggSweepHalfWidth;
+        local left = clampValue(player:getPosition().x - halfWidth, config.minX, config.maxX - 2 * halfWidth);
+        local right = left + 2 * halfWidth;
+
+        -- Starts at the nearer end, so the first leg is short.
+        local first = left;
+        local second = right;
+        local bossX = getBossPosition().x;
+        if (math.abs(bossX - right) < math.abs(bossX - left)) then
+            first = right;
+            second = left;
+        end
+
+        local sweep = {};
+        sweep[1] = arenaPosition(first, config.eggHeight);
+        sweep[2] = arenaPosition(second, config.eggHeight);
+        sweep[3] = arenaPosition(first, config.eggHeight);
+
         spawnComponent:setActivated(true);
-        eggDropTimer = config.eggDropTime;
+
+        flyTo(sweep, config.eggSweepSpeed, function()
+            spawnComponent:setActivated(false);
+            aiLuaComponent:changeState(VulnerableState);
+        end);
     end);
 end
 
 EggState["exit"] = function(gameObject)
     spawnComponent:setActivated(false);
-    eggDropTimer = 0;
+    physicsComponent:setSpeed(config.cruiseSpeed);
+    setSound("Fly", false);
 end
 
 ---------------------------------------------------------------------------------------------------
@@ -504,15 +615,24 @@ VulnerableState["enter"] = function(gameObject)
 
     local playerPosition = player:getPosition();
 
-    -- Beside the player and not on top of him, otherwise the two bodies push each other around.
-    -- It keeps the side it is already on, so it does not fly through the player to get there.
-    local offsetX = config.vulnerableOffsetX;
-    if (pterodactyl:getPosition().x < playerPosition.x) then
-        offsetX = -offsetX;
+    -- Beside the player and not on top of him. It keeps the side it is already on, so it does not
+    -- fly through the player to get there. side = +1: boss is right of the player.
+    local side = 1;
+    if (getBossPosition().x < playerPosition.x) then
+        side = -1;
     end
 
+    local targetX = playerPosition.x + side * config.vulnerableOffsetX;
+    local targetY = playerPosition.y + config.vulnerableHeightOverPlayer;
+
+    -- A run-up: first to a point further out at the same height, then straight towards the
+    -- player. The last leg is horizontal and points at the player, so the boss arrives facing him
+    -- and not sideways to the screen.
     local waypoints = {};
-    waypoints[1] = arenaPosition(playerPosition.x + offsetX, playerPosition.y + config.vulnerableHeightOverPlayer);
+    waypoints[1] = arenaPosition(targetX + side * runUpDistance(), targetY);
+    waypoints[2] = arenaPosition(targetX, targetY);
+
+    setSound("Fly", true);
 
     flyTo(waypoints, config.cruiseSpeed, function()
         hover();
@@ -524,4 +644,5 @@ end
 VulnerableState["exit"] = function(gameObject)
     setVulnerable(false);
     vulnerableTimer = 0;
+    setSound("Fly", false);
 end

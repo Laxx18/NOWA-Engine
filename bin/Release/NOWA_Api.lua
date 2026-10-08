@@ -4492,6 +4492,22 @@ return {
 				args = "(number rotateCameraWeight)",
 				returns = "(nil)",
 				valuetype = "nil"
+			},
+			getMoveCameraWeight =
+			{
+				type = "function",
+				description = "Gets the move camera weight. Default value is 1. If set to 0, the current camera will not be moved.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getRotateCameraWeight =
+			{
+				type = "function",
+				description = "Gets the rotate camera weight. Default value is 1. If set to 0, the current camera will not be rotated.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
 			}
 		}
 	},

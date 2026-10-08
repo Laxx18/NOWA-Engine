@@ -39,6 +39,24 @@ local experienceText = nil;
 local coinsText = nil;
 local killedEnemiesText = nil;
 local hitParticle = nil;
+-- Click2Point: the four verb buttons, the inventory and the speech bubble of the player.
+local speechBubbleComponent = nil;
+local inventoryComponent = nil;
+local inputDeviceComponent = nil;
+local padFocusComponent = nil;
+local verbButtons = {};
+-- Collected once per scene, see collectPointsOfInterest. Holds the casted game objects, NOT ids:
+-- the only one that ever disappears is an item the player takes, and that rebuilds the list.
+local pointsOfInterest = {};
+-- What the player is standing in front of right now, or nil.
+local currentPointOfInterest = nil;
+-- The inventory item the player picked for 'Use', or an empty string.
+local selectedResourceName = "";
+-- Gamepad navigation of the status bar. While it runs the player does not move, because the focus
+-- uses the same UP / DOWN / LEFT / RIGHT actions.
+local isUiModeActive = false;
+local uiKeyWasDown = false;
+
 local playerDeadListenerId = nil;
 local enemyDeadListenerId = nil;
 local enemyNearPlayerListenerId = nil;
@@ -589,6 +607,171 @@ function updateAttack(dt)
     end
 end
 
+---------------------------------------------------------------------------------------------------
+-- Click2Point
+---------------------------------------------------------------------------------------------------
+
+-- Everything the player says goes through here. Should the setters of the SpeechBubbleComponent be
+-- named differently in lua, THIS is the only place that has to be adapted.
+function say(text)
+    speechBubbleComponent:setActivated(false);
+    speechBubbleComponent:setCaption(text);
+    speechBubbleComponent:setSpeechDuration(speechDurationFor(text));
+    speechBubbleComponent:setActivated(true);
+end
+
+-- Collected ONCE per scene instead of per frame: getGameObjectsFromCategory walks all game objects
+-- of the scene and compares strings, and update runs 120 times a second. The points of interest of a
+-- level do not change - the only exception is an item the player takes, and takeItem rebuilds the
+-- list afterwards.
+function collectPointsOfInterest()
+    pointsOfInterest = {};
+
+    for i = 1, #CLICK2POINT.poiCategories do
+        local objects = AppStateManager:getGameObjectController():getGameObjectsFromCategory(CLICK2POINT.poiCategories[i]);
+
+        -- Attention: the table from C++ is filled starting at index 0, so '#' and a numeric loop are
+        -- both wrong here. pairs() does not care about the base.
+        for key, object in pairs(objects) do
+            pointsOfInterest[#pointsOfInterest + 1] = AppStateManager:getGameObjectController():castGameObject(object);
+        end
+    end
+end
+
+-- The nearest point of interest within reach, or nil. Horizontal distance decides - in a 2.5D jump n
+-- run that is what the player sees - the vertical reach only keeps the floor above from counting.
+function updatePointOfInterest()
+    local playerPosition = prehistoricLax:getPosition();
+    local nearestDistance = CLICK2POINT.reach;
+    local nearest = nil;
+
+    for i = 1, #pointsOfInterest do
+        local delta = pointsOfInterest[i]:getPosition() - playerPosition;
+
+        if (math.abs(delta.y) <= CLICK2POINT.reachVertical and math.abs(delta.x) <= nearestDistance) then
+            nearestDistance = math.abs(delta.x);
+            nearest = pointsOfInterest[i];
+        end
+    end
+
+    currentPointOfInterest = nearest;
+end
+
+-- Does what a verb actually does at a point of interest. Everything that changes the world sits
+-- here, the tables in init.lua only say WHICH of these runs where.
+function performAction(actionName, pointOfInterest)
+    if (actionName == "pullLever") then
+        -- A lever may only be pulled once per run. The flag lives in the global values, so it
+        -- survives a scene change and is cleared again by startNewRun() after a death.
+        if (true == isLeverPulled(pointOfInterest)) then
+            say("I already pulled that one.");
+            do return end;
+        end
+		
+		pointOfInterest:getSimpleSoundComponent():setActivated(true);
+
+        setLeverPulled(pointOfInterest);
+        playerController:setInteractionGameObject(pointOfInterest);
+        playerController:requestState("LeverState");
+        setUiMode(false);
+        do return end;
+    end
+
+    if (actionName == "unlock") then
+        local lock = CLICK2POINT_LOCKS[pointOfInterest:getTagName()];
+
+        if (selectedResourceName ~= lock.item) then
+            say("I need the right key for this. And I should pick it in the inventory first.");
+            do return end;
+        end
+
+        -- The key is used up. Everything that carries the lock's reference id - the gate, its slider
+        -- actuator, its sound - is switched on, exactly like a pulled lever does it.
+        --inventoryComponent:removeQuantity(lock.item, 1);
+        selectedResourceName = "";
+        AppStateManager:getGameObjectController():activateGameObjectComponentsFromReferenceId(pointOfInterest:getReferenceId(), true);
+
+        say(lock.speech);
+        padFocusComponent:refreshFocusTargets();
+        setUiMode(false);
+        do return end;
+    end
+
+    if (actionName == "takeItem") then
+        -- The same way walking into the item would do it, see onPlayerEnemyContactOnce.
+        local inventoryItem = pointOfInterest:getInventoryItemComponent();
+        inventoryItem:addQuantityToInventory(mainGameObject:getId(), 1, true);
+
+        AppStateManager:getGameObjectController():deleteGameObject(pointOfInterest:getId());
+        currentPointOfInterest = nil;
+
+        moneySound:setActivated(true);
+        say("Got it.");
+
+        -- The list holds the object that was just deleted, and the inventory has a new slot.
+        collectPointsOfInterest();
+        padFocusComponent:refreshFocusTargets();
+        setUiMode(false);
+        do return end;
+    end
+
+    if (actionName == "talkToNpc") then
+        -- The line belongs to the NPC, so it comes out of ITS speech bubble, not the player's.
+        pointOfInterest:getSpeechBubbleComponent():setActivated(true);
+        setUiMode(false);
+        do return end;
+    end
+end
+
+-- One of the four verb buttons was clicked - with the mouse or, through the pad focus, with the
+-- gamepad. For MyGUI both are the same click.
+function handleVerb(verb)
+    -- Not while the player is lying in the ragdoll, walking through a portal or pulling a lever.
+    if (false == playerController:isInState("WalkingStateJumpNRun")) then
+        do return end;
+    end
+
+    -- Nothing in front of the player. 'Talk' then means talking to himself, everything else is a
+    -- plain refusal.
+    if (currentPointOfInterest == nil) then
+        if (verb == "Talk") then
+            say(randomLine(CLICK2POINT_TALK_LINES));
+        else
+            say(randomLine(CLICK2POINT_REFUSALS[verb]));
+        end
+        do return end;
+    end
+
+    local interactions = CLICK2POINT_INTERACTIONS[currentPointOfInterest:getTagName()];
+    if (interactions == nil) then
+        say(randomLine(CLICK2POINT_REFUSALS[verb]));
+        do return end;
+    end
+
+    local entry = interactions[verb];
+    if (entry == nil) then
+        say(randomLine(CLICK2POINT_REFUSALS[verb]));
+        do return end;
+    end
+
+    if (entry.speech ~= nil) then
+        say(entry.speech);
+        do return end;
+    end
+
+    performAction(entry.action, currentPointOfInterest);
+end
+
+-- Switches the gamepad navigation of the status bar. While it runs the player stands still, because
+-- the focus steps with the same UP / DOWN / LEFT / RIGHT actions he walks with.
+function setUiMode(active)
+    isUiModeActive = active;
+    playerController:lockMovement("ui", active);
+    padFocusComponent:setActivated(active);
+end
+
+---------------------------------------------------------------------------------------------------
+
 -- Re-applies every lever that has already been pulled in this run. After a scene change the gate is
 -- back at its authored position, but the lever counts as pulled - so it is opened again here,
 -- without animation and without locking the player.
@@ -633,7 +816,7 @@ PrehistoricLax["connect"] = function(gameObject)
     -- run left behind and with the zones of a room that no longer exists.
     followCamera2DComponent:setZoom(1.0, 0.0);
     followCamera2DComponent:clearCameraZones();
-
+    
     AppStateManager:getGameObjectController():activatePlayerController(true, prehistoricLax:getId(), true);
 
     areaOfInterestComponent = prehistoricLax:getAreaOfInterestComponent();
@@ -753,6 +936,54 @@ PrehistoricLax["connect"] = function(gameObject)
     -----------------------------------------------------------------------------------------
     playerController:setActionKey(NOWA_A_ATTACK_1);
 
+    -----------------------------------------------------------------------------------------
+    -- Click2Point: verb buttons, inventory and speech bubble
+    -----------------------------------------------------------------------------------------
+    speechBubbleComponent = prehistoricLax:getSpeechBubbleComponent();
+    inputDeviceComponent = prehistoricLax:getInputDeviceComponent();
+    inventoryComponent = mainGameObject:getMyGUIItemBoxComponent();
+    padFocusComponent = mainGameObject:getMyGUIPadFocusComponent();
+    
+    -- orientate to given camera always
+    speechBubbleComponent:setOrientationTargetId(cameraGameObject:getId());
+
+    -- One handler for all four buttons. The verb is the button name without the "Button" ending, so
+    -- a fifth verb needs nothing but a button and an entry in CLICK2POINT.verbs.
+    verbButtons = {};
+    for i = 1, #CLICK2POINT.verbs do
+        local verb = CLICK2POINT.verbs[i];
+        local button = mainGameObject:getMyGUIButtonComponentFromName(verb .. "Button");
+
+        button:reactOnMouseButtonClick(function(caption)
+            handleVerb(verb);
+        end);
+
+        verbButtons[verb] = button;
+    end
+
+    -- Picking an item in the inventory. It is remembered until it is used or another one is picked -
+    -- that is the 'key on the lock' flow: click the key, then click Use at the lock.
+    inventoryComponent:reactOnMouseButtonClick(function(resourceName, gameObjectId, buttonId)
+        selectedResourceName = resourceName;
+
+        if (resourceName == "") then
+            do return end;
+        end
+
+        say("Picked: " .. resourceName);
+    end);
+
+    padFocusComponent:reactOnFocusChanged(function(gameObjectId, slotIndex)
+        -- Only interesting while building this up: shows that the navigation really walks.
+        log("[PrehistoricLax] UI focus: gameObjectId: " .. gameObjectId .. " slotIndex: " .. toString(slotIndex));
+    end);
+
+    selectedResourceName = "";
+    currentPointOfInterest = nil;
+    isUiModeActive = false;
+    uiKeyWasDown = false;
+    collectPointsOfInterest();
+
     playerController:reactOnActionPressed(function(otherGameObject)
         if (otherGameObject == nil) then
             log("[PrehistoricLax] Action pressed - nothing in front of the player");
@@ -775,15 +1006,9 @@ PrehistoricLax["connect"] = function(gameObject)
             end
 
             if (otherGameObject:getTagName() == "Lever") then
-                -- A lever may only be pulled once per run. The flag lives in the global values, so it
-                -- survives a scene change and is cleared again by startNewRun() after a death.
-                if (true == isLeverPulled(otherGameObject)) then
-                    do return end;
-                end
-                setLeverPulled(otherGameObject);
-
-                playerController:setInteractionGameObject(otherGameObject);
-                playerController:requestState("LeverState");
+                -- The action key is the short way to the same thing the 'Pull' button does, so there
+                -- is exactly ONE implementation of pulling a lever.
+                performAction("pullLever", otherGameObject);
                 do return end;
             end
         end
@@ -902,6 +1127,20 @@ PrehistoricLax["disconnect"] = function()
     followCamera2DComponent:setZoom(1.0, 0.0);
     followCamera2DComponent:clearCameraZones();
 
+    -- Click2Point. The pad focus is switched off explicitly, otherwise the next scene would start
+    -- with a locked player and a visible mouse pointer.
+    if (true == isUiModeActive) then
+        setUiMode(false);
+    end
+    pointsOfInterest = {};
+    currentPointOfInterest = nil;
+    selectedResourceName = "";
+    verbButtons = {};
+    speechBubbleComponent = nil;
+    inventoryComponent = nil;
+    inputDeviceComponent = nil;
+    padFocusComponent = nil;
+
     playerController = nil;
     animationBlender = nil;
 end
@@ -910,6 +1149,16 @@ end
 -- Called by the LuaScriptComponent every frame.
 ---------------------------------------------------------------------------------------------------
 PrehistoricLax["update"] = function(dt)
+    updatePointOfInterest();
+
+    -- Toggles the gamepad navigation on the rising edge, NOT while the key is held down - otherwise
+    -- the mode would switch on and off again in every frame.
+    local uiKeyDown = inputDeviceComponent:isActionDown(NOWA_A_INVENTORY);
+    if (true == uiKeyDown and false == uiKeyWasDown) then
+        setUiMode(false == isUiModeActive);
+    end
+    uiKeyWasDown = uiKeyDown;
+
     updateEnergyTrail(dt);
     updateHitReaction(dt);
     updateEnemyCombat(dt);
@@ -965,20 +1214,9 @@ function tryStartEnemyAttack(enemyGameObject)
     if (enemyGameObject == nil) then
         do return end;
     end
-    
-    -- An enemy that looks away from the player does not attack.
-    if (false == isEnemyFacingPlayer(enemyGameObject)) then
-        do return end;
-    end
-    
+
     -- A killed enemy does not attack anymore.
     if (true == deadEnemies[enemyGameObject:getId()]) then
-        do return end;
-    end
-
-    -- A boss that has made itself defenceless does not attack either - that window is the whole
-    -- reason the player can get close to it at all.
-    if (true == passiveEnemies[enemyGameObject:getId()]) then
         do return end;
     end
 
@@ -989,10 +1227,22 @@ function tryStartEnemyAttack(enemyGameObject)
     local profile = EnemyProfiles[enemyGameObject:getTagName()];
 
     -- A thrown thing (the pterodactyl's eggs): no swing, no cooldown, no animation. It hurts the
-    -- moment it touches the player and that is all it does. The trade rule does not apply - a
-    -- falling egg can not be parried with the cudgel.
+    -- moment it touches the player and that is all it does. Checked BEFORE the facing test: an
+    -- egg has no front, it tumbles, so 'looks away from the player' is meaningless for it. The
+    -- trade rule does not apply either - a falling egg can not be parried with the cudgel.
     if (true == profile.isProjectile) then
         hitPlayer(enemyGameObject:getPosition(), profile);
+        do return end;
+    end
+
+    -- An enemy that looks away from the player does not attack.
+    if (false == isEnemyFacingPlayer(enemyGameObject)) then
+        do return end;
+    end
+
+    -- A boss that has made itself defenceless does not attack either, unless its profile says it
+    -- still hurts on contact.
+    if (true == passiveEnemies[enemyGameObject:getId()] and true ~= profile.hurtsWhileVulnerable) then
         do return end;
     end
 

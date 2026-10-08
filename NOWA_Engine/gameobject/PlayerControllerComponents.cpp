@@ -1258,6 +1258,11 @@ namespace NOWA
         return gameObjectPtr.get();
     }
 
+    bool PlayerControllerComponent::isMovementLocked(void) const
+    {
+        return false == this->moveLockOwner.empty();
+    }
+
     void PlayerControllerComponent::internalHandleActionKey(void)
     {
         // Nothing assigned from lua, or nobody listening: no work at all.
@@ -3493,16 +3498,29 @@ namespace NOWA
 
         this->inAir = height - this->playerController->getOwner()->getBottomOffset().y > 0.4f;
 
+        // Attention: ducking shrinks the collision hull and lifts the body off the ground for a moment, so 'inAir' flickers to true
+        // while the player slides down a ramp. The slide used to be reset to zero on every one of those flickers (see the airborne reset
+        // further down), which is why it only crept along. While a slide is running, the player therefore still counts as grounded for
+        // the slide as long as there is ground below him and he is not really high above it.
+        const bool slideGrounded =
+            false == this->inAir || (true == this->duckedOnce && this->duckSlideSpeed > 0.0f && nullptr != this->playerController->getHitGameObjectBelow() && height - this->playerController->getOwner()->getBottomOffset().y < 1.2f);
+
         // Store previous direction for 2D direction-change detection.
         this->oldDirection = this->direction;
 
         // -------------------------------------------------------------------------
         // Input handling
         // -------------------------------------------------------------------------
-        const bool movingUp = inputDeviceModule->isActionDown(NOWA_A_UP);
-        const bool movingDown = inputDeviceModule->isActionDown(NOWA_A_DOWN);
-        const bool movingLeft = inputDeviceModule->isActionDown(NOWA_A_LEFT);
-        const bool movingRight = inputDeviceModule->isActionDown(NOWA_A_RIGHT);
+        // While the movement is locked (inventory / pad focus, lever, ragdoll ...) every player input is ignored HERE, at the source. Only
+        // zeroing the speed was not enough: the 2D turn, the duck toggle and the walk animation are driven by the keys and kept running.
+        // Not an early return on purpose: the velocity and omega commands are latched by the physics, so the idle branch below has to run
+        // and send the zero commands that bring the player to a clean stop.
+        const bool movementLocked = this->playerController->isMovementLocked();
+
+        const bool movingUp = false == movementLocked && inputDeviceModule->isActionDown(NOWA_A_UP);
+        const bool movingDown = false == movementLocked && inputDeviceModule->isActionDown(NOWA_A_DOWN);
+        const bool movingLeft = false == movementLocked && inputDeviceModule->isActionDown(NOWA_A_LEFT);
+        const bool movingRight = false == movementLocked && inputDeviceModule->isActionDown(NOWA_A_RIGHT);
         const bool anyMove = movingUp || movingDown || movingLeft || movingRight;
 
         // -------------------------------------------------------------------------
@@ -3533,7 +3551,7 @@ namespace NOWA
             this->duckToggleCooldown -= dt;
         }
 
-        const bool duckKeyDown = inputDeviceModule->isActionDown(NOWA_A_DUCK) || movingDown;
+        const bool duckKeyDown = (false == movementLocked && inputDeviceModule->isActionDown(NOWA_A_DUCK)) || movingDown;
         // Attention: 'false == this->inAir' only blocks STARTING to duck. Standing up has to stay possible at any time, otherwise the player
         // could get stuck in the crouch if he ever ends up airborne while ducking.
         const bool mayStartDucking = false == this->duckedOnce && false == this->inAir;
@@ -3928,7 +3946,7 @@ namespace NOWA
         // and cleared when the key is released. This prevents auto-repeat jumping.
         // -------------------------------------------------------------------------
         this->jumpKeyPressed = false;
-        if (inputDeviceModule->isActionDown(NOWA_A_JUMP))
+        if (false == movementLocked && inputDeviceModule->isActionDown(NOWA_A_JUMP))
         {
             if (true == this->canDoubleJump)
             {
@@ -4232,7 +4250,7 @@ namespace NOWA
         // directionMove became zero and the player rose straight up instead of jumping
         // forward. Any steering input while in the air still overrides it, which keeps the
         // usual mid air control.
-        if (true == this->inAir && true == directionMove.positionEquals(Ogre::Vector3::ZERO, 0.0001f))
+        if (true == this->inAir && false == slideGrounded && true == directionMove.positionEquals(Ogre::Vector3::ZERO, 0.0001f))
         {
             directionMove = currentVelocity - gravityDir * currentVelocity.dotProduct(gravityDir);
         }
@@ -4446,11 +4464,11 @@ namespace NOWA
         // Flip to true if the slide still feels wrong. Logs the ground normal every 30th frame while ducked, so the log stays readable - the
         // interesting number is 'normalDotUp': on a 45 degree ramp it must read about 0.707. Anything near 1.0 means the ground rays are
         // reporting a flat normal instead of the ramp, and then the slide is not the problem.
-        const bool showDuckSlideDiagnostics = false;
+        const bool showDuckSlideDiagnostics = true;
 
         bool isSlidingDownhill = false;
 
-        if (true == this->playerController->getCanSlide() && true == this->duckedOnce && false == this->inAir && nullptr != this->playerController->getHitGameObjectBelow())
+        if (true == this->playerController->getCanSlide() && true == this->duckedOnce && true == slideGrounded && nullptr != this->playerController->getHitGameObjectBelow())
         {
             Ogre::Vector3 groundNormal = this->playerController->getNormal();
             if (groundNormal.squaredLength() > 0.0001f)
@@ -4520,7 +4538,26 @@ namespace NOWA
             }
         }
 
-        if (true == this->inAir)
+        if (true == showDuckSlideDiagnostics && true == this->duckedOnce)
+        {
+            static unsigned int duckSlideStateLogCounter = 0;
+            duckSlideStateLogCounter++;
+            if (0 == duckSlideStateLogCounter % 30)
+            {
+                Ogre::Vector3 diagnosticNormal = this->playerController->getNormal();
+                if (diagnosticNormal.squaredLength() > 0.0001f)
+                {
+                    diagnosticNormal.normalise();
+                }
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WalkingStateJumpNRun] duck slide state: inAir: " + Ogre::StringConverter::toString(this->inAir) +
+                                                                                        " slideGrounded: " + Ogre::StringConverter::toString(slideGrounded) + " sliding: " + Ogre::StringConverter::toString(isSlidingDownhill) +
+                                                                                        " normalDotUp: " + Ogre::StringConverter::toString(diagnosticNormal.dotProduct(upDir)) + " slideSpeed: " + Ogre::StringConverter::toString(this->duckSlideSpeed) +
+                                                                                        " velocity: " + Ogre::StringConverter::toString(currentVelocity.length()));
+            }
+        }
+
+        // Only a real fall resets the slide, see 'slideGrounded' above.
+        if (false == slideGrounded)
         {
             // Attention: no coasting in the air. The run-out used to keep nearly the full speed for
             // more than a second, which carried the player straight across a gap and dropped him onto

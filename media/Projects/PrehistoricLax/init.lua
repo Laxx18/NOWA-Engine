@@ -99,10 +99,10 @@ PTERODACTYL =
     -- ── Arena ────────────────────────────────────────────────────────────────────────
     -- The box the boss may fly in. Every flight target is clamped into it, so the boss can never
     -- end up inside the level geometry or outside of the camera. z is the 2.5D depth plane.
-    minX = 14.5,
-    maxX = 38.5,
+    minX = 15,
+    maxX = 38,
     minY = 2.5,
-    maxY = 18.0,
+    maxY = 8.0,
     z = -7.0,
 
     -- ── Speeds ───────────────────────────────────────────────────────────────────────
@@ -127,18 +127,24 @@ PTERODACTYL =
     -- damage itself is the ordinary contact attack every enemy has, see the profile below.
     diveApproachHeight = 5.0,
     diveHeightOverPlayer = 0.8,
+    diveArcRadius = 7.0,   -- horizontal distance from the player at which the dive starts
+    diveArcPoints = 12,    -- waypoints of the arc, more = rounder
 
     -- ── Egg attack ───────────────────────────────────────────────────────────────────
     -- Hovers above the player and lets the SpawnComponent drop eggs for this long. With a spawn
-    -- interval of 500 ms that is five eggs - enough to force the player out of the spot.
-    eggHeight = 11.0,
-    eggDropTime = 2.5,
+    -- interval of 1000 ms that is five eggs - enough to force the player out of the spot.
+    eggHeight = 12,
+    eggDropTime = 10,
+	-- Egg attack: half width of the sweep around the player, and its speed. Twice the half
+    -- width must fit into the arena (maxX - minX).
+    eggSweepHalfWidth = 9.0,
+    eggSweepSpeed = 6.0,
 
     -- ── The window the player is supposed to use ─────────────────────────────────────
     -- After EVERY attack the boss drops to jump height next to the player and holds still. Beside
     -- him and not on top of him, otherwise the two bodies push each other around.
-    vulnerableHeightOverPlayer = 2.2,
-    vulnerableOffsetX = 2.2,
+    vulnerableHeightOverPlayer = 3.0,
+    vulnerableOffsetX = 1.2,
     vulnerableTime = 2.5,
 
     -- ── Reaction to a landed hit ─────────────────────────────────────────────────────
@@ -455,9 +461,10 @@ EnemyProfiles =
     -- air and the player is below it.
     Pterodactyl =
     {
-        level = 5, energy = 180, strength = 25, experience = 300,
+        level = 5, energy = 100, strength = 20, experience = 300,
+		hurtsWhileVulnerable = false,   -- if true, then hurts on contact even in the window; false = the window is safe. 
         attackImpactDelay = 0.3, attackDuration = 1.33, attackCooldown = 1.5, damageDuration = 1.33,
-        attackReach = 1.8, attackReachVertical = 1.8,
+        attackReach = 1.8, attackReachVertical = 1.8, attackImpactDelay = 0.05,
         playerKnockbackHorizontal = 9.0, playerKnockbackUp = 5.0, playerKnockbackTime = 0.35,
         deathKnockbackHorizontal = 25.0, deathKnockbackUp = 10.0, deathDeleteDelay = 4.0,
         locomotionAnimation = "ANIM_WALK_NORTH",
@@ -482,3 +489,156 @@ EnemyProfiles =
         energyBarOffsetY = 0
     }
 };
+
+
+---------------------------------------------------------------------------------------------------
+-- Click2Point
+--
+-- The four verb buttons of the status bar (Take, Use, Pull, Talk) always act on the point of
+-- interest the player is standing in front of. What that is, is decided purely by the TAG NAME of
+-- the game object, so a new object needs no new code here - only an entry in the table below.
+--
+-- The buttons do NOT blink at a point of interest: the player is supposed to puzzle, and that only
+-- works if trying things out is part of it. Which is why every wrong verb has an answer of its own
+-- instead of simply doing nothing.
+---------------------------------------------------------------------------------------------------
+
+CLICK2POINT =
+{
+    -- How far the player may stand away from a point of interest. The horizontal reach is the
+    -- important one in a 2.5D jump n run, the vertical one only keeps the floor above from counting.
+    reach = 2.2,
+    reachVertical = 2.0,
+
+    -- The categories that are searched for points of interest. Collected ONCE per scene, see
+    -- collectPointsOfInterest in PrehistoricLax.lua.
+    poiCategories = { "Mechanics", "PointOfInterest" },
+
+    -- Speech timing: a base time plus a bit per character, so no sentence needs its own duration and
+    -- a long one still stays readable.
+    speechBaseTime = 1.2,
+    speechTimePerCharacter = 0.045,
+    speechMaxTime = 7.0,
+
+    -- The verbs, exactly the names of the MyGUIButtonComponents without the "Button" ending.
+    verbs = { "Take", "Use", "Pull", "Talk" }
+};
+
+-- What is possible where. The key is the TagName of the point of interest, then the verb.
+--
+--   action = "..."   does something, see performAction in PrehistoricLax.lua
+--   speech = "..."   the player says this and nothing happens
+--
+-- A verb that is missing here lands in CLICK2POINT_REFUSALS, so only the interesting answers have to
+-- be written out.
+CLICK2POINT_INTERACTIONS =
+{
+    Lever =
+    {
+        Pull = { action = "pullLever" },
+        Take = { speech = "The lever is bolted into the rock. It stays where it is." },
+        Use  = { speech = "I have nothing that would fit on a lever. Pulling it should do." },
+        Talk = { speech = "A lever is a bad listener." }
+    },
+
+    LockYellow =
+    {
+        Use  = { action = "unlock" },
+        Pull = { speech = "It does not budge. This one wants a key, not muscle." },
+        Take = { speech = "The lock is part of the gate." },
+        Talk = { speech = "The lock says nothing. Locks rarely do." }
+    },
+
+    LockRed =
+    {
+        Use  = { action = "unlock" },
+        Pull = { speech = "It does not budge. This one wants a key, not muscle." },
+        Take = { speech = "The lock is part of the gate." },
+        Talk = { speech = "The lock says nothing. Locks rarely do." }
+    },
+
+    -- Anything lying around that carries an InventoryItemComponent: shoes, the flower, keys.
+    Pickup =
+    {
+        Take = { action = "takeItem" },
+        Use  = { speech = "First I should pick it up." },
+        Pull = { speech = "Pulling will not help here." },
+        Talk = { speech = "It does not answer. Which is a relief, really." }
+    },
+
+    -- Someone to talk to. The line itself comes from the speech bubble of the NPC, not from here.
+    Npc =
+    {
+        Talk = { action = "talkToNpc" },
+        Take = { speech = "I am fairly sure that is not allowed." },
+        Use  = { speech = "Using people. What a thought." },
+        Pull = { speech = "Pulling at strangers never ends well." }
+    }
+};
+
+-- Said when the verb does nothing at this spot, or when there is nothing in front of the player at
+-- all. Picked at random, so trying things out does not sound like a broken record.
+CLICK2POINT_REFUSALS =
+{
+    Take =
+    {
+        "I can not take this.",
+        "That stays where it is.",
+        "Not everything that is loose belongs in my bag."
+    },
+    Use =
+    {
+        "I can not use this.",
+        "That does not fit anywhere.",
+        "Using it on what, exactly?"
+    },
+    Pull =
+    {
+        "There is nothing to pull here.",
+        "Pulling that would only look silly.",
+        "It does not move. And it is not supposed to."
+    },
+    Talk =
+    {
+        "No answer. As expected.",
+        "Talking to that would be a new low."
+    }
+};
+
+-- Talk with nothing in front of the player: the hero talks to himself. Pure flavour - and a hint
+-- that the button does work.
+CLICK2POINT_TALK_LINES =
+{
+    "Talking to myself again. Classic.",
+    "Somewhere here there must be a way on.",
+    "If my mother could see me now. Hunting crystals in a cave.",
+    "The air smells of old stone and older bones.",
+    "I should have brought more food.",
+    "Hello? ... Nothing. Good.",
+    "Whoever built this place had a strange sense of humour.",
+    "One day I will tell this story and nobody will believe a word.",
+    "Quiet. Too quiet, really.",
+    "Right. Think, Lax. Think."
+};
+
+-- Which key fits which lock. The key is the TagName of the lock, 'item' the resource name in the
+-- inventory, exactly as it is written in the inventory xml.
+CLICK2POINT_LOCKS =
+{
+    LockYellow = { item = "YellowKeyItem", speech = "The yellow key fits. It really fits!" },
+    LockRed    = { item = "RedKeyItem",    speech = "The red key turns. Something heavy moves behind the wall." }
+};
+
+-- Picks a random entry out of a list of sentences.
+function randomLine(lines)
+    return lines[math.random(1, #lines)];
+end
+
+-- Long sentences need to stay up longer. Saves a duration per line.
+function speechDurationFor(text)
+    local duration = CLICK2POINT.speechBaseTime + string.len(text) * CLICK2POINT.speechTimePerCharacter;
+    if (duration > CLICK2POINT.speechMaxTime) then
+        duration = CLICK2POINT.speechMaxTime;
+    end
+    return duration;
+end
