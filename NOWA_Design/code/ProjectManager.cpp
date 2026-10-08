@@ -98,6 +98,7 @@ Ogre::Light* ProjectManager::createSunLight(void)
             if (nullptr != gameObjectPtr)
             {
                 gameObjectPtr->getAttribute(NOWA::GameObject::AttrName())->setReadOnly(true);
+                gameObjectPtr->setHideOnConnect(true);
 
                 NOWA::LightDirectionalCompPtr lightComponentPtr =
                     boost::dynamic_pointer_cast<NOWA::LightDirectionalComponent>(NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NOWA::LightDirectionalComponent::getStaticClassName()));
@@ -205,6 +206,7 @@ void ProjectManager::createMainGameObject(void)
         {
             // Do not permit to change the name of the sun light
             gameObjectPtr->getAttribute(NOWA::GameObject::AttrName())->setReadOnly(true);
+            gameObjectPtr->setHideOnConnect(true);
 
             // Add also the light direcitional component
             NOWA::DescriptionCompPtr descriptionComponentPtr = boost::dynamic_pointer_cast<NOWA::DescriptionComponent>(NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NOWA::DescriptionComponent::getStaticClassName()));

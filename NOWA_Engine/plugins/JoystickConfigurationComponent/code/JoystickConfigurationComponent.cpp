@@ -11,6 +11,55 @@
 
 #include "OgreAbiUtils.h"
 
+namespace
+{
+	// All actions which can be remapped in the configuration window, in the order they are shown (filled column by column).
+	// The actions are named explicitly instead of being derived from a running index, so the window does not depend on the order of the InputDeviceModule::Action enum.
+	// Captions in "#{...}" are localized, the others are plain text. Replace them by localization keys, if desired.
+	struct ConfigurableAction
+	{
+		NOWA::InputDeviceModule::Action action;
+		const char* caption;
+	};
+
+	const ConfigurableAction configurableActions[] =
+	{
+		{NOWA::InputDeviceModule::UP, "#{Move_Up}:"},
+		{NOWA::InputDeviceModule::DOWN, "#{Move_Down}:"},
+		{NOWA::InputDeviceModule::LEFT, "#{Move_Left}:"},
+		{NOWA::InputDeviceModule::RIGHT, "#{Move_Right}:"},
+		{NOWA::InputDeviceModule::JUMP, "#{Jump}:"},
+		{NOWA::InputDeviceModule::RUN, "Run:"},
+		{NOWA::InputDeviceModule::COWER, "Cower:"},
+		{NOWA::InputDeviceModule::ATTACK_1, "Attack 1:"},
+		{NOWA::InputDeviceModule::ATTACK_2, "Attack 2:"},
+		{NOWA::InputDeviceModule::DUCK, "Duck:"},
+		{NOWA::InputDeviceModule::SNEAK, "Sneak:"},
+		{NOWA::InputDeviceModule::ACTION, "Action:"},
+		{NOWA::InputDeviceModule::RELOAD, "Reload:"},
+		{NOWA::InputDeviceModule::INVENTORY, "Inventory:"},
+		{NOWA::InputDeviceModule::MAP, "Map:"},
+		{NOWA::InputDeviceModule::SELECT, "Select:"},
+		{NOWA::InputDeviceModule::START, "Start:"},
+		{NOWA::InputDeviceModule::PAUSE, "Pause:"},
+		{NOWA::InputDeviceModule::SAVE, "Save:"},
+		{NOWA::InputDeviceModule::LOAD, "Load:"},
+		{NOWA::InputDeviceModule::CAMERA_FORWARD, "Camera forward:"},
+		{NOWA::InputDeviceModule::CAMERA_BACKWARD, "Camera backward:"},
+		{NOWA::InputDeviceModule::CAMERA_LEFT, "Camera left:"},
+		{NOWA::InputDeviceModule::CAMERA_RIGHT, "Camera right:"},
+		{NOWA::InputDeviceModule::CAMERA_UP, "Camera up:"},
+		{NOWA::InputDeviceModule::CAMERA_DOWN, "Camera down:"},
+		{NOWA::InputDeviceModule::CONSOLE, "Console:"},
+		{NOWA::InputDeviceModule::WEAPON_CHANGE_FORWARD, "Next weapon:"},
+		{NOWA::InputDeviceModule::WEAPON_CHANGE_BACKWARD, "Previous weapon:"},
+		{NOWA::InputDeviceModule::FLASH_LIGHT, "Flash light:"},
+		{NOWA::InputDeviceModule::GRID, "Grid:"}
+	};
+
+	const size_t configurableActionCount = sizeof(configurableActions) / sizeof(configurableActions[0]);
+}
+
 namespace NOWA
 {
 	using namespace rapidxml;
@@ -169,14 +218,19 @@ namespace NOWA
 		{
 			this->okButton->eventMouseButtonClick += MyGUI::newDelegate(this, &JoystickConfigurationComponent::buttonHit);
 			this->abordButton->eventMouseButtonClick += MyGUI::newDelegate(this, &JoystickConfigurationComponent::buttonHit);
-			for (unsigned short i = 0; i < keyConfigTextboxes.size(); i++)
-			{
+
 // TODO: Attention: Later check if second joystick available and this is the second component, to configure the second joystick!
-				auto keyCode = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->getMappedButton(static_cast<InputDeviceModule::Action>(i));
-				Ogre::String strKeyCode = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->getStringFromMappedButton(keyCode);
+			InputDeviceModule* joystickModule = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId());
+
+			for (size_t i = 0; i < this->keyConfigTextboxes.size(); i++)
+			{
+				Ogre::String strKeyCode = "None";
+				if (nullptr != joystickModule)
+			{
+					strKeyCode = joystickModule->getStringFromMappedButton(joystickModule->getMappedButton(configurableActions[i].action));
+				}
 				this->oldKeyValue[i] = strKeyCode;
 				this->newKeyValue[i] = strKeyCode;
-				// Ogre::String strKeyCode = NOWA::Core::getSingletonPtr()->getKeyboard()->getAsString(keyCode);
 				this->keyConfigTextboxes[i]->setNeedMouseFocus(true);
 				this->keyConfigTextboxes[i]->setCaptionWithReplacing(strKeyCode);
 				this->keyConfigTextboxes[i]->eventMouseSetFocus += MyGUI::newDelegate(this, &JoystickConfigurationComponent::notifyMouseSetFocus);
@@ -428,6 +482,83 @@ namespace NOWA
 		return this->widget;
 	}
 
+	bool JoystickConfigurationComponent::captureButtonForMapping(void)
+	{
+		InputDeviceModule* joystickModule = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId());
+		if (nullptr == joystickModule)
+		{
+			return true;
+		}
+
+		// Attention: The pressed button is always read from the module and never taken from the raw OIS event index.
+		// The module translates the raw index via the detected joystick layout (XInput, Linux evdev, generic). Casting the raw index directly into
+		// InputDeviceModule::JoyStickButton shows e.g. "Select" for the A button on an XInput pad.
+		joystickModule->update(0.016f);
+		const InputDeviceModule::JoyStickButton button = joystickModule->getPressedButton();
+
+		if (InputDeviceModule::JoyStickButton::BUTTON_NONE == button)
+		{
+			// Everything is released, so the next press is a new one again
+			this->lastButton = InputDeviceModule::JoyStickButton::BUTTON_NONE;
+			return true;
+		}
+
+		// A held button or a deflected stick fires events continuously, but must only be assigned once per press.
+		// Else the same stick direction would be assigned to one textbox after the other.
+		if (button == this->lastButton)
+		{
+			return true;
+		}
+
+		this->lastButton = button;
+
+		// Check if a textbox is active and set the pressed button to the textbox for button-mapping
+		int index = -1;
+		for (size_t i = 0; i < this->keyConfigTextboxes.size(); i++)
+		{
+			if (true == this->textboxActive[i])
+			{
+				index = static_cast<int>(i);
+				this->textboxActive[i] = false;
+				this->keyConfigTextboxes[i]->setTextShadow(false);
+			}
+		}
+
+		if (-1 == index)
+		{
+			return true;
+		}
+
+		const Ogre::String strKeyCode = joystickModule->getStringFromMappedButton(button);
+
+		// A button may only be bound once: remove it from the textbox(es) which hold it at the moment
+		bool alreadyExisting = false;
+		for (size_t i = 0; i < this->keyConfigTextboxes.size(); i++)
+		{
+			if (static_cast<int>(i) != index && this->keyConfigTextboxes[i]->getCaption() == strKeyCode)
+			{
+				this->keyConfigTextboxes[i]->setCaptionWithReplacing("None");
+				this->newKeyValue[i] = "None";
+				alreadyExisting = true;
+			}
+		}
+		
+		// Note: The message used to be hidden again directly after it had been shown, so it never appeared
+		this->messageLabel->setVisible(alreadyExisting);
+
+			this->keyConfigTextboxes[index]->setCaptionWithReplacing(strKeyCode);
+		this->newKeyValue[index] = strKeyCode;
+
+		// Jump to the next textbox
+		if (static_cast<size_t>(index) + 1 < this->keyConfigTextboxes.size())
+			{
+				MyGUI::InputManager::getInstance().setKeyFocusWidget(this->keyConfigTextboxes[index + 1]);
+				this->notifyMouseSetFocus(this->keyConfigTextboxes[index + 1], this->keyConfigTextboxes[index]);
+			}
+
+		return true;
+	}
+
 	bool JoystickConfigurationComponent::axisMoved(const OIS::JoyStickEvent& evt, int axis)
 	{
 		if (false == this->bConnected)
@@ -435,129 +566,34 @@ namespace NOWA
 			return false;
 		}
 
-		// Check if an editbox is active and set the pressed key to the edit box for key-mapping
-		const unsigned short count = 7;
-		bool keepMappingActive = false;
-		bool alreadyExisting = false;
-
-		InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->update(0.016f);
-		InputDeviceModule::JoyStickButton button = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->getPressedButton();
-
-		if (/*button == this->lastButton ||*/ button == InputDeviceModule::JoyStickButton::BUTTON_NONE)
-		{
-			return true;
-		}
-
-		this->lastButton = button;
-
-		short index = -1;
-		Ogre::String strKeyCode;
-		for (unsigned short i = 0; i < count; i++)
-		{
-			if (true == this->textboxActive[i])
-			{
-				index = i;
-				// this->oldKeyValue[i] = this->keyConfigTextboxes[i]->getCaption();
-				// get key string and set the text
-				strKeyCode = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->getStringFromMappedButton(button);
-				this->textboxActive[i] = false;
-				this->keyConfigTextboxes[i]->setTextShadow(false);
-				keepMappingActive = true;
-			}
-		}
-
-		// Check if the key does not exist already
-		for (unsigned short i = 0; i < count; i++)
-		{
-			if (this->keyConfigTextboxes[i]->getCaption() == strKeyCode)
-			{
-				alreadyExisting = true;
-				this->keyConfigTextboxes[i]->setCaptionWithReplacing("None");
-				this->newKeyValue[i] = this->keyConfigTextboxes[i]->getCaption();
-				this->messageLabel->setVisible(true);
-				break;
-			}
-		}
-		
-		// Set the new key
-		if (-1 != index /*&& !alreadyExisting*/ && !strKeyCode.empty())
-		{
-			this->messageLabel->setVisible(false);
-			this->keyConfigTextboxes[index]->setCaptionWithReplacing(strKeyCode);
-
-			this->newKeyValue[index] = this->keyConfigTextboxes[index]->getCaption();
-
-			if (index < count - 1)
-			{
-				MyGUI::InputManager::getInstance().setKeyFocusWidget(this->keyConfigTextboxes[index + 1]);
-				this->notifyMouseSetFocus(this->keyConfigTextboxes[index + 1], this->keyConfigTextboxes[index]);
-			}
-		}
-
-		return true;
+		return this->captureButtonForMapping();
 	}
 
 	bool JoystickConfigurationComponent::buttonPressed(const OIS::JoyStickEvent& evt, int button)
-	{
-		const unsigned short count = 7;
-
+		{
 		if (false == this->bConnected)
-		{
+			{
 			return false;
-		}
-
-		// Check if an editbox is active and set the pressed key to the edit box for key-mapping
-		bool keepMappingActive = false;
-		bool alreadyExisting = false;
-
-		short index = -1;
-		Ogre::String strKeyCode;
-		for (unsigned short i = 0; i < count; i++)
-		{
-			if (true == this->textboxActive[i])
-			{
-				index = i;
-				// this->oldKeyValue[i] = this->keyConfigTextboxes[i]->getCaption();
-				// get key string and set the text
-				strKeyCode = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->getStringFromMappedButton(static_cast<InputDeviceModule::JoyStickButton>(button));
-				this->textboxActive[i] = false;
-				this->keyConfigTextboxes[i]->setTextShadow(false);
-				keepMappingActive = true;
 			}
-		}
 
-		// Check if the key does not exist already
-		for (unsigned short i = 0; i < count; i++)
-		{
-			if (this->keyConfigTextboxes[i]->getCaption() == strKeyCode)
-			{
-				alreadyExisting = true;
-				this->keyConfigTextboxes[i]->setCaptionWithReplacing("None");
-				this->newKeyValue[i] = this->keyConfigTextboxes[i]->getCaption();
-				this->messageLabel->setVisible(true);
-				break;
-			}
+		return this->captureButtonForMapping();
 		}
-		
-		// Set the new key
-		if (-1 != index /*&& !alreadyExisting*/ && !strKeyCode.empty())
-		{
-			this->messageLabel->setVisible(false);
-			this->keyConfigTextboxes[index]->setCaptionWithReplacing(strKeyCode);
-			this->newKeyValue[index] = this->keyConfigTextboxes[index]->getCaption();
-
-			if (index < count - 1)
-			{
-				MyGUI::InputManager::getInstance().setKeyFocusWidget(this->keyConfigTextboxes[index + 1]);
-				this->notifyMouseSetFocus(this->keyConfigTextboxes[index + 1], this->keyConfigTextboxes[index]);
-			}
-		}
-
-		return true;
-	}
 
 	bool JoystickConfigurationComponent::buttonReleased(const OIS::JoyStickEvent& evt, int button)
-	{
+		{
+		if (false == this->bConnected)
+			{
+			return false;
+		}
+		
+		// Re-arms the capture: after the release the same button may be pressed again and assigned to the next textbox
+		InputDeviceModule* joystickModule = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId());
+		if (nullptr != joystickModule)
+			{
+			joystickModule->update(0.016f);
+			this->lastButton = joystickModule->getPressedButton();
+		}
+
 		return false;
 	}
 
@@ -579,7 +615,12 @@ namespace NOWA
 	void JoystickConfigurationComponent::createMyGuiWidgets(void)
 	{
 		// Layers: "Wallpaper", "ToolTip", "Info", "FadeMiddle", "Popup", "Main", "Modal", "Middle", "Overlapped", "Back", "DragAndDrop", "FadeBusy", "Pointer", "Fade", "Statistic"
-		this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Window>("Window", this->relativePosition->getVector2().x, this->relativePosition->getVector2().y, 0.25f, 0.25f, MyGUI::Align::Center, "Popup");
+
+		// The window must be big enough for all configurable actions, which are laid out in columns
+		const Ogre::Real windowWidth = 0.5f;
+		const Ogre::Real windowHeight = 0.55f;
+
+		this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Window>("Window", this->relativePosition->getVector2().x, this->relativePosition->getVector2().y, windowWidth, windowHeight, MyGUI::Align::Center, "Popup");
 		this->widget->setCaptionWithReplacing("#{Joystick_Configuration}");
 
 		this->setRelativePosition(this->relativePosition->getVector2());
@@ -587,14 +628,22 @@ namespace NOWA
 		// Attach maybe widget to parent
 		this->setParentId(this->parentId->getULong());
 
-		const unsigned short count = 7;
-		const Ogre::Real sizeX = 0.165f;
-		const Ogre::Real sizeY = 0.02f;
-		const Ogre::Real marginX = 0.02f;
-		const Ogre::Real marginY = 0.1f;
+		const size_t count = configurableActionCount;
+		const size_t columnCount = 3;
+		const size_t rowsPerColumn = (count + columnCount - 1) / columnCount;
 
-		Ogre::Real posX = 0.001f;
-		Ogre::Real posY = 0.0f;
+		// All following values are relative to the window (0..1). startY leaves room for the window caption.
+		const Ogre::Real columnWidth = 0.33f;
+		const Ogre::Real labelOffsetX = 0.01f;
+		const Ogre::Real labelWidth = 0.14f;
+		const Ogre::Real textboxOffsetX = 0.155f;
+		const Ogre::Real textboxWidth = 0.165f;
+		const Ogre::Real startY = 0.07f;
+		const Ogre::Real rowStepY = 0.065f;
+		const Ogre::Real rowHeight = 0.05f;
+		const Ogre::Real marginX = 0.02f;
+
+		InputDeviceModule* joystickModule = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId());
 
 		this->keyConfigLabels.resize(count);
 		this->keyConfigTextboxes.resize(count);
@@ -602,52 +651,55 @@ namespace NOWA
 		this->oldKeyValue.resize(count, "");
 		this->newKeyValue.resize(count, "");
 
-		for (unsigned short i = 0; i < count; i++)
+		for (size_t i = 0; i < count; i++)
 		{
-			this->keyConfigLabels[i] = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>("TextBox", posX + marginX, posY + sizeY, sizeX, sizeY, MyGUI::Align::Left, "Popup");
-			this->keyConfigLabels[i]->attachToWidget(this->widget);
-			this->keyConfigLabels[i]->setRealPosition(posX + marginX, posY + sizeY + marginY);
+			const size_t column = i / rowsPerColumn;
+			const size_t row = i % rowsPerColumn;
+			const Ogre::Real posX = static_cast<Ogre::Real>(column) * columnWidth;
+			const Ogre::Real posY = startY + static_cast<Ogre::Real>(row) * rowStepY;
 
-			this->keyConfigTextboxes[i] = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>("EditBox", posX + sizeX + 2 * marginX, posY + sizeY, sizeX, sizeY, MyGUI::Align::Left, "Popup");
+			this->keyConfigLabels[i] = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>("TextBox", 0.0f, 0.0f, labelWidth, rowHeight, MyGUI::Align::Left, "Popup");
+			this->keyConfigLabels[i]->attachToWidget(this->widget);
+			this->keyConfigLabels[i]->setRealPosition(posX + labelOffsetX, posY);
+			this->keyConfigLabels[i]->setRealSize(labelWidth, rowHeight);
+			this->keyConfigLabels[i]->setCaptionWithReplacing(configurableActions[i].caption);
+
+			this->keyConfigTextboxes[i] = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>("EditBox", 0.0f, 0.0f, textboxWidth, rowHeight, MyGUI::Align::Left, "Popup");
 			this->keyConfigTextboxes[i]->attachToWidget(this->widget);
-			this->keyConfigTextboxes[i]->setRealPosition(posX + sizeX + 2 * marginX, posY + sizeY + marginY);
+			this->keyConfigTextboxes[i]->setRealPosition(posX + textboxOffsetX, posY);
+			this->keyConfigTextboxes[i]->setRealSize(textboxWidth, rowHeight);
 			this->keyConfigTextboxes[i]->setEditReadOnly(true);
 
-			auto keyCode = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->getMappedButton(static_cast<InputDeviceModule::Action>(i));
-			Ogre::String strKeyCode = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->getStringFromMappedButton(keyCode);
+			Ogre::String strKeyCode = "None";
+			if (nullptr != joystickModule)
+			{
+				strKeyCode = joystickModule->getStringFromMappedButton(joystickModule->getMappedButton(configurableActions[i].action));
+			}
 			this->oldKeyValue[i] = strKeyCode;
 			this->newKeyValue[i] = strKeyCode;
 			this->keyConfigTextboxes[i]->setNeedMouseFocus(true);
 			this->keyConfigTextboxes[i]->setCaptionWithReplacing(strKeyCode);
-
-			posY += marginY;
 		}
 
-		this->messageLabel = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>("TextBox", posX + marginX, posY + sizeY, sizeX, sizeY, MyGUI::Align::Left, "Popup");
+		this->messageLabel = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>("TextBox", 0.0f, 0.0f, 0.6f, rowHeight, MyGUI::Align::Left, "Popup");
 		this->messageLabel->attachToWidget(this->widget);
-		this->messageLabel->setRealPosition(posX + marginX, posY + sizeY + marginY);
+		this->messageLabel->setRealPosition(marginX, 0.80f);
+		this->messageLabel->setRealSize(0.6f, rowHeight);
 		this->messageLabel->setCaptionWithReplacing("#{Key_Existing}");
 		this->messageLabel->setTextColour(MyGUI::Colour::Red);
 		this->messageLabel->setVisible(false);
 
-		unsigned short i = 0;
-		keyConfigLabels[i++]->setCaptionWithReplacing("#{Move_Up}:");
-		keyConfigLabels[i++]->setCaptionWithReplacing("#{Move_Down}:");
-		keyConfigLabels[i++]->setCaptionWithReplacing("#{Move_Left}:");
-		keyConfigLabels[i++]->setCaptionWithReplacing("#{Move_Right}:");
-		keyConfigLabels[i++]->setCaptionWithReplacing("#{Jump}:");
-		keyConfigLabels[i++]->setCaptionWithReplacing("#{Action_1}:");
-		keyConfigLabels[i++]->setCaptionWithReplacing("#{Action_2}:");
-
 		this->okButton = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Button>("Button", 0.0f, 0.0f, 0.1f, 0.02f, MyGUI::Align::Left, "Popup", "okButton");
 		this->okButton->attachToWidget(this->widget);
 		this->okButton->setRealPosition(marginX, 0.91f);
+		this->okButton->setRealSize(0.15f, 0.06f);
 		this->okButton->setAlign(MyGUI::Align::Left);
 		this->okButton->setCaption("Ok");
 
 		this->abordButton = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Button>("Button", 0.0f, 0.0f, 0.1f, 0.02f, MyGUI::Align::Left, "Popup", "abordButton");
 		this->abordButton->attachToWidget(this->widget);
-		this->abordButton->setRealPosition(marginX * 2 + 0.5f, 0.91f);
+		this->abordButton->setRealPosition(marginX + 0.17f, 0.90f);
+		this->abordButton->setRealSize(0.15f, 0.06f);
 		this->abordButton->setAlign(MyGUI::Align::Left);
 		this->abordButton->setCaptionWithReplacing("#{Abord}");
 	}
@@ -696,16 +748,15 @@ namespace NOWA
                 return;
             }
 
-            // Reset mappings, but not all, because else camera etc. cannot be moved anymore
-            joystickModule->clearButtonMapping(this->keyConfigTextboxes.size());
-
-            for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
+            // Every configurable action is written explicitly, so the mapping does not have to be cleared beforehand.
+            // Note: Clearing by running enum index (clearButtonMapping) would also depend on the order of the Action enum.
+            for (size_t i = 0; i < this->keyConfigTextboxes.size(); i++)
             {
                 this->oldKeyValue[i] = this->keyConfigTextboxes[i]->getCaption();
                 this->textboxActive[i] = false;
 
                 InputDeviceModule::JoyStickButton button = joystickModule->getMappedButtonFromString(this->newKeyValue[i]);
-                joystickModule->remapButton(static_cast<InputDeviceModule::Action>(i), button);
+                joystickModule->remapButton(configurableActions[i].action, button);
             }
 
             if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->okClickEventName->getString().empty())

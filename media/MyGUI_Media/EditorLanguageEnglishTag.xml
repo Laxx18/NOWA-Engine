@@ -30,6 +30,8 @@
 	<Tag name="Cower">Cower</Tag>
 	<Tag name="Attack_1">Attack 1</Tag>
 	<Tag name="Attack_2">Attack 2</Tag>
+	<Tag name="Action_1">Action 1</Tag>
+	<Tag name="Action_2">Action 2</Tag>
 	<Tag name="Duck">Duck</Tag>
 	<Tag name="Sneak">Sneak</Tag>
 	<Tag name="Action">Action</Tag>

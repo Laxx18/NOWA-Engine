@@ -17,7 +17,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="false"/>
-					<property type="12" name="HideOnConnect" data="false"/>
+					<property type="12" name="HideOnConnect" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="true"/>
 					<property type="12" name="ClampY" data="false"/>

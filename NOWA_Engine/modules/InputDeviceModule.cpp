@@ -546,11 +546,11 @@ namespace NOWA
         this->buttonMapping[Action::ATTACK_2] = JoyStickButton::BUTTON_Y;
         this->buttonMapping[Action::RUN] = JoyStickButton::BUTTON_RT;
         this->buttonMapping[Action::SNEAK] = JoyStickButton::BUTTON_LT;
-        this->buttonMapping[Action::WEAPON_CHANGE_FORWARD] = JoyStickButton::BUTTON_RB;
+        this->buttonMapping[Action::MAP] = JoyStickButton::BUTTON_RB;
         this->buttonMapping[Action::WEAPON_CHANGE_BACKWARD] = JoyStickButton::BUTTON_LB;
         this->buttonMapping[Action::COWER] = JoyStickButton::BUTTON_LEFT_STICK;
         this->buttonMapping[Action::RELOAD] = JoyStickButton::BUTTON_RIGHT_STICK;
-        this->buttonMapping[Action::MAP] = JoyStickButton::BUTTON_SELECT;
+        this->buttonMapping[Action::INVENTORY] = JoyStickButton::BUTTON_SELECT;
         this->buttonMapping[Action::START] = JoyStickButton::BUTTON_START;
         this->buttonMapping[Action::PAUSE] = JoyStickButton::BUTTON_START;
         this->buttonMapping[Action::UP] = JoyStickButton::BUTTON_LEFT_STICK_UP;

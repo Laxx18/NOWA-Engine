@@ -3,26 +3,64 @@
 
 using namespace NOWA;
 
-// BUGFIX: the controls tab shows ACTION_COUNT (7) rows - "Move up/down/left/right", "Jump",
-// "Action 1", "Action 2" - but InputDeviceModule::Action has OTHER entries (RUN, COWER)
-// sitting between JUMP and ATTACK_1/ATTACK_2. populateControlsOptions() and
-// applyControlsSettings() used to just do "static_cast<InputDeviceModule::Action>(i)" for the
-// raw UI row index i, silently assuming row 5 -> enum value 5 and row 6 -> enum value 6. Enum
-// value 5 is RUN, not ATTACK_1 - and 6 is COWER, not ATTACK_2. That's why binding "Action 2"
-// remapped COWER instead of ATTACK_2. This table is now the ONE place that says which Action
-// each UI row actually is - both populateControlsOptions (reading current bindings into the
-// textboxes) and applyControlsSettings (writing edited textboxes back) use it, so they can't
-// drift apart from each other or from actionLabels in createControlsTab again.
-// NOTE: sized with a literal 7, not ConfigurationState::ACTION_COUNT - that member is private
-// to the class, and this table sits at file scope (outside any member function), so it has no
-// access to it. Must stay in sync with ACTION_COUNT in the header if that ever changes.
-static const InputDeviceModule::Action actionRowMapping[7] = { InputDeviceModule::UP, InputDeviceModule::DOWN, InputDeviceModule::LEFT, InputDeviceModule::RIGHT, InputDeviceModule::JUMP,
-    InputDeviceModule::ATTACK_1, InputDeviceModule::ATTACK_2 };
+// Which InputDeviceModule::Action each row of the controls tab stands for, and its label.
+// Attention: Never derive the action from the row index via static_cast<InputDeviceModule::Action>(i).
+// The enum has other entries between the rows (e.g. RUN and COWER sit between JUMP and ATTACK_1), which once made
+// "Action 2" rebind COWER instead of ATTACK_2. This table is the ONE place that says what a row is: createControlsTab (label),
+// populateControlsOptions (read the current bindings) and applyControlsSettings (write them back) all use it, so they cannot drift apart.
+// The row count comes from the table itself, so a new action is a single new line here.
+// (ConfigurationState::ACTION_COUNT is private to the class and is not used anymore.)
+namespace
+{
+    struct ActionRow
+    {
+        InputDeviceModule::Action action;
+        const char* label;
+    };
+
+    const ActionRow actionRows[] = {
+        { InputDeviceModule::UP, "Move up:" },
+        { InputDeviceModule::DOWN, "Move down:" },
+        { InputDeviceModule::LEFT, "Move left:" },
+        { InputDeviceModule::RIGHT, "Move right:" },
+        { InputDeviceModule::JUMP, "Jump:" },
+        { InputDeviceModule::RUN, "Run:" },
+        { InputDeviceModule::COWER, "Cower:" },
+        { InputDeviceModule::ATTACK_1, "Attack 1:" },
+        { InputDeviceModule::ATTACK_2, "Attack 2:" },
+        { InputDeviceModule::DUCK, "Duck:" },
+        { InputDeviceModule::SNEAK, "Sneak:" },
+        { InputDeviceModule::ACTION, "Action:" },
+        { InputDeviceModule::RELOAD, "Reload:" },
+        { InputDeviceModule::INVENTORY, "Inventory:" },
+        { InputDeviceModule::MAP, "Map:" },
+        { InputDeviceModule::SELECT, "Select:" },
+        { InputDeviceModule::START, "Start:" },
+        { InputDeviceModule::PAUSE, "Pause:" },
+        { InputDeviceModule::SAVE, "Save:" },
+        { InputDeviceModule::LOAD, "Load:" },
+        { InputDeviceModule::CAMERA_FORWARD, "Camera forward:" },
+        { InputDeviceModule::CAMERA_BACKWARD, "Camera backward:" },
+        { InputDeviceModule::CAMERA_LEFT, "Camera left:" },
+        { InputDeviceModule::CAMERA_RIGHT, "Camera right:" },
+        { InputDeviceModule::CAMERA_UP, "Camera up:" },
+        { InputDeviceModule::CAMERA_DOWN, "Camera down:" },
+        { InputDeviceModule::CONSOLE, "Console:" },
+        { InputDeviceModule::WEAPON_CHANGE_FORWARD, "Next weapon:" },
+        { InputDeviceModule::WEAPON_CHANGE_BACKWARD, "Previous weapon:" },
+        { InputDeviceModule::FLASH_LIGHT, "Flash light:" },
+        { InputDeviceModule::GRID, "Grid:" }
+    };
+
+    const unsigned short ACTION_ROW_COUNT = static_cast<unsigned short>(sizeof(actionRows) / sizeof(actionRows[0]));
+}
 
 namespace
 {
-    // Binds the given caption to the currently active (focused) textbox, if the caption is not already used by another row.
+    // Binds the given caption to the currently active (focused) textbox.
     // Used for gamepad buttons and triggers (keyboard keys are handled directly in keyPressed).
+    // A gamepad has only a handful of physical buttons, so a button which is already used by another action is TAKEN OVER: that other action becomes "None".
+    // Refusing it (as before) would make it impossible to ever move e.g. Select to another action, because no free button would be left to move the old action to.
     template <class TextboxVector, class ActiveVector>
     void bindCaptionToActiveTextbox(TextboxVector& textboxes, ActiveVector& textboxActive, const Ogre::String& caption)
     {
@@ -30,18 +68,16 @@ namespace
         {
             if (true == textboxActive[i])
             {
-                bool alreadyExisting = false;
-                for (size_t j = 0; j < textboxes.size(); j++)
+                if (false == caption.empty())
                 {
-                    if (j != i && textboxes[j]->getCaption() == caption)
+                    for (size_t j = 0; j < textboxes.size(); j++)
                     {
-                        alreadyExisting = true;
-                        break;
+                        if (j != i && textboxes[j]->getCaption() == caption)
+                        {
+                            textboxes[j]->setCaption("None");
+                        }
                     }
-                }
 
-                if (false == alreadyExisting && false == caption.empty())
-                {
                     textboxes[i]->setCaption(caption);
                 }
 
@@ -634,44 +670,59 @@ void ConfigurationState::createControlsTab(void)
     // Note: Previously the main keyboard module was asked, which is not a gamepad. Now: Is any gamepad connected?
     this->hasJoystick = InputDeviceCore::getSingletonPtr()->getJoyStickCount() > 0;
 
-    // Row i here must stay in sync with actionRowMapping[i] at the top of this file - that
-    // table is what actually maps each row to its InputDeviceModule::Action.
-    static const char* actionLabels[ACTION_COUNT] = { "Move up:", "Move down:", "Move left:", "Move right:", "Jump:", "Action 1:", "Action 2:" };
-
-    const Ogre::Real rowHeight = 0.09f;
     const Ogre::Real keyEditX = 0.42f;
     const Ogre::Real keyEditWidth = 0.24f;
     const Ogre::Real buttonEditX = 0.70f;
     const Ogre::Real buttonEditWidth = 0.24f;
-    const Ogre::Real controlHeight = 0.06f;
 
-    this->keyConfigTextboxes.resize(ACTION_COUNT);
-    this->oldKeyValue.resize(ACTION_COUNT);
-    this->keyTextboxActive.resize(ACTION_COUNT, false);
+    // Row values are relative to the scroll view below, not to the panel
+    const Ogre::Real firstRowY = 0.01f;
+    const Ogre::Real rowHeight = 0.10f;
+    // Same as the label height in createLabel (0.07f), so that label and textboxes line up
+    const Ogre::Real controlHeight = 0.07f;
+
+    this->keyConfigTextboxes.resize(ACTION_ROW_COUNT);
+    this->oldKeyValue.resize(ACTION_ROW_COUNT);
+    this->keyTextboxActive.resize(ACTION_ROW_COUNT, false);
 
     if (true == this->hasJoystick)
     {
-        this->buttonConfigTextboxes.resize(ACTION_COUNT);
-        this->oldButtonValue.resize(ACTION_COUNT);
-        this->buttonTextboxActive.resize(ACTION_COUNT, false);
+        this->buttonConfigTextboxes.resize(ACTION_ROW_COUNT);
+        this->oldButtonValue.resize(ACTION_ROW_COUNT);
+        this->buttonTextboxActive.resize(ACTION_ROW_COUNT, false);
 
         this->createLabel(this->controlsPanel, "Keyboard", 0.0f, keyEditX, keyEditWidth);
         this->createLabel(this->controlsPanel, "Joystick", 0.0f, buttonEditX, buttonEditWidth);
     }
 
-    Ogre::Real posY = 0.13f;
-    for (unsigned short i = 0; i < ACTION_COUNT; i++)
-    {
-        this->createLabel(this->controlsPanel, actionLabels[i], posY);
+    // All actions do not fit into the panel, so the rows live in a scroll view below the column headers.
+    // Attention: Assumes that a "ScrollView" skin exists (MyGUI core skin). Change the name, if your theme uses another one.
+    MyGUI::ScrollView* scrollView = this->controlsPanel->createWidgetReal<MyGUI::ScrollView>("ScrollView", 0.0f, 0.09f, 1.0f, 0.91f, MyGUI::Align::Stretch);
+    scrollView->setVisibleHScroll(false);
+    scrollView->setVisibleVScroll(true);
 
-        this->keyConfigTextboxes[i] = this->controlsPanel->createWidgetReal<MyGUI::EditBox>("EditBox", keyEditX, posY, keyEditWidth, controlHeight, MyGUI::Align::Left | MyGUI::Align::Top);
+    // Rows are placed with real coordinates (relative to the scroll view), the canvas just has to be as high as the last row ends
+    const int viewHeight = scrollView->getHeight();
+    int canvasHeight = static_cast<int>((firstRowY + rowHeight * static_cast<Ogre::Real>(ACTION_ROW_COUNT)) * static_cast<Ogre::Real>(viewHeight));
+    if (canvasHeight < viewHeight)
+    {
+        canvasHeight = viewHeight;
+    }
+    scrollView->setCanvasSize(scrollView->getWidth(), canvasHeight);
+
+    Ogre::Real posY = firstRowY;
+    for (unsigned short i = 0; i < ACTION_ROW_COUNT; i++)
+    {
+        this->createLabel(scrollView, actionRows[i].label, posY);
+
+        this->keyConfigTextboxes[i] = scrollView->createWidgetReal<MyGUI::EditBox>("EditBox", keyEditX, posY, keyEditWidth, controlHeight, MyGUI::Align::Left | MyGUI::Align::Top);
         this->keyConfigTextboxes[i]->setEditReadOnly(true);
         this->keyConfigTextboxes[i]->setNeedMouseFocus(true);
         this->keyConfigTextboxes[i]->eventMouseSetFocus += MyGUI::newDelegate(this, &ConfigurationState::notifyKeyEditFocus);
 
         if (true == this->hasJoystick)
         {
-            this->buttonConfigTextboxes[i] = this->controlsPanel->createWidgetReal<MyGUI::EditBox>("EditBox", buttonEditX, posY, buttonEditWidth, controlHeight, MyGUI::Align::Left | MyGUI::Align::Top);
+            this->buttonConfigTextboxes[i] = scrollView->createWidgetReal<MyGUI::EditBox>("EditBox", buttonEditX, posY, buttonEditWidth, controlHeight, MyGUI::Align::Left | MyGUI::Align::Top);
             this->buttonConfigTextboxes[i]->setEditReadOnly(true);
             this->buttonConfigTextboxes[i]->setNeedMouseFocus(true);
             this->buttonConfigTextboxes[i]->eventMouseSetFocus += MyGUI::newDelegate(this, &ConfigurationState::notifyButtonEditFocus);
@@ -685,9 +736,9 @@ void ConfigurationState::populateControlsOptions(void)
 {
     auto keyboardModule = InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule();
 
-    for (unsigned short i = 0; i < ACTION_COUNT; i++)
+    for (unsigned short i = 0; i < ACTION_ROW_COUNT; i++)
     {
-        auto keyCode = keyboardModule->getMappedKey(actionRowMapping[i]);
+        auto keyCode = keyboardModule->getMappedKey(actionRows[i].action);
         Ogre::String strKeyCode = keyboardModule->getStringFromMappedKey(keyCode);
         this->oldKeyValue[i] = strKeyCode;
         this->keyConfigTextboxes[i]->setCaption(strKeyCode);
@@ -697,9 +748,9 @@ void ConfigurationState::populateControlsOptions(void)
     {
         // The gamepad profile (shared by all gamepads) is stored in the main keyboard module, so it is also available and saved if no gamepad is connected.
         // Note: Previously getJoystickInputDeviceModule(0) was used, which searches for the module OCCUPIED by game object id 0 (not the first gamepad) and could deliver null.
-        for (unsigned short i = 0; i < ACTION_COUNT; i++)
+        for (unsigned short i = 0; i < ACTION_ROW_COUNT; i++)
         {
-            auto button = keyboardModule->getMappedButton(actionRowMapping[i]);
+            auto button = keyboardModule->getMappedButton(actionRows[i].action);
             Ogre::String strButton = keyboardModule->getStringFromMappedButton(button);
             this->oldButtonValue[i] = strButton;
             this->buttonConfigTextboxes[i]->setCaption(strButton);
@@ -739,13 +790,13 @@ void ConfigurationState::applyControlsSettings(void)
 {
     auto keyboardModule = InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule();
 
-    for (unsigned short i = 0; i < ACTION_COUNT; i++)
+    for (unsigned short i = 0; i < ACTION_ROW_COUNT; i++)
     {
         OIS::KeyCode key = keyboardModule->getMappedKeyFromString(this->keyConfigTextboxes[i]->getCaption());
         // Never destroy a binding because a caption could not be parsed
         if (OIS::KC_UNASSIGNED != key)
         {
-            keyboardModule->remapKey(actionRowMapping[i], key);
+            keyboardModule->remapKey(actionRows[i].action, key);
         }
     }
     // The main keyboard module is the one the players use, other keyboards get the same mapping
@@ -753,13 +804,20 @@ void ConfigurationState::applyControlsSettings(void)
 
     if (true == this->hasJoystick)
     {
-        for (unsigned short i = 0; i < ACTION_COUNT; i++)
+        for (unsigned short i = 0; i < ACTION_ROW_COUNT; i++)
         {
-            auto button = keyboardModule->getMappedButtonFromString(this->buttonConfigTextboxes[i]->getCaption());
+            const Ogre::String caption = this->buttonConfigTextboxes[i]->getCaption();
+            auto button = keyboardModule->getMappedButtonFromString(caption);
             if (InputDeviceModule::BUTTON_NONE != button)
             {
                 // Stores the button in the gamepad profile and applies it to all connected gamepads
-                InputDeviceCore::getSingletonPtr()->remapGamepadButton(static_cast<unsigned short>(actionRowMapping[i]), static_cast<unsigned short>(button));
+                InputDeviceCore::getSingletonPtr()->remapGamepadButton(static_cast<unsigned short>(actionRows[i].action), static_cast<unsigned short>(button));
+            }
+            else if ("None" == caption && "None" != this->oldButtonValue[i])
+            {
+                // The user took this button over for another action, so this action really becomes unbound.
+                // Only done for such an explicit change: a caption which merely could not be parsed must never destroy a binding.
+                InputDeviceCore::getSingletonPtr()->remapGamepadButton(static_cast<unsigned short>(actionRows[i].action), static_cast<unsigned short>(InputDeviceModule::BUTTON_NONE));
             }
         }
     }

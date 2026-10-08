@@ -223,6 +223,8 @@ namespace NOWA
 
 		void notifyMouseSetFocus(MyGUI::Widget* sender, MyGUI::Widget* old);
 		void buttonHit(MyGUI::Widget* sender);
+
+		bool captureButtonForMapping(void);
 	private:
 		Ogre::String name;
 		MyGUI::VectorWidgetPtr widgets;

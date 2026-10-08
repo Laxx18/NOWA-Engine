@@ -66,6 +66,10 @@ namespace NOWA
             graphicsModule->clearSceneResources();
             graphicsModule->releaseStall();
 
+            if (nullptr == this->state)
+            {
+                return;
+            }
             this->state->beforeSceneLoaded();
 
             switch (this->stateOperation)

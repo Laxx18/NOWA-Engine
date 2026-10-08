@@ -155,6 +155,13 @@ PTERODACTYL =
     hitKnockbackUp = 3.5,
     hitStunTime = 0.7,
 
+    -- ── Facing ───────────────────────────────────────────────────────────────────────
+    -- facingRunUp: before the boss arrives somewhere (dive start, window) it first flies a short
+    -- horizontal leg towards the player, so the auto orientation has time to turn it his way.
+    -- rotationSpeed is the turn rate of the MovingBehavior, see setRotationSpeed.
+    facingRunUp = 4.0,
+    rotationSpeed = 10.0,
+
     goalRadius = 1.0
 };
 
@@ -248,12 +255,44 @@ ENEMY_ENERGY_BAR_FRAME_COLOR = Vector3(0.05, 0.04, 0.03);
 --   The global values of the GameProgressModule live in the AppStateManager. They survive every scene
 --   change, and saveProgress writes them into the save game.
 --
--- So the global values are the truth, the component is the working copy: connect pulls, disconnect pushes.
--- Between two levels NO file is involved, only at a save point.
+-- So the global values are the truth, the component is the working copy: MainGameObject.lua pulls in
+-- connect and pushes in disconnect. Between two levels NO file is involved, only at a save point.
+--
+-- The save game holds ONLY the global values (attributes, world flags, the index of the used save
+-- point), no scene snapshot. The world is rebuilt from the authored scene on every load, with the world
+-- flags (taken items, defeated bosses, pulled levers) applied on top, see applyWorldState.
+--
+-- Everything another script has to call must live HERE: the functions of a script are only visible
+-- inside that script, init.lua is the one place all of them share.
 ---------------------------------------------------------------------------------------------------
+
+-- State that scripts have to share at runtime. A table, because a script can not write to a global of
+-- another one, but all of them can change the fields of the same table.
+Session =
+{
+    -- true from the moment the dead player starts the reload until the next scene is connected. While it
+    -- is set, the dead values must not be pushed to the global values, see MainGameObject.lua.
+    isRespawning = false
+};
 
 SAVE_GAME_NAME = "save1";
 START_SCENE_NAME = "Level1";
+
+-- Every save point of the game, in any order. The save game stores only the INDEX of the one that was
+-- used, because a number can be read back everywhere.
+--   name:  the NAME of the save point game object in the editor. It is at the same time the target location
+--          name the player is brought to, exactly like TargetLocationName of an ExitComponent, so a game
+--          object with this name must exist in that scene.
+--   scene: the scene the save point is in.
+SAVEPOINTS =
+{
+    { name = "Savepoint_Level5", scene = "Level5" },
+    { name = "Savepoint_Level3", scene = "Level3" }
+};
+
+-- true = additionally the whole scene as a snapshot. Only for one huge world where a lot changes, it
+-- makes the save game big and freezes the layout of the level at the time of saving.
+SAVE_SCENE_SNAPSHOT = false;
 
 -- Player attributes that survive a scene change and end up in the save game. They must exist with these
 -- names in the AttributesComponent of the main game object.
@@ -331,23 +370,160 @@ function setLeverPulled(leverGameObject)
     setWorldFlag(makeLeverFlagKey(leverGameObject));
 end
 
--- Called by the save point. The scene snapshot is written as well, so loading restores the exact world with
--- one single call and no scene name has to be remembered anywhere.
-function saveGame(attributesComponent)
+-- Bosses are unique in the whole game, so there is no scene in the key: "Boss_Pterodactyl".
+function isBossDefeated(bossName)
+    return isWorldFlagSet("Boss_" .. bossName);
+end
+
+function setBossDefeated(bossName)
+    setWorldFlag("Boss_" .. bossName);
+end
+
+-- Pickups that come back every time the level is loaded (TagName). Everything else the player takes is
+-- gone for good.
+RESPAWNING_PICKUP_TAGS = { Coin = true, Energy = true };
+
+-- Items that are in the scene from the start, but only exist after a boss was defeated.
+-- Key: game object NAME of the item, value: the boss.
+ITEM_UNLOCKS = { ShoesSpeed = "Pterodactyl" };
+
+-- Abilities an item grants when it is taken. Key: game object NAME of the item.
+ABILITY_SPEED_SHOES = "Ability_SpeedShoes";
+SPEED_SHOES_FACTOR = 1.3;
+ITEM_ABILITIES = { ShoesSpeed = ABILITY_SPEED_SHOES };
+
+function makeItemFlagKey(itemGameObject)
+    return "Item_" .. makeWorldFlagKey(itemGameObject);
+end
+
+function isItemTaken(itemGameObject)
+    return isWorldFlagSet(makeItemFlagKey(itemGameObject));
+end
+
+-- Remembers a taken item and switches on the ability it grants.
+function setItemTaken(itemGameObject)
+    local ability = ITEM_ABILITIES[itemGameObject:getName()];
+    if (nil ~= ability) then
+        setWorldFlag(ability);
+    end
+
+    if (true ~= RESPAWNING_PICKUP_TAGS[itemGameObject:getTagName()]) then
+        setWorldFlag(makeItemFlagKey(itemGameObject));
+    end
+end
+
+function isItemLocked(itemGameObject)
+    local bossName = ITEM_UNLOCKS[itemGameObject:getName()];
+    return nil ~= bossName and false == isBossDefeated(bossName);
+end
+
+-- Called in connect of MainGameObject.lua: removes what was taken
+function applyWorldState()
+    local objects = AppStateManager:getGameObjectController():getGameObjectsFromCategory("PointOfInterest");
+
+    -- Attention: the table from C++ is filled starting at index 0, so '#' and a numeric loop are both
+    -- wrong here. pairs() does not care about the base.
+    for key, object in pairs(objects) do
+        local item = AppStateManager:getGameObjectController():castGameObject(object);
+
+        if (true == isItemTaken(item)) then
+            AppStateManager:getGameObjectController():deleteGameObject(item:getId());
+		-- Attention: Is not used, point of interest items like speed shoes are visible always, but there is a gate, which does not open, until a boss is defeated
+        --elseif (true == isItemLocked(item)) then
+        --    item:setVisible(false);
+        end
+    end
+end
+
+-- Called by a boss when it dies: the items that waited for it appear.
+-- Attention: Is not used, point of interest items like speed shoes are visible always, but there is a gate, which does not open, until a boss is defeated
+function revealUnlockedItems()
+    local objects = AppStateManager:getGameObjectController():getGameObjectsFromCategory("PointOfInterest");
+
+    for key, object in pairs(objects) do
+        local item = AppStateManager:getGameObjectController():castGameObject(object);
+
+        if (nil ~= ITEM_UNLOCKS[item:getName()] and false == isItemLocked(item)) then
+            item:setVisible(true);
+        end
+    end
+end
+
+-- Re-applies every lever that has already been pulled in this run. After a scene change the gate is
+-- back at its authored position, but the lever counts as pulled - so it is opened again here, without
+-- animation and without locking the player.
+function applyPulledLevers()
+    local mechanics = AppStateManager:getGameObjectController():getGameObjectsFromCategory("Mechanics");
+
+    for key, mechanicGameObject in pairs(mechanics) do
+        -- The table holds the raw pointer. Without the cast lua only sees part of the class, which is
+        -- why getTagName() worked and getName() came back nil.
+        local leverGameObject = AppStateManager:getGameObjectController():castGameObject(mechanicGameObject);
+
+        if (leverGameObject:getTagName() == "Lever" and true == isLeverPulled(leverGameObject)) then
+            leverGameObject:getJointHingeActuatorComponent():setActivated(true);
+            AppStateManager:getGameObjectController():activateGameObjectComponentsFromReferenceId(leverGameObject:getReferenceId(), true);
+        end
+    end
+end
+
+function findSavepointIndex(savepointName)
+    for i = 1, #SAVEPOINTS do
+        if (SAVEPOINTS[i].name == savepointName) then
+            return i;
+        end
+    end
+    return nil;
+end
+
+-- Called by the save point.
+function saveGame(attributesComponent, savepointName)
     pushPlayerAttributesToProgress(attributesComponent);
-    AppStateManager:getGameProgressModule():saveProgress(SAVE_GAME_NAME, true, true);
+
+    local savepointIndex = findSavepointIndex(savepointName);
+    if (nil == savepointIndex) then
+        log("[init] Save point '" .. toString(savepointName) .. "' is not in SAVEPOINTS - the save game will not know where to come back.");
+    else
+        AppStateManager:getGameProgressModule():setGlobalNumberValue("SavepointIndex", savepointIndex);
+    end
+
+    AppStateManager:getGameProgressModule():saveProgress(SAVE_GAME_NAME, true, SAVE_SCENE_SNAPSHOT);
 end
 
 function hasSaveGame()
     return AppStateManager:getGameProgressModule():hasSaveGame(SAVE_GAME_NAME);
 end
 
+-- Back to the last save point: the values come from the file, the scene from the SAVEPOINTS table.
 function loadGame()
-    AppStateManager:getGameProgressModule():loadProgress(SAVE_GAME_NAME, true, false);
+    local gameProgressModule = AppStateManager:getGameProgressModule();
+
+    if (true == SAVE_SCENE_SNAPSHOT) then
+        -- The snapshot brings the scene and the player position with it.
+        gameProgressModule:loadProgress(SAVE_GAME_NAME, true, false);
+        do return end;
+    end
+
+    gameProgressModule:loadProgress(SAVE_GAME_NAME, false, false);
+
+    local savepointIndex = gameProgressModule:getGlobalValue("SavepointIndex");
+    local savepoint = nil;
+    if (nil ~= savepointIndex) then
+        savepoint = SAVEPOINTS[savepointIndex:getValueNumber()];
+    end
+
+    if (nil == savepoint) then
+        log("[init] The save game has no valid save point - starting over.");
+        startNewRun();
+        do return end;
+    end
+
+    gameProgressModule:setRequestedTargetLocationName(savepoint.name);
+    gameProgressModule:changeScene(savepoint.scene);
 end
 
--- Death without a save point. Nothing of the failed run may survive: attributes, collected items, defeated
--- bosses, unlocked abilities.
+-- Death without a save point. Nothing of the failed run may survive: attributes, collected items,
+-- defeated bosses, unlocked abilities.
 function startNewRun()
     AppStateManager:getGameProgressModule():clearGlobalValues();
     AppStateManager:getGameProgressModule():changeScene(START_SCENE_NAME);

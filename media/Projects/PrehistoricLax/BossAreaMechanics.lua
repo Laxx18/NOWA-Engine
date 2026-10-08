@@ -9,10 +9,10 @@ BossAreaMechanics = {}
 
 BossAreaMechanics["connect"] = function(gameObject)
     bossAreaMechanics = AppStateManager:getGameObjectController():castGameObject(gameObject);
-    physicsTriggerComponent = bossAreaMechanics:getPhysicsTriggerComponent();
+    local physicsTriggerComponent = bossAreaMechanics:getPhysicsTriggerComponent();
     
     physicsTriggerComponent:reactOnEnter(function(visitorGameObject)
-          visitorGameObject = AppStateManager:getGameObjectController():castGameObject(visitorGameObject);
+        visitorGameObject = AppStateManager:getGameObjectController():castGameObject(visitorGameObject);
           
         local areaDoors = AppStateManager:getGameObjectController():getGameObjectsFromCategory("BossAreaDoor");
 
@@ -34,14 +34,9 @@ BossAreaMechanics["connect"] = function(gameObject)
             areaDoorGameObject:getJointSliderActuatorComponent():setLinearRate(10);
             areaDoorGameObject:getJointSliderActuatorComponent():setTargetPosition(0);
             
-            local eventData = {};
-            AppStateManager:getScriptEventManager():queueEvent(EventType.BossFightStartEvent, eventData);
- 
-            log("--> close door: " .. areaDoorGameObject:getName());
         end
+		
+		local eventData = {};
+        AppStateManager:getScriptEventManager():queueEvent(EventType.BossFightStartEvent, eventData);
     end);
-end
-
-BossAreaMechanics["disconnect"] = function()
-
 end

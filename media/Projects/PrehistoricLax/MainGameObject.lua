@@ -19,9 +19,32 @@ MainGameObject["connect"] = function(gameObject)
     inputDeviceComp = prehistoricLax:getInputDeviceComponent();
 
     timeSinceLastToggle = 1;
+
+    -- Todo: not here but in menu state either via load several games -> player name required. Continue is just if in game and then went to menu and wants back to resume
+    -- This script is connected BEFORE PrehistoricLax.lua, so the world is already in its final state when
+    -- the player starts and collects its points of interest.
+    Session.isRespawning = false;
+
+    -- The attributes of the player live on this game object. A global value that is already there wins:
+    -- that is the running game or a save game that has just been loaded.
+    pullPlayerAttributesFromProgress(mainGameObject:getAttributesComponent());
+
+    -- Taken items are gone for good, items that wait for their boss are hidden.
+    applyWorldState();
+
+    -- Pulled levers stay pulled. Was switched off in PrehistoricLax.lua, enable it here once the gates
+    -- behave after a scene change.
+    -- applyPulledLevers();
 end
 
 MainGameObject["disconnect"] = function()
+    -- Hand the current values over to the next scene. Skipped while the dead player respawns: there the
+    -- values either come from the save game or are reset completely, and the dead player must not overwrite
+    -- them.
+    if (false == Session.isRespawning) then
+        pushPlayerAttributesToProgress(mainGameObject:getAttributesComponent());
+    end
+
     AppStateManager:getGameObjectController():undoAll();
 end
 

@@ -9662,93 +9662,118 @@ namespace NOWA
         AddClassToCollection("Path", "Table[Vector3] getWayPoints()", "Gets the list of all waypoints.");
         // AddClassToCollection("Path", "void setNextWaypoint(Vector3 nextPoint)", "Moves the internal iterator to the next waypoint.");
 
-        module(lua)[class_<KI::MovingBehavior>("MovingBehavior")
-                .def("getPath", &KI::MovingBehavior::getPath)
-                .def("setRotationSpeed", &KI::MovingBehavior::setRotationSpeed)
-                .def("isSwitchOn", &KI::MovingBehavior::isSwitchOn)
-                .def("getTargetAgent", &KI::MovingBehavior::getTargetAgent)
-                .def("getTargetAgent2", &KI::MovingBehavior::getTargetAgent2)
-                .def("setTargetAgentId", &setTargetAgentId)
-                .def("setTargetAgentId2", &setTargetAgentId2)
-                // .def("setDeceleration", &KI::MovingBehavior::setDeceleration)
-                .def("setWanderJitter", &KI::MovingBehavior::setWanderJitter)
-                .def("setWanderRadius", &KI::MovingBehavior::setWanderRadius)
-                .def("setWanderDistance", &KI::MovingBehavior::setWanderDistance)
-                .def("setObstacleHideData", &KI::MovingBehavior::setObstacleHideData)
-                .def("setObstacleAvoidanceData", &KI::MovingBehavior::setObstacleAvoidanceData)
-                .def("setGoalRadius", &KI::MovingBehavior::setGoalRadius)
-                .def("getGoalRadius", &KI::MovingBehavior::getGoalRadius)
-                .def("setActualizePathDelaySec", &KI::MovingBehavior::setActualizePathDelaySec)
-                .def("getActualizePathDelaySec", &KI::MovingBehavior::getActualizePathDelaySec)
-                .def("setPathFindData", &KI::MovingBehavior::setPathFindData)
-                // .def("setPathSlot", &KI::MovingBehavior::setPathSlot)
-                .def("getPathSlot", &KI::MovingBehavior::getPathSlot)
-                // .def("setPathTargetSlot", &KI::MovingBehavior::setPathTargetSlot)
-                .def("getPathTargetSlot", &KI::MovingBehavior::getPathTargetSlot)
-                .def("findPath", &KI::MovingBehavior::findPath)
-                // .def("setDrawPath", &KI::MovingBehavior::setDrawPath)
-                .def("setFlyMode", &KI::MovingBehavior::setFlyMode)
-                .def("isInFlyMode", &KI::MovingBehavior::isInFlyMode)
-                .def("setNeighborDistance", &KI::MovingBehavior::setNeighborDistance)
-                .def("getNeighborDistance", &KI::MovingBehavior::getNeighborDistance)
-                .def("setBehavior", (void (KI::MovingBehavior::*)(KI::MovingBehavior::BehaviorType))&KI::MovingBehavior::setBehavior)
-                .def("setBehavior", (void (KI::MovingBehavior::*)(const Ogre::String&))&KI::MovingBehavior::setBehavior)
-                .def("addBehavior", (void (KI::MovingBehavior::*)(KI::MovingBehavior::BehaviorType))&KI::MovingBehavior::addBehavior)
-                .def("addBehavior", (void (KI::MovingBehavior::*)(const Ogre::String&))&KI::MovingBehavior::addBehavior)
-                .def("removeBehavior", (void (KI::MovingBehavior::*)(KI::MovingBehavior::BehaviorType))&KI::MovingBehavior::removeBehavior)
-                .def("removeBehavior", (void (KI::MovingBehavior::*)(const Ogre::String&))&KI::MovingBehavior::removeBehavior)
-                .def("getCurrentBehavior", &KI::MovingBehavior::getCurrentBehavior)
-                .def("reset", &KI::MovingBehavior::reset)
-                // .def("getAgentId", &KI::MovingBehavior::getAgentId)
-                .def("getAgentId", &getAgentId)
-                .def("setWeightSeparation", &KI::MovingBehavior::setWeightSeparation)
-                .def("getWeightSeparation", &KI::MovingBehavior::getWeightSeparation)
-                .def("setWeightCohesion", &KI::MovingBehavior::setWeightCohesion)
-                .def("getWeightCohesion", &KI::MovingBehavior::getWeightCohesion)
-                .def("setWeightAlignment", &KI::MovingBehavior::setWeightAlignment)
-                .def("getWeightAlignment", &KI::MovingBehavior::getWeightAlignment)
-                .def("setWeightWander", &KI::MovingBehavior::setWeightWander)
-                .def("getWeightWander", &KI::MovingBehavior::getWeightWander)
-                .def("setWeightObstacleAvoidance", &KI::MovingBehavior::setWeightObstacleAvoidance)
-                .def("getWeightObstacleAvoidance", &KI::MovingBehavior::getWeightObstacleAvoidance)
-                .def("setWeightSeek", &KI::MovingBehavior::setWeightSeek)
-                .def("getWeightSeek", &KI::MovingBehavior::getWeightSeek)
-                .def("setWeightFlee", &KI::MovingBehavior::setWeightFlee)
-                .def("getWeightFlee", &KI::MovingBehavior::getWeightFlee)
-                .def("setWeightArrive", &KI::MovingBehavior::setWeightArrive)
-                .def("getWeightArrive", &KI::MovingBehavior::getWeightArrive)
-                .def("setWeightPursuit", &KI::MovingBehavior::setWeightPursuit)
-                .def("getWeightPursuit", &KI::MovingBehavior::getWeightPursuit)
-                .def("setWeightOffsetPursuit", &KI::MovingBehavior::setWeightOffsetPursuit)
-                .def("getWeightOffsetPursuit", &KI::MovingBehavior::getWeightOffsetPursuit)
-                .def("setWeightHide", &KI::MovingBehavior::setWeightHide)
-                .def("getWeightHide", &KI::MovingBehavior::getWeightHide)
-                .def("setWeightEvade", &KI::MovingBehavior::setWeightEvade)
-                .def("getWeightEvade", &KI::MovingBehavior::getWeightEvade)
-                .def("setWeightFollowPath", &KI::MovingBehavior::setWeightFollowPath)
-                .def("getWeightFollowPath", &KI::MovingBehavior::getWeightFollowPath)
-                .def("setWeightInterpose", &KI::MovingBehavior::setWeightInterpose)
-                .def("getWeightInterpose", &KI::MovingBehavior::getWeightInterpose)
-                .def("getIsStuck", &KI::MovingBehavior::getIsStuck)
-                .def("setStuckCheckTime", &KI::MovingBehavior::setStuckCheckTime)
-                .def("getMotionDistanceChange", &KI::MovingBehavior::getMotionDistanceChange)
-                .def("setAutoOrientation", &KI::MovingBehavior::setAutoOrientation)
-                .def("setAutoAnimation", &KI::MovingBehavior::setAutoAnimation)
-                .def("setOffsetPosition", &KI::MovingBehavior::setOffsetPosition)];
+        module(lua)
+        [
+            class_<KI::MovingBehavior>("MovingBehavior")
+            .def("getPath", &KI::MovingBehavior::getPath)
+            .def("setRotationSpeed", &KI::MovingBehavior::setRotationSpeed)
+            .def("isSwitchOn", &KI::MovingBehavior::isSwitchOn)
+            .def("getTargetAgent", &KI::MovingBehavior::getTargetAgent)
+            .def("getTargetAgent2", &KI::MovingBehavior::getTargetAgent2)
+            .def("setTargetAgentId", &setTargetAgentId)
+            .def("setTargetAgentId2", &setTargetAgentId2)
+            // .def("setDeceleration", &KI::MovingBehavior::setDeceleration)
+            .def("setWanderJitter", &KI::MovingBehavior::setWanderJitter)
+            .def("setWanderRadius", &KI::MovingBehavior::setWanderRadius)
+            .def("setWanderDistance", &KI::MovingBehavior::setWanderDistance)
+            .def("setObstacleHideData", &KI::MovingBehavior::setObstacleHideData)
+            .def("setObstacleAvoidanceData", &KI::MovingBehavior::setObstacleAvoidanceData)
+            .def("setGoalRadius", &KI::MovingBehavior::setGoalRadius)
+            .def("getGoalRadius", &KI::MovingBehavior::getGoalRadius)
+            .def("setActualizePathDelaySec", &KI::MovingBehavior::setActualizePathDelaySec)
+            .def("getActualizePathDelaySec", &KI::MovingBehavior::getActualizePathDelaySec)
+            .def("setPathFindData", &KI::MovingBehavior::setPathFindData)
+            // .def("setPathSlot", &KI::MovingBehavior::setPathSlot)
+            .def("getPathSlot", &KI::MovingBehavior::getPathSlot)
+            // .def("setPathTargetSlot", &KI::MovingBehavior::setPathTargetSlot)
+            .def("getPathTargetSlot", &KI::MovingBehavior::getPathTargetSlot)
+            .def("findPath", &KI::MovingBehavior::findPath)
+            // .def("setDrawPath", &KI::MovingBehavior::setDrawPath)
+            .def("setFlyMode", &KI::MovingBehavior::setFlyMode)
+            .def("isInFlyMode", &KI::MovingBehavior::isInFlyMode)
+            .def("setNeighborDistance", &KI::MovingBehavior::setNeighborDistance)
+            .def("getNeighborDistance", &KI::MovingBehavior::getNeighborDistance)
+            .def("setBehavior", (void (KI::MovingBehavior::*)(KI::MovingBehavior::BehaviorType))&KI::MovingBehavior::setBehavior)
+            .def("setBehavior", (void (KI::MovingBehavior::*)(const Ogre::String&))&KI::MovingBehavior::setBehavior)
+            .def("addBehavior", (void (KI::MovingBehavior::*)(KI::MovingBehavior::BehaviorType))&KI::MovingBehavior::addBehavior)
+            .def("addBehavior", (void (KI::MovingBehavior::*)(const Ogre::String&))&KI::MovingBehavior::addBehavior)
+            .def("removeBehavior", (void (KI::MovingBehavior::*)(KI::MovingBehavior::BehaviorType))&KI::MovingBehavior::removeBehavior)
+            .def("removeBehavior", (void (KI::MovingBehavior::*)(const Ogre::String&))&KI::MovingBehavior::removeBehavior)
+            .def("getCurrentBehavior", &KI::MovingBehavior::getCurrentBehavior)
+            .def("reset", &KI::MovingBehavior::reset)
+            // .def("getAgentId", &KI::MovingBehavior::getAgentId)
+            .def("getAgentId", &getAgentId)
+            .def("setWeightSeparation", &KI::MovingBehavior::setWeightSeparation)
+            .def("getWeightSeparation", &KI::MovingBehavior::getWeightSeparation)
+            .def("setWeightCohesion", &KI::MovingBehavior::setWeightCohesion)
+            .def("getWeightCohesion", &KI::MovingBehavior::getWeightCohesion)
+            .def("setWeightAlignment", &KI::MovingBehavior::setWeightAlignment)
+            .def("getWeightAlignment", &KI::MovingBehavior::getWeightAlignment)
+            .def("setWeightWander", &KI::MovingBehavior::setWeightWander)
+            .def("getWeightWander", &KI::MovingBehavior::getWeightWander)
+            .def("setWeightObstacleAvoidance", &KI::MovingBehavior::setWeightObstacleAvoidance)
+            .def("getWeightObstacleAvoidance", &KI::MovingBehavior::getWeightObstacleAvoidance)
+            .def("setWeightSeek", &KI::MovingBehavior::setWeightSeek)
+            .def("getWeightSeek", &KI::MovingBehavior::getWeightSeek)
+            .def("setWeightFlee", &KI::MovingBehavior::setWeightFlee)
+            .def("getWeightFlee", &KI::MovingBehavior::getWeightFlee)
+            .def("setWeightArrive", &KI::MovingBehavior::setWeightArrive)
+            .def("getWeightArrive", &KI::MovingBehavior::getWeightArrive)
+            .def("setWeightPursuit", &KI::MovingBehavior::setWeightPursuit)
+            .def("getWeightPursuit", &KI::MovingBehavior::getWeightPursuit)
+            .def("setWeightOffsetPursuit", &KI::MovingBehavior::setWeightOffsetPursuit)
+            .def("getWeightOffsetPursuit", &KI::MovingBehavior::getWeightOffsetPursuit)
+            .def("setWeightHide", &KI::MovingBehavior::setWeightHide)
+            .def("getWeightHide", &KI::MovingBehavior::getWeightHide)
+            .def("setWeightEvade", &KI::MovingBehavior::setWeightEvade)
+            .def("getWeightEvade", &KI::MovingBehavior::getWeightEvade)
+            .def("setWeightFollowPath", &KI::MovingBehavior::setWeightFollowPath)
+            .def("getWeightFollowPath", &KI::MovingBehavior::getWeightFollowPath)
+            .def("setWeightInterpose", &KI::MovingBehavior::setWeightInterpose)
+            .def("getWeightInterpose", &KI::MovingBehavior::getWeightInterpose)
+            .def("getIsStuck", &KI::MovingBehavior::getIsStuck)
+            .def("setStuckCheckTime", &KI::MovingBehavior::setStuckCheckTime)
+            .def("getMotionDistanceChange", &KI::MovingBehavior::getMotionDistanceChange)
+            .def("setAutoOrientation", &KI::MovingBehavior::setAutoOrientation)
+            .def("setAutoAnimation", &KI::MovingBehavior::setAutoAnimation)
+            .def("setOffsetPosition", &KI::MovingBehavior::setOffsetPosition)
+        ];
 
-        module(lua)[class_<KI::MovingBehavior::BehaviorType>("BehaviorType")
-                .enum_("BehaviorType")[value("STOP", KI::MovingBehavior::BehaviorType::STOP), value("NONE", KI::MovingBehavior::BehaviorType::NONE), value("MOVE", KI::MovingBehavior::BehaviorType::MOVE),
-                    value("MOVE_RANDOMLY", KI::MovingBehavior::BehaviorType::MOVE_RANDOMLY), value("SEEK", KI::MovingBehavior::BehaviorType::SEEK), value("FLEE", KI::MovingBehavior::BehaviorType::FLEE),
-                    value("ARRIVE", KI::MovingBehavior::BehaviorType::ARRIVE), value("WANDER", KI::MovingBehavior::BehaviorType::WANDER), value("PATH_FINDING_WANDER", KI::MovingBehavior::BehaviorType::PATH_FINDING_WANDER),
-                    value("PURSUIT", KI::MovingBehavior::BehaviorType::PURSUIT), value("EVADE", KI::MovingBehavior::BehaviorType::EVADE), value("HIDE", KI::MovingBehavior::BehaviorType::HIDE),
-                    value("FOLLOW_PATH", KI::MovingBehavior::BehaviorType::FOLLOW_PATH), value("OBSTACLE_AVOIDANCE", KI::MovingBehavior::BehaviorType::OBSTACLE_AVOIDANCE),
-                    value("FLOCKING_COHESION", KI::MovingBehavior::BehaviorType::FLOCKING_COHESION), value("FLOCKING_SEPARATION", KI::MovingBehavior::BehaviorType::FLOCKING_SEPARATION),
-                    value("FLOCKING_SPREAD", KI::MovingBehavior::BehaviorType::FLOCKING_SPREAD), value("FLOCKING_FORMATION_V_SHAPE", KI::MovingBehavior::BehaviorType::FLOCKING_FORMATION_V_SHAPE),
-                    value("FLOCKING_ALIGNMENT", KI::MovingBehavior::BehaviorType::FLOCKING_ALIGNMENT), value("FLOCKING_OBSTACLE_AVOIDANCE", KI::MovingBehavior::BehaviorType::FLOCKING_OBSTACLE_AVOIDANCE),
-                    value("FLOCKING_FLEE", KI::MovingBehavior::BehaviorType::FLOCKING_FLEE), value("FLOCKING_SEEK", KI::MovingBehavior::BehaviorType::FLOCKING_SEEK), value("FLOCKING", KI::MovingBehavior::BehaviorType::FLOCKING),
-                    value("SEEK_2D", KI::MovingBehavior::BehaviorType::SEEK_2D), value("FLEE_2D", KI::MovingBehavior::BehaviorType::FLEE_2D), value("ARRIVE_2D", KI::MovingBehavior::BehaviorType::ARRIVE_2D),
-                    value("PATROL_2D", KI::MovingBehavior::BehaviorType::PATROL_2D), value("WANDER_2D", KI::MovingBehavior::BehaviorType::WANDER_2D), value("FOLLOW_PATH_2D", KI::MovingBehavior::BehaviorType::FOLLOW_PATH_2D),
-                    value("PURSUIT_2D", KI::MovingBehavior::BehaviorType::PURSUIT_2D)]];
+        module(lua)
+        [
+            class_<KI::MovingBehavior::BehaviorType>("BehaviorType")
+            .enum_("BehaviorType")[value("STOP", KI::MovingBehavior::BehaviorType::STOP),
+                value("NONE", KI::MovingBehavior::BehaviorType::NONE),
+                value("MOVE", KI::MovingBehavior::BehaviorType::MOVE),
+                value("MOVE_RANDOMLY", KI::MovingBehavior::BehaviorType::MOVE_RANDOMLY),
+                value("SEEK", KI::MovingBehavior::BehaviorType::SEEK),
+                value("FLEE", KI::MovingBehavior::BehaviorType::FLEE),
+                value("ARRIVE", KI::MovingBehavior::BehaviorType::ARRIVE),
+                value("WANDER", KI::MovingBehavior::BehaviorType::WANDER),
+                value("PATH_FINDING_WANDER", KI::MovingBehavior::BehaviorType::PATH_FINDING_WANDER),
+                value("PURSUIT", KI::MovingBehavior::BehaviorType::PURSUIT),
+                value("EVADE", KI::MovingBehavior::BehaviorType::EVADE),
+                value("HIDE", KI::MovingBehavior::BehaviorType::HIDE),
+                value("FOLLOW_PATH", KI::MovingBehavior::BehaviorType::FOLLOW_PATH),
+                value("OBSTACLE_AVOIDANCE", KI::MovingBehavior::BehaviorType::OBSTACLE_AVOIDANCE),
+                value("FLOCKING_COHESION", KI::MovingBehavior::BehaviorType::FLOCKING_COHESION),
+                value("FLOCKING_SEPARATION", KI::MovingBehavior::BehaviorType::FLOCKING_SEPARATION),
+                value("FLOCKING_SPREAD", KI::MovingBehavior::BehaviorType::FLOCKING_SPREAD),
+                value("FLOCKING_FORMATION_V_SHAPE", KI::MovingBehavior::BehaviorType::FLOCKING_FORMATION_V_SHAPE),
+                value("FLOCKING_ALIGNMENT", KI::MovingBehavior::BehaviorType::FLOCKING_ALIGNMENT),
+                value("FLOCKING_OBSTACLE_AVOIDANCE", KI::MovingBehavior::BehaviorType::FLOCKING_OBSTACLE_AVOIDANCE),
+                value("FLOCKING_FLEE", KI::MovingBehavior::BehaviorType::FLOCKING_FLEE),
+                value("FLOCKING_SEEK", KI::MovingBehavior::BehaviorType::FLOCKING_SEEK),
+                value("FLOCKING", KI::MovingBehavior::BehaviorType::FLOCKING),
+                value("SEEK_2D", KI::MovingBehavior::BehaviorType::SEEK_2D),
+                value("FLEE_2D", KI::MovingBehavior::BehaviorType::FLEE_2D),
+                value("ARRIVE_2D", KI::MovingBehavior::BehaviorType::ARRIVE_2D),
+                value("PATROL_2D", KI::MovingBehavior::BehaviorType::PATROL_2D),
+                value("WANDER_2D", KI::MovingBehavior::BehaviorType::WANDER_2D),
+                value("FOLLOW_PATH_2D", KI::MovingBehavior::BehaviorType::FOLLOW_PATH_2D),
+                value("PURSUIT_2D", KI::MovingBehavior::BehaviorType::PURSUIT_2D)
+            ]
+        ];
 
         AddClassToCollection("MovingBehavior", "class", "Moving behavior controls one or several game objects (agents) in a artificial intelligent manner. Note: Its possible to combine behaviors.");
         AddClassToCollection("MovingBehavior", "Path getPath()", "Gets path for waypoints manipulation.");

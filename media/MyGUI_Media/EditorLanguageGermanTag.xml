@@ -30,6 +30,8 @@
 	<Tag name="Cower">Kopf runter</Tag>
 	<Tag name="Attack_1">Attackieren 1</Tag>
 	<Tag name="Attack_2">Attackieren 2</Tag>
+	<Tag name="Action_1">Aktion 1</Tag>
+	<Tag name="Action_2">Aktion 2</Tag>
 	<Tag name="Duck">Ducken</Tag>
 	<Tag name="Sneak">Kriechen</Tag>
 	<Tag name="Action">Aktion</Tag>

@@ -124,7 +124,7 @@
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
-					<property type="12" name="HideOnConnect" data="false"/>
+					<property type="12" name="HideOnConnect" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -253,6 +253,33 @@
 					<property type="12" name="FollowGameObjectY" data="false"/>
 					<property type="12" name="FollowGameObjectZ" data="false"/>
 					<property type="7" name="BackgroundName" data="Background_Yellow_Layer_2.png"/>
+					<property type="7" name="ComponentHdrEffectComponent" data="HdrEffectComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="EffectName" data="Custom"/>
+					<property type="10" name="SkyColor" data="1.2 2.4 3.6 6"/>
+					<property type="10" name="UpperHemisphere" data="0.15 0.25 0.35 0.5"/>
+					<property type="10" name="LowerHemisphere" data="0.18 0.135 0.09 0.3"/>
+					<property type="6" name="SunPower" data="30"/>
+					<property type="6" name="Exposure" data="0.2"/>
+					<property type="6" name="MinAutoExposure" data="-0.5"/>
+					<property type="6" name="MaxAutoExposure" data="1.5"/>
+					<property type="6" name="Bloom" data="4"/>
+					<property type="6" name="EnvMapScale" data="1"/>
+					<property type="7" name="ComponentCompositorEffectCartoonComponent" data="CompositorEffectCartoonComponent"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="WorkspaceGameObjectId" data="1255209972"/>
+					<property type="6" name="Edge Threshold" data="0.8"/>
+					<property type="6" name="Edge Strength" data="3"/>
+					<property type="6" name="Num Bands" data="10"/>
+					<property type="6" name="Saturation" data="1.2"/>
+					<property type="6" name="Edge Darkness" data="0.4"/>
+					<property type="7" name="ComponentSSAOComponent" data="SSAOComponent"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="WorkspaceGameObjectId" data="1255209972"/>
+					<property type="6" name="KernelRadius" data="3"/>
+					<property type="6" name="PowerScale" data="3"/>
 				</userData>
 			</item>
 		</node>
@@ -1077,7 +1104,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="false"/>
+					<property type="12" name="Activated" data="true"/>
 					<property type="7" name="SoundName" data="Level 1 - Awakening Moon Overworld.ogg"/>
 					<property type="6" name="Volume" data="100"/>
 					<property type="6" name="Speed" data="1"/>

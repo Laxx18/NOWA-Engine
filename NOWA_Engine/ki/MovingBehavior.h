@@ -316,6 +316,8 @@ namespace NOWA
 			bool getIsAutoAnimated(void) const;
 
 			void setOffsetPosition(const Ogre::Vector3& offsetPosition);
+
+			void turnAgentTowards(const Ogre::Vector3& forward, const Ogre::Vector3& gravityDir);
 		private:
 			// Stand idle
 			Ogre::Vector3 none(void);

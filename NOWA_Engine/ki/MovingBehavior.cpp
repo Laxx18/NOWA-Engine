@@ -818,7 +818,50 @@ namespace NOWA
 		void MovingBehavior::setOffsetPosition(const Ogre::Vector3& offsetPosition)
 		{
 			this->offsetPosition = offsetPosition;
-		}
+        }
+
+        void MovingBehavior::turnAgentTowards(const Ogre::Vector3& forward, const Ogre::Vector3& gravityDir)
+        {
+            Ogre::Vector3 up = -gravityDir;
+            if (up.squaredLength() < 0.0001f)
+            {
+                up = Ogre::Vector3::UNIT_Y;
+            }
+            up.normalise();
+
+            // Both headings flattened onto the plane perpendicular to up: only the yaw counts here.
+            Ogre::Vector3 currentForward = this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection();
+            currentForward -= up * currentForward.dotProduct(up);
+            Ogre::Vector3 desiredForward = forward - up * forward.dotProduct(up);
+
+            // Mostly vertical movement has no usable heading: keep facing, but release the latched omega.
+            if (currentForward.squaredLength() < 0.0001f || desiredForward.squaredLength() < 0.0001f)
+            {
+                this->agent->applyOmegaForce(Ogre::Vector3::ZERO);
+                return;
+            }
+
+            currentForward.normalise();
+            desiredForward.normalise();
+
+            // Signed angle around up. atan2 is well defined at 180 degrees, unlike a shortest-rotation quaternion.
+            Ogre::Real angle = Ogre::Math::ATan2(up.dotProduct(currentForward.crossProduct(desiredForward)), currentForward.dotProduct(desiredForward)).valueRadians();
+
+            // Aligned: a command of ZERO is what releases the latched omega, falling silent would keep the last rotation running.
+            if (Ogre::Math::Abs(Ogre::Radian(angle).valueDegrees()) <= 2.0f)
+            {
+                this->agent->applyOmegaForce(Ogre::Vector3::ZERO);
+                return;
+            }
+
+            // At most a quarter turn ahead per frame: the direction of the turn is then always unambiguous,
+            // even when the player stands exactly behind the boss.
+            const Ogre::Real maxStep = Ogre::Math::HALF_PI;
+            angle = Ogre::Math::Clamp(angle, -maxStep, maxStep);
+
+            const Ogre::Quaternion targetOrientation = Ogre::Quaternion(Ogre::Radian(angle), up) * this->agent->getOrientation();
+            this->agent->applyOmegaForceRotateTo(targetOrientation, Ogre::Vector3::UNIT_Y, this->getTurnRate());
+        }
 
 		Ogre::Vector3 MovingBehavior::evade(Ogre::Real dt)
 		{
@@ -2513,7 +2556,8 @@ namespace NOWA
                 }
                 else
                 {
-                    this->agent->applyOmegaForceRotateToDirection(forward, this->getTurnRate());
+                    // this->agent->applyOmegaForceRotateToDirection(forward, this->getTurnRate());
+                    this->turnAgentTowards(forward, gravityDir);
                 }
                 return;
             }
@@ -2746,7 +2790,8 @@ namespace NOWA
                         {
                             // Attention: No upright correction in fly mode! It would immediately fight against
                             // any pitch of the agent, so the flying creature could never look up or down.
-                            this->agent->applyOmegaForceRotateToDirection(forward, this->getTurnRate());
+                            // this->agent->applyOmegaForceRotateToDirection(forward, this->getTurnRate());
+                            this->turnAgentTowards(forward, gravityDir);
                         }
                         else
                         {
