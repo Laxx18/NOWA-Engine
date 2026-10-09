@@ -861,7 +861,7 @@ PrehistoricLax["connect"] = function(gameObject)
     hurtSound = prehistoricLax:getSimpleSoundComponentFromName("Hurt");
 
     -- Abilities that have been unlocked during the game
-    playerController:setCanSlide(isWorldFlagSet(ABILITY_CAN_SLIDE));
+    applyAbilities(prehistoricLax);
 
     isAttacking = false;
     attackTime = 0;

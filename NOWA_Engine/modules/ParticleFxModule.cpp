@@ -304,7 +304,7 @@ namespace NOWA
     void ParticleFxModule::playParticleSystem(const Ogre::String& name)
     {
         auto it = this->particles.find(name);
-        Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxModule] playParticleSystem: name='" + name + "' found=" + (it != this->particles.end() ? "YES" : "NO"));
+        // Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ParticleFxModule] playParticleSystem: name='" + name + "' found=" + (it != this->particles.end() ? "YES" : "NO"));
         if (it != this->particles.end())
         {
             /*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL,

@@ -20,21 +20,26 @@ MainGameObject["connect"] = function(gameObject)
 
     timeSinceLastToggle = 1;
 
-    -- Todo: not here but in menu state either via load several games -> player name required. Continue is just if in game and then went to menu and wants back to resume
     -- This script is connected BEFORE PrehistoricLax.lua, so the world is already in its final state when
     -- the player starts and collects its points of interest.
     Session.isRespawning = false;
+
+    -- Once per run, in the real game: the newest save game is loaded. That replaces the scene, so
+    -- nothing else is to be done here. The connect of the scene that follows does the rest.
+    if (true == loadGameOnStart()) then
+        do return end;
+    end
 
     -- The attributes of the player live on this game object. A global value that is already there wins:
     -- that is the running game or a save game that has just been loaded.
     pullPlayerAttributesFromProgress(mainGameObject:getAttributesComponent());
 
-    -- Taken items are gone for good, items that wait for their boss are hidden.
+    -- Taken items are gone for good.
     applyWorldState();
 
-    -- Pulled levers stay pulled. Was switched off in PrehistoricLax.lua, enable it here once the gates
-    -- behave after a scene change.
-    -- applyPulledLevers();
+    -- Pulled levers stay pulled. Only in the real game: isLeverPulled is always false in the editor, so
+    -- the lever stays switchable while the boss is tested.
+    applyPulledLevers();
 end
 
 MainGameObject["disconnect"] = function()

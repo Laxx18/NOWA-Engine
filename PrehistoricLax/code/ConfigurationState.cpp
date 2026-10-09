@@ -1,5 +1,11 @@
 #include "NOWAPrecompiled.h"
 #include "ConfigurationState.h"
+#include "MyGUI_InputManager.h"
+
+#include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <cstdlib>
 
 using namespace NOWA;
 
@@ -89,6 +95,260 @@ namespace
     }
 }
 
+namespace
+{
+    // =============================================================================
+    // Gamepad navigation
+    //
+    // Same idea as MyGUIPadFocusComponent, but for the widgets which are created directly in this state: the mouse pointer is snapped onto
+    // the focused widget (MyGUI then draws its own hover state) and a confirm press becomes a real click there.
+    // Three things differ from the component, because this screen is not only made of buttons:
+    //  - combo boxes and sliders are changed with LEFT / RIGHT (a click in their middle would be useless),
+    //  - the rows of the controls tab live in a scroll view, which is scrolled so that the focused row stays visible,
+    //  - a rebinding text box is NOT armed by the hover (see notifyKeyEditFocus), the confirm button arms it explicitly.
+    // Everything is file local on purpose: no member is added, so ConfigurationState.h does not have to change.
+    // =============================================================================
+
+    struct PadNavigation
+    {
+        // Logic thread only
+        float navigationTimer;
+        bool confirmWasDown;
+        bool engaged;
+        bool armedByPad;
+        float armedTimer;
+        bool soundSliderChanged;
+
+        // Render thread only
+        MyGUI::Widget* focused;
+
+        // Written by the logic thread, read by the MyGUI hover events (render thread)
+        std::atomic<long long> suppressHoverUntilMs;
+
+        PadNavigation()
+        {
+            this->reset();
+        }
+
+        void reset(void)
+        {
+            this->navigationTimer = 0.0f;
+            this->confirmWasDown = false;
+            this->engaged = false;
+            this->armedByPad = false;
+            this->armedTimer = 0.0f;
+            this->soundSliderChanged = false;
+            this->focused = nullptr;
+            this->suppressHoverUntilMs.store(0);
+        }
+    };
+
+    PadNavigation padNav;
+
+    struct PadResult
+    {
+        bool snap = false;
+        bool click = false;
+        bool armed = false;
+        bool soundSliderAdjusted = false;
+        int x = 0;
+        int y = 0;
+        float repeatDelay = 0.25f;
+    };
+
+    const float PAD_SLIDER_DELAY = 0.08f;
+    const float PAD_ARMED_TIMEOUT = 6.0f;
+    const long long PAD_HOVER_SUPPRESS_MS = 1000;
+
+    long long nowMilliseconds(void)
+    {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    }
+
+    // True shortly after the gamepad moved the pointer: such a hover must not arm a rebinding box.
+    bool isHoverArmingSuppressed(void)
+    {
+        return nowMilliseconds() < padNav.suppressHoverUntilMs.load();
+    }
+
+    // Only the gamepads, never the keyboard: the arrow keys would otherwise also be bound to an armed textbox.
+    bool readPadDirection(int& directionX, int& directionY)
+    {
+        directionX = 0;
+        directionY = 0;
+
+        std::vector<InputDeviceModule*> joystickModules = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModules();
+
+        for (size_t i = 0; i < joystickModules.size(); i++)
+        {
+            InputDeviceModule* joystickModule = joystickModules[i];
+            if (nullptr == joystickModule)
+            {
+                continue;
+            }
+
+            if (0 == directionX)
+            {
+                if (true == joystickModule->isActionDown(InputDeviceModule::LEFT))
+                {
+                    directionX = -1;
+                }
+                else if (true == joystickModule->isActionDown(InputDeviceModule::RIGHT))
+                {
+                    directionX = 1;
+                }
+            }
+
+            if (0 == directionY)
+            {
+                if (true == joystickModule->isActionDown(InputDeviceModule::UP))
+                {
+                    directionY = -1;
+                }
+                else if (true == joystickModule->isActionDown(InputDeviceModule::DOWN))
+                {
+                    directionY = 1;
+                }
+            }
+        }
+
+        // A diagonal stick: up / down wins, so a slider is only changed by a clear left / right.
+        if (0 != directionY)
+        {
+            directionX = 0;
+        }
+
+        return (0 != directionX || 0 != directionY);
+    }
+
+    // JUMP, the same button the virtual keyboard uses to press a key.
+    bool readPadConfirm(void)
+    {
+        std::vector<InputDeviceModule*> joystickModules = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModules();
+
+        for (size_t i = 0; i < joystickModules.size(); i++)
+        {
+            if (nullptr != joystickModules[i] && true == joystickModules[i]->isActionDown(InputDeviceModule::JUMP))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // Render thread. Live coordinates, because a scroll view moves its rows.
+    MyGUI::IntPoint centerOf(MyGUI::Widget* widget)
+    {
+        const MyGUI::IntCoord coord = widget->getAbsoluteCoord();
+        return MyGUI::IntPoint(coord.left + coord.width / 2, coord.top + coord.height / 2);
+    }
+
+    // Render thread. 45 degree cone like in the component. If nothing lies in the cone (e.g. from the last combo box down to the
+    // Apply button, which sits far to the left), the nearest widget in that direction is taken instead of getting stuck.
+    MyGUI::Widget* findNeighbour(const std::vector<MyGUI::Widget*>& targets, MyGUI::Widget* current, int directionX, int directionY)
+    {
+        const MyGUI::IntPoint currentCenter = centerOf(current);
+
+        MyGUI::Widget* bestInCone = nullptr;
+        int bestInConeScore = 0;
+        MyGUI::Widget* bestAny = nullptr;
+        int bestAnyScore = 0;
+
+        for (size_t i = 0; i < targets.size(); i++)
+        {
+            if (targets[i] == current)
+            {
+                continue;
+            }
+
+            const MyGUI::IntPoint center = centerOf(targets[i]);
+            const int deltaX = center.left - currentCenter.left;
+            const int deltaY = center.top - currentCenter.top;
+
+            const int along = deltaX * directionX + deltaY * directionY;
+            const int sideways = std::abs(deltaX * directionY - deltaY * directionX);
+
+            if (0 >= along)
+            {
+                continue;
+            }
+
+            const int score = along + 2 * sideways;
+
+            if (sideways <= along && (nullptr == bestInCone || score < bestInConeScore))
+            {
+                bestInCone = targets[i];
+                bestInConeScore = score;
+            }
+
+            if (nullptr == bestAny || score < bestAnyScore)
+            {
+                bestAny = targets[i];
+                bestAnyScore = score;
+            }
+        }
+
+        return (nullptr != bestInCone) ? bestInCone : bestAny;
+    }
+
+    // Render thread. If the widget sits inside a scroll view (the rows of the controls tab), the view is scrolled until the widget is visible.
+    void scrollIntoView(MyGUI::Widget* widget)
+    {
+        MyGUI::ScrollView* scrollView = nullptr;
+        for (MyGUI::Widget* parent = widget->getParent(); nullptr != parent; parent = parent->getParent())
+        {
+            scrollView = parent->castType<MyGUI::ScrollView>(false);
+            if (nullptr != scrollView)
+            {
+                break;
+            }
+        }
+
+        if (nullptr == scrollView)
+        {
+            return;
+        }
+
+        // > 0: the widget is above the view and the content has to move down, < 0: below it and the content has to move up.
+        auto missingShift = [scrollView, widget]() -> int
+        {
+            const MyGUI::IntCoord view = scrollView->getAbsoluteCoord();
+            const int top = widget->getAbsoluteTop();
+            const int bottom = top + widget->getHeight();
+
+            if (top < view.top)
+            {
+                return view.top - top;
+            }
+            if (bottom > view.top + view.height)
+            {
+                return (view.top + view.height) - bottom;
+            }
+            return 0;
+        };
+
+        const int shift = missingShift();
+        if (0 == shift)
+        {
+            return;
+        }
+
+        const MyGUI::IntPoint offset = scrollView->getViewOffset();
+
+        // The sign convention of the view offset is not relied on: try one direction, and if the widget did not come closer, the other one.
+        scrollView->setViewOffset(MyGUI::IntPoint(offset.left, offset.top + shift));
+        if (std::abs(missingShift()) >= std::abs(shift))
+        {
+            scrollView->setViewOffset(MyGUI::IntPoint(offset.left, offset.top - shift));
+            if (std::abs(missingShift()) >= std::abs(shift))
+            {
+                scrollView->setViewOffset(offset);
+            }
+        }
+    }
+}
+
 ConfigurationState::ConfigurationState()
     : AppState()
 {
@@ -126,6 +386,7 @@ void ConfigurationState::enter(void)
     this->soundMusic = nullptr;
 
     this->hasJoystick = false;
+    padNav.reset();
 
     Ogre::LogManager::getSingletonPtr()->logMessage("Entering ConfigurationState...");
 
@@ -195,6 +456,7 @@ void ConfigurationState::exit(void)
     this->buttonConfigTextboxes.clear();
     this->oldButtonValue.clear();
     this->buttonTextboxActive.clear();
+    padNav.reset();
 
     OgreALModule::getInstance()->deleteSound(this->sceneManager, this->soundMusic);
 
@@ -760,6 +1022,13 @@ void ConfigurationState::populateControlsOptions(void)
 
 void ConfigurationState::notifyKeyEditFocus(MyGUI::Widget* sender, MyGUI::Widget* old)
 {
+    // The gamepad navigation snaps the pointer onto the boxes. That hover must not arm the rebinding, otherwise the confirm
+    // button press itself would be bound at once. The gamepad arms a box explicitly (see update).
+    if (true == isHoverArmingSuppressed())
+    {
+        return;
+    }
+
     for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
     {
         this->keyConfigTextboxes[i]->setTextShadow(false);
@@ -774,6 +1043,12 @@ void ConfigurationState::notifyKeyEditFocus(MyGUI::Widget* sender, MyGUI::Widget
 
 void ConfigurationState::notifyButtonEditFocus(MyGUI::Widget* sender, MyGUI::Widget* old)
 {
+    // See notifyKeyEditFocus.
+    if (true == isHoverArmingSuppressed())
+    {
+        return;
+    }
+
     for (unsigned short i = 0; i < this->buttonConfigTextboxes.size(); i++)
     {
         this->buttonConfigTextboxes[i]->setTextShadow(false);
@@ -876,6 +1151,329 @@ void ConfigurationState::update(Ogre::Real dt)
     if (this->bQuit)
     {
         this->shutdown();
+    }
+
+    // ── Gamepad navigation ────────────────────────────────────────────────────
+    if (false == this->hasJoystick || nullptr == this->rootWindow)
+    {
+        return;
+    }
+
+    int directionX = 0;
+    int directionY = 0;
+    const bool directionHeld = readPadDirection(directionX, directionY);
+
+    const bool confirmIsDown = readPadConfirm();
+    // Only the flank counts, otherwise a held button would click every frame.
+    const bool confirmPressed = (true == confirmIsDown && false == padNav.confirmWasDown);
+    padNav.confirmWasDown = confirmIsDown;
+
+    // A rebinding box waits for the next button: every button belongs to the binding now, so nothing is navigated.
+    bool anyArmed = false;
+    for (size_t i = 0; i < this->keyTextboxActive.size() && false == anyArmed; i++)
+    {
+        anyArmed = this->keyTextboxActive[i];
+    }
+    for (size_t i = 0; i < this->buttonTextboxActive.size() && false == anyArmed; i++)
+    {
+        anyArmed = this->buttonTextboxActive[i];
+    }
+
+    if (true == anyArmed)
+    {
+        padNav.navigationTimer = 0.0f;
+
+        // A gamepad has no Escape, so a box armed by the gamepad disarms itself after a while. One armed by the mouse hover stays as before.
+        if (true == padNav.armedByPad)
+        {
+            padNav.armedTimer -= dt;
+            if (padNav.armedTimer <= 0.0f)
+            {
+                padNav.armedByPad = false;
+
+                GraphicsModule::RenderCommand renderCommand = [this]()
+                {
+                    for (size_t i = 0; i < this->keyConfigTextboxes.size(); i++)
+                    {
+                        this->keyTextboxActive[i] = false;
+                        this->keyConfigTextboxes[i]->setTextShadow(false);
+                    }
+                    for (size_t i = 0; i < this->buttonConfigTextboxes.size(); i++)
+                    {
+                        this->buttonTextboxActive[i] = false;
+                        this->buttonConfigTextboxes[i]->setTextShadow(false);
+                    }
+                };
+                GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ConfigurationState::padDisarm");
+            }
+        }
+        return;
+    }
+    padNav.armedByPad = false;
+
+    // The sound slider plays its test sound when the mouse button is released. For the gamepad that is: the direction is released.
+    if (false == directionHeld && true == padNav.soundSliderChanged)
+    {
+        padNav.soundSliderChanged = false;
+
+        GraphicsModule::RenderCommand renderCommand = [this]()
+        {
+            if (nullptr != this->soundSlider)
+            {
+                this->notifySliderMouseRelease(this->soundSlider, 0, 0, MyGUI::MouseButton::Left);
+            }
+        };
+        GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "ConfigurationState::padSliderRelease");
+    }
+
+    bool doStep = false;
+    if (true == directionHeld)
+    {
+        padNav.navigationTimer -= dt;
+        if (padNav.navigationTimer <= 0.0f)
+        {
+            doStep = true;
+        }
+    }
+    else
+    {
+        // Released: the next press steps immediately instead of waiting for the delay.
+        padNav.navigationTimer = 0.0f;
+    }
+
+    if (false == doStep && false == confirmPressed)
+    {
+        return;
+    }
+
+    PadResult result;
+    const bool engagedBefore = padNav.engaged;
+
+    // Attention: the targets are collected anew for every step, on the render thread, so tab changes and scrolling need no refresh.
+    GraphicsModule::RenderCommand renderCommand = [this, &result, directionX, directionY, doStep, confirmPressed, engagedBefore]()
+    {
+        std::vector<MyGUI::Widget*> targets;
+
+        // A hidden widget (the panel of another tab) must not swallow the focus. getInheritedVisible also covers a hidden parent.
+        auto addTarget = [&targets](MyGUI::Widget* widget)
+        {
+            if (nullptr != widget && true == widget->getInheritedVisible())
+            {
+                targets.push_back(widget);
+            }
+        };
+
+        addTarget(this->tabGraphicsButton);
+        addTarget(this->tabSoundButton);
+        addTarget(this->tabControlsButton);
+        addTarget(this->applyButton);
+        addTarget(this->okButton);
+        addTarget(this->cancelButton);
+
+        addTarget(this->resolutionCombo);
+        addTarget(this->fullscreenCheck);
+        addTarget(this->vsyncCheck);
+        addTarget(this->vsyncIntervalCombo);
+        addTarget(this->fsaaCombo);
+        addTarget(this->shadowQualityCombo);
+
+        addTarget(this->musicSlider);
+        addTarget(this->soundSlider);
+
+        for (size_t i = 0; i < this->keyConfigTextboxes.size(); i++)
+        {
+            addTarget(this->keyConfigTextboxes[i]);
+        }
+        for (size_t i = 0; i < this->buttonConfigTextboxes.size(); i++)
+        {
+            addTarget(this->buttonConfigTextboxes[i]);
+        }
+
+        if (true == targets.empty())
+        {
+            return;
+        }
+
+        // The first input only shows where the focus is: on the button of the current tab.
+        const bool focusIsValid = (nullptr != padNav.focused && targets.end() != std::find(targets.begin(), targets.end(), padNav.focused));
+        if (false == engagedBefore || false == focusIsValid)
+        {
+            MyGUI::Widget* tabButton = this->tabGraphicsButton;
+            if (1 == this->currentTabIndex)
+            {
+                tabButton = this->tabSoundButton;
+            }
+            else if (2 == this->currentTabIndex)
+            {
+                tabButton = this->tabControlsButton;
+            }
+
+            padNav.focused = tabButton;
+
+            const MyGUI::IntPoint center = centerOf(padNav.focused);
+            result.snap = true;
+            result.x = center.left;
+            result.y = center.top;
+            return;
+        }
+
+        MyGUI::Widget* focused = padNav.focused;
+        MyGUI::ComboBox* combo = focused->castType<MyGUI::ComboBox>(false);
+        MyGUI::ScrollBar* slider = focused->castType<MyGUI::ScrollBar>(false);
+
+        if (true == confirmPressed)
+        {
+            // A rebinding box: arm it, the next gamepad button (or keyboard key) is bound.
+            bool isRebindingBox = false;
+            for (size_t i = 0; i < this->keyConfigTextboxes.size(); i++)
+            {
+                if (focused == this->keyConfigTextboxes[i])
+                {
+                    isRebindingBox = true;
+                }
+            }
+            for (size_t i = 0; i < this->buttonConfigTextboxes.size(); i++)
+            {
+                if (focused == this->buttonConfigTextboxes[i])
+                {
+                    isRebindingBox = true;
+                }
+            }
+
+            if (true == isRebindingBox)
+            {
+                for (size_t i = 0; i < this->keyConfigTextboxes.size(); i++)
+                {
+                    const bool isFocused = (focused == this->keyConfigTextboxes[i]);
+                    this->keyTextboxActive[i] = isFocused;
+                    this->keyConfigTextboxes[i]->setTextShadow(isFocused);
+                }
+                for (size_t i = 0; i < this->buttonConfigTextboxes.size(); i++)
+                {
+                    const bool isFocused = (focused == this->buttonConfigTextboxes[i]);
+                    this->buttonTextboxActive[i] = isFocused;
+                    this->buttonConfigTextboxes[i]->setTextShadow(isFocused);
+                }
+                result.armed = true;
+            }
+            else if (nullptr != combo)
+            {
+                // Confirm steps to the next entry (wraps around), LEFT / RIGHT steps both ways.
+                const size_t count = combo->getItemCount();
+                if (count > 0)
+                {
+                    const size_t selected = combo->getIndexSelected();
+                    const size_t next = (MyGUI::ITEM_NONE == selected || selected + 1 >= count) ? 0 : selected + 1;
+                    combo->setIndexSelected(next);
+                    this->notifyGraphicsComboAccept(combo, next);
+                }
+            }
+            else if (nullptr == slider)
+            {
+                // A button or a check box: a real click, so the handlers and the pressed look behave exactly as with the mouse.
+                const MyGUI::IntPoint center = centerOf(focused);
+                result.click = true;
+                result.x = center.left;
+                result.y = center.top;
+            }
+        }
+        else if (true == doStep)
+        {
+            if (0 != directionX && nullptr != combo)
+            {
+                const size_t count = combo->getItemCount();
+                if (count > 0)
+                {
+                    const size_t selected = combo->getIndexSelected();
+                    int index = (MyGUI::ITEM_NONE == selected) ? 0 : static_cast<int>(selected) + directionX;
+                    index = std::max(0, std::min(index, static_cast<int>(count) - 1));
+
+                    if (MyGUI::ITEM_NONE == selected || static_cast<size_t>(index) != selected)
+                    {
+                        combo->setIndexSelected(static_cast<size_t>(index));
+                        this->notifyGraphicsComboAccept(combo, static_cast<size_t>(index));
+                    }
+                }
+            }
+            else if (0 != directionX && nullptr != slider)
+            {
+                const int maxPosition = static_cast<int>(slider->getScrollRange()) - 1;
+                const int current = static_cast<int>(slider->getScrollPosition());
+                const int position = std::max(0, std::min(current + directionX * 5, maxPosition));
+
+                if (position != current)
+                {
+                    slider->setScrollPosition(static_cast<size_t>(position));
+                    this->notifySoundSliderChangePosition(slider, static_cast<size_t>(position));
+
+                    if (slider == this->soundSlider)
+                    {
+                        result.soundSliderAdjusted = true;
+                    }
+                }
+                result.repeatDelay = PAD_SLIDER_DELAY;
+            }
+            else
+            {
+                MyGUI::Widget* neighbour = findNeighbour(targets, focused, directionX, directionY);
+                if (nullptr != neighbour)
+                {
+                    padNav.focused = neighbour;
+                    scrollIntoView(neighbour);
+
+                    const MyGUI::IntPoint center = centerOf(neighbour);
+                    result.snap = true;
+                    result.x = center.left;
+                    result.y = center.top;
+                }
+            }
+        }
+    };
+    GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ConfigurationState::padNavigation");
+
+    padNav.engaged = true;
+    padNav.navigationTimer = result.repeatDelay;
+
+    if (true == result.soundSliderAdjusted)
+    {
+        padNav.soundSliderChanged = true;
+    }
+
+    if (true == result.armed)
+    {
+        padNav.armedByPad = true;
+        padNav.armedTimer = PAD_ARMED_TIMEOUT;
+    }
+
+    if (true == result.snap || true == result.click)
+    {
+        // Before the pointer is moved, because the hover event arrives right after.
+        padNav.suppressHoverUntilMs.store(nowMilliseconds() + PAD_HOVER_SUPPRESS_MS);
+    }
+
+    if (true == result.snap)
+    {
+        InputDeviceCore::getSingletonPtr()->setMousePosition(result.x, result.y);
+    }
+
+    if (true == result.click)
+    {
+        const int positionX = result.x;
+        const int positionY = result.y;
+
+        // Fire and forget, only plain values are captured. The move is repeated, so MyGUI surely has its mouse focus on the widget.
+        GraphicsModule::RenderCommand clickCommand = [positionX, positionY]()
+        {
+            if (nullptr == MyGUI::InputManager::getInstancePtr())
+            {
+                return;
+            }
+
+            MyGUI::InputManager::getInstancePtr()->injectMouseMove(positionX, positionY, 0);
+            MyGUI::InputManager::getInstancePtr()->injectMousePress(positionX, positionY, MyGUI::MouseButton::Left);
+            MyGUI::InputManager::getInstancePtr()->injectMouseRelease(positionX, positionY, MyGUI::MouseButton::Left);
+        };
+        GraphicsModule::getInstance()->enqueue(std::move(clickCommand), "ConfigurationState::padClick");
     }
 }
 

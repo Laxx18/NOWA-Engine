@@ -12,28 +12,27 @@ namespace NOWA
     using namespace rapidxml;
     using namespace luabind;
 
-    // -----------------------------------------------------------------------
-    // Construction
-    // -----------------------------------------------------------------------
-
-    BlinkComponent::BlinkComponent() :
-        GameObjectComponent(),
+    BlinkComponent::BlinkComponent()
+        : GameObjectComponent(),
         name("BlinkComponent"),
-        blinkMode(new Variant(BlinkComponent::AttrBlinkMode(), Ogre::String(""), this->attributes)),
+        blinkMode(new Variant(BlinkComponent::AttrBlinkMode(), Ogre::String("Single"), this->attributes)),
         gameObjectCount(new Variant(BlinkComponent::AttrGameObjectCount(), static_cast<unsigned int>(0), this->attributes))
     {
-        this->blinkMode->setDescription("Blink preset mode. "
+        std::vector<Ogre::String> blinkModes = { "Single", "Sequential", "Alternating", "AllAtOnce" };
+        this->blinkMode->setValue(blinkModes);
+        this->blinkMode->setListSelectedValue("Single");
+        this->blinkMode->setDescription(
+            "Blink preset mode. "
                                         "'Single': one object cycles on its own. "
                                         "'Sequential': objects fade out one after the other (use StartDelay to stagger). "
                                         "'Alternating': even-index objects and odd-index objects alternate. "
                                         "'AllAtOnce': all objects blink in perfect sync.");
 
-        std::vector<Ogre::String> blinkModes = {"Single", "Sequential", "Alternating", "AllAtOnce"};
-        this->blinkMode->setValue(blinkModes);
 
         this->gameObjectCount->addUserData(GameObject::AttrActionNeedRefresh());
-        this->gameObjectCount->setDescription("Number of target GameObjects to manage. "
-                                              "Increasing this value adds new per-entry rows (Id, StartDelay, SolidTime, …). "
+        this->gameObjectCount->setDescription(
+            "Number of target GameObjects to manage. "
+            "Increasing adds new per-entry rows (Id, StartDelay, SolidTime, FadeOutTime, GoneTime, FadeInTime). "
                                               "Decreasing removes them.");
     }
 
@@ -249,6 +248,10 @@ namespace NOWA
     void BlinkComponent::onRemoveComponent(void)
     {
         GameObjectComponent::onRemoveComponent();
+
+        Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
         this->restoreAllTargets();
     }
 
@@ -266,11 +269,6 @@ namespace NOWA
 
         for (unsigned int i = 0; i < count; i++)
         {
-            if (i >= this->targets.size())
-            {
-                break;
-            }
-
             TargetEntry& entry = this->targets[i];
             entry.phase = Phase::Delay;
             entry.timer = 0.0f;
@@ -282,12 +280,14 @@ namespace NOWA
                 entry.timer = -(this->solidTimes[i]->getReal() * 0.5f);
             }
 
-            this->applyTransparency(i, 1.0f);
             if (nullptr != entry.physics)
             {
                 entry.physics->setActivated(true);
             }
         }
+
+        // Set all targets fully opaque via tracked closure on connect
+        this->applyTransparencyImmediate(1.0f);
 
         return true;
     }
@@ -295,6 +295,10 @@ namespace NOWA
     bool BlinkComponent::disconnect(void)
     {
         GameObjectComponent::disconnect();
+
+        Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+        NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
         this->restoreAllTargets();
         this->targets.clear();
         return true;
@@ -315,6 +319,7 @@ namespace NOWA
 
         const Ogre::String mode = this->blinkMode->getListSelectedValue();
 
+        // Advance all timers and phase state on the logic thread
         for (unsigned int i = 0; i < count; i++)
         {
             TargetEntry& entry = this->targets[i];
@@ -341,12 +346,7 @@ namespace NOWA
             case Phase::FadeOut:
             {
                 Ogre::Real duration = this->fadeOutTimes[i]->getReal();
-                Ogre::Real progress = (duration > 0.0f) ? (entry.timer / duration) : 1.0f;
-                if (progress > 1.0f)
-                {
-                    progress = 1.0f;
-                }
-                this->applyTransparency(i, 1.0f - progress);
+                    entry.currentAlpha = 1.0f - ((duration > 0.0f) ? Ogre::Math::Clamp(entry.timer / duration, 0.0f, 1.0f) : 1.0f);
 
                 if (entry.timer >= duration)
                 {
@@ -365,12 +365,7 @@ namespace NOWA
             case Phase::FadeIn:
             {
                 Ogre::Real duration = this->fadeInTimes[i]->getReal();
-                Ogre::Real progress = (duration > 0.0f) ? (entry.timer / duration) : 1.0f;
-                if (progress > 1.0f)
-                {
-                    progress = 1.0f;
-                }
-                this->applyTransparency(i, progress);
+                    entry.currentAlpha = (duration > 0.0f) ? Ogre::Math::Clamp(entry.timer / duration, 0.0f, 1.0f) : 1.0f;
 
                 if (entry.timer >= duration)
                 {
@@ -391,131 +386,83 @@ namespace NOWA
             }
             }
         }
-    }
 
-    // -----------------------------------------------------------------------
-    // enterPhase  — state transitions
-    // -----------------------------------------------------------------------
+        // Build a snapshot of all render-relevant data for the closure —
+        // no 'this', no pointers into targets, everything by value.
+        struct RenderEntry
+        {
+            Ogre::Item*                                                     item;
+            Ogre::Real                                                      alpha;
+            std::vector<std::pair<Ogre::HlmsDatablock*, unsigned int>>*    clonedDatablocks;
+            unsigned long                                                   targetId;
+        };
 
-    void BlinkComponent::enterPhase(unsigned int index, Phase newPhase)
+        std::vector<RenderEntry> renderEntries;
+        renderEntries.reserve(count);
+
+        for (unsigned int i = 0; i < count; i++)
+        {
+            TargetEntry& entry = this->targets[i];
+            if (nullptr == entry.item)
+        {
+                continue;
+            }
+            RenderEntry re;
+            re.item             = entry.item;
+            re.alpha            = entry.currentAlpha;
+            re.clonedDatablocks = &entry.clonedDatablocks;
+            re.targetId         = entry.gameObjectPtr->getId();
+            renderEntries.push_back(re);
+        }
+
+        auto closureFunction = [renderEntries](Ogre::Real renderDt) mutable
     {
-        if (index >= this->targets.size())
+            for (auto& re : renderEntries)
         {
-            return;
-        }
+                const Ogre::Real clampedAlpha = Ogre::Math::Clamp(re.alpha, 0.0f, 1.0f);
 
-        TargetEntry& entry = this->targets[index];
-        entry.phase = newPhase;
-        entry.timer = 0.0f;
-
-        switch (newPhase)
+                if (clampedAlpha >= 1.0f)
         {
-        case Phase::Solid:
-        {
-            this->applyTransparency(index, 1.0f);
-            if (nullptr != entry.physics)
+                    // Restore originals and destroy clones
+                    if (false == re.clonedDatablocks->empty())
             {
-                entry.physics->setActivated(true);
-            }
-            break;
-        }
-        case Phase::FadeOut:
-        {
-            // Physics stays ON during fade-out — the fading is the warning to the player,
-            // the platform is still solid during this phase.
-            this->applyTransparency(index, 1.0f);
-            break;
-        }
-        case Phase::Gone:
-        {
-            this->applyTransparency(index, 0.0f);
-            if (nullptr != entry.physics)
-            {
-                entry.physics->setActivated(false);
-            }
-            break;
-        }
-        case Phase::FadeIn:
-        {
-            // Re-enable physics at the start of fade-in so the platform is already
-            // solid when it becomes visible again.
-            this->applyTransparency(index, 0.0f);
-            if (nullptr != entry.physics)
-            {
-                entry.physics->setActivated(true);
-            }
-            break;
-        }
-        case Phase::Delay:
-        default:
-            break;
-        }
-    }
-
-    // -----------------------------------------------------------------------
-    // applyTransparency  — directly via the Item's datablock (no DatablockPbsComponent)
-    // -----------------------------------------------------------------------
-
-    void BlinkComponent::applyTransparency(unsigned int index, Ogre::Real alpha)
-    {
-        if (index >= this->targets.size())
-        {
-            return;
-        }
-
-        TargetEntry& entry = this->targets[index];
-        if (nullptr == entry.item)
-        {
-            return;
-        }
-
-        Ogre::Item* item = entry.item;
-        const Ogre::Real clampedAlpha = Ogre::Math::Clamp(alpha, 0.0f, 1.0f);
-        unsigned long targetId = entry.gameObjectPtr->getId();
-
-        NOWA::GraphicsModule::RenderCommand cmd = [this, item, clampedAlpha, targetId, index]()
-        {
-            TargetEntry& e = this->targets[index];
-
-            if (clampedAlpha >= 1.0f)
-            {
-                // Restore original datablocks and destroy clones
-                for (auto& [originalDatablock, subIndex] : e.clonedDatablocks)
+                        for (auto& [originalDatablock, subIndex] : *re.clonedDatablocks)
                 {
-                    if (subIndex >= item->getNumSubItems())
+                            if (subIndex >= re.item->getNumSubItems())
                     {
                         continue;
                     }
 
-                    auto* currentDatablock = item->getSubItem(subIndex)->getDatablock();
-                    item->getSubItem(subIndex)->setDatablock(originalDatablock);
+                            auto* currentDatablock = re.item->getSubItem(subIndex)->getDatablock();
+                            re.item->getSubItem(subIndex)->setDatablock(originalDatablock);
 
                     if (nullptr != currentDatablock && currentDatablock != originalDatablock)
                     {
-                        auto* linkedRenderables = &currentDatablock->getLinkedRenderables();
-                        if (nullptr != linkedRenderables && true == linkedRenderables->empty())
+                                if (currentDatablock->getLinkedRenderables().empty())
                         {
                             currentDatablock->getCreator()->destroyDatablock(currentDatablock->getName());
                         }
                     }
                 }
-                e.clonedDatablocks.clear();
+                        re.clonedDatablocks->clear();
+                    }
             }
             else
             {
-                // First call at non-opaque: clone datablocks if not done yet
-                if (true == e.clonedDatablocks.empty())
+                    // Clone datablocks on first non-opaque call
+                    if (true == re.clonedDatablocks->empty())
                 {
-                    for (unsigned int s = 0; s < item->getNumSubItems(); s++)
+                        for (unsigned int s = 0; s < re.item->getNumSubItems(); s++)
                     {
-                        auto* originalDatablock = item->getSubItem(s)->getDatablock();
+                            auto* originalDatablock = re.item->getSubItem(s)->getDatablock();
                         if (nullptr == originalDatablock)
                         {
                             continue;
                         }
 
                         Ogre::String originalName = originalDatablock->getName().getFriendlyText();
-                        Ogre::HlmsDatablock* cloned = AppStateManager::getSingletonPtr()->getGameObjectController()->cloneDatablockUnique(originalDatablock, originalName, targetId, static_cast<int>(s));
+                            Ogre::HlmsDatablock* cloned = AppStateManager::getSingletonPtr()->getGameObjectController()->cloneDatablockUnique(
+                                originalDatablock, originalName, re.targetId, static_cast<int>(s));
 
                         if (nullptr == cloned)
                         {
@@ -529,20 +476,20 @@ namespace NOWA
                             continue;
                         }
 
-                        item->getSubItem(s)->setDatablock(clonedPbs);
-                        e.clonedDatablocks.emplace_back(originalDatablock, static_cast<unsigned int>(s));
+                            re.item->getSubItem(s)->setDatablock(clonedPbs);
+                            re.clonedDatablocks->emplace_back(originalDatablock, s);
                     }
                 }
 
-                // Now set transparency on the cloned datablocks
-                for (auto& [originalDatablock, subIndex] : e.clonedDatablocks)
+                    // Apply transparency on cloned datablocks
+                    for (auto& [originalDatablock, subIndex] : *re.clonedDatablocks)
                 {
-                    if (subIndex >= item->getNumSubItems())
+                        if (subIndex >= re.item->getNumSubItems())
                     {
                         continue;
                     }
 
-                    auto* clonedPbs = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(subIndex)->getDatablock());
+                        auto* clonedPbs = dynamic_cast<Ogre::HlmsPbsDatablock*>(re.item->getSubItem(subIndex)->getDatablock());
                     if (nullptr == clonedPbs)
                     {
                         continue;
@@ -558,13 +505,73 @@ namespace NOWA
                     }
                 }
             }
+            }
         };
-        NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "BlinkComponent::applyTransparency");
+
+        Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+        NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
     }
 
-    // -----------------------------------------------------------------------
-    // resolveTargets
-    // -----------------------------------------------------------------------
+    void BlinkComponent::enterPhase(unsigned int index, Phase newPhase)
+    {
+        if (index >= this->targets.size())
+        {
+            return;
+        }
+        TargetEntry& entry = this->targets[index];
+        entry.phase = newPhase;
+        entry.timer = 0.0f;
+        switch (newPhase)
+        {
+            case Phase::Solid:
+            {
+                entry.currentAlpha = 1.0f;
+                if (nullptr != entry.physics)
+                {
+                    entry.physics->setActivated(true);
+                }
+                break;
+            }
+            case Phase::FadeOut:
+            {
+                // Physics stays ON during fade-out — the fading is the warning to the player,
+                // the platform is still solid during this phase.
+                entry.currentAlpha = 1.0f;
+                break;
+            }
+            case Phase::Gone:
+            {
+                entry.currentAlpha = 0.0f;
+                if (nullptr != entry.physics)
+                {
+                    entry.physics->setActivated(false);
+                }
+                break;
+            }
+            case Phase::FadeIn:
+            {
+                // Re-enable physics at the start of fade-in so the platform is already
+                // solid when it becomes visible again.
+                entry.currentAlpha = 0.0f;
+                if (nullptr != entry.physics)
+                {
+                    entry.physics->setActivated(true);
+                }
+                break;
+            }
+            case Phase::Delay:
+            default:
+                break;
+        }
+    }
+
+    void BlinkComponent::applyTransparencyImmediate(Ogre::Real alpha)
+    {
+        for (unsigned int i = 0; i < static_cast<unsigned int>(this->targets.size()); i++)
+        {
+            this->targets[i].currentAlpha = alpha;
+        }
+    }
 
     void BlinkComponent::resolveTargets(void)
     {
@@ -580,23 +587,27 @@ namespace NOWA
             unsigned long id = Ogre::StringConverter::parseUnsignedLong(this->gameObjectIds[i]->getString());
             if (0 == id)
             {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[BlinkComponent] resolveTargets: entry " + Ogre::StringConverter::toString(i) + " has id 0 — skipped.");
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[BlinkComponent] resolveTargets: entry " + Ogre::StringConverter::toString(i) + " has id 0 — skipped.");
                 continue;
             }
 
             auto goPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(id);
             if (nullptr == goPtr)
             {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[BlinkComponent] resolveTargets: GameObject with id " + Ogre::StringConverter::toString(id) + " not found.");
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[BlinkComponent] resolveTargets: GameObject with id " + Ogre::StringConverter::toString(id) + " not found.");
                 continue;
             }
 
             entry.gameObjectPtr = goPtr;
             entry.item = dynamic_cast<Ogre::Item*>(goPtr->getMovableObject());
+            entry.currentAlpha = 1.0f;
 
             if (nullptr == entry.item)
             {
-                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[BlinkComponent] resolveTargets: GameObject '" + goPtr->getName() + "' has no Item movable object.");
+                Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+                    "[BlinkComponent] resolveTargets: GameObject '" + goPtr->getName() + "' has no Item movable object.");
             }
 
             // Physics is optional — not every blink target needs to be collidable.
@@ -608,26 +619,75 @@ namespace NOWA
         }
     }
 
-    // -----------------------------------------------------------------------
-    // restoreAllTargets  — called on disconnect / remove
-    // -----------------------------------------------------------------------
-
     void BlinkComponent::restoreAllTargets(void)
     {
-        for (unsigned int i = 0; i < static_cast<unsigned int>(this->targets.size()); i++)
+        unsigned int count = static_cast<unsigned int>(this->targets.size());
+        if (0 == count)
         {
-            this->applyTransparency(i, 1.0f);
-
-            if (nullptr != this->targets[i].physics)
-            {
-                this->targets[i].physics->setActivated(true);
-            }
+            return;
         }
+
+        // Build restore data for the render thread
+        struct RestoreEntry
+        {
+            Ogre::Item*                                                     item;
+            std::vector<std::pair<Ogre::HlmsDatablock*, unsigned int>>*    clonedDatablocks;
+        };
+
+        std::vector<RestoreEntry> restoreEntries;
+        restoreEntries.reserve(count);
+
+        for (unsigned int i = 0; i < count; i++)
+    {
+            TargetEntry& entry = this->targets[i];
+
+            if (nullptr != entry.physics)
+        {
+                entry.physics->setActivated(true);
+            }
+
+            if (nullptr == entry.item || true == entry.clonedDatablocks.empty())
+            {
+                continue;
+            }
+
+            RestoreEntry re;
+            re.item             = entry.item;
+            re.clonedDatablocks = &entry.clonedDatablocks;
+            restoreEntries.push_back(re);
+        }
+
+        if (false == restoreEntries.empty())
+        {
+            NOWA::GraphicsModule::RenderCommand cmd = [restoreEntries]() mutable
+            {
+                for (auto& re : restoreEntries)
+                {
+                    for (auto& [originalDatablock, subIndex] : *re.clonedDatablocks)
+                    {
+                        if (subIndex >= re.item->getNumSubItems())
+                        {
+                            continue;
     }
 
-    // -----------------------------------------------------------------------
-    // actualizeValue
-    // -----------------------------------------------------------------------
+                        auto* currentDatablock = re.item->getSubItem(subIndex)->getDatablock();
+                        re.item->getSubItem(subIndex)->setDatablock(originalDatablock);
+
+                        if (nullptr != currentDatablock && currentDatablock != originalDatablock)
+                        {
+                            if (currentDatablock->getLinkedRenderables().empty())
+                            {
+                                currentDatablock->getCreator()->destroyDatablock(currentDatablock->getName());
+                            }
+                        }
+                    }
+                    re.clonedDatablocks->clear();
+                }
+            };
+            // enqueueAndWait is correct here — we are in disconnect/onRemoveComponent, not in the game loop.
+            NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(cmd), "BlinkComponent::restoreAllTargets");
+        }
+    }
 
     void BlinkComponent::actualizeValue(Variant* attribute)
     {

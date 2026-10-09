@@ -11140,6 +11140,7 @@ namespace NOWA
             .def("getSaveNamesInProject", &getSaveNamesInProject)
             .def("getProjectName", &Core::getProjectName)
             .def("getSceneName", &Core::getSceneName)
+            .def("createScreenshot", &Core::createScreenshot)  
         ];
 
         object globalVars = globals(lua);
@@ -11178,6 +11179,7 @@ namespace NOWA
         AddClassToCollection("Core", "String getSceneName()", "Gets the current scene name.");
         AddClassToCollection("Core", "Table[number][string] getSceneSnapshotsInProject(String projectName)", "Gets a list of saved game scene snapshots from the save directory for the given project name.");
         AddClassToCollection("Core", "Table[number][string] getSaveNamesInProject(String projectName)", "Gets a list of saved game saves (*.sav) file names from the save directory for the given project name.");
+        AddClassToCollection("Core", "void createScreenshot(String filePathName)", "Creates a screenshot at the given filepathname. Please do not forget the .png ending.");
     }
 
     void bindAppStateManager(lua_State* lua)

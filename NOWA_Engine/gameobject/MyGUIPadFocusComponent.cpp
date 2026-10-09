@@ -412,7 +412,16 @@ namespace NOWA
                     continue;
                 }
 
+                const MyGUI::IntSize viewSize = MyGUI::RenderManager::getInstance().getViewSize();
                 const MyGUI::IntCoord coord = widget->getAbsoluteCoord();
+                const int centerX = coord.left + coord.width / 2;
+                const int centerY = coord.top + coord.height / 2;
+
+                // A widget that sits outside of the screen (e.g. a menu button before it slides in) is no target.
+                if (centerX < 0 || centerX >= viewSize.width || centerY < 0 || centerY >= viewSize.height)
+                {
+                    continue;
+                }
 
                 FocusTarget focusTarget;
                 focusTarget.gameObjectId = widgetComponents[i].first;

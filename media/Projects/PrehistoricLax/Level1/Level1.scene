@@ -262,7 +262,7 @@
 					<property type="9" name="BackgroundColor" data="0 0 0"/>
 					<property type="10" name="ViewportRect" data="0 0 1 1"/>
 					<property type="6" name="SuperSampling" data="1"/>
-					<property type="12" name="UseHdr" data="false"/>
+					<property type="12" name="UseHdr" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="6" name="ReflectionCameraGameObjectId" data="0"/>
 					<property type="12" name="UsePlanarReflection" data="false"/>
@@ -330,19 +330,6 @@
 					<property type="6" name="MaxAutoExposure" data="1.5"/>
 					<property type="6" name="Bloom" data="4"/>
 					<property type="6" name="EnvMapScale" data="1"/>
-					<property type="7" name="ComponentCompositorEffectCartoonComponent" data="CompositorEffectCartoonComponent"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="6" name="WorkspaceGameObjectId" data="1255209972"/>
-					<property type="6" name="Edge Threshold" data="0.8"/>
-					<property type="6" name="Edge Strength" data="3"/>
-					<property type="6" name="Num Bands" data="10"/>
-					<property type="6" name="Saturation" data="1.2"/>
-					<property type="6" name="Edge Darkness" data="0.4"/>
-					<property type="7" name="ComponentSSAOComponent" data="SSAOComponent"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="6" name="WorkspaceGameObjectId" data="1255209972"/>
-					<property type="6" name="KernelRadius" data="3"/>
-					<property type="6" name="PowerScale" data="3"/>
 				</userData>
 			</item>
 		</node>

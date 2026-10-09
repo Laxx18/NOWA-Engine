@@ -25,11 +25,21 @@ namespace NOWA
      * and optionally a PhysicsComponent). Each target is driven independently through
      * the four phases using per-entry timing Variants.
      *
+     * Phase behaviour:
+     *   Delay   — initial wait before the first cycle (used to stagger platforms).
+     *   Solid   — fully visible and collidable.
+     *   FadeOut — fading out visually; physics stays ON as a warning to the player.
+     *   Gone    — invisible, physics OFF.
+     *   FadeIn  — fading back in; physics re-enabled immediately at the start.
+     *
      * Preset modes (BlinkMode):
      *   "Single"        — one object, simple on/off cycling.
-     *   "Sequential"    — objects blink out one after the other with an offset delay.
+     *   "Sequential"    — objects blink out one after the other, triggered via StartDelay.
      *   "Alternating"   — even-index objects and odd-index objects alternate.
      *   "AllAtOnce"     — every object blinks in sync.
+     *
+     * All render-thread work is dispatched via updateTrackedClosure so the game loop
+     * never blocks on the render thread.
      *
      * Lua example:
      * @code
@@ -124,8 +134,8 @@ namespace NOWA
         static Ogre::String getStaticInfoText(void)
         {
             return "Usage: Attach to any manager GameObject. Assign GameObjectIds of the target "
-                   "objects (they need an Item movable object). Choose a BlinkMode and tune "
-                   "SolidTime, FadeOutTime, GoneTime and FadeInTime per entry. "
+                   "objects (they need an Item as movable object and optionally a PhysicsComponent). "
+                   "Choose a BlinkMode and tune SolidTime, FadeOutTime, GoneTime and FadeInTime per entry. "
                    "Optionally set StartDelay to offset individual platforms in Sequential mode.";
         }
 
@@ -205,12 +215,12 @@ namespace NOWA
         }
 
     private:
-        // helpers
         void enterPhase(unsigned int index, Phase newPhase);
-        void applyTransparency(unsigned int index, Ogre::Real alpha);
+        void applyTransparencyImmediate(Ogre::Real alpha);
         void restoreAllTargets(void);
+        void resolveTargets(void);
 
-        // Runtime cache resolved in postInit / connect
+    private:
         struct TargetEntry
         {
             GameObjectPtr gameObjectPtr;
@@ -218,19 +228,20 @@ namespace NOWA
             PhysicsComponent* physics = nullptr;
             Phase phase = Phase::Delay;
             Ogre::Real timer = 0.0f;
+            // Current alpha written by the logic thread, read by the render closure.
+            Ogre::Real          currentAlpha = 1.0f;
+            // Original datablocks stored here so we can restore them on disconnect.
+            // First: original datablock pointer, Second: sub-item index.
             std::vector<std::pair<Ogre::HlmsDatablock*, unsigned int>> clonedDatablocks;
         };
 
-        void resolveTargets(void);
 
     private:
         Ogre::String name;
 
-        // ----- fixed Variants -----
         Variant* blinkMode;
         Variant* gameObjectCount;
 
-        // ----- dynamic Variant arrays (one entry per target) -----
         std::vector<Variant*> gameObjectIds;
         std::vector<Variant*> startDelays;
         std::vector<Variant*> solidTimes;
@@ -238,7 +249,6 @@ namespace NOWA
         std::vector<Variant*> goneTimes;
         std::vector<Variant*> fadeInTimes;
 
-        // ----- runtime state -----
         std::vector<TargetEntry> targets;
     };
 

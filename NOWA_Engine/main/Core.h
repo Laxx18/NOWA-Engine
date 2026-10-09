@@ -437,6 +437,8 @@ namespace NOWA
          */
         void createApplicationIcon(unsigned short iconResourceId);
 
+        void createScreenshot(const Ogre::String& filePathName);
+
 #ifdef WIN32
         /**
          * @brief Return the number of threads currently used by the application.

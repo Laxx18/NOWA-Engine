@@ -175,6 +175,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProceduralDecorBandComponen
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BlinkComponent", "BlinkComponent\BlinkComponent.vcxproj", "{C1343B45-1060-4E7D-B3E1-A5D551C0A8F7}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VirtualKeyboardComponent", "VirtualKeyboardComponent\VirtualKeyboardComponent.vcxproj", "{776B844A-7040-470A-9793-17C1370CEF1B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -485,6 +487,10 @@ Global
 		{C1343B45-1060-4E7D-B3E1-A5D551C0A8F7}.Debug|x64.Build.0 = Debug|x64
 		{C1343B45-1060-4E7D-B3E1-A5D551C0A8F7}.Release|x64.ActiveCfg = Release|x64
 		{C1343B45-1060-4E7D-B3E1-A5D551C0A8F7}.Release|x64.Build.0 = Release|x64
+		{776B844A-7040-470A-9793-17C1370CEF1B}.Debug|x64.ActiveCfg = Debug|x64
+		{776B844A-7040-470A-9793-17C1370CEF1B}.Debug|x64.Build.0 = Debug|x64
+		{776B844A-7040-470A-9793-17C1370CEF1B}.Release|x64.ActiveCfg = Release|x64
+		{776B844A-7040-470A-9793-17C1370CEF1B}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

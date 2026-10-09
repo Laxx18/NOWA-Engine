@@ -879,7 +879,7 @@
 					<property type="9" name="Gravity" data="0 -29.9 0"/>
 					<property type="7" name="GravitySourceCategory" data=""/>
 					<property type="9" name="ConstraintDirection" data="0 1 0"/>
-					<property type="6" name="Speed" data="5"/>
+					<property type="6" name="Speed" data="6"/>
 					<property type="6" name="MinSpeed" data="1"/>
 					<property type="6" name="MaxSpeed" data="10"/>
 					<property type="7" name="CollisionType" data="Capsule"/>

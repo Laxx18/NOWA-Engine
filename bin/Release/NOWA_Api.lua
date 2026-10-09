@@ -3397,7 +3397,7 @@ return {
 	BlinkComponent =
 	{
 		type = "class",
-		description = "Usage: Attach to any manager GameObject. Assign GameObjectIds of the target objects (they need an Item movable object). Choose a BlinkMode and tune SolidTime, FadeOutTime, GoneTime and FadeInTime per entry. Optionally set StartDelay to offset individual platforms in Sequential mode.",
+		description = "Usage: Attach to any manager GameObject. Assign GameObjectIds of the target objects (they need an Item as movable object and optionally a PhysicsComponent). Choose a BlinkMode and tune SolidTime, FadeOutTime, GoneTime and FadeInTime per entry. Optionally set StartDelay to offset individual platforms in Sequential mode.",
 		inherits = "GameObjectComponent",
 		childs = 
 		{
@@ -6348,6 +6348,14 @@ return {
 				args = "(string projectName)",
 				returns = "(Table[number][string])",
 				valuetype = "Table[number][string]"
+			},
+			createScreenshot =
+			{
+				type = "method",
+				description = "Creates a screenshot at the given filepathname. Please do not forget the .png ending.",
+				args = "(string filePathName)",
+				returns = "(nil)",
+				valuetype = "nil"
 			}
 		}
 	},
@@ -12440,6 +12448,22 @@ return {
 				returns = "(UniversumComponent)",
 				valuetype = "UniversumComponent"
 			},
+			getVirtualKeyboardComponent =
+			{
+				type = "function",
+				description = "Gets the virtual keyboard component.",
+				args = "()",
+				returns = "(VirtualKeyboardComponent)",
+				valuetype = "VirtualKeyboardComponent"
+			},
+			getVirtualKeyboardComponentFromName =
+			{
+				type = "function",
+				description = "Gets the virtual keyboard component by name.",
+				args = "(string name)",
+				returns = "(VirtualKeyboardComponent)",
+				valuetype = "VirtualKeyboardComponent"
+			},
 			getWaterFoamEffectComponentFromIndex =
 			{
 				type = "function",
@@ -14503,6 +14527,14 @@ return {
 				args = "(UniversumComponent other)",
 				returns = "(UniversumComponent)",
 				valuetype = "UniversumComponent"
+			},
+			castVirtualKeyboardComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(VirtualKeyboardComponent other)",
+				returns = "(VirtualKeyboardComponent)",
+				valuetype = "VirtualKeyboardComponent"
 			},
 			castWaterFoamEffectComponent =
 			{
@@ -38529,6 +38561,119 @@ return {
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
+			}
+		}
+	},
+	VirtualKeyboardComponent =
+	{
+		type = "class",
+		description = "Usage: On screen keyboard for gamepad mode, e.g. to enter a player name. It writes the typed text live into the text widget of the MyGUI component with the 'Target Id' (game object id or MyGUI component id). Open it from lua with setActivated(true) or open(). Gamepad: D-Pad moves, JUMP types, ACTION is backspace, ATTACK_1 is shift, ATTACK_2 is space, START accepts, INVENTORY cancels. Lock the player movement while it is open, because it uses the same UP / DOWN / LEFT / RIGHT actions.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Opens (true) or closes (false, keeps the text) the keyboard. Lock the player movement while it is open, because it uses the same UP / DOWN / LEFT / RIGHT actions.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Gets whether the keyboard is open.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			open =
+			{
+				type = "method",
+				description = "Opens the keyboard. The current text of the target widget is the start text.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			accept =
+			{
+				type = "method",
+				description = "Closes the keyboard and keeps the typed text.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			cancel =
+			{
+				type = "method",
+				description = "Closes the keyboard and restores the text from the time it was opened.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setTargetId =
+			{
+				type = "method",
+				description = "Sets the id of the game object or MyGUI component whose text widget receives the text.",
+				args = "(string id)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getTargetId =
+			{
+				type = "function",
+				description = "Gets the target id.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setMaxLength =
+			{
+				type = "method",
+				description = "Sets the maximum count of characters.",
+				args = "(unsigned number maxLength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			number getMaxLength =
+			{
+				type = "function",
+				description = "Gets the maximum count of characters.",
+				args = "()",
+				returns = "(unsigned)",
+				valuetype = "unsigned"
+			},
+			setText =
+			{
+				type = "method",
+				description = "Sets the text, cut to the maximum length.",
+				args = "(string text)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getText =
+			{
+				type = "function",
+				description = "Gets the text typed so far.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			reactOnTextChanged =
+			{
+				type = "method",
+				description = "Sets whether to react if the text changed. E.g. getVirtualKeyboardComponent():reactOnTextChanged(function(text) ... end)",
+				args = "(func closureFunction, string text)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			reactOnClosed =
+			{
+				type = "method",
+				description = "Sets whether to react if the keyboard has been closed. E.g. getVirtualKeyboardComponent():reactOnClosed(function(accepted, text) ... end)",
+				args = "(func closureFunction, boolean accepted, string text)",
+				returns = "(nil)",
+				valuetype = "nil"
 			}
 		}
 	},

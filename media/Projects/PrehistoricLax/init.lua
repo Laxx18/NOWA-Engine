@@ -135,7 +135,7 @@ PTERODACTYL =
     -- interval of 1000 ms that is five eggs - enough to force the player out of the spot.
     eggHeight = 12,
     eggDropTime = 10,
-	-- Egg attack: half width of the sweep around the player, and its speed. Twice the half
+    -- Egg attack: half width of the sweep around the player, and its speed. Twice the half
     -- width must fit into the arena (maxX - minX).
     eggSweepHalfWidth = 9.0,
     eggSweepSpeed = 6.0,
@@ -294,6 +294,23 @@ SAVEPOINTS =
 -- makes the save game big and freezes the layout of the level at the time of saving.
 SAVE_SCENE_SNAPSHOT = false;
 
+-- Three save games per player in a ring: the fourth save removes the oldest one. Every save game has the
+-- player name plus date and time in its name, and a screenshot of exactly the same name:
+-- "Player_2026-10-09_16-33-31" and "Player_2026-10-09_16-33-31.png".
+SAVE_SLOT_COUNT = 3;
+
+-- ATTENTION: the ending saveProgress gives the save game file. It is needed to delete the oldest one.
+SAVE_FILE_ENDING = ".sav";
+SCREENSHOT_ENDING = ".png";
+
+-- Which save games exist is written into a small text file in the same folder, one name per line, the
+-- oldest first. A directory can not be listed from Lua.
+SAVE_INDEX_ENDING = ".txt";
+
+-- Set as soon as the save game has been looked at in this run: either loaded or a new run. It keeps the
+-- connect of every following scene from loading again.
+GAME_LOADED_FLAG = "GameLoaded";
+
 -- Player attributes that survive a scene change and end up in the save game. They must exist with these
 -- names in the AttributesComponent of the main game object.
 PLAYER_ATTRIBUTE_NAMES = { "Energy", "Strength", "Experience", "Ascension", "Level", "Coins", "KilledEnemies" };
@@ -355,6 +372,16 @@ function setWorldFlag(key)
     AppStateManager:getGameProgressModule():setGlobalNumberValue(key, 1);
 end
 
+-- Switch for TESTING. The world state (pulled levers, taken items, defeated bosses) is applied and the
+-- save game is loaded at the start only in the real game (Core:isGame()), never while testing in the
+-- editor - there the world is always exactly as authored: levers can be pulled again, the boss is
+-- there every time. Set WORLD_STATE_ACTIVE to false to get the same in the real game.
+WORLD_STATE_ACTIVE = true;
+
+function isWorldStateActive()
+    return true == WORLD_STATE_ACTIVE and true == Core:isGame();
+end
+
 -- Levers. One flag per lever, so a pulled lever stays pulled for the whole run and is cleared again
 -- by startNewRun() after a death. The 'Lever_' prefix only namespaces the key, so it stays readable
 -- in the save game: "Lever_Level5_Lever1_0".
@@ -363,7 +390,7 @@ function makeLeverFlagKey(leverGameObject)
 end
 
 function isLeverPulled(leverGameObject)
-    return isWorldFlagSet(makeLeverFlagKey(leverGameObject));
+    return true == isWorldStateActive() and true == isWorldFlagSet(makeLeverFlagKey(leverGameObject));
 end
 
 function setLeverPulled(leverGameObject)
@@ -372,7 +399,7 @@ end
 
 -- Bosses are unique in the whole game, so there is no scene in the key: "Boss_Pterodactyl".
 function isBossDefeated(bossName)
-    return isWorldFlagSet("Boss_" .. bossName);
+    return true == isWorldStateActive() and true == isWorldFlagSet("Boss_" .. bossName);
 end
 
 function setBossDefeated(bossName)
@@ -397,7 +424,7 @@ function makeItemFlagKey(itemGameObject)
 end
 
 function isItemTaken(itemGameObject)
-    return isWorldFlagSet(makeItemFlagKey(itemGameObject));
+    return true == isWorldStateActive() and true == isWorldFlagSet(makeItemFlagKey(itemGameObject));
 end
 
 -- Remembers a taken item and switches on the ability it grants.
@@ -417,6 +444,36 @@ function isItemLocked(itemGameObject)
     return nil ~= bossName and false == isBossDefeated(bossName);
 end
 
+-- Everything the player has unlocked in the course of the game, read from the world flags. Called in
+-- connect, and again right after an item that grants an ability has been taken.
+function applyAbilities(prehistoricLax)
+    playerController = prehistoricLax:getPlayerControllerJumpNRunComponent();
+    playerController:setCanSlide(isWorldFlagSet(ABILITY_CAN_SLIDE));
+    applySpeedShoes(prehistoricLax);
+end
+
+-- The base speeds are remembered once in the global values, so a loaded snapshot with already
+-- boosted values can never boost twice. startNewRun clears them again.
+function applySpeedShoes(prehistoricLax)
+    local physics = prehistoricLax:getPhysicsActiveComponent();
+	playerController = prehistoricLax:getPlayerControllerJumpNRunComponent();
+    playerController:setUseAcceleration(true);
+    local gameProgressModule = AppStateManager:getGameProgressModule();
+
+    if (nil == gameProgressModule:getGlobalValue("BaseSpeed")) then
+       gameProgressModule:setGlobalNumberValue("BaseSpeed", physics:getSpeed());
+       gameProgressModule:setGlobalNumberValue("BaseMaxSpeed", physics:getMaxSpeed());
+    end
+
+    local factor = 1.0;
+    if (true == isWorldFlagSet(ABILITY_SPEED_SHOES)) then
+        factor = SPEED_SHOES_FACTOR;
+    end
+
+    physics:setSpeed(gameProgressModule:getGlobalValue("BaseSpeed"):getValueNumber() * factor);
+    physics:setMaxSpeed(gameProgressModule:getGlobalValue("BaseMaxSpeed"):getValueNumber() * factor);
+end
+
 -- Called in connect of MainGameObject.lua: removes what was taken
 function applyWorldState()
     local objects = AppStateManager:getGameObjectController():getGameObjectsFromCategory("PointOfInterest");
@@ -428,7 +485,7 @@ function applyWorldState()
 
         if (true == isItemTaken(item)) then
             AppStateManager:getGameObjectController():deleteGameObject(item:getId());
-		-- Attention: Is not used, point of interest items like speed shoes are visible always, but there is a gate, which does not open, until a boss is defeated
+        -- Attention: Is not used, point of interest items like speed shoes are visible always, but there is a gate, which does not open, until a boss is defeated
         --elseif (true == isItemLocked(item)) then
         --    item:setVisible(false);
         end
@@ -476,6 +533,190 @@ function findSavepointIndex(savepointName)
     return nil;
 end
 
+-- The full path of a file of the save game system, in the folder of the save games. Needs
+-- Core:getSaveFilePathName bound to Lua.
+function getSavePath(name, fileEnding)
+    return Core:getSaveFilePathName(name, fileEnding);
+end
+
+---------------------------------------------------------------------------------------------------
+-- Players and the list of their save games
+--
+-- The menu lets the player type in a name. Everything that belongs to that name - the save games, the
+-- screenshots, later the highscore - carries it in its file name, so deleting a player deletes all of it.
+---------------------------------------------------------------------------------------------------
+
+DEFAULT_PLAYER_NAME = "Player";
+PLAYER_NAME_MAX_LENGTH = 16;
+
+-- The list of all players, one name per line, in the folder of the save games.
+PLAYERS_FILE_NAME = "players";
+
+-- The name of the player lives in the global values: they survive every scene change of the game and are part
+-- of the save game, so a loaded game knows whose it is. Only for the game, the menu has its own module.
+function getPlayerName()
+    local value = AppStateManager:getGameProgressModule():getGlobalValue("PlayerName");
+    if (nil == value) then
+        return DEFAULT_PLAYER_NAME;
+    end
+    return value:getValueString();
+end
+
+function setPlayerName(playerName)
+    AppStateManager:getGameProgressModule():setGlobalStringValue("PlayerName", playerName);
+end
+
+-- The name becomes part of file names, and the underscore separates it from the date in the name of a save
+-- game. So only letters, digits and '-' stay, spaces are removed. Returns an empty string if nothing is left.
+function cleanPlayerName(text)
+    local name = tostring(text or "");
+    name = string.gsub(name, "%s+", "");
+    name = string.gsub(name, "[^%w%-]", "");
+    return string.sub(name, 1, PLAYER_NAME_MAX_LENGTH);
+end
+
+local function readLines(path)
+    local lines = {};
+
+    local file = io.open(path, "r");
+    if (nil == file) then
+        return lines;
+    end
+
+    for line in file:lines() do
+        line = string.gsub(line, "\r", "");
+        if (line ~= "") then
+            lines[#lines + 1] = line;
+        end
+    end
+    file:close();
+
+    return lines;
+end
+
+local function writeLines(path, lines)
+    local file = io.open(path, "w");
+    if (nil == file) then
+        log("[init] Could not write '" .. path .. "'.");
+        return;
+    end
+
+    for i = 1, #lines do
+        file:write(lines[i] .. "\n");
+    end
+    file:close();
+end
+
+function makeSaveName()
+    return getPlayerName() .. "_" .. os.date("%Y-%m-%d_%H-%M-%S");
+end
+
+local function getSaveIndexPath(playerName)
+    return getSavePath(playerName .. "_saves", SAVE_INDEX_ENDING);
+end
+
+-- The names of the save games of a player, the oldest first. Without a name: the current player.
+function readSaveIndex(playerName)
+    return readLines(getSaveIndexPath(playerName or getPlayerName()));
+end
+
+function writeSaveIndex(names, playerName)
+    writeLines(getSaveIndexPath(playerName or getPlayerName()), names);
+end
+
+-- The newest save game that really exists. Someone may have deleted one by hand.
+function getLatestSaveName(playerName)
+    local names = readSaveIndex(playerName);
+
+    for i = #names, 1, -1 do
+        if (true == AppStateManager:getGameProgressModule():hasSaveGame(names[i])) then
+            return names[i];
+        end
+    end
+    return nil;
+end
+
+function hasSaveGame(playerName)
+    return nil ~= getLatestSaveName(playerName);
+end
+
+function readPlayers()
+    return readLines(getSavePath(PLAYERS_FILE_NAME, SAVE_INDEX_ENDING));
+end
+
+function writePlayers(names)
+    writeLines(getSavePath(PLAYERS_FILE_NAME, SAVE_INDEX_ENDING), names);
+end
+
+-- The stored spelling of a player, or nil. Case does not matter: the file system does not care either, so
+-- "max" and "Max" would be the same files.
+function findPlayer(playerName)
+    local wanted = string.lower(playerName);
+    local players = readPlayers();
+
+    for i = 1, #players do
+        if (string.lower(players[i]) == wanted) then
+            return players[i];
+        end
+    end
+    return nil;
+end
+
+-- Adds a new player. Returns the name as it is stored, which is the old spelling if he exists already.
+function addPlayer(playerName)
+    local existing = findPlayer(playerName);
+    if (nil ~= existing) then
+        return existing;
+    end
+
+    local players = readPlayers();
+    players[#players + 1] = playerName;
+    writePlayers(players);
+
+    return playerName;
+end
+
+-- Deletes the player with ALL of his save games and screenshots. A highscore entry is to be removed here too,
+-- as soon as there is one.
+function deletePlayer(playerName)
+    local saves = readSaveIndex(playerName);
+    for i = 1, #saves do
+        os.remove(getSavePath(saves[i], SAVE_FILE_ENDING));
+        os.remove(getSavePath(saves[i], SCREENSHOT_ENDING));
+    end
+    os.remove(getSaveIndexPath(playerName));
+
+    local wanted = string.lower(playerName);
+    local remaining = {};
+    local players = readPlayers();
+    for i = 1, #players do
+        if (string.lower(players[i]) ~= wanted) then
+            remaining[#remaining + 1] = players[i];
+        end
+    end
+    writePlayers(remaining);
+end
+
+-- What the menu hands over to the game, in the current save game name of the Core:
+--   "Max"                         continue: the newest save game of Max, or a new run if he has none
+--   "Max_NEW"                     new game of Max, whatever he has saved
+--   "Max_2026-10-09_16-33-31"     exactly this save game of Max
+-- Returns the player name, the save game name (or nil) and whether it is a new run.
+NEW_RUN_SUFFIX = "_NEW";
+
+function splitStartName(startName)
+    if (string.sub(startName, -#NEW_RUN_SUFFIX) == NEW_RUN_SUFFIX) then
+        return string.sub(startName, 1, #startName - #NEW_RUN_SUFFIX), nil, true;
+    end
+
+    local playerName = string.match(startName, "^(.+)_%d%d%d%d%-%d%d%-%d%d_%d%d%-%d%d%-%d%d$");
+    if (nil ~= playerName) then
+        return playerName, startName, false;
+    end
+
+    return startName, nil, false;
+end
+
 -- Called by the save point.
 function saveGame(attributesComponent, savepointName)
     pushPlayerAttributesToProgress(attributesComponent);
@@ -487,24 +728,54 @@ function saveGame(attributesComponent, savepointName)
         AppStateManager:getGameProgressModule():setGlobalNumberValue("SavepointIndex", savepointIndex);
     end
 
-    AppStateManager:getGameProgressModule():saveProgress(SAVE_GAME_NAME, true, SAVE_SCENE_SNAPSHOT);
+    local saveName = makeSaveName();
+    AppStateManager:getGameProgressModule():saveProgress(saveName, true, SAVE_SCENE_SNAPSHOT);
+
+    -- Screenshot and ring in a pcall: if the paths are not available in Lua yet, the save game itself
+    -- must still be there.
+    local success, errorMessage = pcall(function()
+        Core:createScreenshot(getSavePath(saveName, SCREENSHOT_ENDING));
+
+        local names = readSaveIndex();
+        names[#names + 1] = saveName;
+
+        while (#names > SAVE_SLOT_COUNT) do
+            local oldest = table.remove(names, 1);
+            os.remove(getSavePath(oldest, SAVE_FILE_ENDING));
+            os.remove(getSavePath(oldest, SCREENSHOT_ENDING));
 end
 
-function hasSaveGame()
-    return AppStateManager:getGameProgressModule():hasSaveGame(SAVE_GAME_NAME);
+        writeSaveIndex(names);
+    end);
+
+    if (false == success) then
+        log("[init] Screenshot or save ring failed: " .. toString(errorMessage));
+    end
 end
 
 -- Back to the last save point: the values come from the file, the scene from the SAVEPOINTS table.
-function loadGame()
+function loadGame(requestedSaveName)
     local gameProgressModule = AppStateManager:getGameProgressModule();
+    local saveName = requestedSaveName or getLatestSaveName(getPlayerName());
 
-    if (true == SAVE_SCENE_SNAPSHOT) then
-        -- The snapshot brings the scene and the player position with it.
-        gameProgressModule:loadProgress(SAVE_GAME_NAME, true, false);
+    if (nil == saveName) then
+        startNewRun();
         do return end;
     end
 
-    gameProgressModule:loadProgress(SAVE_GAME_NAME, false, false);
+    -- The values of the file replace the globals. The scene that is left must not push its own values over
+    -- them in disconnect.
+    Session.isRespawning = true;
+
+    if (true == SAVE_SCENE_SNAPSHOT) then
+        -- The snapshot brings the scene and the player position with it.
+        gameProgressModule:loadProgress(saveName, true, false);
+        setWorldFlag(GAME_LOADED_FLAG);
+        do return end;
+    end
+
+    gameProgressModule:loadProgress(saveName, false, false);
+    setWorldFlag(GAME_LOADED_FLAG);
 
     local savepointIndex = gameProgressModule:getGlobalValue("SavepointIndex");
     local savepoint = nil;
@@ -522,10 +793,60 @@ function loadGame()
     gameProgressModule:changeScene(savepoint.scene);
 end
 
--- Death without a save point. Nothing of the failed run may survive: attributes, collected items,
--- defeated bosses, unlocked abilities.
+-- Called in connect of MainGameObject.lua. The menu has put into the Core what is to be started, see
+-- splitStartName. Loads the save game, once per run. Returns true if the load was started: the scene is about
+-- to be replaced and nothing else may happen in that connect.
+function loadGameOnStart()
+    if (false == isWorldStateActive()) then
+        return false;
+    end
+
+    if (true == isWorldFlagSet(GAME_LOADED_FLAG)) then
+        return false;
+    end
+
+    -- Set right away: with or without a save game, the connect of every following scene must not try again.
+    setWorldFlag(GAME_LOADED_FLAG);
+
+    local startName = Core:getCurrentSaveGameName();
+    if (nil == startName or "" == startName) then
+        -- Started without the menu, e.g. straight from the editor into the game.
+        return false;
+    end
+
+    local playerName, saveName, isNewRun = splitStartName(startName);
+    setPlayerName(playerName);
+
+    if (true == isNewRun) then
+        return false;
+    end
+
+    if (nil == saveName) then
+        saveName = getLatestSaveName(playerName);
+    end
+
+    if (nil == saveName) then
+        -- A new player.
+        return false;
+    end
+
+    loadGame(saveName);
+    return true;
+end
+
+-- Death without a save point, or a new game. Nothing of the failed run may survive: attributes,
+-- collected items, defeated bosses, unlocked abilities.
 function startNewRun()
+    Session.isRespawning = true;
+
+    -- The player stays the same, only his progress is gone.
+    local playerName = getPlayerName();
     AppStateManager:getGameProgressModule():clearGlobalValues();
+    setPlayerName(playerName);
+
+    -- A new run must not load the old save game again in connect.
+    setWorldFlag(GAME_LOADED_FLAG);
+
     AppStateManager:getGameProgressModule():changeScene(START_SCENE_NAME);
 end
 
@@ -638,9 +959,9 @@ EnemyProfiles =
     Pterodactyl =
     {
         level = 5, energy = 100, strength = 20, experience = 300,
-		hurtsWhileVulnerable = false,   -- if true, then hurts on contact even in the window; false = the window is safe. 
+        hurtsWhileVulnerable = false,   -- if true, then hurts on contact even in the window; false = the window is safe. 
         attackImpactDelay = 0.3, attackDuration = 1.33, attackCooldown = 1.5, damageDuration = 1.33,
-        attackReach = 1.8, attackReachVertical = 1.8, attackImpactDelay = 0.05,
+        attackReach = 1.8, attackReachVertical = 1.8,
         playerKnockbackHorizontal = 9.0, playerKnockbackUp = 5.0, playerKnockbackTime = 0.35,
         deathKnockbackHorizontal = 25.0, deathKnockbackUp = 10.0, deathDeleteDelay = 4.0,
         locomotionAnimation = "ANIM_WALK_NORTH",

@@ -6,7 +6,7 @@
 		<ambient>
 			<ambientLightUpperHemisphere r="0.00835963" g="0.0303886" b="0.0758533"/>
 			<ambientLightLowerHemisphere r="0.0142503" g="0.015975" b="0.0144702" a="1"/>
-			<hemisphereDir x="0" y="0.882948" z="0.469471"/>
+			<hemisphereDir x="8.9407e-08" y="0.882948" z="0.46947"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -35,13 +35,13 @@
 		<fog mode="none" start="0" end="0" density="0"/>
 		<bounds mostLeftNearPosition="inf inf inf" mostRightFarPosition="-inf -inf -inf"/>
 	</environment>
-	<OgreNewt solverModel="4" threadCount="1" desiredFps="60" defaultLinearDamping="0.1">
+	<OgreNewt solverModel="4" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
 		<globalGravity x="0" y="-19.8" z="0"/>
 	</OgreNewt>
 	<nodes>
 		<node name="SunLight" id="1479238507">
-			<position x="3.35268" y="8.84276" z="6.74843"/>
+			<position x="0" y="0" z="0"/>
 			<rotation qw="0.770417" qx="-0.462914" qy="0.225778" qz="0.375757"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="DummyItem" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
@@ -137,6 +137,7 @@
 					<property type="12" name="UsePlanarReflection" data="false"/>
 					<property type="12" name="UseSSAO" data="false"/>
 					<property type="12" name="UseDistortion" data="false"/>
+					<property type="12" name="UseWaterVolume" data="false"/>
 					<property type="12" name="UseMSAA" data="false"/>
 					<property type="12" name="UsePCC" data="false"/>
 					<property type="12" name="UseTerra" data="false"/>
@@ -206,7 +207,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
-					<property type="7" name="ScriptFile" data="MainGameObject.lua"/>
+					<property type="7" name="ScriptFile" data="Menu_MainGameObject.lua"/>
 					<property type="12" name="CloneScript" data="false"/>
 					<property type="12" name="HasCommonScript" data="false"/>
 					<property type="12" name="ScriptGlobal" data="false"/>
@@ -231,6 +232,7 @@
 					<property type="7" name="TextAlign" data="Center"/>
 					<property type="8" name="TextOffset" data="500 0"/>
 					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="12" name="Focusable" data="true"/>
 					<property type="7" name="ComponentMyGUIPositionControllerComponent" data="MyGUIPositionControllerComponent"/>
 					<property type="7" name="Name" data="ContinueController"/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -260,11 +262,12 @@
 					<property type="7" name="TextAlign" data="Center"/>
 					<property type="8" name="TextOffset" data="500 0"/>
 					<property type="10" name="TextColor" data="0.8 0.8 0.8 1"/>
+					<property type="12" name="Focusable" data="true"/>
 					<property type="7" name="ComponentMyGUIPositionControllerComponent" data="MyGUIPositionControllerComponent"/>
 					<property type="7" name="Name" data="NewController"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
+					<property type="12" name="Activated" data="false"/>
 					<property type="6" name="SourceId" data="1702735740"/>
 					<property type="10" name="Coordinate" data="0.4 0.35 0 0"/>
 					<property type="7" name="Function" data="Jump"/>
@@ -289,11 +292,12 @@
 					<property type="7" name="TextAlign" data="Center"/>
 					<property type="8" name="TextOffset" data="500 0"/>
 					<property type="10" name="TextColor" data="0.8 0.8 0.8 1"/>
+					<property type="12" name="Focusable" data="true"/>
 					<property type="7" name="ComponentMyGUIPositionControllerComponent" data="MyGUIPositionControllerComponent"/>
 					<property type="7" name="Name" data="LoadController"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
+					<property type="12" name="Activated" data="false"/>
 					<property type="6" name="SourceId" data="1779770322"/>
 					<property type="10" name="Coordinate" data="0.4 0.5 0 0"/>
 					<property type="7" name="Function" data="Jump"/>
@@ -318,11 +322,12 @@
 					<property type="7" name="TextAlign" data="Center"/>
 					<property type="8" name="TextOffset" data="500 0"/>
 					<property type="10" name="TextColor" data="0.8 0.8 0.8 1"/>
+					<property type="12" name="Focusable" data="true"/>
 					<property type="7" name="ComponentMyGUIPositionControllerComponent" data="MyGUIPositionControllerComponent"/>
 					<property type="7" name="Name" data="ConfigurationController"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
+					<property type="12" name="Activated" data="false"/>
 					<property type="6" name="SourceId" data="2779370323"/>
 					<property type="10" name="Coordinate" data="0.4 0.65 0 0"/>
 					<property type="7" name="Function" data="Jump"/>
@@ -347,11 +352,12 @@
 					<property type="7" name="TextAlign" data="Center"/>
 					<property type="8" name="TextOffset" data="500 0"/>
 					<property type="10" name="TextColor" data="0.8 0.8 0.8 1"/>
+					<property type="12" name="Focusable" data="true"/>
 					<property type="7" name="ComponentMyGUIPositionControllerComponent" data="MyGUIPositionControllerComponent"/>
 					<property type="7" name="Name" data="ExitController"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
+					<property type="12" name="Activated" data="false"/>
 					<property type="6" name="SourceId" data="424263803"/>
 					<property type="10" name="Coordinate" data="0.4 0.8 0 0"/>
 					<property type="7" name="Function" data="Jump"/>
@@ -374,6 +380,183 @@
 					<property type="10" name="Coordinate" data="0.4 0.5 0 0"/>
 					<property type="7" name="Function" data="Inertional"/>
 					<property type="7" name="Duration" data="0.2"/>
+					<property type="7" name="ComponentMyGUIWindowComponent" data="MyGUIWindowComponent"/>
+					<property type="7" name="Name" data="PlayerWindow"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="2201000001"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.3 0.15"/>
+					<property type="8" name="Size" data="0.4 0.7"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Popup"/>
+					<property type="10" name="Color" data="0.59375 0.26679 0.03943 0.6"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Skin" data="WoodPanel"/>
+					<property type="12" name="CommonWidget" data="false"/>
+					<property type="12" name="Movable" data="false"/>
+					<property type="7" name="WindowCaption" data=""/>
+					<property type="7" name="ComponentMyGUITextComponent" data="MyGUITextComponent"/>
+					<property type="7" name="Name" data="PlayerNameLabel"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="2201000002"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.1 0.05"/>
+					<property type="8" name="Size" data="0.8 0.08"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Popup"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="2201000001"/>
+					<property type="7" name="Skin" data="EditBox"/>
+					<property type="12" name="CommonWidget" data="false"/>
+					<property type="7" name="Caption" data="Who is playing?"/>
+					<property type="2" name="FontHeight" data="24"/>
+					<property type="7" name="TextAlign" data="Center"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="12" name="ReadOnly" data="true"/>
+					<property type="12" name="MultiLine" data="false"/>
+					<property type="12" name="WordWrap" data="false"/>
+					<property type="7" name="ComponentMyGUITextComponent" data="MyGUITextComponent"/>
+					<property type="7" name="Name" data="PlayerNameEdit"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="2201000003"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.1 0.15"/>
+					<property type="8" name="Size" data="0.8 0.09"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Popup"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="2201000001"/>
+					<property type="7" name="Skin" data="EditBox"/>
+					<property type="12" name="CommonWidget" data="false"/>
+					<property type="7" name="Caption" data=""/>
+					<property type="2" name="FontHeight" data="24"/>
+					<property type="7" name="TextAlign" data="Left"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="0 0 0 1"/>
+					<property type="12" name="ReadOnly" data="false"/>
+					<property type="12" name="MultiLine" data="false"/>
+					<property type="12" name="WordWrap" data="false"/>
+					<property type="7" name="ComponentMyGUIListBoxComponent" data="MyGUIListBoxComponent"/>
+					<property type="7" name="Name" data="PlayerList"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="2201000004"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.1 0.27"/>
+					<property type="8" name="Size" data="0.8 0.46"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Popup"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="2201000001"/>
+					<property type="7" name="Skin" data="ListBox_Dark"/>
+					<property type="12" name="CommonWidget" data="false"/>
+					<property type="2" name="ItemHeight" data="40"/>
+					<property type="2" name="FontHeight" data="22"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="2" name="ItemCount" data="0"/>
+					<property type="7" name="ComponentMyGUIButtonComponent" data="MyGUIButtonComponent"/>
+					<property type="7" name="Name" data="PlayerPlayButton"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="2201000005"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.1 0.8"/>
+					<property type="8" name="Size" data="0.35 0.12"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Popup"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="2201000001"/>
+					<property type="7" name="Skin" data="WoodButton"/>
+					<property type="12" name="CommonWidget" data="false"/>
+					<property type="7" name="Caption" data="Play"/>
+					<property type="2" name="FontHeight" data="26"/>
+					<property type="7" name="TextAlign" data="Center"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="12" name="Focusable" data="true"/>
+					<property type="7" name="ComponentMyGUIButtonComponent" data="MyGUIButtonComponent"/>
+					<property type="7" name="Name" data="PlayerDeleteButton"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="2201000006"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.55 0.8"/>
+					<property type="8" name="Size" data="0.35 0.12"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Popup"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="2201000001"/>
+					<property type="7" name="Skin" data="WoodButton"/>
+					<property type="12" name="CommonWidget" data="false"/>
+					<property type="7" name="Caption" data="Delete"/>
+					<property type="2" name="FontHeight" data="26"/>
+					<property type="7" name="TextAlign" data="Center"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="12" name="Focusable" data="true"/>
+					<property type="7" name="ComponentMyGUIButtonComponent" data="MyGUIButtonComponent"/>
+					<property type="7" name="Name" data="PlayerKeyboardButton"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="2201000007"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.698 0.15"/>
+					<property type="8" name="Size" data="0.2 0.087"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Popup"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="2201000001"/>
+					<property type="7" name="Skin" data="WoodButton"/>
+					<property type="12" name="CommonWidget" data="false"/>
+					<property type="7" name="Caption" data="ABC"/>
+					<property type="2" name="FontHeight" data="24"/>
+					<property type="7" name="TextAlign" data="Center"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="12" name="Focusable" data="true"/>
+					<property type="7" name="ComponentVirtualKeyboardComponent" data="VirtualKeyboardComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="2" name="TargetId" data="2201000003"/>
+					<property type="7" name="Layout" data="QWERTZ"/>
+					<property type="2" name="MaxLength" data="16"/>
+					<property type="8" name="RelativePosition" data="0.22 0.54"/>
+					<property type="8" name="RelativeSize" data="0.56 0.42"/>
+					<property type="6" name="NavigationDelay" data="0.2"/>
+					<property type="12" name="ShowUmlauts" data="true"/>
+					<property type="12" name="AutoCapitalize" data="true"/>
+					<property type="12" name="SuspendPadFocus" data="true"/>
+					<property type="7" name="ComponentMyGUIMessageBoxComponent" data="MyGUIMessageBoxComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="Title" data="Delete player"/>
+					<property type="7" name="Message" data="My Message"/>
+					<property type="7" name="ResultEventName" data="onDeletePlayerResult"/>
+					<property type="2" name="StylesCount" data="0"/>
+					<property type="7" name="ComponentMyGUIPadFocusComponent" data="MyGUIPadFocusComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="NavigationDelay" data="0.25"/>
+					<property type="7" name="ConfirmAction" data="ACTION"/>
+					<property type="12" name="ShowPointer" data="true"/>
 				</userData>
 			</item>
 		</node>

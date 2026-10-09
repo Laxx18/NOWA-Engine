@@ -4539,6 +4539,21 @@ namespace NOWA
 #endif
     }
 
+    void Core::createScreenshot(const Ogre::String& filePathName)
+    {
+        // Screenshot
+
+        Ogre::Image2 img;
+        Ogre::TextureGpu* texture = renderWindow->getTexture();
+        img.convertFromTexture(texture, 0u, texture->getNumMipmaps() - 1u);
+
+        img.save(filePathName, 0u, texture->getNumMipmaps());
+
+        renderWindow->setWantsToDownload(true);
+        renderWindow->setManualSwapRelease(true);
+        renderWindow->performManualRelease();
+    }
+
     void Core::dumpNodes(Ogre::Node* pNode, Ogre::String padding)
     {
         // create the scene tree
@@ -5081,22 +5096,17 @@ namespace NOWA
     {
         if (keyEventRef.key == OIS::KC_SYSRQ)
         {
-            // Screenshot
-
-            Ogre::Image2 img;
-            Ogre::TextureGpu* texture = renderWindow->getTexture();
-            img.convertFromTexture(texture, 0u, texture->getNumMipmaps() - 1u);
-
             std::time_t t = std::time(0); // get time now
             std::tm* now = std::localtime(&t);
-            Ogre::String date = Ogre::StringConverter::toString(now->tm_year + 1900) + "-" + Ogre::StringConverter::toString(now->tm_mon + 1) + "-" + Ogre::StringConverter::toString(now->tm_mday) + "_" + Ogre::StringConverter::toString(now->tm_min) +
-                                "_" + Ogre::StringConverter::toString(now->tm_sec);
 
-            img.save(date + ".png", 0u, texture->getNumMipmaps());
+            Ogre::String filePath = Ogre::StringConverter::toString(now->tm_year + 1900) + "-" + Ogre::StringConverter::toString(now->tm_mon + 1) + "-" + Ogre::StringConverter::toString(now->tm_mday) + "_" +
+                                    Ogre::StringConverter::toString(now->tm_min) + "_" + Ogre::StringConverter::toString(now->tm_sec);
 
-            renderWindow->setWantsToDownload(true);
-            renderWindow->setManualSwapRelease(true);
-            renderWindow->performManualRelease();
+            filePath += ".png";
+
+            filePath += ".png";
+
+            this->createScreenshot(filePath);
 
             return true;
         }
